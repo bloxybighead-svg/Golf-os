@@ -20,7 +20,7 @@ export function DrillCard({ drill, usageCount }: Props) {
   }
 
   return (
-    <div className="rounded-md border border-[#2a2a2a] bg-[#161616] px-4 py-3">
+    <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-4 py-3.5 shadow-sm transition-colors hover:bg-[#161616]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-white">{drill.name}</p>
@@ -30,14 +30,14 @@ export function DrillCard({ drill, usageCount }: Props) {
         </div>
         {/* Usage badge */}
         {usageCount > 0 && (
-          <span className="shrink-0 rounded-full bg-[#1e1e1e] px-2 py-0.5 text-xs text-[#4ade80]">
+          <span className="shrink-0 rounded-full bg-[#1a1a1a] px-2 py-0.5 text-xs font-semibold text-[#22c55e]">
             ×{usageCount}
           </span>
         )}
       </div>
 
       {drill.target_metric && (
-        <p className="mt-2 rounded-md bg-[#1e1e1e] px-3 py-1.5 text-xs text-[#6b7280]">
+        <p className="mt-2 rounded-lg bg-[#1a1a1a] px-3 py-1.5 text-xs text-[#6b7280]">
           <span className="text-[#e5e5e5]">Goal: </span>{drill.target_metric}
         </p>
       )}
