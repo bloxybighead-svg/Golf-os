@@ -7,15 +7,18 @@ const CLUBS = [
 interface Props {
   value: string[]
   onChange: (clubs: string[]) => void
+  allowedClubs?: string[]
 }
 
-export function ClubPicker({ value, onChange }: Props) {
+export function ClubPicker({ value, onChange, allowedClubs }: Props) {
   const toggle = (club: string) =>
     onChange(value.includes(club) ? value.filter((c) => c !== club) : [...value, club])
 
+  const visible = allowedClubs ? CLUBS.filter((c) => allowedClubs.includes(c)) : CLUBS
+
   return (
     <div className="flex flex-wrap gap-2">
-      {CLUBS.map((club) => (
+      {visible.map((club) => (
         <button
           key={club}
           type="button"
