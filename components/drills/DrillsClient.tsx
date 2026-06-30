@@ -28,7 +28,7 @@ export function DrillsClient({ drills, usageCounts }: Props) {
     : drills.filter((d) => d.category === activeCategory)
 
   return (
-    <div className="mx-auto max-w-lg space-y-5">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -83,7 +83,7 @@ export function DrillsClient({ drills, usageCounts }: Props) {
           <p className="mt-1 text-xs text-[#6b7280]">Add one with the button above.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {visible.map((drill) => (
             <DrillCard key={drill.id} drill={drill} usageCount={usageCounts[drill.id] ?? 0} />
           ))}

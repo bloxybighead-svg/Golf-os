@@ -14,8 +14,8 @@ export default function NavBar() {
   const pathname = usePathname()
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.08] bg-[#0a0a0a]/90 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
 
         {/* Wordmark */}
         <Link href="/" className="flex items-center gap-2">

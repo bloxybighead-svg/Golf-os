@@ -131,7 +131,7 @@ export default function NewSessionPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg">
+    <div className="mx-auto max-w-xl">
 
       {/* ── STEP 1: Header ─────────────────────────────────── */}
       {step === "header" && (
