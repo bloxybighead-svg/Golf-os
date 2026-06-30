@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import type { Drill, DrillCategory } from "@/lib/supabase/types"
 import { createDrill, updateDrill } from "@/app/drills/actions"
 
-const CATEGORIES: DrillCategory[] = ["Full Swing", "Wedge", "Chipping", "Bunker", "Putting"]
+const CATEGORIES: DrillCategory[] = ["Full Swing", "Wedge", "Chipping", "Bunker", "Putting", "Mental"]
 
 interface Props {
   drill?: Drill

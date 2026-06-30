@@ -6,7 +6,7 @@ export type Location =
   | 'Putting Green'
   | 'On-Course Practice'
   | 'Net (Home)'
-export type DrillCategory = 'Full Swing' | 'Wedge' | 'Chipping' | 'Bunker' | 'Putting'
+export type DrillCategory = 'Full Swing' | 'Wedge' | 'Chipping' | 'Bunker' | 'Putting' | 'Mental'
 
 export interface Drill {
   id: string

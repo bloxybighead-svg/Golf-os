@@ -6,7 +6,7 @@ import { DrillCard } from "./DrillCard"
 import { DrillForm } from "./DrillForm"
 
 const ALL_CATEGORIES: (DrillCategory | "All")[] = [
-  "All", "Full Swing", "Wedge", "Chipping", "Bunker", "Putting",
+  "All", "Full Swing", "Wedge", "Chipping", "Bunker", "Putting", "Mental",
 ]
 
 interface Props {
