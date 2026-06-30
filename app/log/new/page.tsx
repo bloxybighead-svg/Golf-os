@@ -10,6 +10,7 @@ import { RatingDots } from "@/components/log/RatingDots"
 
 const LOCATIONS: Location[] = [
   "Range (Colts Neck grass)",
+  "Net (Home)",
   "Short Game Area",
   "Putting Green",
   "On-Course Practice",

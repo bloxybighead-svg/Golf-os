@@ -5,6 +5,7 @@ export type Location =
   | 'Short Game Area'
   | 'Putting Green'
   | 'On-Course Practice'
+  | 'Net (Home)'
 export type DrillCategory = 'Full Swing' | 'Wedge' | 'Chipping' | 'Bunker' | 'Putting'
 
 export interface Drill {
