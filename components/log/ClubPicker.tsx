@@ -1,7 +1,7 @@
 "use client"
 
 const CLUBS = [
-  "Driver", "3W", "4i", "5i", "6i", "7i", "8i", "9i", "PW", "SW", "LW", "Putter",
+  "Driver", "3W", "7W", "4i", "5i", "6i", "7i", "8i", "9i", "PW", "GW", "56", "60", "Putter",
 ]
 
 interface Props {
