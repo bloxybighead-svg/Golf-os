@@ -16,11 +16,17 @@ export interface Drill {
   target_metric: string | null
 }
 
+export interface BlockActivity {
+  drill_id: string | null
+  drill_name: string        // denormalized so cards don't need a lookup
+  rep_count: number | null
+  note: string | null
+}
+
 export interface SessionBlock {
   block_type: BlockType
   duration_minutes: number | null
-  drill_id: string | null
-  drill_free_text: string | null
+  activities: BlockActivity[]
   clubs_used: string[]
   shot_count: number | null
   distance_range: string | null

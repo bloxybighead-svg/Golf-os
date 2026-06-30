@@ -276,7 +276,6 @@ export default function NewSessionPage() {
                   key={i}
                   block={block}
                   index={i}
-                  drills={drills}
                   onRemove={() => setBlocks((prev) => prev.filter((_, idx) => idx !== i))}
                 />
               ))}

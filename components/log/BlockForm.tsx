@@ -3,7 +3,7 @@
 import { useState } from "react"
 import type { SessionBlock, BlockType, Drill } from "@/lib/supabase/types"
 import { ClubPicker } from "./ClubPicker"
-import { DrillCombobox } from "./DrillCombobox"
+import { ActivityList } from "./ActivityList"
 import { RatingDots } from "./RatingDots"
 
 const BLOCK_TYPES: BlockType[] = [
@@ -32,9 +32,7 @@ function defaultBlock(type: BlockType): SessionBlock {
   return {
     block_type: type,
     duration_minutes: null,
-    drill_id: null,
-    drill_free_text: null,
-    // Auto-select if only one option (Putter for Putting)
+    activities: [],
     clubs_used: clubs.length === 1 ? clubs : [],
     shot_count: null,
     distance_range: null,
@@ -127,16 +125,13 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
           />
         </div>
 
-        {/* Drill */}
+        {/* Activities */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
-            Drill
-          </label>
-          <DrillCombobox
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">Activities</p>
+          <ActivityList
+            activities={form.activities}
             drills={drills}
-            drillId={form.drill_id}
-            freeText={form.drill_free_text ?? ""}
-            onChange={(id, text) => setForm((f) => ({ ...f, drill_id: id, drill_free_text: text || null }))}
+            onChange={(v) => set("activities", v)}
           />
         </div>
 
