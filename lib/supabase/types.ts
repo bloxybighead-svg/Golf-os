@@ -35,6 +35,20 @@ export interface SessionBlock {
   notes: string | null
 }
 
+export interface Round {
+  id: string
+  date: string
+  course_name: string
+  score: number
+  par: number
+  fairways_hit: number | null
+  fairways_total: number | null
+  gir: number | null
+  total_putts: number | null
+  notes: string | null
+  created_at: string
+}
+
 export interface PracticeSession {
   id: string
   date: string
