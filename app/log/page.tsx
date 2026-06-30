@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
+import { DeleteSessionButton } from "@/components/log/DeleteSessionButton"
 
 function formatDate(dateStr: string) {
   return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", {
@@ -80,11 +81,14 @@ export default async function LogPage() {
                   {session.duration_minutes ? ` · ${session.duration_minutes} min` : ""}
                 </p>
               </div>
-              {session.overall_feel != null && (
-                <span className="shrink-0 text-xs font-semibold text-[#4ade80]">
-                  {session.overall_feel}/5
-                </span>
-              )}
+              <div className="flex shrink-0 items-center gap-3">
+                {session.overall_feel != null && (
+                  <span className="text-xs font-semibold text-[#4ade80]">
+                    {session.overall_feel}/5
+                  </span>
+                )}
+                <DeleteSessionButton sessionId={session.id} />
+              </div>
             </div>
             {session.primary_goal && (
               <p className="mt-1.5 text-xs italic text-[#6b7280]">"{session.primary_goal}"</p>
