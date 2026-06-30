@@ -1,0 +1,43 @@
+export type BlockType = 'Full Swing' | 'Wedge/Scoring Zone' | 'Chipping' | 'Bunker' | 'Putting'
+export type SessionType = 'Full Swing Focus' | 'Wedge Focus' | 'Short Game Focus' | 'Putting Focus' | 'Mixed'
+export type Location =
+  | 'Range (Colts Neck grass)'
+  | 'Short Game Area'
+  | 'Putting Green'
+  | 'On-Course Practice'
+export type DrillCategory = 'Full Swing' | 'Wedge' | 'Chipping' | 'Bunker' | 'Putting'
+
+export interface Drill {
+  id: string
+  name: string
+  category: DrillCategory
+  description: string | null
+  target_metric: string | null
+}
+
+export interface SessionBlock {
+  block_type: BlockType
+  duration_minutes: number | null
+  drill_id: string | null
+  drill_free_text: string | null
+  clubs_used: string[]
+  shot_count: number | null
+  distance_range: string | null
+  launch_pro: boolean
+  quality_rating: number | null
+  notes: string | null
+}
+
+export interface PracticeSession {
+  id: string
+  date: string
+  start_time: string | null
+  duration_minutes: number | null
+  location: Location[]
+  session_type: SessionType
+  primary_goal: string | null
+  overall_feel: number | null
+  energy_level: number | null
+  notes: string | null
+  created_at: string
+}
