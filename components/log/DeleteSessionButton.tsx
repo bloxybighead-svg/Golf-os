@@ -3,7 +3,12 @@
 import { useState, useTransition } from "react"
 import { deleteSession } from "@/app/log/actions"
 
-export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
+interface Props {
+  sessionId: string
+  redirectTo?: string
+}
+
+export function DeleteSessionButton({ sessionId, redirectTo }: Props) {
   const [confirm, setConfirm] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -14,7 +19,7 @@ export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
         <button
           onClick={() =>
             startTransition(async () => {
-              await deleteSession(sessionId)
+              await deleteSession(sessionId, redirectTo)
             })
           }
           disabled={isPending}

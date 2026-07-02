@@ -39,13 +39,42 @@ export interface Round {
   id: string
   date: string
   course_name: string
+  holes_played: number
   score: number
   par: number
-  fairways_hit: number | null
-  fairways_total: number | null
-  gir: number | null
+  is_competitive: boolean
+  course_rating: number | null
+  slope_rating: number | null
+  differential: number | null
+  penalties: number | null
+  fairways_pct: number | null
+  gir_pct: number | null
   total_putts: number | null
+  three_putts: number | null
+  up_and_downs: number | null
+  miss_left_pct: number | null
+  miss_right_pct: number | null
   notes: string | null
+  created_at: string
+}
+
+export interface ClubWorkEntry {
+  club: string
+  shots: number | null
+  avg_carry: number | null
+  dispersion: number | null   // ± yds spread
+  spin_var: number | null     // ± rpm relative to baseline
+  notes: string | null
+}
+
+export const CLUB_WORK_CLUBS = [
+  "Driver", "3W", "7W", "4i", "5i", "6i", "7i", "8i", "9i", "PW", "GW", "SM10 56°", "SM10 60°",
+] as const
+
+export interface Milestone {
+  id: string
+  date: string
+  label: string
   created_at: string
 }
 
@@ -60,5 +89,6 @@ export interface PracticeSession {
   overall_feel: number | null
   energy_level: number | null
   notes: string | null
+  club_work: ClubWorkEntry[]
   created_at: string
 }

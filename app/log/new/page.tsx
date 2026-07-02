@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import type { SessionBlock, Drill, Location, SessionType } from "@/lib/supabase/types"
+import type { SessionBlock, Drill, Location, SessionType, ClubWorkEntry } from "@/lib/supabase/types"
 import { BlockForm } from "@/components/log/BlockForm"
 import { BlockCard } from "@/components/log/BlockCard"
 import { RatingDots } from "@/components/log/RatingDots"
+import { ClubWork } from "@/components/log/ClubWork"
 
 const LOCATIONS: Location[] = [
   "Range (Colts Neck grass)",
@@ -53,6 +54,9 @@ export default function NewSessionPage() {
   // Blocks
   const [blocks, setBlocks] = useState<SessionBlock[]>([])
 
+  // Club work
+  const [clubWork, setClubWork] = useState<ClubWorkEntry[]>([])
+
   // Finish
   const [overallFeel, setOverallFeel] = useState<number | null>(null)
   const [energyLevel, setEnergyLevel] = useState<number | null>(null)
@@ -95,6 +99,7 @@ export default function NewSessionPage() {
         overall_feel: overallFeel,
         energy_level: energyLevel,
         notes: finalNotes || null,
+        club_work: clubWork,
       })
       .select()
       .single()
@@ -291,6 +296,15 @@ export default function NewSessionPage() {
           >
             + Add Block
           </button>
+
+          {/* Club Work (optional) */}
+          <div className="rounded-md border border-[#2a2a2a] bg-[#161616] px-4 py-3.5">
+            <div className="mb-3">
+              <p className="text-sm font-medium text-white">Club Work</p>
+              <p className="text-xs text-[#6b7280]">Optional — log per-club shot numbers (carry, dispersion, spin)</p>
+            </div>
+            <ClubWork entries={clubWork} onChange={setClubWork} />
+          </div>
 
           <button
             onClick={() => setStep("finish")}

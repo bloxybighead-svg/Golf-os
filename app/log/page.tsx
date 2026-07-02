@@ -142,40 +142,49 @@ export default async function LogPage() {
           }) => (
             <div
               key={session.id}
-              className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm transition-colors hover:bg-[#161616]"
+              className="group rounded-xl border border-white/[0.06] bg-[#111111] shadow-sm transition-colors hover:bg-[#161616]"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white">{session.session_type}</p>
-                  <p className="mt-0.5 text-xs text-[#6b7280]">
-                    {formatDate(session.date)}
-                    {session.duration_minutes ? ` · ${session.duration_minutes} min` : ""}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-4">
-                  {session.overall_feel != null && (
-                    <span className="text-xs font-bold text-[#22c55e]">
-                      {session.overall_feel}/5
+              <Link href={`/log/${session.id}`} className="block px-5 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white group-hover:text-[#22c55e] transition-colors">
+                      {session.session_type}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#6b7280]">
+                      {formatDate(session.date)}
+                      {session.duration_minutes ? ` · ${session.duration_minutes} min` : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {session.overall_feel != null && (
+                      <span className="text-xs font-bold text-[#22c55e]">
+                        {session.overall_feel}/5
+                      </span>
+                    )}
+                    <span className="text-xs text-[#4b5563] group-hover:text-[#6b7280] transition-colors">
+                      View →
                     </span>
-                  )}
-                  <DeleteSessionButton sessionId={session.id} />
+                  </div>
                 </div>
+                {session.primary_goal && (
+                  <p className="mt-2 text-sm italic text-[#6b7280]">"{session.primary_goal}"</p>
+                )}
+                {session.location?.length > 0 && (
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {session.location.map((loc: string) => (
+                      <span
+                        key={loc}
+                        className="rounded-full border border-white/[0.06] bg-[#1a1a1a] px-2.5 py-0.5 text-xs text-[#6b7280]"
+                      >
+                        {loc}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </Link>
+              <div className="border-t border-white/[0.04] px-5 py-2.5">
+                <DeleteSessionButton sessionId={session.id} />
               </div>
-              {session.primary_goal && (
-                <p className="mt-2 text-sm italic text-[#6b7280]">"{session.primary_goal}"</p>
-              )}
-              {session.location?.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {session.location.map((loc: string) => (
-                    <span
-                      key={loc}
-                      className="rounded-full border border-white/[0.06] bg-[#1a1a1a] px-2.5 py-0.5 text-xs text-[#6b7280]"
-                    >
-                      {loc}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
         </div>

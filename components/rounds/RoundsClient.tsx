@@ -7,9 +7,10 @@ import { RoundForm } from "./RoundForm"
 
 interface Props {
   rounds: Round[]
+  casualGirAvg: number | null
 }
 
-export function RoundsClient({ rounds }: Props) {
+export function RoundsClient({ rounds, casualGirAvg }: Props) {
   const [adding, setAdding] = useState(false)
 
   if (adding) {
@@ -58,7 +59,7 @@ export function RoundsClient({ rounds }: Props) {
       {rounds.length > 0 && (
         <div className="space-y-2.5">
           {rounds.map((round) => (
-            <RoundCard key={round.id} round={round} />
+            <RoundCard key={round.id} round={round} casualGirAvg={casualGirAvg} />
           ))}
         </div>
       )}

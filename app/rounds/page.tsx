@@ -34,15 +34,40 @@ export default async function RoundsPage() {
 
   const rounds = (data ?? []) as Round[]
 
-  // Stats
   const monthStart = startOfMonthISO()
   const roundsThisMonth = rounds.filter((r) => r.date >= monthStart).length
 
-  const scores = rounds.map((r) => r.score)
-  const avgScore = avg(scores)
+  const scores = rounds.map((r) => r.score - r.par)
+  const avgScoreRel = avg(scores)
 
-  const puttCounts = rounds.filter((r) => r.total_putts != null).map((r) => r.total_putts as number)
-  const avgPutts = avg(puttCounts)
+  const diffs = rounds.filter((r) => r.differential != null).map((r) => r.differential as number)
+  const avgDiff = avg(diffs)
+
+  const compDiffs = rounds.filter((r) => r.is_competitive && r.differential != null).map((r) => r.differential as number)
+  const avgCompDiff = avg(compDiffs)
+
+  const pracDiffs = rounds.filter((r) => !r.is_competitive && r.differential != null).map((r) => r.differential as number)
+  const avgPracDiff = avg(pracDiffs)
+
+  const penPerHole = rounds
+    .filter((r) => r.penalties != null)
+    .map((r) => (r.penalties as number) / (r.holes_played || 18))
+  const avgPenPerHole = avg(penPerHole)
+
+  const fwPcts = rounds.filter((r) => r.fairways_pct != null).map((r) => r.fairways_pct as number)
+  const avgFairways = avg(fwPcts)
+
+  const girPcts = rounds.filter((r) => r.gir_pct != null).map((r) => r.gir_pct as number)
+  const avgGir = avg(girPcts)
+
+  // Casual (non-competitive) GIR baseline — used to flag competitive pressure-collapse rounds
+  const casualGir = rounds.filter((r) => !r.is_competitive && r.gir_pct != null).map((r) => r.gir_pct as number)
+  const casualGirAvg = avg(casualGir)
+
+  function scoreLabel(rel: number) {
+    if (rel === 0) return "E"
+    return rel > 0 ? `+${rel.toFixed(1)}` : rel.toFixed(1)
+  }
 
   return (
     <div className="space-y-8">
@@ -52,23 +77,20 @@ export default async function RoundsPage() {
         <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
           <p className="label-xs mb-2">This Month</p>
           <p className="text-3xl font-bold tracking-tight text-white">{roundsThisMonth}</p>
-          <p className="mt-1 text-xs text-[#6b7280]">
-            {roundsThisMonth === 1 ? "round" : "rounds"}
-          </p>
+          <p className="mt-1 text-xs text-[#6b7280]">{roundsThisMonth === 1 ? "round" : "rounds"}</p>
         </div>
 
         <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
           <p className="label-xs mb-2">Avg Score</p>
-          {avgScore != null ? (
+          {avgScoreRel != null ? (
             <>
-              <p className="text-3xl font-bold tracking-tight text-white">
-                {avgScore.toFixed(1)}
+              <p className={[
+                "text-3xl font-bold tracking-tight",
+                avgScoreRel < 0 ? "text-[#22c55e]" : avgScoreRel > 0 ? "text-[#f87171]" : "text-white",
+              ].join(" ")}>
+                {scoreLabel(avgScoreRel)}
               </p>
-              {rounds[0] && (
-                <p className="mt-1 text-xs text-[#6b7280]">
-                  par {rounds[0].par} course avg
-                </p>
-              )}
+              <p className="mt-1 text-xs text-[#6b7280]">to par</p>
             </>
           ) : (
             <>
@@ -79,13 +101,75 @@ export default async function RoundsPage() {
         </div>
 
         <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
-          <p className="label-xs mb-2">Avg Putts</p>
-          {avgPutts != null ? (
+          <p className="label-xs mb-2">Avg Differential</p>
+          {avgDiff != null ? (
             <>
-              <p className="text-3xl font-bold tracking-tight text-white">
-                {avgPutts.toFixed(1)}
+              <p className="text-3xl font-bold tracking-tight text-white">{avgDiff.toFixed(1)}</p>
+              <div className="mt-2 flex items-center gap-3 border-t border-white/[0.04] pt-2">
+                <div>
+                  <p className="text-xs text-[#6b7280]">Comp</p>
+                  <p className="text-sm font-semibold text-[#22c55e]">
+                    {avgCompDiff != null ? avgCompDiff.toFixed(1) : "—"}
+                  </p>
+                </div>
+                <div className="h-6 w-px bg-white/[0.06]" />
+                <div>
+                  <p className="text-xs text-[#6b7280]">Practice</p>
+                  <p className="text-sm font-semibold text-white">
+                    {avgPracDiff != null ? avgPracDiff.toFixed(1) : "—"}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-3xl font-bold tracking-tight text-[#4b5563]">—</p>
+              <p className="mt-1 text-xs text-[#4b5563]">add rating/slope</p>
+            </>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+          <p className="label-xs mb-2">Avg Fairways</p>
+          {avgFairways != null ? (
+            <>
+              <p className="text-3xl font-bold tracking-tight text-white">{avgFairways.toFixed(0)}%</p>
+              <p className="mt-1 text-xs text-[#6b7280]">FIR</p>
+            </>
+          ) : (
+            <>
+              <p className="text-3xl font-bold tracking-tight text-[#4b5563]">—</p>
+              <p className="mt-1 text-xs text-[#4b5563]">no data yet</p>
+            </>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+          <p className="label-xs mb-2">Avg GIR</p>
+          {avgGir != null ? (
+            <>
+              <p className="text-3xl font-bold tracking-tight text-white">{avgGir.toFixed(0)}%</p>
+              <p className="mt-1 text-xs text-[#6b7280]">greens in regulation</p>
+            </>
+          ) : (
+            <>
+              <p className="text-3xl font-bold tracking-tight text-[#4b5563]">—</p>
+              <p className="mt-1 text-xs text-[#4b5563]">no data yet</p>
+            </>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+          <p className="label-xs mb-2">Penalties / Hole</p>
+          {avgPenPerHole != null ? (
+            <>
+              <p className={[
+                "text-3xl font-bold tracking-tight",
+                avgPenPerHole > 0.11 ? "text-[#f87171]" : "text-white",
+              ].join(" ")}>
+                {avgPenPerHole.toFixed(2)}
               </p>
-              <p className="mt-1 text-xs text-[#6b7280]">per round</p>
+              <p className="mt-1 text-xs text-[#6b7280]">per hole</p>
             </>
           ) : (
             <>
@@ -96,7 +180,7 @@ export default async function RoundsPage() {
         </div>
       </div>
 
-      <RoundsClient rounds={rounds} />
+      <RoundsClient rounds={rounds} casualGirAvg={casualGirAvg} />
     </div>
   )
 }

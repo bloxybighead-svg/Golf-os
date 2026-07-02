@@ -5,13 +5,22 @@ import { createClient } from "@/lib/supabase/server"
 
 interface RoundPayload {
   date: string
+  holes_played: number
   course_name: string
   score: number
   par: number
-  fairways_hit: number | null
-  fairways_total: number | null
-  gir: number | null
+  is_competitive: boolean
+  course_rating: number | null
+  slope_rating: number | null
+  differential: number | null
+  penalties: number | null
+  fairways_pct: number | null
+  gir_pct: number | null
   total_putts: number | null
+  three_putts: number | null
+  up_and_downs: number | null
+  miss_left_pct: number | null
+  miss_right_pct: number | null
   notes: string | null
 }
 
