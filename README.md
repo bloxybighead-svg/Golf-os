@@ -2,6 +2,8 @@
 
 Personal golf practice and performance tracker built for a competitive junior golfer.
 
+**Live:** [golf-os-ten.vercel.app](https://golf-os-ten.vercel.app) — auto-deploys from `main` via Vercel.
+
 ## Stack
 
 - **Next.js 14** — App Router, TypeScript
@@ -15,16 +17,16 @@ golf-os/
 ├── app/
 │   ├── layout.tsx          # Root layout: NavBar + dark theme
 │   ├── page.tsx            # Home / landing
-│   ├── log/page.tsx        # Practice log — PRIMARY FOCUS
-│   ├── drills/page.tsx     # Drill library (stub)
-│   ├── rounds/page.tsx     # Round scorecards (stub)
-│   └── trends/page.tsx     # Performance trends (stub)
-├── components/
-│   └── NavBar.tsx          # Fixed top nav with active-link state
+│   ├── log/                # Practice log: 3-step session builder, detail view, Club Work
+│   ├── drills/             # Drill library: CRUD, categories, usage counts
+│   ├── rounds/             # Round tracking: scores, differentials, pressure-collapse flags
+│   └── trends/             # Charts: differential, FIR/GIR, putts, milestones, CSV export
+├── components/             # Feature components (log/, rounds/, trends/) + NavBar
 ├── lib/
 │   └── supabase/
 │       ├── client.ts       # Browser Supabase client (use in Client Components)
 │       └── server.ts       # Server Supabase client (use in Server Components / API routes)
+├── supabase/               # SQL schema / migration files (run manually in Supabase)
 ├── .env.local              # Supabase keys — never committed
 └── tailwind.config.ts      # Custom color tokens: surface, accent (green), muted
 ```
@@ -67,9 +69,9 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Build Order
+## Features
 
-1. **Log** — session logging, shot categories, notes (in progress)
-2. **Drills** — structured drill library with completion tracking
-3. **Rounds** — scorecard entry, GIR/FIR/putts per hole
-4. **Trends** — charts and analytics across all data
+1. **Log** — practice sessions with a 3-step builder (header → blocks → ratings), per-block activities, and an editable Club Work section (carry/dispersion/spin per club)
+2. **Drills** — user-curated drill library with categories and usage counts pulled from logged sessions
+3. **Rounds** — full round tracking: score, differential, competitive flag, GHIN-style stats, and pressure-collapse flags (tournament differential spike, GIR collapse vs. casual baseline)
+4. **Trends** — recharts dashboards: rolling-average differential, FIR/GIR, putts + 3-putt %, practice frequency, milestone markers, and CSV export
