@@ -16,6 +16,29 @@ function avg(nums: number[]): number | null {
   return nums.reduce((a, b) => a + b, 0) / nums.length
 }
 
+// Partial-round differentials are on a smaller scale; scale to an 18-hole
+// basis (same convention as Trends) so they can rank fairly in "best 8".
+function normalizedDiff(r: Round): number | null {
+  if (r.differential == null) return null
+  return r.holes_played > 0 && r.holes_played < 18
+    ? r.differential * (18 / r.holes_played)
+    : r.differential
+}
+
+// Simplified WHS-style estimate: best 8 differentials of the most recent 20
+// rounds, ×0.96, truncated (not rounded) to one decimal.
+function estimateHandicap(rounds: Round[]): number | null {
+  if (rounds.length < 20) return null
+  const diffs = rounds
+    .slice(0, 20)
+    .map(normalizedDiff)
+    .filter((d): d is number => d != null)
+  if (diffs.length < 8) return null
+  const best8 = diffs.sort((a, b) => a - b).slice(0, 8)
+  const raw = (best8.reduce((a, b) => a + b, 0) / 8) * 0.96
+  return Math.trunc(raw * 10) / 10
+}
+
 export default async function Home() {
   const supabase = createClient()
 
@@ -48,6 +71,9 @@ export default async function Home() {
   const lastMonday = mondayOfWeekISO(-1)
   const sessionsThisWeek = sessions.filter((s) => s.date >= thisMonday).length
   const sessionsLastWeek = sessions.filter((s) => s.date >= lastMonday && s.date < thisMonday).length
+
+  // Estimated handicap — only once 20+ rounds are logged
+  const estHandicap = estimateHandicap(rounds)
 
   // 3. GIR insight: most recent 10 rounds vs the 10 before that (needs ≥10 rounds)
   let insight = "Log more rounds to unlock insights."
@@ -158,6 +184,20 @@ export default async function Home() {
           )}
         </div>
       </div>
+
+      {/* Estimated Handicap Index — unlocked at 20+ logged rounds */}
+      {estHandicap != null && (
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+          <p className="label-xs mb-2">Estimated Handicap Index</p>
+          <p className="text-3xl font-bold tracking-tight text-[#22c55e]">
+            {estHandicap < 0 ? `+${Math.abs(estHandicap).toFixed(1)}` : estHandicap.toFixed(1)}
+          </p>
+          <p className="mt-1 text-xs text-[#6b7280]">
+            Best 8 of your last 20 differentials × 0.96 · Estimated — simplified calculation,
+            excludes official safeguards and caps, not your real GHIN Index.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
