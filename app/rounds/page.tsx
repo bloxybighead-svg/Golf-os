@@ -12,7 +12,11 @@ function avg(nums: number[]) {
   return nums.reduce((a, b) => a + b, 0) / nums.length
 }
 
-export default async function RoundsPage() {
+export default async function RoundsPage({
+  searchParams,
+}: {
+  searchParams?: { new?: string }
+}) {
   const supabase = createClient()
 
   const { data, error } = await supabase
@@ -180,7 +184,7 @@ export default async function RoundsPage() {
         </div>
       </div>
 
-      <RoundsClient rounds={rounds} casualGirAvg={casualGirAvg} />
+      <RoundsClient rounds={rounds} casualGirAvg={casualGirAvg} initialAdding={searchParams?.new === "1"} />
     </div>
   )
 }

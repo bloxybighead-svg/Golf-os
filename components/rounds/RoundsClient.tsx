@@ -8,10 +8,11 @@ import { RoundForm } from "./RoundForm"
 interface Props {
   rounds: Round[]
   casualGirAvg: number | null
+  initialAdding?: boolean
 }
 
-export function RoundsClient({ rounds, casualGirAvg }: Props) {
-  const [adding, setAdding] = useState(false)
+export function RoundsClient({ rounds, casualGirAvg, initialAdding = false }: Props) {
+  const [adding, setAdding] = useState(initialAdding)
 
   if (adding) {
     return <RoundForm onDone={() => setAdding(false)} />
