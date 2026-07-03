@@ -419,7 +419,7 @@ export default function NewSessionPage() {
           <div className="rounded-md border border-[#2a2a2a] bg-[#161616] px-4 py-3.5">
             <div className="mb-3">
               <p className="text-sm font-medium text-white">Club Work</p>
-              <p className="text-xs text-[#6b7280]">Optional — log per-club shot numbers (carry, dispersion, spin)</p>
+              <p className="text-xs text-[#6b7280]">Optional — log shot numbers per club + feel (one entry per feel)</p>
             </div>
             <ClubWork entries={clubWork} onChange={setClubWork} />
           </div>

@@ -68,8 +68,14 @@ export interface Round {
   created_at: string
 }
 
+// Canonical swing-feel labels — single source for the Club Work dropdown
+// and the Wedge Numbers derivation. Don't define feel lists anywhere else.
+export const FEEL_LABELS = ['Full', '3/4', 'Half', 'Knockdown'] as const
+export type FeelLabel = (typeof FEEL_LABELS)[number]
+
 export interface ClubWorkEntry {
   club: string
+  feel?: string | null        // optional; absent on entries logged before feels existed
   shots: number | null
   avg_carry: number | null
   dispersion: number | null   // ± yds spread
