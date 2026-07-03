@@ -44,6 +44,10 @@ export default function NewSessionPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // Quick Log mode — compact alternate entry; full form stays the default
+  const [quickMode, setQuickMode] = useState(false)
+  const [quickDuration, setQuickDuration] = useState("")
+
   // Header
   const [date, setDate] = useState(todayISO())
   const [startTime, setStartTime] = useState(nowTime())
@@ -81,6 +85,30 @@ export default function NewSessionPage() {
   }
 
   const totalDuration = blocks.reduce((sum, b) => sum + (b.duration_minutes ?? 0), 0)
+  const quickDurationMin = quickDuration !== "" ? parseInt(quickDuration) || 0 : 0
+
+  const saveQuickSession = async () => {
+    setSaving(true)
+    setSaveError(null)
+    const { error } = await createClient().from("practice_sessions").insert({
+      date,
+      start_time: null,
+      duration_minutes: quickDurationMin || null,
+      location: [],
+      session_type: "Mixed",
+      primary_goal: null,
+      overall_feel: null,
+      energy_level: null,
+      notes: finalNotes || null,
+      club_work: [],
+    })
+    if (error) {
+      setSaveError(error.message)
+      setSaving(false)
+      return
+    }
+    router.push("/log")
+  }
 
   const saveSession = async () => {
     setSaving(true)
@@ -92,7 +120,7 @@ export default function NewSessionPage() {
       .insert({
         date,
         start_time: startTime || null,
-        duration_minutes: totalDuration || null,
+        duration_minutes: totalDuration || quickDurationMin || null,
         location: locations,
         session_type: sessionType,
         primary_goal: primaryGoal || null,
@@ -135,6 +163,88 @@ export default function NewSessionPage() {
     )
   }
 
+  // ── Quick Log mode ─────────────────────────────────────
+  if (quickMode) {
+    return (
+      <div className="mx-auto max-w-xl space-y-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">Quick Log</h2>
+          <button
+            onClick={() => router.push("/log")}
+            className="text-sm text-[#6b7280] hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+              Date
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white focus:border-[#4ade80] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+              Duration (min)
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={quickDuration}
+              onChange={(e) => setQuickDuration(e.target.value)}
+              placeholder="e.g. 45"
+              className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+            Note <span className="normal-case tracking-normal text-[#4b5563]">optional</span>
+          </label>
+          <textarea
+            value={finalNotes}
+            onChange={(e) => setFinalNotes(e.target.value)}
+            placeholder="What did you work on?"
+            rows={3}
+            className="w-full resize-none rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+          />
+        </div>
+
+        {saveError && (
+          <p className="rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400">
+            {saveError}
+          </p>
+        )}
+
+        <button
+          onClick={saveQuickSession}
+          disabled={saving || !date}
+          className="w-full rounded-md bg-[#4ade80] py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save Quick Session"}
+        </button>
+
+        <button
+          onClick={() => setQuickMode(false)}
+          className="w-full rounded-md border border-dashed border-[#2a2a2a] py-3 text-sm text-[#6b7280] transition-colors hover:border-white hover:text-white"
+        >
+          Add full details →
+        </button>
+        <p className="text-center text-xs text-[#4b5563]">
+          Date, duration and note carry over into the full form.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-xl">
 
@@ -143,12 +253,20 @@ export default function NewSessionPage() {
         <div className="space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">New Session</h2>
-            <button
-              onClick={() => router.push("/log")}
-              className="text-sm text-[#6b7280] hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setQuickMode(true)}
+                className="rounded-md border border-[#2a2a2a] px-3 py-1.5 text-xs font-medium text-[#6b7280] transition-colors hover:border-[#4ade80] hover:text-[#4ade80]"
+              >
+                ⚡ Quick Log
+              </button>
+              <button
+                onClick={() => router.push("/log")}
+                className="text-sm text-[#6b7280] hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
 
           {/* Date + Time */}
