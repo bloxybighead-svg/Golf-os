@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { DrillsClient } from "@/components/drills/DrillsClient"
-import type { Drill } from "@/lib/supabase/types"
+import { WedgeNumbers, deriveWedgeStats } from "@/components/drills/WedgeNumbers"
+import type { ClubWorkEntry, Drill } from "@/lib/supabase/types"
 
 export default async function DrillsPage() {
   const supabase = createClient()
@@ -38,8 +39,18 @@ export default async function DrillsPage() {
     }
   }
 
+  // Wedge numbers auto-derived from Club Work logged on practice sessions
+  const { data: clubWorkRows } = await supabase
+    .from("practice_sessions")
+    .select("club_work")
+
+  const wedgeStats = deriveWedgeStats(
+    (clubWorkRows ?? []).map((r) => (r.club_work ?? []) as ClubWorkEntry[])
+  )
+
   return (
-    <div className="pt-4">
+    <div className="space-y-4 pt-4">
+      <WedgeNumbers stats={wedgeStats} />
       <DrillsClient drills={(drills ?? []) as Drill[]} usageCounts={usageCounts} />
     </div>
   )
