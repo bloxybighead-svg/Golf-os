@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import type { Round } from "@/lib/supabase/types"
+import { BREAKDOWN_TAGS } from "@/lib/supabase/types"
 import { createRound, updateRound } from "@/app/rounds/actions"
 
 interface Props {
@@ -53,6 +54,7 @@ function calcDifferential(score: string, courseRating: string, slopeRating: stri
 export function RoundForm({ round, onDone }: Props) {
   const [holes, setHoles] = useState(round?.holes_played?.toString() ?? "18")
   const [isCompetitive, setIsCompetitive] = useState(round?.is_competitive ?? false)
+  const [breakdownTags, setBreakdownTags] = useState<string[]>(round?.breakdown_tags ?? [])
   const [date, setDate] = useState(round?.date ?? todayISO())
   const [course, setCourse] = useState(round?.course_name ?? "")
   const [score, setScore] = useState(round?.score?.toString() ?? "")
@@ -71,6 +73,17 @@ export function RoundForm({ round, onDone }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  // "None" is exclusive — it means nothing broke down, so it can't combine with a real tag
+  function toggleBreakdownTag(tag: string) {
+    setBreakdownTags((prev) => {
+      if (prev.includes(tag)) return prev.filter((t) => t !== tag)
+      if (tag === "None") return ["None"]
+      const others = prev.filter((t) => t !== "None")
+      if (others.length >= 2) return others
+      return [...others, tag]
+    })
+  }
+
   const relToPar = score && par ? parseInt(score) - parseInt(par) : null
   const differential = calcDifferential(score, courseRating, slopeRating)
 
@@ -86,6 +99,7 @@ export function RoundForm({ round, onDone }: Props) {
           date,
           holes_played: parseInt(holes) || 18,
           is_competitive: isCompetitive,
+          breakdown_tags: isCompetitive ? breakdownTags : [],
           course_name: course.trim(),
           score: parseInt(score),
           par: parseInt(par),
@@ -181,6 +195,32 @@ export function RoundForm({ round, onDone }: Props) {
             <span className="text-xs font-semibold text-[#22c55e]">✓ Marked competitive</span>
           )}
         </button>
+
+        {/* What broke down — competitive rounds only, max 2 */}
+        {isCompetitive && (
+          <Field label="What broke down" hint="up to 2">
+            <div className="flex flex-wrap gap-2">
+              {BREAKDOWN_TAGS.map((tag) => {
+                const selected = breakdownTags.includes(tag)
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleBreakdownTag(tag)}
+                    className={[
+                      "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                      selected
+                        ? "border-amber-500/50 bg-amber-500/15 text-amber-400"
+                        : "border-white/[0.08] bg-[#1a1a1a] text-[#6b7280] hover:text-white hover:border-white/20",
+                    ].join(" ")}
+                  >
+                    {tag}
+                  </button>
+                )
+              })}
+            </div>
+          </Field>
+        )}
 
         {/* Score + Par + Penalties */}
         <div className="grid grid-cols-3 gap-3">

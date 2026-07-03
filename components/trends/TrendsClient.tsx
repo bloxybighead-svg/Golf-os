@@ -8,6 +8,7 @@ import {
   Legend, ReferenceLine,
 } from "recharts"
 import type { Round, Milestone, PracticeSession } from "@/lib/supabase/types"
+import { BREAKDOWN_TAGS } from "@/lib/supabase/types"
 import { createMilestone, deleteMilestone } from "@/app/trends/actions"
 
 type Filter = "all" | "competitive" | "practice"
@@ -344,6 +345,14 @@ export function TrendsClient({ rounds, sessions, milestones }: Props) {
     })
   }
 
+  // ── Competitive breakdown tags (all competitive rounds, unaffected by filter) ──
+  const compRounds = rounds.filter((r) => r.is_competitive)
+  const tagCounts = BREAKDOWN_TAGS.map((tag) => ({
+    tag,
+    Rounds: compRounds.filter((r) => r.breakdown_tags?.includes(tag)).length,
+  }))
+  const hasTagData = tagCounts.some((t) => t.Rounds > 0)
+
   const filterSub = filter === "all" ? "all rounds" : filter === "competitive" ? "competitive" : "practice"
   const enoughRounds = filtered.length >= 3
 
@@ -500,6 +509,24 @@ export function TrendsClient({ rounds, sessions, milestones }: Props) {
           </Card>
 
         </div>
+      )}
+
+      {/* What breaks down in competitive rounds */}
+      {hasTagData && (
+        <Card
+          title="What breaks down in competitive rounds"
+          caption={`Tag frequency across all ${compRounds.length} competitive rounds — unaffected by the filter above`}
+        >
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={tagCounts} margin={{ top: 5, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+              <XAxis dataKey="tag" {...AXIS_PROPS} interval={0} tick={{ fill: "#6b7280", fontSize: 10 }} />
+              <YAxis {...AXIS_PROPS} allowDecimals={false} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: "#ffffff08" }} />
+              <Bar dataKey="Rounds" fill="#fbbf24" fillOpacity={0.75} radius={[3, 3, 0, 0]} maxBarSize={36} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
       )}
     </div>
   )

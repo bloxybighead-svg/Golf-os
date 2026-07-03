@@ -71,6 +71,23 @@ export function RoundCard({ round, casualGirAvg }: Props) {
             )}
           </div>
           <p className="mt-0.5 text-xs text-[#6b7280]">{formatDate(round.date)}</p>
+          {round.is_competitive && (round.breakdown_tags?.length ?? 0) > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {round.breakdown_tags!.map((tag) => (
+                <span
+                  key={tag}
+                  className={[
+                    "rounded-full border px-2 py-0.5 text-xs font-medium",
+                    tag === "None"
+                      ? "border-white/[0.08] bg-[#1a1a1a] text-[#6b7280]"
+                      : "border-amber-500/30 bg-amber-500/10 text-amber-400",
+                  ].join(" ")}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 items-baseline gap-2">
           <span className="text-2xl font-bold tracking-tight text-white">{round.score}</span>

@@ -10,6 +10,7 @@ interface RoundPayload {
   score: number
   par: number
   is_competitive: boolean
+  breakdown_tags: string[]
   course_rating: number | null
   slope_rating: number | null
   differential: number | null

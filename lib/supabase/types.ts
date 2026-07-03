@@ -35,6 +35,15 @@ export interface SessionBlock {
   notes: string | null
 }
 
+export const BREAKDOWN_TAGS = [
+  'Decision-making',
+  'Putting under pressure',
+  'Swing tension/mechanics',
+  'Course management',
+  'None',
+] as const
+export type BreakdownTag = (typeof BREAKDOWN_TAGS)[number]
+
 export interface Round {
   id: string
   date: string
@@ -43,6 +52,7 @@ export interface Round {
   score: number
   par: number
   is_competitive: boolean
+  breakdown_tags: string[] | null
   course_rating: number | null
   slope_rating: number | null
   differential: number | null
