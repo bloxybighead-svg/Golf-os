@@ -10,6 +10,7 @@ import {
 import type { Round, Milestone, PracticeSession } from "@/lib/supabase/types"
 import { BREAKDOWN_TAGS } from "@/lib/supabase/types"
 import { createMilestone, deleteMilestone } from "@/app/trends/actions"
+import { toCSV, downloadCSV } from "@/lib/csv"
 
 type Filter = "all" | "competitive" | "practice"
 
@@ -39,35 +40,6 @@ function normalizedDiff(r: Round): number | null {
   return r.holes_played > 0 && r.holes_played < 18
     ? r.differential * (18 / r.holes_played)
     : r.differential
-}
-
-// ── CSV export ────────────────────────────────────────────────────
-function csvCell(value: unknown): string {
-  if (value == null) return ""
-  const s = Array.isArray(value) ? value.join("; ") : String(value)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-
-function toCSV(rows: Record<string, unknown>[]): string {
-  if (rows.length === 0) return ""
-  const headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r))))
-  const lines = [headers.join(",")]
-  for (const row of rows) {
-    lines.push(headers.map((h) => csvCell(row[h])).join(","))
-  }
-  return lines.join("\r\n")
-}
-
-function downloadCSV(filename: string, csv: string) {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
 }
 
 const FILTER_OPTIONS: { value: Filter; label: string }[] = [

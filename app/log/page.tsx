@@ -2,6 +2,8 @@ import Link from "next/link"
 import { Flag } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { DeleteSessionButton } from "@/components/log/DeleteSessionButton"
+import { ExportButtons } from "@/components/log/ExportButtons"
+import type { BlockActivity, ClubWorkEntry } from "@/lib/supabase/types"
 
 function formatDate(dateStr: string) {
   return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", {
@@ -22,7 +24,7 @@ function startOfWeekISO() {
 export default async function LogPage() {
   const supabase = createClient()
 
-  const [{ data: sessions, error }, { data: blocks }] = await Promise.all([
+  const [{ data: sessions, error }, { data: blocks }, { data: allSessions }, { data: drills }] = await Promise.all([
     supabase
       .from("practice_sessions")
       .select("id, date, session_type, primary_goal, overall_feel, duration_minutes, location")
@@ -31,7 +33,15 @@ export default async function LogPage() {
       .limit(30),
     supabase
       .from("session_blocks")
-      .select("session_id, shot_count"),
+      .select("session_id, shot_count, activities"),
+    // Full, unlimited fetch for the CSV exports (display list above is capped at 30)
+    supabase
+      .from("practice_sessions")
+      .select("id, date, created_at, club_work")
+      .order("date", { ascending: true }),
+    supabase
+      .from("drills")
+      .select("id, category, target_metric"),
   ])
 
   const sessionList = error ? [] : (sessions ?? [])
@@ -54,6 +64,59 @@ export default async function LogPage() {
   const avgShots = totals.length > 0
     ? Math.round(totals.reduce((a, b) => a + b, 0) / totals.length)
     : null
+
+  // ── CSV export rows ────────────────────────────────────────────
+  // Club Work: one row per JSONB entry. Entries have no id/created_at of
+  // their own, so id is synthesized (sessionId-index) and created_at comes
+  // from the parent session. All entries included, nulls and all.
+  const clubWorkRows: Record<string, unknown>[] = []
+  for (const s of allSessions ?? []) {
+    const entries = (s.club_work ?? []) as ClubWorkEntry[]
+    entries.forEach((e, i) => {
+      clubWorkRows.push({
+        id: `${s.id}-${i}`,
+        practice_session_id: s.id,
+        session_date: s.date,
+        club: e.club,
+        feel: e.feel ?? null,
+        shots_hit: e.shots,
+        avg_carry: e.avg_carry,
+        carry_plus_minus: e.dispersion,
+        offline_plus_minus: e.offline_var ?? null,
+        spin: e.spin_var,
+        notes: e.notes,
+        created_at: s.created_at,
+      })
+    })
+  }
+
+  // Drills: one row per logged activity across all session blocks.
+  // makes_or_successes/target_goal aren't tracked as structured fields —
+  // exported blank; the free-text note (where results like "7/10" live)
+  // is included so no information is lost.
+  const sessionById = new Map((allSessions ?? []).map((s) => [s.id, s]))
+  const drillById = new Map((drills ?? []).map((d) => [d.id, d]))
+  const drillRows: Record<string, unknown>[] = []
+  for (const b of blocks ?? []) {
+    const session = sessionById.get(b.session_id)
+    const activities = (b.activities ?? []) as BlockActivity[]
+    for (const a of activities) {
+      const drill = a.drill_id ? drillById.get(a.drill_id) : undefined
+      drillRows.push({
+        id: a.drill_id,
+        drill_name: a.drill_name,
+        category: drill?.category ?? null,
+        metric_type: drill?.target_metric ?? null,
+        session_date: session?.date ?? null,
+        attempts: a.rep_count,
+        makes_or_successes: null,
+        target_goal: null,
+        note: a.note,
+        created_at: session?.created_at ?? null,
+      })
+    }
+  }
+  drillRows.sort((a, b) => String(a.session_date ?? "").localeCompare(String(b.session_date ?? "")))
 
   return (
     <div className="space-y-8">
@@ -100,13 +163,16 @@ export default async function LogPage() {
               : `${sessionList.length} session${sessionList.length !== 1 ? "s" : ""} logged`}
           </p>
         </div>
-        <Link
-          href="/log/new"
-          className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-5 py-2.5 text-sm font-semibold text-black shadow-md shadow-[#22c55e]/20 transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.97]"
-        >
-          <span className="text-base leading-none">+</span>
-          <span>New Session</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <ExportButtons clubWorkRows={clubWorkRows} drillRows={drillRows} />
+          <Link
+            href="/log/new"
+            className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-5 py-2.5 text-sm font-semibold text-black shadow-md shadow-[#22c55e]/20 transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.97]"
+          >
+            <span className="text-base leading-none">+</span>
+            <span>New Session</span>
+          </Link>
+        </div>
       </div>
 
       {/* ── Error state ───────────────────────────────────── */}
