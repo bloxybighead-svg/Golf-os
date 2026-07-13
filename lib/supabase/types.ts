@@ -78,7 +78,8 @@ export interface ClubWorkEntry {
   feel?: string | null        // optional; absent on entries logged before feels existed
   shots: number | null
   avg_carry: number | null
-  dispersion: number | null   // ± yds spread
+  dispersion: number | null   // ± yds carry spread (long/short of avg carry)
+  offline_var?: number | null // ± yds offline (left/right of target line); absent on older entries
   spin_var: number | null     // ± rpm relative to baseline
   notes: string | null
 }
