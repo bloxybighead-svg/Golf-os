@@ -4,6 +4,7 @@ import { useState } from "react"
 import type { Round } from "@/lib/supabase/types"
 import { RoundCard } from "./RoundCard"
 import { RoundForm } from "./RoundForm"
+import { ExportLast20Button } from "./ExportLast20Button"
 
 interface Props {
   rounds: Round[]
@@ -31,13 +32,16 @@ export function RoundsClient({ rounds, casualGirAvg, initialAdding = false }: Pr
               : `${rounds.length} round${rounds.length !== 1 ? "s" : ""} logged`}
           </p>
         </div>
-        <button
-          onClick={() => setAdding(true)}
-          className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-5 py-2.5 text-sm font-semibold text-black shadow-md shadow-[#22c55e]/20 transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.97]"
-        >
-          <span className="text-base leading-none">+</span>
-          <span>Add Round</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <ExportLast20Button rounds={rounds} />
+          <button
+            onClick={() => setAdding(true)}
+            className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-5 py-2.5 text-sm font-semibold text-black shadow-md shadow-[#22c55e]/20 transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.97]"
+          >
+            <span className="text-base leading-none">+</span>
+            <span>Add Round</span>
+          </button>
+        </div>
       </div>
 
       {/* Empty state */}
