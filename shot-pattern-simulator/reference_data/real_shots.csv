@@ -1,0 +1,566 @@
+session,date,club,carry_yds,offline_yds,is_partial
+session_summary 10,07/01/2026,Driver,248.7,-5.9,False
+session_summary 10,07/01/2026,Driver,249.3,39.6,False
+session_summary 10,07/01/2026,Driver,248.2,-10.0,False
+session_summary 10,07/01/2026,Driver,249.8,-36.2,False
+session_summary 10,07/01/2026,Driver,245.8,-19.4,False
+session_summary 10,07/01/2026,Driver,255.6,-34.4,False
+session_summary 10,07/01/2026,Driver,257.4,-44.7,False
+session_summary 11,07/01/2026,60 (LW),36.4,2.5,True
+session_summary 11,07/01/2026,60 (LW),32.6,0.3,True
+session_summary 11,07/01/2026,60 (LW),33.3,-0.1,True
+session_summary 11,07/01/2026,60 (LW),35.4,1.7,True
+session_summary 11,07/01/2026,56 (SW),60.1,3.7,True
+session_summary 11,07/01/2026,56 (SW),52.9,3.1,True
+session_summary 11,07/01/2026,56 (SW),54.7,0.7,True
+session_summary 11,07/01/2026,56 (SW),67.8,-4.0,True
+session_summary 11,07/01/2026,GW,87.6,-1.4,False
+session_summary 11,07/01/2026,GW,80.1,3.1,False
+session_summary 11,07/01/2026,GW,82.5,-1.8,False
+session_summary 11,07/01/2026,GW,72.9,2.3,True
+session_summary 11,07/01/2026,GW,85.1,-1.4,False
+session_summary 11,07/01/2026,PW,96.4,-7.3,False
+session_summary 11,07/01/2026,PW,98.2,-8.6,False
+session_summary 11,07/01/2026,PW,89.5,-6.5,False
+session_summary 11,07/01/2026,PW,91.1,-5.3,False
+session_summary 12,07/01/2026,GW,98.4,0.4,False
+session_summary 12,07/01/2026,GW,98.3,-1.9,False
+session_summary 12,07/01/2026,GW,91.6,-3.0,False
+session_summary 12,07/01/2026,GW,103.6,-0.3,False
+session_summary 12,07/01/2026,GW,94.4,-3.6,False
+session_summary 12,07/01/2026,GW,96.9,-10.7,False
+session_summary 12,07/01/2026,GW,109.8,12.8,False
+session_summary 12,07/01/2026,GW,97.8,-6.0,False
+session_summary 12,07/01/2026,PW,115.2,-5.5,False
+session_summary 12,07/01/2026,PW,122.2,-17.6,False
+session_summary 12,07/01/2026,PW,119.4,-17.0,False
+session_summary 12,07/01/2026,PW,125.3,-8.3,False
+session_summary 12,07/01/2026,9-Iron,104.8,10.1,False
+session_summary 12,07/01/2026,9-Iron,115.2,-2.7,False
+session_summary 12,07/01/2026,9-Iron,115.4,1.1,False
+session_summary 12,07/01/2026,9-Iron,97.9,6.4,False
+session_summary 12,07/01/2026,9-Iron,118.5,-0.6,False
+session_summary 13,07/03/2026,60 (LW),57.7,1.9,False
+session_summary 13,07/03/2026,60 (LW),48.2,-0.2,True
+session_summary 13,07/03/2026,60 (LW),50.1,1.1,True
+session_summary 13,07/03/2026,60 (LW),56.6,0.9,False
+session_summary 13,07/03/2026,60 (LW),50.9,1.2,True
+session_summary 13,07/03/2026,60 (LW),51.7,-0.2,True
+session_summary 13,07/03/2026,60 (LW),49.0,0.2,True
+session_summary 13,07/03/2026,60 (LW),47.0,1.6,True
+session_summary 13,07/03/2026,60 (LW),52.3,-0.4,True
+session_summary 13,07/03/2026,60 (LW),51.0,0.5,True
+session_summary 13,07/03/2026,56 (SW),51.1,1.9,True
+session_summary 13,07/03/2026,56 (SW),51.4,2.1,True
+session_summary 13,07/03/2026,56 (SW),51.0,1.5,True
+session_summary 13,07/03/2026,56 (SW),61.5,0.8,True
+session_summary 13,07/03/2026,56 (SW),61.0,-1.5,True
+session_summary 13,07/03/2026,56 (SW),63.1,-0.2,True
+session_summary 13,07/03/2026,56 (SW),49.0,-1.2,True
+session_summary 13,07/03/2026,56 (SW),57.5,1.7,True
+session_summary 13,07/03/2026,56 (SW),55.4,-0.3,True
+session_summary 13,07/03/2026,56 (SW),59.7,1.2,True
+session_summary 13,07/03/2026,GW,48.6,1.2,True
+session_summary 13,07/03/2026,GW,51.8,2.7,True
+session_summary 13,07/03/2026,GW,57.8,0.0,True
+session_summary 13,07/03/2026,GW,47.1,-0.6,True
+session_summary 13,07/03/2026,GW,51.8,1.0,True
+session_summary 13,07/03/2026,GW,61.0,3.2,True
+session_summary 13,07/03/2026,GW,61.4,-3.2,True
+session_summary 13,07/03/2026,GW,51.8,0.3,True
+session_summary 13,07/03/2026,GW,61.0,-1.7,True
+session_summary 13,07/03/2026,GW,61.5,0.0,True
+session_summary 14,07/03/2026,56 (SW),98.0,-3.0,False
+session_summary 14,07/03/2026,56 (SW),95.2,2.8,False
+session_summary 14,07/03/2026,56 (SW),95.8,-4.9,False
+session_summary 14,07/03/2026,56 (SW),92.9,-3.1,False
+session_summary 14,07/03/2026,56 (SW),98.0,-2.9,False
+session_summary 14,07/03/2026,56 (SW),94.8,-4.4,False
+session_summary 14,07/03/2026,56 (SW),101.0,-2.6,False
+session_summary 14,07/03/2026,56 (SW),95.9,-2.2,False
+session_summary 14,07/03/2026,56 (SW),92.9,-0.1,False
+session_summary 14,07/03/2026,56 (SW),88.9,-4.5,False
+session_summary 14,07/03/2026,GW,90.5,-2.3,False
+session_summary 14,07/03/2026,GW,94.7,-3.9,False
+session_summary 14,07/03/2026,GW,85.4,4.1,False
+session_summary 14,07/03/2026,GW,88.7,0.9,False
+session_summary 14,07/03/2026,GW,89.6,0.0,False
+session_summary 14,07/03/2026,GW,89.7,-1.8,False
+session_summary 14,07/03/2026,GW,88.9,-0.3,False
+session_summary 14,07/03/2026,GW,93.6,-3.5,False
+session_summary 14,07/03/2026,GW,95.3,0.5,False
+session_summary 14,07/03/2026,GW,86.1,2.5,False
+session_summary 14,07/03/2026,GW,90.4,0.7,False
+session_summary 15,07/05/2026,Driver,287.2,-32.8,False
+session_summary 15,07/05/2026,Driver,251.5,30.1,False
+session_summary 15,07/05/2026,Driver,271.7,5.2,False
+session_summary 15,07/05/2026,Driver,260.2,13.9,False
+session_summary 15,07/05/2026,Driver,271.6,1.6,False
+session_summary 15,07/05/2026,Driver,268.7,2.5,False
+session_summary 15,07/05/2026,Driver,292.5,-18.3,False
+session_summary 15,07/05/2026,Driver,264.7,-63.0,False
+session_summary 15,07/05/2026,Driver,274.3,30.5,False
+session_summary 15,07/05/2026,Driver,266.7,13.2,False
+session_summary 15,07/05/2026,Driver,257.9,8.5,False
+session_summary 15,07/05/2026,Driver,269.5,-0.5,False
+session_summary 15,07/05/2026,Driver,266.1,-22.8,False
+session_summary 15,07/05/2026,Driver,264.4,38.1,False
+session_summary 15,07/05/2026,Driver,275.4,-13.2,False
+session_summary 15,07/05/2026,Driver,266.2,3.9,False
+session_summary 15,07/05/2026,Driver,269.6,8.0,False
+session_summary 15,07/05/2026,Driver,280.6,17.8,False
+session_summary 15,07/05/2026,Driver,281.4,-9.3,False
+session_summary 15,07/05/2026,Driver,268.1,3.3,False
+session_summary 15,07/05/2026,Driver,276.8,14.3,False
+session_summary 15,07/05/2026,Driver,256.2,14.1,False
+session_summary 15,07/05/2026,Driver,280.0,-2.4,False
+session_summary 15,07/05/2026,Driver,249.7,-6.3,False
+session_summary 15,07/05/2026,Driver,276.8,-12.8,False
+session_summary 15,07/05/2026,Driver,262.3,-16.6,False
+session_summary 16,07/05/2026,Driver,244.7,7.4,False
+session_summary 16,07/05/2026,Driver,257.9,13.7,False
+session_summary 16,07/05/2026,Driver,234.9,22.8,False
+session_summary 16,07/05/2026,Driver,247.7,24.8,False
+session_summary 16,07/05/2026,Driver,256.1,18.2,False
+session_summary 16,07/05/2026,Driver,263.1,-11.4,False
+session_summary 16,07/05/2026,Driver,244.2,-5.7,False
+session_summary 16,07/05/2026,Driver,274.7,-16.9,False
+session_summary 16,07/05/2026,Driver,255.7,30.4,False
+session_summary 16,07/05/2026,Driver,256.0,31.8,False
+session_summary 17,07/05/2026,60 (LW),60.4,-1.1,False
+session_summary 17,07/05/2026,60 (LW),59.3,0.0,False
+session_summary 17,07/05/2026,60 (LW),64.0,0.1,False
+session_summary 17,07/05/2026,60 (LW),58.0,1.3,False
+session_summary 17,07/05/2026,60 (LW),61.6,1.8,False
+session_summary 17,07/05/2026,60 (LW),65.0,-0.6,False
+session_summary 17,07/05/2026,60 (LW),72.1,-4.1,False
+session_summary 17,07/05/2026,60 (LW),72.4,-3.9,False
+session_summary 17,07/05/2026,60 (LW),72.6,-3.3,False
+session_summary 17,07/05/2026,60 (LW),66.3,-5.8,False
+session_summary 18,07/08/2026,60 (LW),60.8,3.9,False
+session_summary 18,07/08/2026,60 (LW),51.9,2.9,True
+session_summary 18,07/08/2026,60 (LW),64.5,5.7,False
+session_summary 18,07/08/2026,60 (LW),68.1,12.9,False
+session_summary 18,07/08/2026,60 (LW),56.4,8.5,False
+session_summary 18,07/08/2026,60 (LW),52.2,9.1,True
+session_summary 18,07/08/2026,60 (LW),51.5,3.9,True
+session_summary 18,07/08/2026,60 (LW),64.2,4.3,False
+session_summary 18,07/08/2026,60 (LW),56.5,5.7,False
+session_summary 18,07/08/2026,60 (LW),56.6,9.3,False
+session_summary 18,07/08/2026,60 (LW),87.7,11.1,False
+session_summary 18,07/08/2026,60 (LW),71.4,1.5,False
+session_summary 18,07/08/2026,56 (SW),94.3,2.1,False
+session_summary 18,07/08/2026,56 (SW),94.0,8.3,False
+session_summary 18,07/08/2026,56 (SW),90.6,7.3,False
+session_summary 18,07/08/2026,56 (SW),87.9,-3.4,False
+session_summary 18,07/08/2026,56 (SW),86.6,1.8,False
+session_summary 18,07/08/2026,GW,100.5,1.4,False
+session_summary 18,07/08/2026,GW,106.5,5.4,False
+session_summary 18,07/08/2026,GW,111.1,5.2,False
+session_summary 18,07/08/2026,GW,118.7,7.4,False
+session_summary 18,07/08/2026,GW,111.5,6.1,False
+session_summary 18,07/08/2026,GW,120.0,3.8,False
+session_summary 18,07/08/2026,GW,114.0,2.7,False
+session_summary 18,07/08/2026,6-Iron,166.8,23.1,False
+session_summary 18,07/08/2026,6-Iron,171.1,2.6,False
+session_summary 18,07/08/2026,6-Iron,172.9,7.0,False
+session_summary 18,07/08/2026,6-Iron,167.9,10.5,False
+session_summary 18,07/08/2026,6-Iron,170.7,-8.4,False
+session_summary 18,07/08/2026,7-Iron,164.9,2.7,False
+session_summary 18,07/08/2026,7-Iron,154.3,6.0,False
+session_summary 18,07/08/2026,7-Iron,159.6,-15.8,False
+session_summary 18,07/08/2026,7-Iron,151.9,9.3,False
+session_summary 18,07/08/2026,7-Iron,159.8,0.7,False
+session_summary 18,07/08/2026,7-Iron,170.2,14.6,False
+session_summary 19,07/08/2026,60 (LW),83.3,1.0,False
+session_summary 19,07/08/2026,60 (LW),91.1,-0.5,False
+session_summary 19,07/08/2026,60 (LW),90.6,-1.7,False
+session_summary 19,07/08/2026,60 (LW),95.9,-4.3,False
+session_summary 19,07/08/2026,60 (LW),88.8,0.7,False
+session_summary 19,07/08/2026,60 (LW),92.4,-4.5,False
+session_summary 19,07/08/2026,60 (LW),91.9,0.6,False
+session_summary 19,07/08/2026,56 (SW),101.6,-7.2,False
+session_summary 19,07/08/2026,56 (SW),103.7,-4.6,False
+session_summary 19,07/08/2026,56 (SW),99.7,3.3,False
+session_summary 19,07/08/2026,56 (SW),95.1,5.2,False
+session_summary 19,07/08/2026,56 (SW),101.5,4.2,False
+session_summary 19,07/08/2026,56 (SW),100.2,-2.9,False
+session_summary 19,07/08/2026,56 (SW),94.6,-1.1,False
+session_summary 19,07/08/2026,GW,121.0,-5.7,False
+session_summary 19,07/08/2026,GW,127.2,-10.3,False
+session_summary 19,07/08/2026,GW,116.7,0.4,False
+session_summary 19,07/08/2026,GW,117.9,2.6,False
+session_summary 19,07/08/2026,GW,119.2,5.6,False
+session_summary 19,07/08/2026,GW,120.4,-4.6,False
+session_summary 20,07/08/2026,3-Wood,239.2,4.8,False
+session_summary 20,07/08/2026,3-Wood,218.6,16.9,False
+session_summary 20,07/08/2026,3-Wood,250.1,5.3,False
+session_summary 20,07/08/2026,3-Wood,236.3,-2.0,False
+session_summary 20,07/08/2026,3-Wood,241.6,15.6,False
+session_summary 20,07/08/2026,3-Wood,249.8,10.7,False
+session_summary 21,07/10/2026,60 (LW),89.2,-5.0,False
+session_summary 21,07/10/2026,60 (LW),87.8,-2.6,False
+session_summary 21,07/10/2026,60 (LW),86.4,-2.7,False
+session_summary 21,07/10/2026,60 (LW),91.3,-1.9,False
+session_summary 21,07/10/2026,60 (LW),90.3,-1.4,False
+session_summary 21,07/10/2026,60 (LW),87.0,1.5,False
+session_summary 21,07/10/2026,56 (SW),100.1,0.4,False
+session_summary 21,07/10/2026,56 (SW),100.6,-6.4,False
+session_summary 21,07/10/2026,56 (SW),99.5,0.8,False
+session_summary 21,07/10/2026,56 (SW),96.1,0.3,False
+session_summary 21,07/10/2026,56 (SW),96.0,-1.3,False
+session_summary 21,07/10/2026,56 (SW),99.6,-2.8,False
+session_summary 21,07/10/2026,GW,111.3,-0.5,False
+session_summary 21,07/10/2026,GW,112.7,-3.1,False
+session_summary 21,07/10/2026,GW,122.9,-2.7,False
+session_summary 21,07/10/2026,GW,125.0,-11.4,False
+session_summary 21,07/10/2026,GW,121.1,-2.0,False
+session_summary 21,07/10/2026,GW,118.6,-2.0,False
+session_summary 21,07/10/2026,7-Iron,168.7,-1.9,False
+session_summary 21,07/10/2026,7-Iron,159.4,7.4,False
+session_summary 21,07/10/2026,7-Iron,159.3,6.5,False
+session_summary 21,07/10/2026,7-Iron,164.9,1.4,False
+session_summary 21,07/10/2026,7-Iron,166.0,-4.2,False
+session_summary 21,07/10/2026,7-Iron,167.0,-5.8,False
+session_summary 21,07/10/2026,6-Iron,174.0,0.3,False
+session_summary 21,07/10/2026,6-Iron,177.7,16.6,False
+session_summary 21,07/10/2026,6-Iron,170.0,8.3,False
+session_summary 21,07/10/2026,6-Iron,171.4,-4.4,False
+session_summary 21,07/10/2026,6-Iron,178.8,9.7,False
+session_summary 21,07/10/2026,6-Iron,175.0,10.1,False
+session_summary 21,07/10/2026,7-Wood,207.6,2.5,False
+session_summary 21,07/10/2026,7-Wood,206.1,18.6,False
+session_summary 21,07/10/2026,7-Wood,207.2,-11.9,False
+session_summary 21,07/10/2026,7-Wood,202.4,14.2,False
+session_summary 21,07/10/2026,7-Wood,205.4,20.6,False
+session_summary 21,07/10/2026,5-Iron,171.8,3.1,False
+session_summary 22,07/12/2026,60 (LW),85.1,3.4,False
+session_summary 22,07/12/2026,60 (LW),86.5,-2.7,False
+session_summary 22,07/12/2026,60 (LW),86.1,-2.6,False
+session_summary 22,07/12/2026,60 (LW),90.6,-0.7,False
+session_summary 22,07/12/2026,60 (LW),90.6,-2.0,False
+session_summary 22,07/12/2026,60 (LW),89.0,1.0,False
+session_summary 22,07/12/2026,60 (LW),90.0,0.7,False
+session_summary 22,07/12/2026,60 (LW),95.8,-4.1,False
+session_summary 22,07/12/2026,60 (LW),94.3,0.7,False
+session_summary 22,07/12/2026,60 (LW),83.1,2.6,False
+session_summary 22,07/12/2026,60 (LW),96.3,-0.6,False
+session_summary 22,07/12/2026,60 (LW),86.4,0.7,False
+session_summary 22,07/12/2026,56 (SW),99.9,0.4,False
+session_summary 22,07/12/2026,56 (SW),103.3,-3.2,False
+session_summary 22,07/12/2026,56 (SW),103.1,-0.7,False
+session_summary 22,07/12/2026,56 (SW),101.1,-4.2,False
+session_summary 22,07/12/2026,56 (SW),103.4,-0.7,False
+session_summary 22,07/12/2026,56 (SW),103.8,-4.0,False
+session_summary 22,07/12/2026,56 (SW),102.2,-0.8,False
+session_summary 22,07/12/2026,56 (SW),99.7,0.8,False
+session_summary 22,07/12/2026,GW,117.9,-2.4,False
+session_summary 22,07/12/2026,GW,116.5,7.8,False
+session_summary 22,07/12/2026,GW,118.7,0.4,False
+session_summary 22,07/12/2026,GW,115.3,7.8,False
+session_summary 22,07/12/2026,GW,127.5,-6.5,False
+session_summary 22,07/12/2026,GW,121.5,-7.5,False
+session_summary 22,07/12/2026,GW,117.5,1.3,False
+session_summary 22,07/12/2026,GW,116.1,0.9,False
+session_summary 22,07/12/2026,6-Iron,151.1,-24.1,False
+session_summary 22,07/12/2026,6-Iron,176.8,22.8,False
+session_summary 22,07/12/2026,6-Iron,172.6,-6.5,False
+session_summary 22,07/12/2026,6-Iron,165.9,30.3,False
+session_summary 22,07/12/2026,6-Iron,167.9,-7.5,False
+session_summary 22,07/12/2026,6-Iron,159.6,10.2,False
+session_summary 22,07/12/2026,6-Iron,180.1,-6.1,False
+session_summary 22,07/12/2026,6-Iron,177.3,-20.1,False
+session_summary 22,07/12/2026,6-Iron,166.1,14.0,False
+session_summary 22,07/12/2026,6-Iron,166.4,21.3,False
+session_summary 22,07/12/2026,6-Iron,173.9,9.3,False
+session_summary 22,07/12/2026,6-Iron,176.9,-13.0,False
+session_summary 22,07/12/2026,7-Iron,160.5,-10.6,False
+session_summary 22,07/12/2026,7-Iron,163.6,4.8,False
+session_summary 22,07/12/2026,7-Iron,165.9,-11.3,False
+session_summary 22,07/12/2026,7-Iron,165.9,-11.5,False
+session_summary 22,07/12/2026,7-Iron,165.5,-0.7,False
+session_summary 22,07/12/2026,7-Iron,161.2,-1.2,False
+session_summary 23,07/12/2026,5-Iron,177.9,14.6,False
+session_summary 23,07/12/2026,5-Iron,190.3,-7.0,False
+session_summary 23,07/12/2026,5-Iron,185.1,-12.2,False
+session_summary 23,07/12/2026,5-Iron,180.7,-2.6,False
+session_summary 23,07/12/2026,5-Iron,178.0,10.0,False
+session_summary 23,07/12/2026,5-Iron,179.6,3.9,False
+session_summary 23,07/12/2026,5-Iron,181.4,3.6,False
+session_summary 23,07/12/2026,5-Iron,183.1,4.1,False
+session_summary 23,07/12/2026,5-Iron,177.3,-1.4,False
+session_summary 23,07/12/2026,5-Iron,189.5,-12.0,False
+session_summary 23,07/12/2026,5-Iron,183.5,-0.1,False
+session_summary 23,07/12/2026,5-Iron,180.1,11.2,False
+session_summary 23,07/12/2026,5-Iron,178.0,-1.6,False
+session_summary 23,07/12/2026,5-Iron,179.4,15.2,False
+session_summary 23,07/12/2026,5-Iron,185.3,-2.3,False
+session_summary 24,07/12/2026,6-Iron,168.1,6.5,False
+session_summary 24,07/12/2026,6-Iron,175.4,1.7,False
+session_summary 24,07/12/2026,6-Iron,176.3,2.6,False
+session_summary 24,07/12/2026,6-Iron,175.4,13.6,False
+session_summary 24,07/12/2026,6-Iron,172.2,5.9,False
+session_summary 24,07/12/2026,6-Iron,178.0,-2.2,False
+session_summary 24,07/12/2026,6-Iron,175.3,-0.7,False
+session_summary 24,07/12/2026,7-Iron,157.6,-2.1,False
+session_summary 24,07/12/2026,7-Iron,161.4,1.0,False
+session_summary 24,07/12/2026,7-Iron,163.1,12.2,False
+session_summary 24,07/12/2026,7-Iron,163.1,5.3,False
+session_summary 24,07/12/2026,7-Iron,161.2,-2.1,False
+session_summary 24,07/12/2026,7-Iron,162.3,8.7,False
+session_summary 24,07/12/2026,7-Iron,163.6,-3.2,False
+session_summary 24,07/12/2026,7-Iron,157.3,3.2,False
+session_summary 24,07/12/2026,7-Iron,161.5,-1.3,False
+session_summary 3,06/23/2026,Driver,236.3,31.7,False
+session_summary 3,06/23/2026,Driver,280.3,-32.2,False
+session_summary 3,06/23/2026,Driver,253.3,19.1,False
+session_summary 3,06/23/2026,Driver,279.8,-45.2,False
+session_summary 3,06/23/2026,Driver,275.9,-26.9,False
+session_summary 3,06/23/2026,Driver,276.8,-41.3,False
+session_summary 3,06/23/2026,Driver,274.6,-31.4,False
+session_summary 3,06/23/2026,Driver,260.4,8.1,False
+session_summary 3,06/23/2026,Driver,244.0,20.1,False
+session_summary 3,06/23/2026,Driver,278.1,-49.8,False
+session_summary 3,06/23/2026,Driver,273.5,-23.8,False
+session_summary 3,06/23/2026,Driver,240.0,17.3,False
+session_summary 3,06/23/2026,Driver,252.3,10.4,False
+session_summary 3,06/23/2026,Driver,245.0,0.5,False
+session_summary 3,06/23/2026,Driver,268.3,-22.4,False
+session_summary 3,06/23/2026,Driver,272.7,-10.5,False
+session_summary 3,06/23/2026,Driver,265.9,1.1,False
+session_summary 3,06/23/2026,Driver,261.5,3.0,False
+session_summary 3,06/23/2026,Driver,280.1,-21.9,False
+session_summary 3,06/23/2026,Driver,283.9,-43.9,False
+session_summary 3,06/23/2026,Driver,272.3,-35.5,False
+session_summary 3,06/23/2026,Driver,242.5,27.7,False
+session_summary 3,06/23/2026,Driver,256.8,3.8,False
+session_summary 3,06/23/2026,Driver,258.0,-27.1,False
+session_summary 3,06/23/2026,Driver,255.4,-41.2,False
+session_summary 3,06/23/2026,Driver,262.9,-33.2,False
+session_summary 3,06/23/2026,Driver,274.5,7.3,False
+session_summary 3,06/23/2026,Driver,252.2,13.1,False
+session_summary 3,06/23/2026,Driver,274.2,18.3,False
+session_summary 4,06/24/2026,7-Iron,148.5,24.1,False
+session_summary 4,06/24/2026,7-Iron,165.6,-22.2,False
+session_summary 4,06/24/2026,7-Iron,153.3,3.5,False
+session_summary 4,06/24/2026,7-Iron,155.5,-2.9,False
+session_summary 4,06/24/2026,7-Iron,157.7,-10.4,False
+session_summary 4,06/24/2026,7-Iron,162.3,2.1,False
+session_summary 4,06/24/2026,7-Iron,168.3,-0.1,False
+session_summary 4,06/24/2026,7-Wood,202.3,19.6,False
+session_summary 4,06/24/2026,7-Wood,218.3,1.0,False
+session_summary 4,06/24/2026,7-Wood,215.6,-18.6,False
+session_summary 4,06/24/2026,7-Wood,205.6,-5.9,False
+session_summary 4,06/24/2026,7-Wood,200.2,29.7,False
+session_summary 4,06/24/2026,7-Wood,218.9,25.3,False
+session_summary 4,06/24/2026,7-Wood,222.5,-6.2,False
+session_summary 4,06/24/2026,Driver,255.5,-5.4,False
+session_summary 4,06/24/2026,Driver,267.7,-22.1,False
+session_summary 4,06/24/2026,Driver,261.3,-10.1,False
+session_summary 4,06/24/2026,Driver,270.4,-25.2,False
+session_summary 4,06/24/2026,Driver,267.5,-21.1,False
+session_summary 4,06/24/2026,Driver,242.6,20.8,False
+session_summary 4,06/24/2026,Driver,232.7,34.5,False
+session_summary 4,06/24/2026,Driver,248.8,16.0,False
+session_summary 4,06/24/2026,Driver,268.2,-32.3,False
+session_summary 4,06/24/2026,Driver,276.2,-20.8,False
+session_summary 4,06/24/2026,Driver,254.4,-3.9,False
+session_summary 4,06/24/2026,Driver,262.6,-4.2,False
+session_summary 4,06/24/2026,Driver,250.4,20.0,False
+session_summary 4,06/24/2026,Driver,273.4,8.1,False
+session_summary 4,06/24/2026,Driver,259.6,12.8,False
+session_summary 4,06/24/2026,Driver,264.7,0.2,False
+session_summary 4,06/24/2026,Driver,276.5,-6.8,False
+session_summary 4,06/24/2026,Driver,251.1,17.9,False
+session_summary 4,06/24/2026,Driver,256.7,18.3,False
+session_summary 4,06/24/2026,Driver,242.0,48.5,False
+session_summary 4,06/24/2026,Driver,258.7,10.7,False
+session_summary 4,06/24/2026,Driver,278.2,11.7,False
+session_summary 4,06/24/2026,Driver,251.0,47.1,False
+session_summary 4,06/24/2026,Driver,253.0,14.3,False
+session_summary 4,06/24/2026,Driver,251.2,4.5,False
+session_summary 4,06/24/2026,Driver,265.4,16.2,False
+session_summary 4,06/24/2026,Driver,255.7,57.2,False
+session_summary 4,06/24/2026,Driver,275.5,-40.5,False
+session_summary 4,06/24/2026,Driver,248.4,1.1,False
+session_summary 4,06/24/2026,Driver,245.3,55.5,False
+session_summary 4,06/24/2026,Driver,262.9,-39.4,False
+session_summary 4,06/24/2026,Driver,275.3,-18.4,False
+session_summary 4,06/24/2026,Driver,253.1,23.6,False
+session_summary 4,06/24/2026,Driver,248.1,31.8,False
+session_summary 4,06/24/2026,Driver,255.2,-4.7,False
+session_summary 4,06/24/2026,Driver,270.0,9.8,False
+session_summary 4,06/24/2026,Driver,242.3,22.7,False
+session_summary 4,06/24/2026,Driver,275.0,15.2,False
+session_summary 4,06/24/2026,Driver,279.2,-32.9,False
+session_summary 4,06/24/2026,Driver,243.4,8.8,False
+session_summary 5,06/23/2026,Driver,255.3,-6.2,False
+session_summary 5,06/23/2026,Driver,251.2,-10.7,False
+session_summary 5,06/23/2026,Driver,268.1,-5.6,False
+session_summary 5,06/23/2026,Driver,271.1,-31.0,False
+session_summary 5,06/23/2026,Driver,246.1,-8.0,False
+session_summary 5,06/23/2026,Driver,268.1,-40.4,False
+session_summary 5,06/23/2026,Driver,266.5,-39.9,False
+session_summary 5,06/23/2026,Driver,271.2,9.3,False
+session_summary 5,06/23/2026,Driver,269.0,-33.7,False
+session_summary 5,06/23/2026,Driver,265.8,-2.4,False
+session_summary 5,06/23/2026,7-Wood,214.5,-28.8,False
+session_summary 5,06/23/2026,7-Wood,214.0,-6.9,False
+session_summary 5,06/23/2026,7-Wood,196.2,20.4,False
+session_summary 5,06/23/2026,7-Wood,229.7,-20.0,False
+session_summary 5,06/23/2026,7-Wood,220.4,-33.8,False
+session_summary 5,06/23/2026,7-Wood,220.5,-9.6,False
+session_summary 5,06/23/2026,7-Wood,223.5,3.6,False
+session_summary 5,06/23/2026,3-Wood,254.4,-37.8,False
+session_summary 5,06/23/2026,3-Wood,245.5,2.4,False
+session_summary 5,06/23/2026,3-Wood,237.6,6.2,False
+session_summary 5,06/23/2026,3-Wood,251.0,-24.4,False
+session_summary 5,06/23/2026,3-Wood,253.9,-24.2,False
+session_summary 5,06/23/2026,4-Iron,190.5,9.6,False
+session_summary 5,06/23/2026,4-Iron,182.4,19.4,False
+session_summary 5,06/23/2026,4-Iron,204.4,-7.0,False
+session_summary 5,06/23/2026,4-Iron,187.6,1.6,False
+session_summary 5,06/23/2026,4-Iron,193.7,12.7,False
+session_summary 5,06/23/2026,4-Iron,203.6,-9.8,False
+session_summary 5,06/23/2026,4-Iron,197.2,-5.3,False
+session_summary 5,06/23/2026,5-Iron,181.8,16.9,False
+session_summary 5,06/23/2026,5-Iron,190.8,-9.9,False
+session_summary 5,06/23/2026,5-Iron,190.4,-10.9,False
+session_summary 5,06/23/2026,5-Iron,175.4,11.3,False
+session_summary 5,06/23/2026,5-Iron,185.1,8.8,False
+session_summary 5,06/23/2026,6-Iron,176.2,4.6,False
+session_summary 5,06/23/2026,6-Iron,178.0,-14.7,False
+session_summary 5,06/23/2026,6-Iron,175.5,-2.5,False
+session_summary 5,06/23/2026,6-Iron,167.2,-9.3,False
+session_summary 5,06/23/2026,6-Iron,170.1,-8.7,False
+session_summary 5,06/23/2026,7-Iron,166.9,-7.1,False
+session_summary 5,06/23/2026,7-Iron,158.4,-8.8,False
+session_summary 5,06/23/2026,7-Iron,162.4,-20.6,False
+session_summary 5,06/23/2026,7-Iron,159.6,-6.8,False
+session_summary 5,06/23/2026,7-Iron,163.2,-17.4,False
+session_summary 5,06/23/2026,8-Iron,153.1,-6.9,False
+session_summary 5,06/23/2026,8-Iron,143.6,-0.7,False
+session_summary 5,06/23/2026,8-Iron,152.0,-8.7,False
+session_summary 5,06/23/2026,8-Iron,158.9,-20.4,False
+session_summary 5,06/23/2026,8-Iron,152.4,-10.1,False
+session_summary 5,06/23/2026,9-Iron,142.3,12.8,False
+session_summary 5,06/23/2026,9-Iron,137.8,-13.4,False
+session_summary 5,06/23/2026,9-Iron,141.7,-6.1,False
+session_summary 5,06/23/2026,9-Iron,139.4,1.6,False
+session_summary 5,06/23/2026,9-Iron,139.6,-14.2,False
+session_summary 5,06/23/2026,PW,121.9,-3.2,False
+session_summary 5,06/23/2026,PW,129.7,-16.3,False
+session_summary 5,06/23/2026,PW,125.9,-14.5,False
+session_summary 5,06/23/2026,PW,120.7,-7.1,False
+session_summary 5,06/23/2026,PW,130.8,-8.6,False
+session_summary 5,06/23/2026,PW,129.2,-14.5,False
+session_summary 5,06/23/2026,GW,115.3,-8.3,False
+session_summary 5,06/23/2026,GW,126.0,-17.3,False
+session_summary 5,06/23/2026,GW,119.6,-0.1,False
+session_summary 5,06/23/2026,GW,110.3,-3.3,False
+session_summary 5,06/23/2026,GW,123.1,4.7,False
+session_summary 5,06/23/2026,56 (SW),100.0,-4.2,False
+session_summary 5,06/23/2026,56 (SW),105.8,-11.7,False
+session_summary 5,06/23/2026,56 (SW),99.8,-5.2,False
+session_summary 5,06/23/2026,56 (SW),95.6,-5.9,False
+session_summary 5,06/23/2026,56 (SW),103.9,-6.3,False
+session_summary 5,06/23/2026,56 (SW),94.8,-1.2,False
+session_summary 5,06/23/2026,60 (LW),92.1,-3.5,False
+session_summary 5,06/23/2026,60 (LW),85.3,-1.9,False
+session_summary 5,06/23/2026,60 (LW),89.6,-5.3,False
+session_summary 5,06/23/2026,60 (LW),87.6,-6.4,False
+session_summary 5,06/23/2026,60 (LW),88.1,-4.8,False
+session_summary 5,06/23/2026,60 (LW),81.9,-4.7,False
+session_summary 6,06/26/2026,Driver,266.4,32.4,False
+session_summary 6,06/26/2026,Driver,257.0,25.8,False
+session_summary 6,06/26/2026,Driver,255.1,44.6,False
+session_summary 6,06/26/2026,Driver,248.9,45.0,False
+session_summary 6,06/26/2026,Driver,262.4,38.6,False
+session_summary 6,06/26/2026,Driver,283.3,1.7,False
+session_summary 6,06/26/2026,Driver,282.2,-8.8,False
+session_summary 6,06/26/2026,Driver,281.5,25.8,False
+session_summary 6,06/26/2026,Driver,275.4,4.7,False
+session_summary 6,06/26/2026,Driver,282.7,-20.6,False
+session_summary 6,06/26/2026,Driver,255.9,49.7,False
+session_summary 6,06/26/2026,Driver,283.8,-17.4,False
+session_summary 6,06/26/2026,Driver,283.1,23.7,False
+session_summary 6,06/26/2026,Driver,258.1,21.1,False
+session_summary 6,06/26/2026,Driver,282.8,-3.1,False
+session_summary 6,06/26/2026,Driver,284.6,-1.6,False
+session_summary 6,06/26/2026,Driver,266.2,46.9,False
+session_summary 6,06/26/2026,Driver,266.8,36.0,False
+session_summary 6,06/26/2026,Driver,265.3,-7.8,False
+session_summary 6,06/26/2026,Driver,256.6,25.6,False
+session_summary 6,06/26/2026,Driver,274.7,6.5,False
+session_summary 6,06/26/2026,Driver,272.6,34.9,False
+session_summary 6,06/26/2026,Driver,256.2,4.6,False
+session_summary 6,06/26/2026,Driver,280.4,6.1,False
+session_summary 6,06/26/2026,Driver,271.2,-5.8,False
+session_summary 6,06/26/2026,Driver,266.0,18.6,False
+session_summary 6,06/26/2026,Driver,275.0,22.2,False
+session_summary 6,06/26/2026,Driver,267.2,27.0,False
+session_summary 6,06/26/2026,Driver,277.6,-22.6,False
+session_summary 6,06/26/2026,Driver,265.9,5.4,False
+session_summary 7,06/30/2026,60 (LW),32.2,0.6,True
+session_summary 7,06/30/2026,60 (LW),34.6,0.0,True
+session_summary 7,06/30/2026,60 (LW),27.4,0.3,True
+session_summary 7,06/30/2026,60 (LW),29.9,0.5,True
+session_summary 7,06/30/2026,60 (LW),30.2,1.6,True
+session_summary 7,06/30/2026,56 (SW),37.7,1.2,True
+session_summary 7,06/30/2026,56 (SW),36.2,0.8,True
+session_summary 7,06/30/2026,56 (SW),39.2,0.2,True
+session_summary 7,06/30/2026,56 (SW),41.7,0.7,True
+session_summary 7,06/30/2026,56 (SW),39.2,-0.4,True
+session_summary 7,06/30/2026,56 (SW),36.5,0.9,True
+session_summary 7,06/30/2026,56 (SW),34.6,1.7,True
+session_summary 7,06/30/2026,56 (SW),45.5,-0.5,True
+session_summary 7,06/30/2026,GW,55.8,2.2,True
+session_summary 7,06/30/2026,GW,53.5,2.6,True
+session_summary 7,06/30/2026,GW,42.4,3.0,True
+session_summary 7,06/30/2026,GW,47.2,1.6,True
+session_summary 7,06/30/2026,GW,55.7,3.0,True
+session_summary 7,06/30/2026,PW,68.9,-0.2,True
+session_summary 7,06/30/2026,PW,66.8,-1.1,True
+session_summary 7,06/30/2026,PW,63.5,1.6,True
+session_summary 7,06/30/2026,PW,53.1,2.5,True
+session_summary 7,06/30/2026,PW,55.9,2.3,True
+session_summary 7,06/30/2026,PW,60.2,0.6,True
+session_summary 7,06/30/2026,PW,57.1,2.8,True
+session_summary 7,06/30/2026,PW,63.3,1.2,True
+session_summary 7,06/30/2026,9-Iron,81.4,1.8,True
+session_summary 7,06/30/2026,9-Iron,74.4,2.1,True
+session_summary 7,06/30/2026,9-Iron,72.7,0.5,True
+session_summary 7,06/30/2026,9-Iron,74.5,-1.5,True
+session_summary 7,06/30/2026,9-Iron,69.5,0.5,True
+session_summary 7,06/30/2026,8-Iron,75.2,0.8,True
+session_summary 7,06/30/2026,8-Iron,86.6,5.2,True
+session_summary 7,06/30/2026,8-Iron,88.1,0.0,True
+session_summary 7,06/30/2026,8-Iron,82.1,-1.4,True
+session_summary 7,06/30/2026,8-Iron,84.8,1.6,True
+session_summary 7,06/30/2026,7-Iron,91.2,-2.8,True
+session_summary 7,06/30/2026,7-Iron,85.3,1.9,True
+session_summary 7,06/30/2026,7-Iron,95.9,-2.8,True
+session_summary 7,06/30/2026,7-Iron,87.6,0.9,True
+session_summary 7,06/30/2026,7-Iron,92.0,-4.9,True
+session_summary 8,06/30/2026,Driver,244.7,12.0,False
+session_summary 8,06/30/2026,Driver,273.6,-12.7,False
+session_summary 8,06/30/2026,Driver,259.3,12.0,False
+session_summary 8,06/30/2026,Driver,277.2,-32.7,False
+session_summary 8,06/30/2026,Driver,270.5,-22.9,False
+session_summary 8,06/30/2026,Driver,273.0,-50.4,False
+session_summary 8,06/30/2026,Driver,249.3,-9.7,False
+session_summary 8,06/30/2026,Driver,264.8,10.3,False
+session_summary 8,06/30/2026,Driver,265.9,-13.7,False
+session_summary 8,06/30/2026,Driver,246.6,8.9,False
+session_summary 9,07/01/2026,8-Iron,149.7,-10.1,False
+session_summary 9,07/01/2026,8-Iron,141.8,2.0,False
+session_summary 9,07/01/2026,8-Iron,139.4,-5.3,False
+session_summary 9,07/01/2026,8-Iron,147.3,-9.9,False
+session_summary 9,07/01/2026,8-Iron,144.6,-14.6,False
+session_summary 9,07/01/2026,8-Iron,152.5,-10.3,False
+session_summary 9,07/01/2026,8-Iron,147.8,-9.5,False
+session_summary 9,07/01/2026,8-Iron,133.9,-6.3,False
+session_summary 9,07/01/2026,8-Iron,136.9,5.4,False
+session_summary 9,07/01/2026,8-Iron,150.1,6.4,False
+session_summary 9,07/01/2026,8-Iron,151.3,-5.1,False
+session_summary 9,07/01/2026,8-Iron,157.5,-5.0,False

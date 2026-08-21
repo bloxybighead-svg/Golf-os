@@ -1,0 +1,119 @@
+{
+  "3-Wood": {
+    "mean_carry": 249.9,
+    "distance_cv": 0.0305,
+    "direction_bias_deg": -0.45,
+    "direction_sd_deg": 4.18,
+    "right_penalty_per_deg": 4.729,
+    "left_penalty_per_deg": 0.0,
+    "n_shots": 11
+  },
+  "4-Iron": {
+    "mean_carry": 194.2,
+    "distance_cv": 0.0388,
+    "direction_bias_deg": 0.99,
+    "direction_sd_deg": 3.33,
+    "right_penalty_per_deg": 0.0,
+    "left_penalty_per_deg": 0.0,
+    "n_shots": 7
+  },
+  "5-Iron": {
+    "mean_carry": 179.7,
+    "distance_cv": 0.0193,
+    "direction_bias_deg": 0.69,
+    "direction_sd_deg": 2.88,
+    "right_penalty_per_deg": -0.127,
+    "left_penalty_per_deg": -2.587,
+    "n_shots": 21
+  },
+  "56 (SW)": {
+    "mean_carry": 97.4,
+    "distance_cv": 0.0439,
+    "direction_bias_deg": -0.91,
+    "direction_sd_deg": 2.3,
+    "right_penalty_per_deg": 1.078,
+    "left_penalty_per_deg": -0.734,
+    "n_shots": 42
+  },
+  "6-Iron": {
+    "mean_carry": 175.6,
+    "distance_cv": 0.0305,
+    "direction_bias_deg": 0.97,
+    "direction_sd_deg": 4.22,
+    "right_penalty_per_deg": 0.662,
+    "left_penalty_per_deg": 1.727,
+    "n_shots": 35
+  },
+  "60 (LW)": {
+    "mean_carry": 83.3,
+    "distance_cv": 0.1492,
+    "direction_bias_deg": 0.26,
+    "direction_sd_deg": 3.4,
+    "right_penalty_per_deg": 1.747,
+    "left_penalty_per_deg": 1.671,
+    "n_shots": 52
+  },
+  "7-Iron": {
+    "mean_carry": 162.6,
+    "distance_cv": 0.0266,
+    "direction_bias_deg": -0.46,
+    "direction_sd_deg": 3.41,
+    "right_penalty_per_deg": 0.887,
+    "left_penalty_per_deg": 0.078,
+    "n_shots": 39
+  },
+  "7-Wood": {
+    "mean_carry": 215.0,
+    "distance_cv": 0.033,
+    "direction_bias_deg": 0.32,
+    "direction_sd_deg": 5.08,
+    "right_penalty_per_deg": 1.851,
+    "left_penalty_per_deg": -0.718,
+    "n_shots": 19
+  },
+  "8-Iron": {
+    "mean_carry": 144.3,
+    "distance_cv": 0.0423,
+    "direction_bias_deg": -2.43,
+    "direction_sd_deg": 2.58,
+    "right_penalty_per_deg": 0.0,
+    "left_penalty_per_deg": -1.266,
+    "n_shots": 17
+  },
+  "9-Iron": {
+    "mean_carry": 122.0,
+    "distance_cv": 0.1138,
+    "direction_bias_deg": 0.01,
+    "direction_sd_deg": 4.0,
+    "right_penalty_per_deg": 1.788,
+    "left_penalty_per_deg": -3.882,
+    "n_shots": 10
+  },
+  "Driver": {
+    "mean_carry": 265.4,
+    "distance_cv": 0.0425,
+    "direction_bias_deg": 0.29,
+    "direction_sd_deg": 5.37,
+    "right_penalty_per_deg": 1.285,
+    "left_penalty_per_deg": -0.502,
+    "n_shots": 162
+  },
+  "GW": {
+    "mean_carry": 102.0,
+    "distance_cv": 0.1311,
+    "direction_bias_deg": -0.37,
+    "direction_sd_deg": 2.68,
+    "right_penalty_per_deg": -1.849,
+    "left_penalty_per_deg": -2.756,
+    "n_shots": 55
+  },
+  "PW": {
+    "mean_carry": 105.4,
+    "distance_cv": 0.1307,
+    "direction_bias_deg": -4.89,
+    "direction_sd_deg": 2.07,
+    "right_penalty_per_deg": 0.0,
+    "left_penalty_per_deg": -2.046,
+    "n_shots": 14
+  }
+}
