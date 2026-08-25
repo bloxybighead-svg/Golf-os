@@ -22,6 +22,25 @@ def _ask(prompt: str, default: str) -> str:
     return answer or default
 
 
+def _ask_number(prompt: str, default: str, cast=float, low=None, high=None):
+    """Keep asking until the answer is a number in range, so a typo
+    re-prompts instead of crashing out of the whole menu."""
+    while True:
+        raw = _ask(prompt, default)
+        try:
+            value = cast(raw)
+        except ValueError:
+            print(f"  '{raw}' isn't a number - try again.")
+            continue
+        if low is not None and value < low:
+            print(f"  must be at least {low}.")
+            continue
+        if high is not None and value > high:
+            print(f"  must be at most {high}.")
+            continue
+        return value
+
+
 def _pick_clubs() -> list[str] | None:
     print("\n  0) Whole bag")
     for i, club in enumerate(BAG_ORDER, start=1):
@@ -81,23 +100,33 @@ def main():
     print("  Golf OS - Shot Pattern Simulator")
     print("=" * 58)
 
+    # Ask for the handicap directly. Offering a numbered band list here
+    # too would be ambiguous -- typing "2" could mean "band 2" or "a
+    # 2 handicap" -- so bands live behind an explicit 'b'.
     bands = list(HANDICAP_BANDS)
-    print("\nSkill level:")
-    print("   0) Enter an exact handicap index")
-    for i, band in enumerate(bands, start=1):
-        print(f"  {i:2d}) {band} handicap")
-    choice = _ask("\nChoice", "0")
-
-    if choice == "0":
-        handicap = float(_ask("Handicap index", "10"))
-        band = None
-    else:
-        band = bands[int(choice) - 1]
-        handicap = HANDICAP_BANDS[band]
+    while True:
+        raw = _ask("\nYour handicap index (e.g. 1.9), or 'b' to pick a range", "10")
+        if raw.lower() in ("b", "band", "bands"):
+            print()
+            for i, band in enumerate(bands, start=1):
+                print(f"  {i:2d}) {band} handicap")
+            idx = _ask_number("\nRange number", "3", cast=int, low=1, high=len(bands))
+            handicap = HANDICAP_BANDS[bands[idx - 1]]
+            print(f"  using {bands[idx - 1]} handicap (index {handicap:g})")
+            break
+        try:
+            handicap = float(raw)
+        except ValueError:
+            print(f"  '{raw}' isn't a handicap number - enter something like 8.5, or 'b'.")
+            continue
+        break
 
     carries = _pick_carries()
     clubs = _pick_clubs()
-    n_shots = int(_ask("\nHow many shots? (100 = one session, 10000 = full pattern)", "1000"))
+    n_shots = _ask_number(
+        "\nHow many shots? (100 = one session, 10000 = full pattern)",
+        "1000", cast=int, low=1, high=1_000_000,
+    )
     two_way = _ask("Two-way miss (misses both directions equally)? (y/n)", "n").lower() == "y"
 
     if carries:
