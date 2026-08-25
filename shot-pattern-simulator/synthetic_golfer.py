@@ -74,12 +74,14 @@ import pandas as pd
 #  - mean_carry from the Shot Scope / Arccos / TrackMan composite
 #    full-bag carry table. Absolute values matter less than gapping,
 #    since users supply their own carries via from_handicap_and_carries.
-#  - distance_cv anchored to GOLFTEC's 10k-swing 7-iron study (depth
-#    dispersion grows much faster with handicap than width: 36 ft
-#    scratch -> 56 ft 8-hcp -> 90 ft 13-hcp) and HackMotion's depth
-#    charts: ~4.5% of carry at scratch rising to ~11% at high handicap.
-#    Wedges get 1.3x -- Broadie found short-game distance errors run
-#    ~3x direction errors, so wedge ellipses are depth-dominated.
+#  - distance_cv is the DRIVER coefficient of variation; every other
+#    club scales off it via _CLUB_DISTANCE_RATIO. Anchored to GOLFTEC's
+#    10k-swing study (depth dispersion grows much faster with handicap
+#    than width: 36 ft scratch -> 56 ft 8-hcp -> 90 ft 13-hcp) and
+#    HackMotion's depth charts, then cross-checked against 565 measured
+#    shots: 0.045 x 0.65 gives a scratch 7-iron CV of 0.029 against a
+#    measured 0.0295. An earlier version applied the base CV flat across
+#    the bag, which made irons about 60% too loose in distance.
 _CLUB_DIRECTION_RATIO = {
     "Driver": 1.00, "3-Wood": 0.95, "5-Wood": 0.90,
     "4-Iron": 0.85, "5-Iron": 0.82, "6-Iron": 0.80, "7-Iron": 0.77,
@@ -169,7 +171,26 @@ _BAG_ORDER_RAW = ["Driver", "3-Wood", "5-Wood", "4-Iron", "5-Iron", "6-Iron",
 
 _TIER_CARRIES = _build_tier_carries()
 
-_WEDGE_CV_MULT = 1.3
+# Per-club DISTANCE consistency, relative to driver. Distance control is
+# not uniform across the bag: mid-irons are the most repeatable club a
+# golfer owns, while driver (more speed, more launch/spin variation) and
+# wedges (more spin and strike sensitivity) scatter more. Measured from
+# 565 real shots, as ratios to that golfer's driver CV:
+#     5-Iron 0.63   6-Iron 0.61   7-Iron 0.65   Driver 1.00
+#     3-Wood 0.95   5-Wood 0.96   PW 0.89   GW 1.06   SW 0.96
+# The curve below smooths those (8-iron measured 1.03 on only 17 shots,
+# clearly noise against three mid-irons all near 0.62).
+#
+# CAVEAT worth stating plainly: this shape comes from ONE golfer's data,
+# because no published source breaks distance dispersion out by club --
+# GOLFTEC and HackMotion both only publish 7-iron. The relative shape is
+# physically sensible and consistent across three mid-irons with decent
+# sample sizes, but it is the least externally-validated table here.
+_CLUB_DISTANCE_RATIO = {
+    "Driver": 1.00, "3-Wood": 0.95, "5-Wood": 0.93,
+    "4-Iron": 0.75, "5-Iron": 0.65, "6-Iron": 0.63, "7-Iron": 0.65,
+    "8-Iron": 0.72, "9-Iron": 0.80, "PW": 0.88, "GW": 0.95, "SW": 1.00,
+}
 
 # Canonical bag order, longest club to shortest. Used for menus and for
 # interpolating user-supplied carries across the bag.
@@ -181,7 +202,7 @@ def _build_default_profiles() -> dict[str, dict[str, dict[str, float]]]:
     for tier, (driver_sd, base_cv) in _TIER_CALIBRATION.items():
         profiles[tier] = {}
         for club, carry in _TIER_CARRIES[tier].items():
-            cv = base_cv * (_WEDGE_CV_MULT if club in ("PW", "GW", "SW") else 1.0)
+            cv = base_cv * _CLUB_DISTANCE_RATIO[club]
             profiles[tier][club] = {
                 "mean_carry": float(carry),
                 "distance_cv": round(cv, 4),
@@ -706,10 +727,22 @@ class SyntheticGolfer:
         max_offline = float(df["offline_yds"].abs().max()) * 1.15
         half_width = max(max_offline, max_dist * 0.18)
 
-        fig, ax = plt.subplots(figsize=(9, 11), facecolor=_BG)
+        # Equal aspect: this is a MAP of where balls landed, so a yard
+        # sideways has to look the same size as a yard downrange. With
+        # matplotlib's default independent auto-scaling, a single-club
+        # plot stretched the narrow offline axis to fill the frame and
+        # made a 7-iron pattern look about twice as wide as it is. The
+        # figure is sized from the data extent so the axes fill it
+        # instead of sitting in a band of dead space.
+        y_lo, y_hi = -10, max_dist
+        span_x, span_y = 2 * half_width, y_hi - y_lo
+        fig_h = 11.0
+        fig_w = float(np.clip(fig_h * span_x / span_y, 3.5, 13.0)) + 2.2  # +legend
+        fig, ax = plt.subplots(figsize=(fig_w, fig_h), facecolor=_BG)
         ax.set_facecolor(_BG)
         ax.set_xlim(-half_width, half_width)
-        ax.set_ylim(-10, max_dist)
+        ax.set_ylim(y_lo, y_hi)
+        ax.set_aspect("equal", adjustable="box")
         for spine in ax.spines.values():
             spine.set_color("#555555")
         ax.tick_params(colors=_FG, labelsize=8)
