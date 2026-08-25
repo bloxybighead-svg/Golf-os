@@ -16,8 +16,9 @@ rather than assumed:
   - start_line_bias_deg / start_line_sd_deg: where the ball starts.
   - curve_bias_pct / curve_sd_pct: how much it bends in flight, as a
     fraction of carry.
-  - curve_carry_cost: yards of carry lost per yard of curve, fit by
-    linear regression of carry on |curve|.
+  - curve_carry_slope: yards of carry per yard of SIGNED curve, fit by
+    linear regression. Negative means draws fly farther than fades,
+    which is what gives the dispersion ellipse its diagonal tilt.
 Without those columns it falls back to splitting total direction spread
 by the club's typical curve share.
 
@@ -42,6 +43,7 @@ import numpy as np
 import pandas as pd
 
 from synthetic_golfer import _CLUB_CURVE_SHARE as _CURVE_SHARE
+from synthetic_golfer import _DEFAULT_CURVE_CARRY_SLOPE
 
 
 def _fit_side_penalty(direction_deg: np.ndarray, carry_yds: np.ndarray) -> float:
@@ -83,9 +85,16 @@ def calibrate(df: pd.DataFrame, min_shots: int = 10) -> dict[str, dict[str, floa
             start_sd = float(group["launch_dir_deg"].std())
             curve_bias_pct = float((group["curve_yds"] / group["carry_yds"]).mean())
             curve_sd_pct = float((group["curve_yds"] / group["carry_yds"]).std())
-            # How much carry a yard of curve costs, fit on |curve|.
-            curve_cost = _fit_side_penalty(group["curve_yds"].to_numpy(), group["carry_yds"].to_numpy())
-            curve_cost = float(np.clip(curve_cost, 0.0, 1.0))
+            # Yards of carry per yard of SIGNED curve. Negative means
+            # draws fly farther than fades, which is what tilts the
+            # dispersion ellipse. Fitting on |curve| instead (as an
+            # earlier version did) is symmetric and yields no tilt.
+            cy = group["curve_yds"].to_numpy()
+            if len(cy) >= 5 and np.ptp(cy) > 1e-6:
+                curve_slope = float(np.polyfit(cy, group["carry_yds"].to_numpy(), 1)[0])
+                curve_slope = float(np.clip(curve_slope, -1.5, 0.5))
+            else:
+                curve_slope = _DEFAULT_CURVE_CARRY_SLOPE
         else:
             share = _CURVE_SHARE.get(club, 0.5)
             total_rad = np.radians(direction_sd_deg)
@@ -93,14 +102,14 @@ def calibrate(df: pd.DataFrame, min_shots: int = 10) -> dict[str, dict[str, floa
             start_sd = float(np.degrees(total_rad * np.sqrt(1 - share)))
             curve_bias_pct = 0.0
             curve_sd_pct = float(total_rad * np.sqrt(share))
-            curve_cost = 0.15
+            curve_slope = _DEFAULT_CURVE_CARRY_SLOPE
 
         # The simulator subtracts the curve cost on every shot and adds
         # back its expected value, so the stored mean/CV must describe
         # the carry BEFORE that effect -- otherwise it double-counts and
         # simulated means drift away from the data they were fit to.
         curve = group["curve_yds"].to_numpy() if "curve_yds" in group else np.zeros(len(group))
-        base = group["carry_yds"].to_numpy() + curve_cost * (np.abs(curve) - np.abs(curve).mean())
+        base = group["carry_yds"].to_numpy() - curve_slope * (curve - curve.mean())
         mean_carry = float(base.mean())
         distance_cv = float(base.std() / mean_carry)
 
@@ -112,7 +121,7 @@ def calibrate(df: pd.DataFrame, min_shots: int = 10) -> dict[str, dict[str, floa
             "start_line_sd_deg": round(start_sd, 2),
             "curve_bias_pct": round(curve_bias_pct, 4),
             "curve_sd_pct": round(curve_sd_pct, 4),
-            "curve_carry_cost": round(curve_cost, 3),
+            "curve_carry_slope": round(curve_slope, 3),
             "n_shots": len(group),
         }
 
@@ -120,7 +129,7 @@ def calibrate(df: pd.DataFrame, min_shots: int = 10) -> dict[str, dict[str, floa
             f"{club:8s}  n={len(group):4d}  carry={mean_carry_raw:6.1f} (cv={distance_cv:.3f})  "
             f"start={start_bias:+5.2f}+/-{start_sd:4.2f} deg  "
             f"curve={curve_bias_pct*mean_carry_raw:+6.1f}+/-{curve_sd_pct*mean_carry_raw:5.1f} yds  "
-            f"curve_cost={curve_cost:.2f} yd/yd"
+            f"curve_slope={curve_slope:+.2f} yd/yd"
         )
 
     return profile

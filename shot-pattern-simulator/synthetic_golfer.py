@@ -385,6 +385,13 @@ _UPPER_TAIL_CV = 0.040
 # (best of 159 real driver shots was +10.8% of the mean).
 _MAX_CARRY_RATIO = 1.11
 
+# Yards of carry gained per yard of LEFT curve (negative = draws fly
+# farther, fades fly shorter). Measured across 9 clubs and 565 shots:
+# every club had this sign, from -0.14 (sand wedge) to -0.79 (5-iron),
+# averaging about -0.4. This is what gives a real dispersion pattern its
+# diagonal tilt rather than an upright oval.
+_DEFAULT_CURVE_CARRY_SLOPE = -0.40
+
 # Plot theme. Dark background so bright club colors pop; the previous
 # green-on-white made adjacent clubs hard to tell apart.
 _BG = "#0d0d0d"
@@ -690,14 +697,22 @@ class SyntheticGolfer:
                 curve_sd_pct * carry_yds * spread,
             )
 
-            # Curving the ball costs carry -- sidespin is spin not spent
-            # on lift, and the ball lands on a steeper, shorter arc. This
-            # is a second source of the asymmetric/tilted pattern. The
-            # expected cost is added back so the mean stays on target;
-            # only the shot-to-shot VARIATION in curve moves this shot.
-            cost = profile.get("curve_carry_cost", 0.15)
-            expected_curve = _HALF_NORMAL_MEAN * curve_sd_pct * carry_yds * spread
-            carry_yds = max(0.0, carry_yds - cost * (abs(curve_yds) - expected_curve))
+            # Curve and carry are linked DIRECTIONALLY, and this is what
+            # tilts the dispersion ellipse. A draw is a lower-spin shot:
+            # it flies and runs farther. A fade carries more backspin,
+            # flies shorter, and lands steeper. So carry rises as the
+            # ball curves left and falls as it curves right, which rotates
+            # the point cloud instead of just stretching it.
+            #
+            # Every one of the golfer's 9 measured clubs showed this same
+            # sign, averaging about -0.4 yds of carry per yd of curve. An
+            # earlier version subtracted a cost based on ABS(curve), which
+            # is symmetric and therefore produced a perfectly upright
+            # ellipse -- measured tilt was -9 to -52 degrees, simulated
+            # tilt was 0.
+            slope = profile.get("curve_carry_slope", _DEFAULT_CURVE_CARRY_SLOPE)
+            expected_curve = profile.get("curve_bias_pct", 0.0) * carry_yds
+            carry_yds = max(0.0, carry_yds + slope * (curve_yds - expected_curve))
 
             offline_yds = carry_yds * np.tan(np.radians(start_line_deg)) + curve_yds
             direction_deg = np.degrees(np.arctan2(offline_yds, max(carry_yds, 1e-6)))
