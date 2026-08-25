@@ -352,6 +352,18 @@ _HALF_NORMAL_MEAN = np.sqrt(2.0 / np.pi)   # ~0.7979
 #   E[z_asym] = 0.3989*[-(1+a) + (1-a)] = -0.7979*a = -E[|Z|]*a
 _SKEW_MEAN_SHIFT = _HALF_NORMAL_MEAN
 
+# Upper-side carry spread, as a fraction of mean carry, held roughly
+# constant across skill levels: a golfer's best strike is capped by
+# clubhead speed, and a 20-handicap does not out-drive their own ceiling
+# just because they are inconsistent. Set from real launch-monitor data
+# where the best driver carry observed sat +10.8% above the mean and the
+# 99th percentile at +8.2%; 0.04 puts P99 near +9%.
+_UPPER_TAIL_CV = 0.040
+
+# Hard-ish ceiling on carry as a multiple of mean, from measured data
+# (best of 159 real driver shots was +10.8% of the mean).
+_MAX_CARRY_RATIO = 1.11
+
 # Plot theme. Dark background so bright club colors pop; the previous
 # green-on-white made adjacent clubs hard to tell apart.
 _BG = "#0d0d0d"
@@ -390,7 +402,8 @@ class SyntheticGolfer:
         drift_distance_sd_pct: float = 0.015,
         mishit_rate: float = 0.05,
         mishit_multiplier: float = 2.5,
-        carry_asymmetry: float = 0.25,
+        mishit_carry_loss: float = 0.16,
+        carry_asymmetry: float | None = None,
         two_way_miss: bool = False,
         club_weights: dict[str, float] | None = None,
         improvement_per_session: float = 0.0,
@@ -411,6 +424,8 @@ class SyntheticGolfer:
         self.drift_distance_sd_pct = drift_distance_sd_pct
         self.mishit_rate = mishit_rate
         self.mishit_multiplier = mishit_multiplier
+        # Typical fraction of carry lost on a mishit (half-normal sigma).
+        self.mishit_carry_loss = mishit_carry_loss
 
         # Carry asymmetry: fraction by which the SHORT side of the carry
         # distribution is stretched and the long side compressed, giving
@@ -519,6 +534,27 @@ class SyntheticGolfer:
             **kwargs,
         )
 
+    def _asymmetry_for(self, cv: float) -> float:
+        """Two-piece-normal asymmetry for a club with this distance CV.
+
+        A golfer's BEST possible carry is capped by their clubhead speed,
+        which barely varies -- so the upper edge of the carry distribution
+        sits in about the same place no matter the skill level. What grows
+        with handicap is the DOWNSIDE: more chunks, thins, and glancing
+        strikes. So rather than one fixed asymmetry, the upper-side spread
+        is pinned near _UPPER_TAIL_CV and all remaining variance is pushed
+        into the lower tail.
+
+        Without this a high-handicap driver produced 350-yard bombs off a
+        250-yard average -- 4% of shots beyond +15%, where real
+        launch-monitor data has literally none.
+        """
+        if self.carry_asymmetry is not None:
+            return self.carry_asymmetry
+        if cv <= _UPPER_TAIL_CV:
+            return 0.05
+        return float(np.clip(1.0 - _UPPER_TAIL_CV / cv, 0.05, 0.70))
+
     def sample_shots(self, n_shots: int, clubs: list[str] | None = None) -> pd.DataFrame:
         """Sample n_shots and return a tidy DataFrame, one row per shot."""
         clubs = clubs or list(self.club_profiles.keys())
@@ -553,9 +589,20 @@ class SyntheticGolfer:
             # above get compressed, so mishits come up short but almost
             # nothing flies way past. Matches the negative carry skew
             # measured in real launch-monitor data.
-            mean_carry = profile["mean_carry"] * (1 + session_distance_scale)
-            distance_sd = profile["mean_carry"] * profile["distance_cv"] * spread_mult
-            a = self.carry_asymmetry
+            mean_carry = profile["mean_carry"] * (
+                1 + session_distance_scale
+                + self.mishit_rate * self.mishit_carry_loss * _HALF_NORMAL_MEAN
+            )
+            # NOTE: distance_sd deliberately does NOT get spread_mult. A
+            # mishit is a bad STRIKE -- it loses ball speed and therefore
+            # carry. It cannot gain carry, so widening the distance
+            # distribution symmetrically is wrong: it used to let a
+            # mishit fly 60% PAST the mean. Real launch-monitor data has
+            # no such shots (max driver carry observed was +10.8% of the
+            # mean, and nothing at all beyond +15%). Mishits still spray
+            # sideways -- spread_mult is applied to direction below.
+            distance_sd = profile["mean_carry"] * profile["distance_cv"]
+            a = self._asymmetry_for(profile["distance_cv"])
             z = self.rng.normal()
             z = z * (1.0 + a) if z < 0 else z * (1.0 - a)
             # Skewing pulls the average down, and curving costs distance
@@ -564,6 +611,24 @@ class SyntheticGolfer:
             # numbers and the simulation has to honor them.
             skew_offset = _SKEW_MEAN_SHIFT * a * distance_sd
             carry_yds = max(0.0, mean_carry + z * distance_sd + skew_offset)
+
+            # One-sided strike penalty: fat/thin/toe/heel contact costs a
+            # fraction of carry and never adds any. Drawn half-normal so
+            # most mishits are moderate and a few are severe. The average
+            # loss is added back into the mean above so a bag's realized
+            # carry still matches what the user entered.
+            if is_mishit:
+                carry_yds *= 1.0 - abs(self.rng.normal(0.0, self.mishit_carry_loss))
+
+            # Physical ceiling. Carry is capped by clubhead speed, and no
+            # amount of inconsistency lets a golfer exceed their own best
+            # strike -- 159 real driver shots topped out at +10.8% of the
+            # mean with nothing past +15%. Above the ceiling the excess is
+            # compressed rather than hard-clipped, so a rare flier still
+            # exists but 350-yard bombs off a 250-yard average do not.
+            ceiling = mean_carry * _MAX_CARRY_RATIO
+            if carry_yds > ceiling:
+                carry_yds = ceiling + (carry_yds - ceiling) * 0.15
 
             # --- direction: TWO components ---------------------------
             # start line (where it starts, an angle) + curve (how much it
