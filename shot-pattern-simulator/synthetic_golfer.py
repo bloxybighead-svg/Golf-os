@@ -102,26 +102,72 @@ _CLUB_CURVE_SHARE = {
 
 # tier -> (driver direction SD in degrees, base distance CV)
 _TIER_CALIBRATION = {
+    # TrackMan 2024 PGA Tour carries + Broadie's measured Tour direction
+    # SD of 4.0 deg. This is the "professional data" tier: every number
+    # in it is published measurement, not interpolation.
+    "tour":          (4.0, 0.035),   # PGA Tour
     "pro":           (4.5, 0.045),   # hcp 0 (scratch amateur)
     "low_handicap":  (5.4, 0.055),   # hcp ~6
     "mid_handicap":  (6.4, 0.075),   # hcp ~15
     "high_handicap": (8.1, 0.110),   # hcp ~24
 }
 
-_TIER_CARRIES = {
-    "pro":           {"Driver": 250, "3-Wood": 225, "5-Wood": 210, "4-Iron": 190,
-                      "5-Iron": 180, "6-Iron": 172, "7-Iron": 165, "8-Iron": 155,
-                      "9-Iron": 143, "PW": 130, "GW": 115, "SW": 95},
-    "low_handicap":  {"Driver": 232, "3-Wood": 210, "5-Wood": 196, "4-Iron": 178,
-                      "5-Iron": 168, "6-Iron": 160, "7-Iron": 153, "8-Iron": 143,
-                      "9-Iron": 131, "PW": 121, "GW": 107, "SW": 89},
-    "mid_handicap":  {"Driver": 205, "3-Wood": 188, "5-Wood": 175, "4-Iron": 160,
-                      "5-Iron": 151, "6-Iron": 145, "7-Iron": 138, "8-Iron": 128,
-                      "9-Iron": 118, "PW": 108, "GW": 96, "SW": 80},
-    "high_handicap": {"Driver": 183, "3-Wood": 168, "5-Wood": 155, "4-Iron": 140,
-                      "5-Iron": 132, "6-Iron": 127, "7-Iron": 122, "8-Iron": 112,
-                      "9-Iron": 103, "PW": 94, "GW": 84, "SW": 69},
+# Iron/wedge carries are DERIVED from each tier's 7-iron anchor using
+# fixed gapping ratios rather than listed independently, because the
+# ProYardages composite table we started from had implausibly tight
+# mid-iron gaps (8 yds 5i->6i, 7 yds 6i->7i) that no measured source
+# supports. Two independent measured sources agree on the real shape:
+#
+#   ratio to 7-iron    TrackMan Tour 2024    Dillon's 565 real shots
+#   4-Iron                   1.180                   1.202
+#   5-Iron                   1.128                   1.127
+#   6-Iron                   1.064                   1.068
+#   8-Iron                   0.930                   0.915
+#   9-Iron                   0.860                   0.868
+#
+# TrackMan gaps run 9-12 yds through the irons; so do Dillon's. Wedge
+# ratios come from his measured data since TrackMan does not publish
+# GW/SW/LW carries.
+_IRON_RATIOS = {
+    "4-Iron": 1.180, "5-Iron": 1.128, "6-Iron": 1.064, "7-Iron": 1.000,
+    "8-Iron": 0.930, "9-Iron": 0.860, "PW": 0.780, "GW": 0.724, "SW": 0.607,
 }
+
+# Slower swingers have compressed gapping -- less speed differential
+# between clubs means less distance differential. Shrinks the spread of
+# the ratios above (toward 1.0) as handicap rises.
+_TIER_GAP_SCALE = {"tour": 1.0, "pro": 1.0, "low_handicap": 0.96,
+                   "mid_handicap": 0.92, "high_handicap": 0.87}
+
+# 7-iron anchor + the long clubs, which are listed directly (driver and
+# fairway-wood distance varies far more between players than iron
+# gapping does, and comes from handicap-specific Arccos/Shot Scope data
+# rather than from the Tour table).
+_TIER_LONG_CLUBS = {
+    "tour":          {"Driver": 275, "3-Wood": 243, "5-Wood": 230, "7-Iron": 172},
+    "pro":           {"Driver": 250, "3-Wood": 225, "5-Wood": 210, "7-Iron": 165},
+    "low_handicap":  {"Driver": 232, "3-Wood": 210, "5-Wood": 196, "7-Iron": 153},
+    "mid_handicap":  {"Driver": 205, "3-Wood": 188, "5-Wood": 175, "7-Iron": 138},
+    "high_handicap": {"Driver": 183, "3-Wood": 168, "5-Wood": 155, "7-Iron": 122},
+}
+
+
+def _build_tier_carries() -> dict[str, dict[str, float]]:
+    carries = {}
+    for tier, longs in _TIER_LONG_CLUBS.items():
+        anchor = longs["7-Iron"]
+        scale = _TIER_GAP_SCALE[tier]
+        row = {k: float(v) for k, v in longs.items() if k != "7-Iron"}
+        for club, ratio in _IRON_RATIOS.items():
+            row[club] = round(anchor * (1.0 + (ratio - 1.0) * scale), 1)
+        carries[tier] = {c: row[c] for c in _BAG_ORDER_RAW}
+    return carries
+
+
+_BAG_ORDER_RAW = ["Driver", "3-Wood", "5-Wood", "4-Iron", "5-Iron", "6-Iron",
+                  "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW"]
+
+_TIER_CARRIES = _build_tier_carries()
 
 _WEDGE_CV_MULT = 1.3
 
@@ -150,6 +196,7 @@ DEFAULT_PROFILES: dict[str, dict[str, dict[str, float]]] = _build_default_profil
 # Better players aren't just tighter shot-to-shot -- they also tend to
 # have a smaller and more repeatable personal tendency.
 GOLFER_BIAS_SD_DEG = {
+    "tour": 0.4,
     "pro": 0.5,
     "low_handicap": 1.0,
     "mid_handicap": 2.0,
@@ -163,6 +210,7 @@ GOLFER_BIAS_SD_DEG = {
 # their own draw around this mean, so a mid-hcp synthetic golfer can be
 # a hooker; the POPULATION of them leans right.
 GOLFER_BIAS_MEAN_DEG = {
+    "tour": 0.0,
     "pro": 0.0,
     "low_handicap": 0.0,
     "mid_handicap": 0.4,
@@ -185,6 +233,7 @@ MISHIT_RATE_ANCHORS = ([0, 6, 15, 24], [0.03, 0.04, 0.06, 0.08])
 # themselves a rough guess, same caveat as everything else in this file
 # until it's checked against real data.
 ANCHOR_HANDICAPS = {
+    "tour": -4,
     "pro": 0,
     "low_handicap": 6,
     "mid_handicap": 15,

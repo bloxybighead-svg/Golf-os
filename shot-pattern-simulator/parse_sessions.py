@@ -8,10 +8,16 @@ Sign convention out: offline_yds negative = left, positive = right.
 
 Partial-swing filtering: some sessions contain deliberate knockdown /
 partial-swing blocks (e.g. 7-irons carried ~90 yds vs a ~160 yd full
-swing). A shot is flagged is_partial when its carry is below 75% of the
-club's overall median carry across all sessions -- crude but effective
-at separating half-swings from genuine full-swing mishits, which rarely
-lose 25%+ of carry.
+swing). A shot is flagged is_partial when its carry falls below 85% of
+the club's 90th-percentile carry.
+
+The percentile matters: an earlier version compared against the MEDIAN,
+which fails badly for wedges. Most recorded wedge shots are deliberate
+partials, so the median sits down among them and the cutoff keeps them
+in -- that put the fitted PW average at 115 yds against a real
+full-swing number near 130. P90 tracks the top of the full-swing
+cluster while staying robust to the single longest flier, which a raw
+max would chase.
 
 Usage:
     python parse_sessions.py "C:/Users/Jeff/Desktop/archive" --out output/real_shots.csv
@@ -99,7 +105,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive_dir")
     parser.add_argument("--out", default="output/real_shots.csv")
-    parser.add_argument("--partial-threshold", type=float, default=0.75)
+    parser.add_argument("--partial-threshold", type=float, default=0.85)
     args = parser.parse_args()
 
     all_rows = []
@@ -109,8 +115,14 @@ def main():
         print(f"{path.name}: {len(rows)} shots")
 
     df = pd.DataFrame(all_rows)
-    club_median = df.groupby("club")["carry_yds"].transform("median")
-    df["is_partial"] = df["carry_yds"] < args.partial_threshold * club_median
+    # Flag partials relative to the club's 90th-percentile carry, not its
+    # median. Wedge practice is mostly deliberate partial shots, so the
+    # median sits DOWN among them and a median-based cutoff keeps them --
+    # it put the PW average at 115 yds when the real full-swing number is
+    # ~130. P90 tracks the top of the full-swing cluster while ignoring
+    # the single longest flier the way a raw max would not.
+    club_p90 = df.groupby("club")["carry_yds"].transform(lambda s: s.quantile(0.90))
+    df["is_partial"] = df["carry_yds"] < args.partial_threshold * club_p90
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
