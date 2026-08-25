@@ -378,6 +378,43 @@ _CLUB_COLORS = {
 _FALLBACK_COLORS = list(_CLUB_COLORS.values())
 
 
+# Self-reported shot shape -> model parameters. A golfer can describe
+# their miss far more reliably than they can state a dispersion number,
+# and shot shape maps directly onto the two direction components:
+#   start_deg  = where the ball starts (+ = right for a right-hander)
+#   curve_pct  = how much it bends in flight, as a fraction of carry
+# Splitting direction into those two is what makes this expressible at
+# all -- "push-draw" (starts right, curves left) averages out to roughly
+# zero in a single-direction model, which is exactly why it used to be
+# invisible. Magnitudes: a mild working shape bends ~3% of carry (about
+# 8 yds on a driver), a genuine slice/hook ~8% (about 21 yds).
+MISS_PATTERNS: dict[str, dict[str, float]] = {
+    "straight":   {"start_deg":  0.0, "curve_pct":  0.000},
+    "fade":       {"start_deg": -0.5, "curve_pct":  0.030},
+    "draw":       {"start_deg":  0.5, "curve_pct": -0.030},
+    "slice":      {"start_deg":  0.0, "curve_pct":  0.080},
+    "hook":       {"start_deg":  0.0, "curve_pct": -0.080},
+    "push":       {"start_deg":  2.5, "curve_pct":  0.000},
+    "pull":       {"start_deg": -2.5, "curve_pct":  0.000},
+    "push-draw":  {"start_deg":  1.5, "curve_pct": -0.030},
+    "pull-fade":  {"start_deg": -1.5, "curve_pct":  0.030},
+    "two-way":    {"start_deg":  0.0, "curve_pct":  0.000, "two_way": 1.0},
+}
+
+MISS_DESCRIPTIONS = {
+    "straight":  "no consistent shape",
+    "fade":      "gentle left-to-right",
+    "draw":      "gentle right-to-left",
+    "slice":     "big left-to-right",
+    "hook":      "big right-to-left",
+    "push":      "starts right, stays right",
+    "pull":      "starts left, stays left",
+    "push-draw": "starts right, curves back left",
+    "pull-fade": "starts left, curves back right",
+    "two-way":   "misses both directions, no repeatable shape",
+}
+
+
 class SyntheticGolfer:
     """Samples realistic golf shots for one synthetic golfer."""
 
@@ -392,6 +429,8 @@ class SyntheticGolfer:
         mishit_multiplier: float = 2.5,
         carry_asymmetry: float = 0.25,
         two_way_miss: bool = False,
+        miss_pattern: str | None = None,
+        miss_severity: float = 1.0,
         club_weights: dict[str, float] | None = None,
         improvement_per_session: float = 0.0,
         seed: int | None = None,
@@ -444,7 +483,28 @@ class SyntheticGolfer:
 
         bias_sd = _bias_sd_override if _bias_sd_override is not None else GOLFER_BIAS_SD_DEG.get(skill_level, 2.0)
         bias_mean = _bias_mean_override if _bias_mean_override is not None else GOLFER_BIAS_MEAN_DEG.get(skill_level, 0.0)
-        self.golfer_bias_deg = float(self.rng.normal(bias_mean, bias_sd))
+
+        # A self-reported miss REPLACES the random bias draw: the golfer
+        # told us their shape, so we don't guess one. A small random
+        # wobble stays so two golfers reporting the same shape aren't
+        # identical. miss_severity scales it (0.5 = mild, 2 = severe).
+        self.miss_pattern = miss_pattern
+        self.miss_curve_pct = 0.0
+        if miss_pattern:
+            key = miss_pattern.strip().lower()
+            if key not in MISS_PATTERNS:
+                raise ValueError(
+                    f"Unknown miss_pattern {miss_pattern!r}; choose from {list(MISS_PATTERNS)}"
+                )
+            pat = MISS_PATTERNS[key]
+            if pat.get("two_way"):
+                self.two_way_miss = True
+            self.miss_curve_pct = pat["curve_pct"] * miss_severity
+            self.golfer_bias_deg = float(
+                pat["start_deg"] * miss_severity + self.rng.normal(0.0, bias_sd * 0.3)
+            )
+        else:
+            self.golfer_bias_deg = float(self.rng.normal(bias_mean, bias_sd))
 
     @classmethod
     def from_handicap(cls, handicap_index: float, seed: int | None = None, **kwargs) -> "SyntheticGolfer":
@@ -599,7 +659,7 @@ class SyntheticGolfer:
                 bias + session_direction_drift, start_sd_deg * spread
             )
             curve_yds = self.rng.normal(
-                profile.get("curve_bias_pct", 0.0) * carry_yds,
+                (profile.get("curve_bias_pct", 0.0) + self.miss_curve_pct) * carry_yds,
                 curve_sd_pct * carry_yds * spread,
             )
 

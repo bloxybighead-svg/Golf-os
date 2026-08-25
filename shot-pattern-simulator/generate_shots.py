@@ -26,7 +26,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from synthetic_golfer import DEFAULT_PROFILES, HANDICAP_BANDS, SyntheticGolfer
+from synthetic_golfer import (DEFAULT_PROFILES, HANDICAP_BANDS, MISS_PATTERNS,
+                              SyntheticGolfer)
 
 
 def build_golfer(args) -> SyntheticGolfer:
@@ -37,6 +38,8 @@ def build_golfer(args) -> SyntheticGolfer:
     opts = dict(
         seed=args.seed,
         two_way_miss=args.two_way_miss,
+        miss_pattern=args.miss,
+        miss_severity=args.miss_severity,
         improvement_per_session=args.improve_per_session,
         club_weights=weights,
     )
@@ -74,6 +77,10 @@ def main():
     parser.add_argument("--out-dir", default="output")
     parser.add_argument("--show", action="store_true",
                         help="open the plot in an interactive window after saving")
+    parser.add_argument("--miss", metavar="SHAPE",
+                        help="usual miss: " + ", ".join(MISS_PATTERNS))
+    parser.add_argument("--miss-severity", type=float, default=1.0,
+                        help="scale the miss (0.5 = mild, 2 = severe)")
     parser.add_argument("--two-way-miss", action="store_true",
                         help="golfer misses both directions equally instead of one repeatable shape")
     parser.add_argument("--improve-per-session", type=float, default=0.0, metavar="FRAC",

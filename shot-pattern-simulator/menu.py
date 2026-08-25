@@ -14,11 +14,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from synthetic_golfer import BAG_ORDER, HANDICAP_BANDS, SyntheticGolfer
+from synthetic_golfer import (BAG_ORDER, HANDICAP_BANDS, MISS_DESCRIPTIONS,
+                              MISS_PATTERNS, SyntheticGolfer)
+
+
+def _input(prompt: str) -> str:
+    """input() that exits cleanly on Ctrl+D / Ctrl+C / end of piped
+    input instead of dumping an EOFError traceback."""
+    try:
+        return input(prompt)
+    except (EOFError, KeyboardInterrupt):
+        print("\ncancelled.")
+        raise SystemExit(0)
 
 
 def _ask(prompt: str, default: str) -> str:
-    answer = input(f"{prompt} [{default}]: ").strip()
+    answer = _input(f"{prompt} [{default}]: ").strip()
     return answer or default
 
 
@@ -66,33 +77,65 @@ def _pick_clubs() -> list[str] | None:
 
 
 def _pick_carries() -> dict[str, float]:
-    """Optional: let the golfer enter real carries for a few clubs."""
-    if _ask("\nEnter your own carry distances for a few clubs? (y/n)", "n").lower() != "y":
-        return {}
+    """Ask for driver and 7-iron only.
+
+    These two anchor the bag better than any other pair: one long club,
+    one mid club, and they are the two distances almost every golfer
+    actually knows. Letting people enter an arbitrary single club is
+    worse -- anchoring the whole bag on, say, a gap wedge scales every
+    other club off one unusual number. Everything else is derived from
+    measured gapping ratios (see _IRON_RATIOS).
+    """
+    print("\nCarry distances (press Enter to use averages for your handicap)")
     carries = {}
-    print("  Enter a club number and a carry in yards. Blank line when done.")
-    for i, club in enumerate(BAG_ORDER, start=1):
-        print(f"  {i:2d}) {club}", end="   " if i % 4 else "\n")
-    print()
-    while True:
-        raw = input("  club# yards (blank to finish): ").strip()
+    for club, hint in (("Driver", "e.g. 250"), ("7-Iron", "e.g. 160")):
+        raw = _input(f"  {club} carry in yards ({hint}): ").strip()
         if not raw:
-            break
-        parts = raw.replace(",", " ").split()
-        if len(parts) != 2:
-            print("    need two values, e.g. '1 250'")
             continue
         try:
-            idx, yards = int(parts[0]), float(parts[1])
+            carries[club] = float(raw)
         except ValueError:
-            print("    both values must be numbers")
-            continue
-        if not 1 <= idx <= len(BAG_ORDER):
-            print("    club number out of range")
-            continue
-        carries[BAG_ORDER[idx - 1]] = yards
-        print(f"    {BAG_ORDER[idx - 1]} = {yards:g} yds")
+            print(f"    '{raw}' isn't a number - skipping {club}")
+
+    if carries and _ask("\nFine-tune another club? (y/n)", "n").lower() == "y":
+        print("  Enter a club number and a carry. Blank line when done.")
+        for i, club in enumerate(BAG_ORDER, start=1):
+            print(f"  {i:2d}) {club}", end="   " if i % 4 else "\n")
+        print()
+        while True:
+            raw = _input("  club# yards (blank to finish): ").strip()
+            if not raw:
+                break
+            parts = raw.replace(",", " ").split()
+            if len(parts) != 2:
+                print("    need two values, e.g. '1 250'")
+                continue
+            try:
+                idx, yards = int(parts[0]), float(parts[1])
+            except ValueError:
+                print("    both values must be numbers")
+                continue
+            if not 1 <= idx <= len(BAG_ORDER):
+                print("    club number out of range")
+                continue
+            carries[BAG_ORDER[idx - 1]] = yards
+            print(f"    {BAG_ORDER[idx - 1]} = {yards:g} yds")
     return carries
+
+
+def _pick_miss() -> str | None:
+    """Ask the golfer to describe their usual miss."""
+    names = list(MISS_PATTERNS)
+    print("\nWhat's your usual miss?")
+    print("   0) not sure / skip")
+    for i, name in enumerate(names, start=1):
+        print(f"  {i:2d}) {name:11s} - {MISS_DESCRIPTIONS[name]}")
+    idx = _ask_number("\nChoice", "0", cast=int, low=0, high=len(names))
+    if idx == 0:
+        return None
+    chosen = names[idx - 1]
+    print(f"  using {chosen} ({MISS_DESCRIPTIONS[chosen]})")
+    return chosen
 
 
 def main():
@@ -122,19 +165,16 @@ def main():
         break
 
     carries = _pick_carries()
+    miss = _pick_miss()
     clubs = _pick_clubs()
     n_shots = _ask_number(
         "\nHow many shots? (100 = one session, 10000 = full pattern)",
         "1000", cast=int, low=1, high=1_000_000,
     )
-    two_way = _ask("Two-way miss (misses both directions equally)? (y/n)", "n").lower() == "y"
-
     if carries:
-        golfer = SyntheticGolfer.from_handicap_and_carries(
-            handicap, carries, two_way_miss=two_way
-        )
+        golfer = SyntheticGolfer.from_handicap_and_carries(handicap, carries, miss_pattern=miss)
     else:
-        golfer = SyntheticGolfer.from_handicap(handicap, two_way_miss=two_way)
+        golfer = SyntheticGolfer.from_handicap(handicap, miss_pattern=miss)
 
     df = golfer.sample_shots(n_shots, clubs=clubs)
 
@@ -160,8 +200,8 @@ def main():
     cmd += [f"--carry {c}={v:g}" for c, v in carries.items()]
     cmd += [f"--club {c}" for c in (clubs or [])]
     cmd.append(f"--n-shots {n_shots}")
-    if two_way:
-        cmd.append("--two-way-miss")
+    if miss:
+        cmd.append(f"--miss {miss}")
     print(f"\nSame thing from the command line:\n  {' '.join(cmd)} --show")
 
     if _ask("\nOpen the plot now? (y/n)", "y").lower() == "y":
