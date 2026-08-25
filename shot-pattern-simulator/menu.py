@@ -14,8 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from synthetic_golfer import (BAG_ORDER, HANDICAP_BANDS, MISS_DESCRIPTIONS,
-                              MISS_PATTERNS, SyntheticGolfer)
+from synthetic_golfer import BAG_ORDER, HANDICAP_BANDS, SyntheticGolfer
 
 
 def _input(prompt: str) -> str:
@@ -123,21 +122,6 @@ def _pick_carries() -> dict[str, float]:
     return carries
 
 
-def _pick_miss() -> str | None:
-    """Ask the golfer to describe their usual miss."""
-    names = list(MISS_PATTERNS)
-    print("\nWhat's your usual miss?")
-    print("   0) not sure / skip")
-    for i, name in enumerate(names, start=1):
-        print(f"  {i:2d}) {name:11s} - {MISS_DESCRIPTIONS[name]}")
-    idx = _ask_number("\nChoice", "0", cast=int, low=0, high=len(names))
-    if idx == 0:
-        return None
-    chosen = names[idx - 1]
-    print(f"  using {chosen} ({MISS_DESCRIPTIONS[chosen]})")
-    return chosen
-
-
 def main():
     print("=" * 58)
     print("  Golf OS - Shot Pattern Simulator")
@@ -165,16 +149,15 @@ def main():
         break
 
     carries = _pick_carries()
-    miss = _pick_miss()
     clubs = _pick_clubs()
     n_shots = _ask_number(
         "\nHow many shots? (100 = one session, 10000 = full pattern)",
         "1000", cast=int, low=1, high=1_000_000,
     )
     if carries:
-        golfer = SyntheticGolfer.from_handicap_and_carries(handicap, carries, miss_pattern=miss)
+        golfer = SyntheticGolfer.from_handicap_and_carries(handicap, carries)
     else:
-        golfer = SyntheticGolfer.from_handicap(handicap, miss_pattern=miss)
+        golfer = SyntheticGolfer.from_handicap(handicap)
 
     df = golfer.sample_shots(n_shots, clubs=clubs)
 
@@ -200,8 +183,6 @@ def main():
     cmd += [f"--carry {c}={v:g}" for c, v in carries.items()]
     cmd += [f"--club {c}" for c in (clubs or [])]
     cmd.append(f"--n-shots {n_shots}")
-    if miss:
-        cmd.append(f"--miss {miss}")
     print(f"\nSame thing from the command line:\n  {' '.join(cmd)} --show")
 
     if _ask("\nOpen the plot now? (y/n)", "y").lower() == "y":
