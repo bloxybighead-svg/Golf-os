@@ -70,6 +70,12 @@ def parse_file(path: Path) -> list[dict]:
             try:
                 carry = float(record[3])
                 offline = _parse_signed(record[6])
+                # Launch Direction (deg, col 12) is the START LINE; Curve
+                # (yds, col 7) is how much the ball bends in flight. Their
+                # sum reconstructs Offline, which is what lets us model
+                # direction as two physical components instead of one blob.
+                curve = _parse_signed(record[7])
+                launch_dir = _parse_signed(record[12])
             except (ValueError, IndexError):
                 continue
             if offline is None:
@@ -82,6 +88,8 @@ def parse_file(path: Path) -> list[dict]:
                     "club": current_club,
                     "carry_yds": carry,
                     "offline_yds": offline,
+                    "curve_yds": curve,
+                    "launch_dir_deg": launch_dir,
                 }
             )
     return rows

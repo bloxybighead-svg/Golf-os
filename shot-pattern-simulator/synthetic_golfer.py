@@ -4,30 +4,46 @@ range data first.
 
 Model summary
 -------------
-Each shot's direction is built from three layered random effects
-(a small "mixed effects" model, the same idea used for repeated
-measurements on the same subject):
+Each shot's START LINE is built from layered random effects (a small
+"mixed effects" model, the same idea used for repeated measurements on
+the same subject):
 
-    shot_direction = golfer_bias + session_drift + shot_noise
+    start_line = golfer_bias + club_bias + session_drift + shot_noise
 
   - golfer_bias:   a personal tendency drawn ONCE per golfer (e.g. this
-                    golfer push-slices about 1 degree on average, forever).
+                    golfer starts it about 1 degree right, forever).
+  - club_bias:     a per-club offset, because real golfers are not
+                    uniform across the bag.
   - session_drift: a temporary tendency drawn once per practice session
                     (a "good day" / "bad day" wobble on top of the
                     golfer's baseline).
-  - shot_noise:    normal per-shot randomness around whatever the golfer's
-                    current bias is.
+  - shot_noise:    normal per-shot randomness around the current bias.
 
-Carry distance uses the same idea, minus the personal bias term (there's
-no evidence real golfers have a persistent "always short" quirk the way
-they have a persistent curve direction) plus a session-level "hot/cold"
-scale factor.
+Carry distance uses the same session "hot/cold" scale factor, minus the
+personal bias term (there's no evidence golfers have a persistent
+"always short" quirk the way they have a persistent shot shape).
 
-Direction is modeled as an ANGLE (degrees off the target line), not a
-flat yards number. Converting angle -> lateral yards via carry * tan(angle)
-naturally produces the cone-shaped dispersion pattern real shot data has
-(a 2-degree miss is a couple yards offline on a wedge, but 10+ yards
-offline on a driver) instead of an unrealistic constant-width band.
+Direction has TWO physical components, not one (a golfer can start the
+ball right and curve it back left -- a push-draw -- and a single
+"direction" number averages those into a meaningless ~0 and hides the
+actual shot shape):
+
+    offline_yds = carry * tan(start_line_deg) + curve_yds
+
+  - start_line_deg: where the ball STARTS relative to target (face angle).
+  - curve_yds:      how far it bends in flight (spin axis), in yards.
+
+This identity was verified against 565 real launch-monitor shots:
+predicted offline correlates 0.9998 with measured offline (mean error
+0.02 yds). Start line is modeled as an angle so it scales with club
+distance; curve is modeled as a percentage of carry, because faster
+swings impart more sidespin and curve more.
+
+Carry distance is ASYMMETRIC (negatively skewed): mishits come up short
+far more often than they fly long. Real data confirms this -- carry skew
+measured -1.46 (6-iron), -0.64 (7-iron), -0.57 (SW) across the bag. A
+symmetric normal would model an equal chance of a 20-yard flier and a
+20-yard chunk, which is not how golf works.
 
 A small "mishit" mixture (a fraction of shots drawn from a wider
 distribution) is layered on top so the pattern has the occasional bad
@@ -70,6 +86,20 @@ _CLUB_DIRECTION_RATIO = {
     "8-Iron": 0.75, "9-Iron": 0.73, "PW": 0.70, "GW": 0.70, "SW": 0.70,
 }
 
+# What FRACTION OF DIRECTIONAL VARIANCE comes from curve rather than
+# start line, per club. Measured from 565 real launch-monitor shots:
+# driver 0.70, 7-iron 0.53, sand wedge 0.26 -- i.e. a driver's miss is
+# mostly curve (high speed -> more sidespin), a wedge's miss is mostly
+# where it started. Everything between is interpolated along that trend.
+# The two components are combined so total dispersion still matches the
+# Broadie-calibrated direction_sd_deg above; this only splits it into
+# the two physical parts.
+_CLUB_CURVE_SHARE = {
+    "Driver": 0.70, "3-Wood": 0.68, "5-Wood": 0.64,
+    "4-Iron": 0.60, "5-Iron": 0.57, "6-Iron": 0.55, "7-Iron": 0.53,
+    "8-Iron": 0.47, "9-Iron": 0.42, "PW": 0.36, "GW": 0.31, "SW": 0.26,
+}
+
 # tier -> (driver direction SD in degrees, base distance CV)
 _TIER_CALIBRATION = {
     "pro":           (4.5, 0.045),   # hcp 0 (scratch amateur)
@@ -94,6 +124,10 @@ _TIER_CARRIES = {
 }
 
 _WEDGE_CV_MULT = 1.3
+
+# Canonical bag order, longest club to shortest. Used for menus and for
+# interpolating user-supplied carries across the bag.
+BAG_ORDER = list(_TIER_CARRIES["pro"].keys())
 
 
 def _build_default_profiles() -> dict[str, dict[str, dict[str, float]]]:
@@ -261,6 +295,40 @@ HANDICAP_BANDS = {
 }
 
 
+# E[|Z|] for a standard normal, used to add back the average distance
+# lost to curving so the realized mean carry stays on target.
+_HALF_NORMAL_MEAN = np.sqrt(2.0 / np.pi)   # ~0.7979
+# How far the two-piece-normal skew shifts the mean, per unit of
+# asymmetry, in SDs. For z scaled by (1+a) below zero and (1-a) above:
+#   E[z_asym] = 0.3989*[-(1+a) + (1-a)] = -0.7979*a = -E[|Z|]*a
+_SKEW_MEAN_SHIFT = _HALF_NORMAL_MEAN
+
+# Plot theme. Dark background so bright club colors pop; the previous
+# green-on-white made adjacent clubs hard to tell apart.
+_BG = "#0d0d0d"
+_FG = "#e8e8e8"
+
+# One fixed, high-contrast color per club, ordered so NEIGHBORING clubs
+# (which overlap most on the plot) are far apart on the color wheel --
+# the old sequential colormap gave 7-iron and 8-iron near-identical
+# shades exactly where they overlap.
+_CLUB_COLORS = {
+    "Driver": "#ff3b30",   # red
+    "3-Wood": "#ff9500",   # orange
+    "5-Wood": "#ffcc00",   # yellow
+    "4-Iron": "#34c759",   # green
+    "5-Iron": "#00e5ff",   # cyan
+    "6-Iron": "#0a84ff",   # blue
+    "7-Iron": "#bf5af2",   # purple
+    "8-Iron": "#ff2d95",   # magenta
+    "9-Iron": "#ffffff",   # white
+    "PW": "#00ffa3",       # mint
+    "GW": "#ffd6a5",       # peach
+    "SW": "#8e8e93",       # grey
+}
+_FALLBACK_COLORS = list(_CLUB_COLORS.values())
+
+
 class SyntheticGolfer:
     """Samples realistic golf shots for one synthetic golfer."""
 
@@ -273,6 +341,10 @@ class SyntheticGolfer:
         drift_distance_sd_pct: float = 0.015,
         mishit_rate: float = 0.05,
         mishit_multiplier: float = 2.5,
+        carry_asymmetry: float = 0.25,
+        two_way_miss: bool = False,
+        club_weights: dict[str, float] | None = None,
+        improvement_per_session: float = 0.0,
         seed: int | None = None,
         _bias_sd_override: float | None = None,
         _bias_mean_override: float | None = None,
@@ -290,6 +362,30 @@ class SyntheticGolfer:
         self.drift_distance_sd_pct = drift_distance_sd_pct
         self.mishit_rate = mishit_rate
         self.mishit_multiplier = mishit_multiplier
+
+        # Carry asymmetry: fraction by which the SHORT side of the carry
+        # distribution is stretched and the long side compressed, giving
+        # the negative skew real shots have (chunks and thin strikes come
+        # up short; almost nothing flies 20 yards past). 0 = symmetric.
+        self.carry_asymmetry = carry_asymmetry
+
+        # Two-way miss: a one-way player has a repeatable shot shape and
+        # misses the same side most of the time; a two-way player's bias
+        # flips sign shot to shot, so they miss both directions equally.
+        # Two-way is harder to play from even at the same total spread,
+        # and it removes any inherent directional bias from the model.
+        self.two_way_miss = two_way_miss
+
+        # Per-club skill weighting: 1.0 = tier-typical, <1 = this golfer
+        # is unusually good with that club, >1 = unusually bad. Real
+        # players are not uniformly skilled across the bag (Dillon's real
+        # wedge dispersion is far tighter than his handicap tier implies).
+        self.club_weights = club_weights or {}
+
+        # Skill improvement: fractional reduction in directional spread
+        # and session drift per completed session, so a golfer practicing
+        # over many sessions tightens up instead of being static forever.
+        self.improvement_per_session = improvement_per_session
 
         # np.random.default_rng (PCG64) is the modern, statistically
         # cleaner replacement for the legacy np.random.seed()/np.random.X
@@ -393,47 +489,93 @@ class SyntheticGolfer:
             is_mishit = self.rng.random() < self.mishit_rate
             spread_mult = self.mishit_multiplier if is_mishit else 1.0
 
+            # Per-club skill weight and cumulative practice improvement
+            # both scale directional spread. Improvement compounds per
+            # completed session and floors at 40% of the starting spread
+            # (nobody practices their way to zero dispersion).
+            weight = self.club_weights.get(club, 1.0)
+            session_idx = i // self.session_size
+            improve = max(0.4, 1.0 - self.improvement_per_session * session_idx)
+            spread = spread_mult * weight * improve
+
+            # --- carry: ASYMMETRIC (negative skew) -------------------
+            # Two-piece normal: draws below the mean get stretched, draws
+            # above get compressed, so mishits come up short but almost
+            # nothing flies way past. Matches the negative carry skew
+            # measured in real launch-monitor data.
             mean_carry = profile["mean_carry"] * (1 + session_distance_scale)
             distance_sd = profile["mean_carry"] * profile["distance_cv"] * spread_mult
-            carry_yds = max(0.0, self.rng.normal(mean_carry, distance_sd))
+            a = self.carry_asymmetry
+            z = self.rng.normal()
+            z = z * (1.0 + a) if z < 0 else z * (1.0 - a)
+            # Skewing pulls the average down, and curving costs distance
+            # below. Both are added back so the REALIZED mean carry still
+            # equals profile["mean_carry"] -- users enter their real carry
+            # numbers and the simulation has to honor them.
+            skew_offset = _SKEW_MEAN_SHIFT * a * distance_sd
+            carry_yds = max(0.0, mean_carry + z * distance_sd + skew_offset)
 
-            # Per-club bias (from calibration) layers on top of the
-            # golfer-level bias: real golfers can sit left with wedges
-            # but right with mid-irons, so one global number isn't enough.
-            direction_mean = (
-                self.golfer_bias_deg
-                + profile.get("direction_bias_deg", 0.0)
-                + session_direction_drift
-            )
-            direction_sd = profile["direction_sd_deg"] * spread_mult
-            direction_deg = self.rng.normal(direction_mean, direction_sd)
-
-            # Direction/distance are NOT independent for real golfers:
-            # right-side misses (fade/slice for a righty) bleed carry from
-            # added spin, left-side misses (draw/hook) fly hot. This is
-            # what tilts the dispersion oval "long-left / short-right"
-            # instead of an axis-aligned blob. Calibrated profiles carry
-            # their own fitted per-club values; default/interpolated
-            # profiles fall back to slopes proportional to club carry,
-            # scaled to match what a real 2-4 handicap's 565-shot fit
-            # measured (driver: +1.29 yd/deg right, -0.50 yd/deg left,
-            # i.e. ~+0.005/-0.002 per yard of carry).
-            if direction_deg >= 0:
-                penalty = profile.get("right_penalty_per_deg", 0.005 * profile["mean_carry"])
+            # --- direction: TWO components ---------------------------
+            # start line (where it starts, an angle) + curve (how much it
+            # bends in flight, in yards). Splitting total dispersion by
+            # _CLUB_CURVE_SHARE keeps overall spread on its calibrated
+            # value while giving the shot a real shape.
+            # A calibrated profile stores the two components measured
+            # directly from real shots; a default/interpolated profile
+            # only has a combined direction_sd_deg, which gets split by
+            # the club's curve share.
+            if "start_line_sd_deg" in profile:
+                start_sd_deg = profile["start_line_sd_deg"]
+                curve_sd_pct = profile["curve_sd_pct"]
             else:
-                penalty = profile.get("left_penalty_per_deg", -0.002 * profile["mean_carry"])
-            carry_yds = max(0.0, carry_yds - penalty * abs(direction_deg))
+                curve_share = _CLUB_CURVE_SHARE.get(club, 0.5)
+                total_sd_rad = np.radians(profile["direction_sd_deg"])
+                start_sd_deg = np.degrees(total_sd_rad * np.sqrt(1.0 - curve_share))
+                curve_sd_pct = total_sd_rad * np.sqrt(curve_share)
 
-            offline_yds = carry_yds * np.tan(np.radians(direction_deg))
+            # A one-way player's bias is a fixed tendency; a two-way
+            # player's flips sign shot to shot, so they miss both sides
+            # equally instead of having an inherent directional bias.
+            # "direction_bias_deg" is what calibrate.py wrote before the
+            # start-line/curve split; accept it so existing fitted
+            # profiles keep their measured per-club bias.
+            club_bias = profile.get("start_line_bias_deg")
+            if club_bias is None:
+                club_bias = profile.get("direction_bias_deg", 0.0)
+            bias = self.golfer_bias_deg + club_bias
+            if self.two_way_miss:
+                bias = abs(bias) * self.rng.choice([-1.0, 1.0])
+
+            start_line_deg = self.rng.normal(
+                bias + session_direction_drift, start_sd_deg * spread
+            )
+            curve_yds = self.rng.normal(
+                profile.get("curve_bias_pct", 0.0) * carry_yds,
+                curve_sd_pct * carry_yds * spread,
+            )
+
+            # Curving the ball costs carry -- sidespin is spin not spent
+            # on lift, and the ball lands on a steeper, shorter arc. This
+            # is a second source of the asymmetric/tilted pattern. The
+            # expected cost is added back so the mean stays on target;
+            # only the shot-to-shot VARIATION in curve moves this shot.
+            cost = profile.get("curve_carry_cost", 0.15)
+            expected_curve = _HALF_NORMAL_MEAN * curve_sd_pct * carry_yds * spread
+            carry_yds = max(0.0, carry_yds - cost * (abs(curve_yds) - expected_curve))
+
+            offline_yds = carry_yds * np.tan(np.radians(start_line_deg)) + curve_yds
+            direction_deg = np.degrees(np.arctan2(offline_yds, max(carry_yds, 1e-6)))
 
             rows.append(
                 {
                     "shot_id": i,
-                    "session_id": i // self.session_size,
+                    "session_id": session_idx,
                     "skill_level": self.skill_level,
                     "club": club,
                     "carry_yds": round(carry_yds, 1),
                     "offline_yds": round(offline_yds, 2),
+                    "start_line_deg": round(start_line_deg, 2),
+                    "curve_yds": round(curve_yds, 2),
                     "direction_deg": round(direction_deg, 2),
                     "is_mishit": is_mishit,
                 }
@@ -449,17 +591,20 @@ class SyntheticGolfer:
         max_offline = float(df["offline_yds"].abs().max()) * 1.15
         half_width = max(max_offline, max_dist * 0.18)
 
-        fig, ax = plt.subplots(figsize=(9, 11))
-        ax.set_facecolor("#3f7d3f")
+        fig, ax = plt.subplots(figsize=(9, 11), facecolor=_BG)
+        ax.set_facecolor(_BG)
         ax.set_xlim(-half_width, half_width)
         ax.set_ylim(-10, max_dist)
+        for spine in ax.spines.values():
+            spine.set_color("#555555")
+        ax.tick_params(colors=_FG, labelsize=8)
 
         for d in range(50, int(max_dist) + 50, 50):
-            ax.axhline(d, color="white", alpha=0.15, linewidth=0.8, zorder=1)
-            ax.text(-half_width * 0.98, d, f"{d}y", color="white", alpha=0.5, fontsize=7, va="bottom")
+            ax.axhline(d, color=_FG, alpha=0.18, linewidth=0.8, zorder=1)
+            ax.text(-half_width * 0.98, d, f"{d}y", color=_FG, alpha=0.45, fontsize=7, va="bottom")
 
-        ax.axvline(0, color="white", linestyle="--", alpha=0.6, linewidth=1, zorder=1)
-        ax.scatter(0, 0, color="white", marker="s", s=40, zorder=3, label="Tee")
+        ax.axvline(0, color=_FG, linestyle="--", alpha=0.5, linewidth=1, zorder=1)
+        ax.scatter(0, 0, color=_FG, marker="s", s=40, zorder=3, label="Tee")
 
         # Marker size/opacity scale with shot count: 10k shots need small
         # faint dots to show density, but a 100-shot session needs big
@@ -468,8 +613,7 @@ class SyntheticGolfer:
         size = float(np.clip(6000 / n, 10, 70))
         alpha = float(np.clip(120 / n, 0.5, 0.95))
 
-        clubs = df["club"].unique()
-        cmap = plt.get_cmap("tab20")
+        clubs = list(df["club"].unique())
         for idx, club in enumerate(clubs):
             group = df[df["club"] == club]
             ax.scatter(
@@ -477,17 +621,19 @@ class SyntheticGolfer:
                 group["carry_yds"],
                 s=size,
                 alpha=alpha,
-                color=cmap(idx % 20),
+                color=_CLUB_COLORS.get(club, _FALLBACK_COLORS[idx % len(_FALLBACK_COLORS)]),
                 label=club,
                 zorder=2,
-                edgecolors="white" if n <= 500 else "none",
+                edgecolors="black" if n <= 500 else "none",
                 linewidths=0.4,
             )
 
-        ax.set_xlabel("Offline (yds) — left (–) / right (+)")
-        ax.set_ylabel("Carry distance (yds)")
-        ax.set_title(f"{len(df):,} synthetic shots — {self.skill_level}")
-        ax.legend(markerscale=2.5, loc="upper left", bbox_to_anchor=(1.02, 1), fontsize=8)
+        ax.set_xlabel("Offline (yds) — left (–) / right (+)", color=_FG)
+        ax.set_ylabel("Carry distance (yds)", color=_FG)
+        ax.set_title(f"{len(df):,} synthetic shots — {self.skill_level}", color=_FG)
+        leg = ax.legend(markerscale=2.5, loc="upper left", bbox_to_anchor=(1.02, 1),
+                        fontsize=8, facecolor="#1a1a1a", edgecolor="#555555", labelcolor=_FG)
+        leg.get_frame().set_alpha(0.95)
         fig.tight_layout()
 
         if save_path:

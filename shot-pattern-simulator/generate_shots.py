@@ -30,23 +30,32 @@ from synthetic_golfer import DEFAULT_PROFILES, HANDICAP_BANDS, SyntheticGolfer
 
 
 def build_golfer(args) -> SyntheticGolfer:
+    weights = {}
+    for spec in args.club_weight or []:
+        club, _, value = spec.partition("=")
+        weights[club] = float(value)
+    opts = dict(
+        seed=args.seed,
+        two_way_miss=args.two_way_miss,
+        improvement_per_session=args.improve_per_session,
+        club_weights=weights,
+    )
+
     if args.profile_json:
-        return SyntheticGolfer.from_profile_json(args.profile_json, seed=args.seed)
+        return SyntheticGolfer.from_profile_json(args.profile_json, **opts)
     if args.carry:
         carries = {}
         for spec in args.carry:
             club, _, value = spec.partition("=")
             carries[club] = float(value)
         return SyntheticGolfer.from_handicap_and_carries(
-            args.handicap if args.handicap is not None else 15,
-            carries,
-            seed=args.seed,
+            args.handicap if args.handicap is not None else 15, carries, **opts
         )
     if args.band:
-        return SyntheticGolfer.from_band(args.band, seed=args.seed)
+        return SyntheticGolfer.from_band(args.band, **opts)
     if args.handicap is not None:
-        return SyntheticGolfer.from_handicap(args.handicap, seed=args.seed)
-    return SyntheticGolfer(skill_level=args.skill_level, seed=args.seed)
+        return SyntheticGolfer.from_handicap(args.handicap, **opts)
+    return SyntheticGolfer(skill_level=args.skill_level, **opts)
 
 
 def main():
@@ -65,6 +74,12 @@ def main():
     parser.add_argument("--out-dir", default="output")
     parser.add_argument("--show", action="store_true",
                         help="open the plot in an interactive window after saving")
+    parser.add_argument("--two-way-miss", action="store_true",
+                        help="golfer misses both directions equally instead of one repeatable shape")
+    parser.add_argument("--improve-per-session", type=float, default=0.0, metavar="FRAC",
+                        help="fractional tightening of dispersion per session, e.g. 0.02")
+    parser.add_argument("--club-weight", action="append", metavar="CLUB=W",
+                        help="per-club skill weight, repeatable; <1 better, >1 worse (e.g. SW=0.7)")
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)

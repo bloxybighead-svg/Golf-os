@@ -10,16 +10,23 @@ offline_yds sign convention: positive = right of target, negative = left
 (for a right-handed golfer). If you only have offline_yds, direction_deg
 is derived as degrees(atan2(offline_yds, carry_yds)).
 
-For each club with enough shots, this prints:
-  - mean_carry, distance_cv, direction_bias_deg, direction_sd_deg
-  - right_penalty_per_deg / left_penalty_per_deg: yards of carry lost
-    per degree of miss on each side, fit separately by simple linear
-    regression of carry_yds on |direction_deg| within that side. This is
-    where we actually check whether "left misses go farther than right
-    misses" holds for THIS golfer, rather than assuming it.
+If the file also has launch_dir_deg and curve_yds (a launch-monitor
+export), the two direction components are fit DIRECTLY from measurement
+rather than assumed:
+  - start_line_bias_deg / start_line_sd_deg: where the ball starts.
+  - curve_bias_pct / curve_sd_pct: how much it bends in flight, as a
+    fraction of carry.
+  - curve_carry_cost: yards of carry lost per yard of curve, fit by
+    linear regression of carry on |curve|.
+Without those columns it falls back to splitting total direction spread
+by the club's typical curve share.
 
-and writes a JSON profile in the same shape as DEFAULT_PROFILES that can
-be passed straight into SyntheticGolfer(club_profiles=...).
+Partial/chip shots are excluded by default (they have the same club but
+a totally different distribution, and mixing them inflates the fitted
+distance spread enormously). Pass --include-partials to keep them.
+
+Writes a JSON profile in the same shape as DEFAULT_PROFILES that can be
+passed straight into SyntheticGolfer(club_profiles=...).
 
 Usage:
     python calibrate.py real_shots.csv --out my_profile.json --min-shots 10
@@ -33,6 +40,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from synthetic_golfer import _CLUB_CURVE_SHARE as _CURVE_SHARE
 
 
 def _fit_side_penalty(direction_deg: np.ndarray, carry_yds: np.ndarray) -> float:
@@ -63,42 +72,55 @@ def calibrate(df: pd.DataFrame, min_shots: int = 10) -> dict[str, dict[str, floa
 
         direction_bias_deg = float(group["direction_deg"].mean())
         direction_sd_deg = float(group["direction_deg"].std())
+        mean_carry_raw = float(group["carry_yds"].mean())
 
-        right = group[group["direction_deg"] >= 0]
-        left = group[group["direction_deg"] < 0]
-        right_penalty = _fit_side_penalty(right["direction_deg"].to_numpy(), right["carry_yds"].to_numpy())
-        left_penalty = _fit_side_penalty(left["direction_deg"].to_numpy(), left["carry_yds"].to_numpy())
+        # Fit the two direction components the simulator actually uses.
+        # If the source data has measured start line and curve (a launch
+        # monitor export), fit them directly; otherwise fall back to
+        # splitting total direction by the club's typical curve share.
+        if {"launch_dir_deg", "curve_yds"} <= set(group.columns) and group["curve_yds"].notna().all():
+            start_bias = float(group["launch_dir_deg"].mean())
+            start_sd = float(group["launch_dir_deg"].std())
+            curve_bias_pct = float((group["curve_yds"] / group["carry_yds"]).mean())
+            curve_sd_pct = float((group["curve_yds"] / group["carry_yds"]).std())
+            # How much carry a yard of curve costs, fit on |curve|.
+            curve_cost = _fit_side_penalty(group["curve_yds"].to_numpy(), group["carry_yds"].to_numpy())
+            curve_cost = float(np.clip(curve_cost, 0.0, 1.0))
+        else:
+            share = _CURVE_SHARE.get(club, 0.5)
+            total_rad = np.radians(direction_sd_deg)
+            start_bias = direction_bias_deg
+            start_sd = float(np.degrees(total_rad * np.sqrt(1 - share)))
+            curve_bias_pct = 0.0
+            curve_sd_pct = float(total_rad * np.sqrt(share))
+            curve_cost = 0.15
 
-        # The simulator re-applies the side penalties on every sampled
-        # shot, so the stored mean/CV must describe the ZERO-DEGREE base
-        # carry and the residual spread AFTER the direction effect is
-        # removed -- otherwise the penalty gets double-counted and the
-        # simulated means/SDs drift away from the real data they were
-        # fit to.
-        penalty = np.where(
-            group["direction_deg"] >= 0,
-            right_penalty * group["direction_deg"].abs(),
-            left_penalty * group["direction_deg"].abs(),
-        )
-        base_carry_per_shot = group["carry_yds"].to_numpy() + penalty
-        mean_carry = float(base_carry_per_shot.mean())
-        distance_cv = float(base_carry_per_shot.std() / mean_carry)
+        # The simulator subtracts the curve cost on every shot and adds
+        # back its expected value, so the stored mean/CV must describe
+        # the carry BEFORE that effect -- otherwise it double-counts and
+        # simulated means drift away from the data they were fit to.
+        curve = group["curve_yds"].to_numpy() if "curve_yds" in group else np.zeros(len(group))
+        base = group["carry_yds"].to_numpy() + curve_cost * (np.abs(curve) - np.abs(curve).mean())
+        mean_carry = float(base.mean())
+        distance_cv = float(base.std() / mean_carry)
 
         profile[club] = {
             "mean_carry": round(mean_carry, 1),
             "distance_cv": round(distance_cv, 4),
-            "direction_bias_deg": round(direction_bias_deg, 2),
             "direction_sd_deg": round(direction_sd_deg, 2),
-            "right_penalty_per_deg": round(right_penalty, 3),
-            "left_penalty_per_deg": round(left_penalty, 3),
+            "start_line_bias_deg": round(start_bias, 2),
+            "start_line_sd_deg": round(start_sd, 2),
+            "curve_bias_pct": round(curve_bias_pct, 4),
+            "curve_sd_pct": round(curve_sd_pct, 4),
+            "curve_carry_cost": round(curve_cost, 3),
             "n_shots": len(group),
         }
 
         print(
-            f"{club:8s}  n={len(group):4d}  carry={mean_carry:6.1f} (cv={distance_cv:.3f})  "
-            f"dir_bias={direction_bias_deg:+5.2f} deg  dir_sd={direction_sd_deg:5.2f} deg  "
-            f"right_penalty={right_penalty:+.2f} yd/deg (n={len(right)})  "
-            f"left_penalty={left_penalty:+.2f} yd/deg (n={len(left)})"
+            f"{club:8s}  n={len(group):4d}  carry={mean_carry_raw:6.1f} (cv={distance_cv:.3f})  "
+            f"start={start_bias:+5.2f}+/-{start_sd:4.2f} deg  "
+            f"curve={curve_bias_pct*mean_carry_raw:+6.1f}+/-{curve_sd_pct*mean_carry_raw:5.1f} yds  "
+            f"curve_cost={curve_cost:.2f} yd/yd"
         )
 
     return profile
@@ -109,22 +131,21 @@ def main():
     parser.add_argument("csv_path")
     parser.add_argument("--out", default="my_profile.json")
     parser.add_argument("--min-shots", type=int, default=10)
+    parser.add_argument("--include-partials", action="store_true",
+                        help="keep partial/chip shots (excluded by default)")
     args = parser.parse_args()
 
     df = pd.read_csv(args.csv_path)
+    if "is_partial" in df.columns and not args.include_partials:
+        before = len(df)
+        df = df[~df["is_partial"]]
+        print(f"excluded {before - len(df)} partial shots ({len(df)} full swings remain)\n")
     profile = calibrate(df, min_shots=args.min_shots)
 
     out_path = Path(args.out)
     out_path.write_text(json.dumps(profile, indent=2))
     print(f"\nWrote fitted profile for {len(profile)} clubs to {out_path}")
 
-    all_right = [p["right_penalty_per_deg"] for p in profile.values()]
-    all_left = [p["left_penalty_per_deg"] for p in profile.values()]
-    if all_right and all_left:
-        print(f"\nAcross clubs: avg right-side penalty {np.mean(all_right):+.2f} yd/deg, "
-              f"avg left-side penalty {np.mean(all_left):+.2f} yd/deg")
-        print("(positive = that side costs carry distance as the miss gets bigger; "
-              "negative = that side gains distance)")
 
 
 if __name__ == "__main__":
