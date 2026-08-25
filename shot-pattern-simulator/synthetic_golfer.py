@@ -386,11 +386,27 @@ _UPPER_TAIL_CV = 0.040
 _MAX_CARRY_RATIO = 1.11
 
 # Yards of carry gained per yard of LEFT curve (negative = draws fly
-# farther, fades fly shorter). Measured across 9 clubs and 565 shots:
-# every club had this sign, from -0.14 (sand wedge) to -0.79 (5-iron),
-# averaging about -0.4. This is what gives a real dispersion pattern its
-# diagonal tilt rather than an upright oval.
-_DEFAULT_CURVE_CARRY_SLOPE = -0.40
+# farther, fades fly shorter). This is what tilts the dispersion ellipse
+# diagonally instead of leaving it upright.
+#
+# TREAT THIS DEFAULT AS WEAK -- it is golfer-specific, and two datasets
+# disagree on even the SIGN:
+#   - 565 shots, one right-handed 2-handicap: -0.14 to -0.79 raw. With
+#     ball speed controlled the effect shrinks to about -0.25, and the
+#     gap wedge flips positive, so part of the raw number was a
+#     ball-speed confound (faster swings both curve more and fly
+#     farther).
+#   - 796 shots, an independent golfer (Kaggle launch-monitor set, club
+#     labels absent, handedness unknown): +0.07 to +0.27 controlled --
+#     the opposite direction.
+# What DOES replicate in both is the symmetric term: curving the ball in
+# either direction costs carry once ball speed is held fixed.
+#
+# So the default is set modest and conservative rather than to either
+# golfer's fitted value. calibrate.py fits this per club from real shots
+# whenever they exist, and that fitted path is what reproduces a
+# specific golfer's measured tilt.
+_DEFAULT_CURVE_CARRY_SLOPE = -0.20
 
 # Plot theme. Dark background so bright club colors pop; the previous
 # green-on-white made adjacent clubs hard to tell apart.

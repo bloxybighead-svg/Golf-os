@@ -82,6 +82,7 @@ def parse_file(path: Path) -> list[dict]:
                 # direction as two physical components instead of one blob.
                 curve = _parse_signed(record[7])
                 launch_dir = _parse_signed(record[12])
+                ball_speed = float(record[10]) if record[10].strip() else None
             except (ValueError, IndexError):
                 continue
             if offline is None:
@@ -96,6 +97,7 @@ def parse_file(path: Path) -> list[dict]:
                     "offline_yds": offline,
                     "curve_yds": curve,
                     "launch_dir_deg": launch_dir,
+                    "ball_speed": ball_speed,
                 }
             )
     return rows
