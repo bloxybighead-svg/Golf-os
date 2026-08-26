@@ -385,11 +385,25 @@ _UPPER_TAIL_CV = 0.040
 # (best of 159 real driver shots was +10.8% of the mean).
 _MAX_CARRY_RATIO = 1.11
 
-# Floor on carry as a multiple of mean. Worst of 162 real driver shots
-# was 88% of the mean; full-swing irons bottomed near 82%. Set below
-# both so a genuine bad strike still shows, without producing the
-# half-distance shots that are really tops and chunks.
-_MIN_CARRY_RATIO = 0.80
+# Floor on carry, expressed as this many distance-CVs below the mean.
+# A full swing that makes contact does not lose a big chunk of its
+# distance -- a half-length pitching wedge is a top or a chunk, which is
+# a different event and not what this model represents.
+#
+# Scaled by the club's own CV rather than fixed, so a consistent player
+# gets a tight floor while a wild one can genuinely come up short. At
+# the measured driver CV of 0.039 this puts the floor near 90% of mean,
+# and with the soft compression below it the realised worst shot lands
+# around 88% -- which is exactly the worst of 162 real driver shots. A
+# high-handicap CV of 0.11 gives a floor near 80%.
+#
+# Measured bound this is set from -- full swings only, this golfer:
+#   Driver  n=159   0.0% below 90% of mean, worst 91%
+#   7-Iron  n= 62   0.0% below 90% of mean, worst 90%
+#   6-Iron  n= 34   0.0% below 90% of mean, worst 92%
+# i.e. a full shot that finds the middle of the face essentially never
+# loses a tenth of its distance.
+_MIN_CARRY_K = 1.8
 
 # Fraction of shots the drawn dispersion ellipse should contain.
 _ELLIPSE_CONTAINMENT = 0.90
@@ -673,27 +687,6 @@ class SyntheticGolfer:
             if is_mishit:
                 carry_yds *= 1.0 - abs(self.rng.normal(0.0, self.mishit_carry_loss))
 
-            # Physical ceiling. Carry is capped by clubhead speed, and no
-            # amount of inconsistency lets a golfer exceed their own best
-            # strike -- 159 real driver shots topped out at +10.8% of the
-            # mean with nothing past +15%. Above the ceiling the excess is
-            # compressed rather than hard-clipped, so a rare flier still
-            # exists but 350-yard bombs off a 250-yard average do not.
-            ceiling = mean_carry * _MAX_CARRY_RATIO
-            if carry_yds > ceiling:
-                carry_yds = ceiling + (carry_yds - ceiling) * 0.15
-
-            # Physical FLOOR, same idea in the other direction. A full
-            # swing that makes contact does not lose half its distance --
-            # a 65-yard pitching wedge is a topped or chunked shot, which
-            # is a different event from a bad strike and is not what this
-            # model represents. Across 162 real driver shots the worst
-            # was 88% of the mean; full-swing irons bottomed out near
-            # 82%. Excess below the floor is compressed, not clipped, so
-            # a bad one still exists without being absurd.
-            floor = mean_carry * _MIN_CARRY_RATIO
-            if carry_yds < floor:
-                carry_yds = floor - (floor - carry_yds) * 0.15
 
             # --- direction: TWO components ---------------------------
             # start line (where it starts, an angle) + curve (how much it
@@ -750,6 +743,34 @@ class SyntheticGolfer:
             slope = profile.get("curve_carry_slope", _DEFAULT_CURVE_CARRY_SLOPE)
             expected_curve = profile.get("curve_bias_pct", 0.0) * carry_yds
             carry_yds = max(0.0, carry_yds + slope * (curve_yds - expected_curve))
+
+            # Physical ceiling. Carry is capped by clubhead speed, and no
+            # amount of inconsistency lets a golfer exceed their own best
+            # strike -- 159 real driver shots topped out at +10.8% of the
+            # mean with nothing past +15%. Above the ceiling the excess is
+            # compressed rather than hard-clipped, so a rare flier still
+            # exists but 350-yard bombs off a 250-yard average do not.
+            ceiling = mean_carry * _MAX_CARRY_RATIO
+            if carry_yds > ceiling:
+                carry_yds = ceiling + (carry_yds - ceiling) * 0.15
+
+            # Physical FLOOR, same idea in the other direction. A full
+            # swing that makes contact does not lose half its distance --
+            # a 65-yard pitching wedge is a topped or chunked shot, which
+            # is a different event from a bad strike and is not what this
+            # model represents. Across 162 real driver shots the worst
+            # was 88% of the mean; full-swing irons bottomed out near
+            # 82%. Excess below the floor is compressed, not clipped, so
+            # a bad one still exists without being absurd.
+            # Floor is taken off the profile mean, not the drifted
+            # session mean, so a cold session cannot quietly drag it
+            # down. Compression below it is tighter than the ceiling's
+            # because the measured lower bound is much harder: across
+            # 159 driver and 62 7-iron shots, NOTHING came in below 90%
+            # of the mean.
+            floor = profile["mean_carry"] * (1.0 - _MIN_CARRY_K * profile["distance_cv"])
+            if carry_yds < floor:
+                carry_yds = floor - (floor - carry_yds) * 0.08
 
             offline_yds = carry_yds * np.tan(np.radians(start_line_deg)) + curve_yds
             direction_deg = np.degrees(np.arctan2(offline_yds, max(carry_yds, 1e-6)))
