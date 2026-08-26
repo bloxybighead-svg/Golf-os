@@ -55,15 +55,15 @@
     "n_shots": 32
   },
   "7-Iron": {
-    "mean_carry": 161.6,
-    "distance_cv": 0.0272,
-    "direction_sd_deg": 3.41,
-    "start_line_bias_deg": 0.58,
-    "start_line_sd_deg": 2.09,
-    "curve_bias_pct": -0.0183,
-    "curve_sd_pct": 0.0393,
-    "curve_carry_slope": -0.266,
-    "n_shots": 39
+    "mean_carry": 162.5,
+    "distance_cv": 0.031,
+    "direction_sd_deg": 3.94,
+    "start_line_bias_deg": 0.15,
+    "start_line_sd_deg": 2.15,
+    "curve_bias_pct": -0.0273,
+    "curve_sd_pct": 0.043,
+    "curve_carry_slope": -0.418,
+    "n_shots": 62
   },
   "7-Wood": {
     "mean_carry": 212.2,
