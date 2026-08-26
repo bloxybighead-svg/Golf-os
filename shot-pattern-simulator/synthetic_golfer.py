@@ -385,6 +385,15 @@ _UPPER_TAIL_CV = 0.040
 # (best of 159 real driver shots was +10.8% of the mean).
 _MAX_CARRY_RATIO = 1.11
 
+# Floor on carry as a multiple of mean. Worst of 162 real driver shots
+# was 88% of the mean; full-swing irons bottomed near 82%. Set below
+# both so a genuine bad strike still shows, without producing the
+# half-distance shots that are really tops and chunks.
+_MIN_CARRY_RATIO = 0.80
+
+# Fraction of shots the drawn dispersion ellipse should contain.
+_ELLIPSE_CONTAINMENT = 0.90
+
 # Yards of carry gained per yard of LEFT curve (negative = draws fly
 # farther, fades fly shorter). This is what tilts the dispersion ellipse
 # diagonally instead of leaving it upright.
@@ -446,7 +455,7 @@ class SyntheticGolfer:
         drift_distance_sd_pct: float = 0.015,
         mishit_rate: float = 0.05,
         mishit_multiplier: float = 2.5,
-        mishit_carry_loss: float = 0.16,
+        mishit_carry_loss: float = 0.10,
         carry_asymmetry: float | None = None,
         two_way_miss: bool = False,
         club_weights: dict[str, float] | None = None,
@@ -674,6 +683,18 @@ class SyntheticGolfer:
             if carry_yds > ceiling:
                 carry_yds = ceiling + (carry_yds - ceiling) * 0.15
 
+            # Physical FLOOR, same idea in the other direction. A full
+            # swing that makes contact does not lose half its distance --
+            # a 65-yard pitching wedge is a topped or chunked shot, which
+            # is a different event from a bad strike and is not what this
+            # model represents. Across 162 real driver shots the worst
+            # was 88% of the mean; full-swing irons bottomed out near
+            # 82%. Excess below the floor is compressed, not clipped, so
+            # a bad one still exists without being absurd.
+            floor = mean_carry * _MIN_CARRY_RATIO
+            if carry_yds < floor:
+                carry_yds = floor - (floor - carry_yds) * 0.15
+
             # --- direction: TWO components ---------------------------
             # start line (where it starts, an angle) + curve (how much it
             # bends in flight, in yards). Splitting total dispersion by
@@ -750,8 +771,13 @@ class SyntheticGolfer:
 
         return pd.DataFrame(rows)
 
-    def plot_dispersion(self, df: pd.DataFrame, save_path: str | None = None):
-        """Scatter plot of offline vs. carry, drawn over a simple range/course visual."""
+    def plot_dispersion(self, df: pd.DataFrame, save_path: str | None = None,
+                        show_ellipses: bool | None = None):
+        """Scatter plot of offline vs. carry, drawn over a simple range visual.
+
+        show_ellipses: draw a 90% containment ellipse per club. None
+        (default) turns them on only when 5 or fewer clubs are plotted.
+        """
         import matplotlib.pyplot as plt
 
         max_dist = float(df["carry_yds"].max()) * 1.15
@@ -806,6 +832,39 @@ class SyntheticGolfer:
                 edgecolors="black" if n <= 500 else "none",
                 linewidths=0.4,
             )
+
+        # Dispersion ellipse per club, the way published shot-pattern
+        # graphics draw them. Only with a few clubs selected -- a dozen
+        # overlapping ellipses is unreadable. The ellipse is the 90%
+        # containment contour of the fitted 2-D normal: its axes are the
+        # eigenvectors of the offline/carry covariance, so it picks up
+        # the pattern's TILT rather than sitting upright.
+        if show_ellipses is None:
+            show_ellipses = len(clubs) <= 5
+        if show_ellipses:
+            from matplotlib.patches import Ellipse
+
+            # For a 2-D normal, the contour containing fraction p sits at
+            # radius sqrt(-2 ln(1-p)) in standard-deviation units.
+            k = float(np.sqrt(-2.0 * np.log(1.0 - _ELLIPSE_CONTAINMENT)))
+            for idx, club in enumerate(clubs):
+                grp = df[df["club"] == club]
+                if len(grp) < 10:
+                    continue
+                cov = np.cov(grp["offline_yds"], grp["carry_yds"])
+                vals, vecs = np.linalg.eigh(cov)
+                order = np.argsort(vals)[::-1]
+                vals, vecs = vals[order], vecs[:, order]
+                angle = np.degrees(np.arctan2(vecs[1, 0], vecs[0, 0]))
+                color = _CLUB_COLORS.get(club, _FALLBACK_COLORS[idx % len(_FALLBACK_COLORS)])
+                ax.add_patch(Ellipse(
+                    (grp["offline_yds"].mean(), grp["carry_yds"].mean()),
+                    width=2 * k * np.sqrt(vals[0]),
+                    height=2 * k * np.sqrt(vals[1]),
+                    angle=angle,
+                    facecolor="none", edgecolor=color,
+                    linewidth=1.6, alpha=0.9, zorder=4,
+                ))
 
         ax.set_xlabel("Offline (yds) — left (–) / right (+)", color=_FG)
         ax.set_ylabel("Carry distance (yds)", color=_FG)

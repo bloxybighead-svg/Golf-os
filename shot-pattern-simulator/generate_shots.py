@@ -72,6 +72,8 @@ def main():
     parser.add_argument("--n-shots", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--out-dir", default="output")
+    parser.add_argument("--no-ellipses", action="store_true",
+                        help="do not draw the 90%% dispersion ellipse around each club")
     parser.add_argument("--show", action="store_true",
                         help="open the plot in an interactive window after saving")
     parser.add_argument("--two-way-miss", action="store_true",
@@ -93,7 +95,8 @@ def main():
     df.to_csv(csv_path, index=False)
 
     plot_path = out_dir / f"shot_dispersion_{tag}.png"
-    golfer.plot_dispersion(df, save_path=str(plot_path))
+    golfer.plot_dispersion(df, save_path=str(plot_path),
+                           show_ellipses=(False if args.no_ellipses else None))
 
     print(f"Golfer: {golfer.skill_level} (personal direction bias {golfer.golfer_bias_deg:+.2f} deg)")
     print(f"Wrote {len(df):,} shots to {csv_path}")
