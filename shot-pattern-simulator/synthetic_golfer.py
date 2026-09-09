@@ -776,11 +776,27 @@ class SyntheticGolfer:
             # penalty above (line ~688) specifically to let a true chunk
             # or thin go meaningfully short; squashing it back up to this
             # floor would cancel that out and make every mishit land in
-            # a near-identical spot just below the floor line instead of
-            # a natural, tapering short tail. So mishits skip this clamp.
+            # a near-identical spot just below the floor line. So mishits
+            # skip this clamp entirely.
+            #
+            # For everyone else: a fixed-ratio linear squash (the original
+            # approach) ALWAYS produces a visible density spike right at
+            # the floor, no matter how loose the ratio -- it compresses a
+            # wide spread of raw deficits into a narrow output band, so
+            # probability mass piles up there. Tightening or loosening the
+            # ratio only changes how bad the spike looks, never removes
+            # it (confirmed empirically: 0.12 still visibly walled).
+            # A smooth exponential taper fixes this properly: its slope
+            # matches the unclamped side (=1) exactly at the floor, so
+            # there's no seam for density to pile up against, and it
+            # asymptotically approaches floor - TAPER_SCALE for a severe
+            # outlier instead of hard-compressing everything below floor
+            # into a sliver.
             floor = profile["mean_carry"] * (1.0 - _MIN_CARRY_K * profile["distance_cv"])
             if carry_yds < floor and not is_mishit:
-                carry_yds = floor - (floor - carry_yds) * 0.08
+                deficit = floor - carry_yds
+                taper_scale = floor * 0.05
+                carry_yds = floor - taper_scale * (1.0 - np.exp(-deficit / taper_scale))
 
             offline_yds = carry_yds * np.tan(np.radians(start_line_deg)) + curve_yds
             direction_deg = np.degrees(np.arctan2(offline_yds, max(carry_yds, 1e-6)))
