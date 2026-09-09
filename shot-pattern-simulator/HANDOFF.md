@@ -27,13 +27,152 @@ finished — the plan is one merge at the end.
 deadline, then substantially revised across two rounds of advisor
 feedback. ~1,600 lines of Python across 6 files.
 
+**Step 2 (Supabase seed): COMPLETE (2026-09-01).** `golfer_profiles`
+(11 rows, one per club, Dillon's calibrated profile) and `simulated_shots`
+(2,000 rows generated from that profile, seed 42) are live on the
+project's Supabase instance. Schema, views, and example queries are in
+`supabase/simulated_shots_schema.sql`, `simulated_shots_views.sql`, and
+`simulated_shots_queries.sql`. Two views do the analytics in SQL as
+required: `club_dispersion` (mean/SD/percentiles per club) and
+`club_gapping_overlap` (10th-90th percentile carry-range overlap between
+every club pair — already surfaced a real gapping issue: GW/PW overlap
+52%, 3-Wood/Driver overlap 39%). No `users` table exists yet, so
+`golfer_profiles.golfer_name` is a free-text label, not a foreign key —
+swap it for a `user_id` once Supabase Auth is added.
+
+**Step 3 (browser rendering + T-box): CORE COMPLETE (2026-09-05).** Note:
+"T-box estimator" means recommending which **tee box** a golfer should
+play (Black/Blue/White/etc.) from course rating, slope rating, handicap,
+and driver distance — not a target-box derived from dispersion. That
+wasn't written down anywhere before now; recorded here so it doesn't need
+re-clarifying.
+
+Built, tested (21 passing vitest unit tests, `npm test` from `golf-os/`),
+and verified live in the browser:
+- `lib/dispersion/transform.ts` — explicit yards↔pixels transform
+  (origin + scale), used by every render call, nothing implicit.
+- `lib/dispersion/polygon.ts` — ray-casting point-in-polygon test +
+  `makeFairwayPolygon()` (a placeholder trapezoid, swappable for a real
+  GPS-traced course polygon later without touching the point-in-polygon
+  logic).
+- `components/simulator/DispersionCanvas.tsx` — SVG renderer: fairway
+  polygon, gridlines, tee marker, shot dots, and a live "N / total shots
+  landed inside the shaded area (X%)" readout — the actual "are the
+  sampled points inside the polygon" QA, run against the real 2,000-shot
+  Supabase dataset, not a synthetic fixture.
+- `app/simulator` — new page, club picker + adjustable target width,
+  reads live from `golfer_profiles`/`simulated_shots` (had to paginate
+  the Supabase query — it silently caps at 1,000 rows per request).
+- `lib/tbox/estimate.ts` — USGA Course Handicap formula (exact, sourced)
+  + an approximate "recommended course yardage ≈ 25× driver carry"
+  heuristic (approximates the shape of USGA's Tee It Forward guidance
+  from memory — flagged as unverified, same as the model's other
+  unsourced constants, replace with the real published table if
+  precision matters).
+- `app/simulator/tbox` — new page, tee-comparison table with a "load
+  rating/slope/par from a course you've already logged" shortcut that
+  pulls real data straight from the `rounds` table (the actual link
+  between this feature and Golf OS's existing tables) — yardage still
+  needs manual entry since `rounds` doesn't track it.
+
+**Rest of Step 3, done (2026-09-09):**
+- `app/simulator/compare` — two-golfer overlay UI. Since no second real
+  golfer exists yet (see Known limitations), the second "player" is a
+  synthetic `from_band("2-4")` golfer seeded as `golfer_name = "Average
+  2-4 Handicap"` — a legitimate, labeled stand-in, not a fabricated
+  person. Shows: an overlaid dispersion scatter (`OverlayCanvas.tsx`),
+  a side-by-side stats table, a checkbox overlaying Dillon's real shots
+  (new `real_shots` table, seeded from `reference_data/real_shots.csv`,
+  589 rows), and a 500/1000/2000 shot-count radio.
+- Had to go back and reseed: the original 2,000-shot batches only had
+  ~150-200 shots per club, so selecting 500 vs 1000 vs 2000 silently
+  capped and showed identical numbers. Fixed by regenerating ~2,200
+  shots *per club* (`sample_shots(n_shots, clubs=[...])`) for the 8
+  clubs both golfers share, ~17,600 rows per golfer. Real "how does this
+  change over time" answer is now visible in a convergence table: Driver
+  carry SD at n=500/1000/2000 is 11.08 / 11.11 / 11.28 — shrinking
+  sampling noise, not a real change in the golfer, and the UI says so
+  explicitly so it doesn't get misread as skill drift.
+- `lib/dispersion/stats.ts` — shared mean/SD/percentile + seeded-sample
+  helpers, tested (26 vitest tests total now).
+
+**Realism verdict ("does the spread look realistic to tendencies?"):**
+ran `validate_against_reference.py` fresh across handicaps 0/4/8/12.
+Confirms the already-documented pattern: carry means run ~8-14 yds long
+and carry/offline SDs run consistently *tighter* than the reference set,
+growing with handicap. Per the model's own prior note this reference
+set is stale (pre-dates a carry-table correction), so the gap isn't
+fresh evidence of a problem -- but it's still the most honest summary:
+**where checked against real/published sources (direction SDs, iron
+gapping ratios, the offline=carry×tan(start_line)+curve relationship,
+carry ceiling/floor) the model holds up well; where it hasn't been
+checked against fresh data (this validation script, mishit severity,
+one-golfer club-distance ratios) it leans slightly too tight and slightly
+too long.** Getting a second real golfer's data would settle this for
+real instead of comparing against a known-stale reference.
+
+**Feature ideas for amateur golfers** (brainstorm, not built): a "bag
+gap advisor" surfacing `club_gapping_overlap` findings automatically
+(the GW/PW 52% overlap is exactly this); a pre-round "what carry can I
+trust" card using `carry_p10` instead of average (the model already
+computes this); an aim-bias coach flagging clubs with an unusually large
+median offline (PW's -11.1yd median, found earlier); the T-box estimator
+surfaced at round-logging time instead of as a separate page; a
+"realistic expectations" onboarding screen showing a new user's own
+dispersion pattern against their self-estimate, since underestimating
+dispersion is literally the problem this whole project exists to fix.
+
+**Kaggle-set comparison: done (2026-09-09).** Dillon found the file —
+`Desktop/golf_trajectories.csv` (832 rows, no club labels, matches the
+"handedness unknown" note). It has no explicit curve/start-line columns,
+so those were rebuilt the same way the model itself defines them:
+`start_line = Launch Direction`, `offline = Carry Deviation Distance`,
+`curve = offline - carry × tan(start_line)`. 797 rows survive a basic
+sanity filter (carry 30-350 yds) — matches the "796-shot" citation
+almost exactly, good sign it's the right file/method.
+
+Refit the curve→carry slope fresh: **+0.669 raw, +0.395 controlling for
+ball speed** — positive, confirming (not just repeating) the prior
+session's finding that this golfer's sign is opposite Dillon's
+(his per-club range is -0.288 to -0.892, all negative).
+
+Then actually ran the simulator both ways: regenerated 2,000 Driver
+shots twice, identical in every parameter except `curve_carry_slope` —
+once at Dillon's own -0.292, once at the Kaggle-derived +0.395. Real,
+visible consequence: corr(offline, carry) flips from -0.436 to +0.529 —
+the whole dispersion ellipse's diagonal lean reverses direction. Plot:
+`output/kaggle_slope_comparison.png`.
+
+**Revised finding — the sign disagreement is very likely a handedness
+artifact, not real physics disagreement.** Dillon's own instinct: a draw
+(curving left for a right-hander) is the lower-spin, longer shot shape —
+that's the physical mechanism the model's own comment already cites,
+and it should hold for any right-handed golfer. If the Kaggle golfer is
+left-handed and the raw columns record left/right in an absolute frame
+rather than "relative to the player," their longer, lower-spin shots
+(their draw, curving to *their* left = *our* right) would show up as
+positive offline correlating with longer carry — exactly the "opposite"
+sign observed, without the underlying physics actually disagreeing.
+
+Tested by mirroring the Kaggle data's left/right (negating both launch
+direction and deviation) and refitting: slope becomes **-0.395**,
+landing right inside Dillon's own -0.892 to -0.288 range. Reran the
+simulator once more with this corrected slope: corr(offline, carry)
+comes out **-0.531**, same direction as Dillon's -0.436 — both ellipses
+now lean the same way. Plot: `output/kaggle_slope_comparison_corrected.png`
+(both sent to Dillon).
+
+**Net conclusion:** the curve→carry relationship (draws carry farther,
+fades come up short) looks like it may be universal after all — the
+earlier "two real golfers disagree" framing was likely an artifact of
+not knowing this golfer's handedness, not a real per-golfer difference.
+Still can't be fully certain without ground truth on handedness, but the
+corrected sign fits Dillon's measured range far too well to be
+coincidence. `_DEFAULT_CURVE_CARRY_SLOPE` and the "two datasets disagree
+on sign" framing in the Weak/assumed section above should probably be
+revisited with this in mind — worth a note to Bryant.
+
 **Remaining milestones, in order:**
-2. Seed into Supabase — `simulated_shots` + `golfer_profiles` tables,
-   dispersion percentile SQL, club-distribution-overlap view. Must be
-   done in SQL per the project spec.
-3. Browser rendering — yards→pixels coordinate transform on the Golf OS
-   site, plus the T-box estimator and QA (are sampled points inside the
-   polygon?).
 4. Aim-point optimization — simulate 1,000 shots per candidate aim
    point, score against hazard costs, grid-search for the optimum.
 5. Calibration screen — golfers enter real shots in the app, model
@@ -116,16 +255,48 @@ and a session drift redrawn every ~60 shots.
   part of the model.
 - **`_CLUB_DISTANCE_RATIO`** — per-club distance consistency comes from
   ONE golfer, because no source breaks distance dispersion out by club.
-- **`_DEFAULT_CURVE_CARRY_SLOPE` (−0.20)** — deliberately weak. Two
-  datasets disagree on the *sign*. Dillon shows draws farther; the
-  Kaggle golfer shows the opposite. With ball speed controlled his
-  effect shrinks from −0.32 to −0.26 and one club flips. Calibrated
-  profiles fit it per club, which is the reliable path.
+- **`_DEFAULT_CURVE_CARRY_SLOPE` (−0.20)** — deliberately weak, still
+  unverified as a shared constant. Originally flagged because Dillon's
+  data and the Kaggle golfer's disagreed on *sign* — but a 2026-09-09
+  recheck (see Status: Kaggle-set comparison) found the Kaggle golfer's
+  sign flips to match Dillon's (-0.395, inside his real -0.892 to -0.288
+  range) once the data is mirrored under a left-handed hypothesis. So
+  the disagreement may have been a handedness artifact, not evidence
+  that golfers genuinely differ in sign — real handedness data would
+  settle it. Calibrated profiles still fit this per golfer regardless,
+  which stays the reliable path either way.
 - **Carry CV** — varies 3× between Dillon's own sessions (0.014 to
   0.044). The tier value is a compromise, not a measurement.
 
 ## Known limitations
 
+- **Fixed 2026-09-09: dispersion charts wasted most of their canvas.**
+  Both `/simulator` and `/simulator/compare` always drew the Y-axis from
+  literal 0 (the tee) up to the club's max carry. For a 163y-average
+  7-Iron, that's a ~0-200y range where the actual shot cluster (roughly
+  140-180y) only fills the top ~20% of the canvas — everything below was
+  empty fairway. Dillon caught it from a screenshot. Fixed by windowing
+  the visible range to `[min observed carry, max observed carry]` with a
+  small pad, instead of always anchoring at the tee — `DispersionCanvas`
+  and `OverlayCanvas` both take an optional `minCarryYds` now, and the
+  gridline step auto-adjusts (aims for ~5 lines) instead of a fixed 50y
+  step that showed zero or one line once zoomed in. Verified via DOM
+  inspection (circle cy spread, gridline density) since the preview
+  pane's screenshot was stale during this check — the polygon QA math
+  itself lives entirely in yard-space and was unaffected either way.
+- **Fixed 2026-09-01: mishit floor-clamp bug.** The carry floor clamp
+  (worst case ~90% of mean, evidence-backed) was squashing *every*
+  below-floor shot back up to within 8% of the floor — including shots
+  already flagged `is_mishit`, which have their own dedicated distance-
+  loss penalty meant to let a true chunk/thin go meaningfully short.
+  The two mechanisms fought each other, producing a visible flat "wall"
+  at the bottom of each club's dispersion plot instead of a natural
+  tapering tail. Fix: mishit-flagged shots now skip the floor clamp
+  (`synthetic_golfer.py`, ~line 771). Verified: worst mishits now land
+  64–77% of mean depending on club, instead of all clustering ~88-90%.
+  Only affects handicap/band-based generation (mishit_rate > 0) — the
+  calibrated (real-data) profile already runs mishit_rate=0 by design,
+  so the Supabase-seeded dataset was never affected and needs no re-seed.
 - **One golfer.** Several tables rest on Dillon's data alone. Getting
   teammates' launch-monitor sessions is the single highest-value next
   step — it's the only way to tell which measured patterns are *human*
