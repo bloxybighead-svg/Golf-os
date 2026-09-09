@@ -172,6 +172,33 @@ coincidence. `_DEFAULT_CURVE_CARRY_SLOPE` and the "two datasets disagree
 on sign" framing in the Weak/assumed section above should probably be
 revisited with this in mind — worth a note to Bryant.
 
+**Custom Golfer tool + real course lookup added (2026-09-09):**
+- `app/simulator/custom` — the browser now has the same "plug in
+  handicap + carries, generate" flow as `generate_shots.py --handicap N
+  --carry CLUB=YDS`, running fully client-side. Required porting the
+  handicap/band path of `synthetic_golfer.py` (not the calibrated/
+  real-data path — that has no browser equivalent since it needs a real
+  golfer's shot history) to TypeScript: `lib/golfer/tables.ts`
+  (DEFAULT_PROFILES, handicap interpolation, scale-to-carries),
+  `lib/golfer/generate.ts` (the carry/direction/curve/clamp sampling
+  loop, including the exponential floor taper), `lib/golfer/build.ts`
+  (ties them together). Cross-checked against the real Python model for
+  the same inputs (handicap 8, Driver=260, seed 1, n=4000): Python
+  mean=260.07/sd=16.98/offline_sd=28.54 vs TS mean=260.30/sd=16.75/
+  offline_sd=28.99 — within normal sampling noise, not a systematic
+  drift. 15 new vitest tests (41 total). Nothing generated here is
+  persisted to Supabase — it's an exploratory tool, ephemeral by design.
+- T-box estimator can now search a real course and auto-fill every tee's
+  actual rating/slope/par/yardage, instead of manual entry only. Found
+  [OpenGolfAPI](https://opengolfapi.org) (free, keyless, ODbL-licensed,
+  16,800+ US courses) after checking it actually works live, not just
+  trusting its marketing page. Proxied server-side through
+  `app/api/courses/search` and `app/api/courses/[id]/tees` (keeps the
+  browser from talking to a third party directly, avoids CORS). Hit and
+  fixed a real bug: OpenGolfAPI's `name` field isn't reliably populated
+  (multi-word queries like "Spyglass Hill" only return `course_name`) --
+  route now prefers `course_name` with a fallback chain.
+
 **Remaining milestones, in order:**
 4. Aim-point optimization — simulate 1,000 shots per candidate aim
    point, score against hazard costs, grid-search for the optimum.
