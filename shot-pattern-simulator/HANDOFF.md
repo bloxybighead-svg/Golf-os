@@ -270,20 +270,54 @@ and a session drift redrawn every ~60 shots.
 
 ## Known limitations
 
-- **Fixed 2026-09-09: dispersion charts wasted most of their canvas.**
-  Both `/simulator` and `/simulator/compare` always drew the Y-axis from
-  literal 0 (the tee) up to the club's max carry. For a 163y-average
-  7-Iron, that's a ~0-200y range where the actual shot cluster (roughly
-  140-180y) only fills the top ~20% of the canvas — everything below was
-  empty fairway. Dillon caught it from a screenshot. Fixed by windowing
-  the visible range to `[min observed carry, max observed carry]` with a
-  small pad, instead of always anchoring at the tee — `DispersionCanvas`
-  and `OverlayCanvas` both take an optional `minCarryYds` now, and the
-  gridline step auto-adjusts (aims for ~5 lines) instead of a fixed 50y
-  step that showed zero or one line once zoomed in. Verified via DOM
-  inspection (circle cy spread, gridline density) since the preview
-  pane's screenshot was stale during this check — the polygon QA math
-  itself lives entirely in yard-space and was unaffected either way.
+- **Fixed 2026-09-09: floor-clamp squash still walled the calibrated
+  profile.** The 2026-09-01 mishit-floor fix only exempted shots flagged
+  `is_mishit` -- but calibrated profiles (Dillon's, and any real-data
+  fit) run `mishit_rate=0` by design, so literally every one of their
+  shots went through the *original* tight 0.08 linear squash below the
+  floor, still producing a visible horizontal wall (confirmed at exactly
+  the floor value, 245.5y for Driver). Root cause turned out deeper than
+  the squash *ratio*: **any** fixed-ratio linear squash creates a density
+  spike at the floor, because it compresses a wide spread of raw
+  deficits into a narrow output band -- tightening or loosening the
+  ratio only changes how visible the spike is (tested 0.12, still
+  visibly walled), never removes it. Replaced with a smooth exponential
+  taper (`floor - scale*(1-exp(-deficit/scale))`) whose derivative
+  matches the unclamped side exactly at the floor (=1), so there's no
+  seam for density to pile up against. Verified via histogram (smooth,
+  unimodal, no spike) and a fresh plot. Required regenerating and
+  reseeding both golfers' full bags (~2,200 shots/club, every club now,
+  not just the 8 previously "deep" ones -- 24,200 rows for Dillon,
+  26,400 for the band-2-4 stand-in).
+- **Fixed 2026-09-09 (round 1): dispersion charts wasted most of their
+  canvas.** Both `/simulator` and `/simulator/compare` always drew the
+  Y-axis from literal 0 (the tee) up to the club's max carry. For a
+  163y-average 7-Iron, that's a ~0-200y range where the actual shot
+  cluster (roughly 140-180y) only fills the top ~20% of the canvas —
+  everything below was empty fairway. Dillon caught it from a
+  screenshot. Fixed by windowing the visible range to `[min observed
+  carry, max observed carry]` with a small pad, instead of always
+  anchoring at the tee — `minCarryYds` prop, gridline step auto-adjusts.
+  Verified via DOM inspection (circle cy spread, gridline density) at
+  the time — which turned out to be an *incomplete* verification (see
+  round 2): it confirmed the Y-window was right but didn't catch that
+  the canvas was still often mostly empty for an unrelated reason.
+- **Fixed 2026-09-09 (round 2): canvas still wasn't filled or
+  centered.** Dillon caught this too, from a live screenshot round 1's
+  DOM check missed. Root cause: keeping one shared px/yd scale on both
+  axes (so dispersion shape isn't visually stretched) while *also*
+  fixing both width and height independently means whichever axis has
+  more yards-per-its-own-pixel-budget just sits empty — for Driver,
+  offline spread is wide relative to a (now correctly windowed) narrow
+  carry span, so the X axis became the binding constraint and most of a
+  fixed 720px-tall canvas went unused, with content crammed at the
+  bottom. Fixed by deriving canvas height from the data's own aspect
+  ratio instead of a fixed number: start from the scale that exactly
+  fills the width, size height to match, only clamp for
+  extremely tall/short cases (with any clamp-induced slack centered, not
+  dumped on one edge). `DispersionCanvas`/`OverlayCanvas` now take
+  `maxHeightPx` (a ceiling) instead of a fixed `heightPx`. Verified this
+  time with an actual rendered screenshot, not just DOM geometry.
 - **Fixed 2026-09-01: mishit floor-clamp bug.** The carry floor clamp
   (worst case ~90% of mean, evidence-backed) was squashing *every*
   below-floor shot back up to within 8% of the floor — including shots
