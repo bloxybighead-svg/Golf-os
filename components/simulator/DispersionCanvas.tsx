@@ -13,48 +13,58 @@ interface Props {
   shots: DispersionShot[]
   fairway: YardPolygonPoint[]
   widthPx?: number
-  heightPx?: number
+  maxHeightPx?: number // ceiling on the canvas height, not a fixed value -- see layout()
   minCarryYds?: number // bottom of the visible window; default 0 (the tee)
   maxCarryYds: number // top of the visible window; also sets the scale
   widthYds: number // full left-right span shown, centered on 0
 }
 
+const MARGIN = 20
+const MIN_HEIGHT_PX = 320
+
 // Every yards<->pixels conversion in this component funnels through this
 // one TransformConfig so the origin/scale are defined in exactly one
-// place, per the "explicit coordinate transform" requirement. The
-// visible window is [minCarryYds, maxCarryYds], not always [0, max] --
-// for a short club, always starting at the literal tee wastes most of
-// the canvas on empty fairway between 0 and wherever the shots actually
-// are. The tee (carry = 0) may fall outside the window and simply won't
-// render, which is fine.
-function buildTransform(
-  widthPx: number,
-  heightPx: number,
-  minCarryYds: number,
-  maxCarryYds: number,
-  widthYds: number
-): TransformConfig {
-  const margin = 20
+// place, per the "explicit coordinate transform" requirement.
+//
+// The canvas height is DERIVED from the data's aspect ratio, not a fixed
+// number: picking one shared scale for both axes (so dispersion shape
+// isn't visually stretched) while ALSO fixing both width and height
+// independently means whichever axis is over-provisioned relative to its
+// own yard-span just sits empty -- for Driver's wide offline spread vs a
+// tightly-windowed carry span, that left most of a fixed 720px-tall
+// canvas blank, with all the content crammed into a small band. Instead:
+// start from the scale that exactly fills the width, size the height to
+// exactly match what that scale needs, and only clamp if that height
+// would be unreasonably tall/short -- any leftover slack from clamping
+// gets centered instead of dumped on one side.
+function layout(widthPx: number, maxHeightPx: number, minCarryYds: number, maxCarryYds: number, widthYds: number) {
   const carrySpan = Math.max(maxCarryYds - minCarryYds, 1)
-  const scaleX = widthPx / widthYds
-  const scaleY = (heightPx - margin * 2) / carrySpan
-  const scale = Math.min(scaleX, scaleY) // keep yards-per-pixel equal on both axes so shapes aren't stretched
-  // Solve for the origin (carry = 0) pixel-y from "carry = minCarryYds must land at heightPx - margin":
-  // y = originY - carry*scale  =>  originY = y + carry*scale
-  const originY = heightPx - margin + minCarryYds * scale
-  return { originX: widthPx / 2, originY, scale }
+  const idealScale = widthPx / widthYds
+  let heightPx = carrySpan * idealScale + MARGIN * 2
+  let scale = idealScale
+  if (heightPx > maxHeightPx) {
+    heightPx = maxHeightPx
+    scale = (heightPx - MARGIN * 2) / carrySpan // now < idealScale; leaves centered horizontal padding
+  } else if (heightPx < MIN_HEIGHT_PX) {
+    heightPx = MIN_HEIGHT_PX // keep scale as-is; leaves centered vertical padding, computed below
+  }
+  const usedContentHeight = carrySpan * scale
+  const verticalPadding = (heightPx - usedContentHeight) / 2
+  // Solve for the origin (carry = 0) pixel-y from "carry = minCarryYds lands at heightPx - verticalPadding":
+  const originY = heightPx - verticalPadding + minCarryYds * scale
+  return { heightPx, cfg: { originX: widthPx / 2, originY, scale } as TransformConfig }
 }
 
 export function DispersionCanvas({
   shots,
   fairway,
   widthPx = 640,
-  heightPx = 720,
+  maxHeightPx = 640,
   minCarryYds = 0,
   maxCarryYds,
   widthYds,
 }: Props) {
-  const cfg = buildTransform(widthPx, heightPx, minCarryYds, maxCarryYds, widthYds)
+  const { heightPx, cfg } = layout(widthPx, maxHeightPx, minCarryYds, maxCarryYds, widthYds)
   const fairwayPx = fairway.map((p) => yardsToPixels({ carryYds: p.carryYds, offlineYds: p.offlineYds }, cfg))
   const fairwayPath = fairwayPx.map((p) => `${p.x},${p.y}`).join(" ")
   const tee = yardsToPixels({ carryYds: 0, offlineYds: 0 }, cfg)

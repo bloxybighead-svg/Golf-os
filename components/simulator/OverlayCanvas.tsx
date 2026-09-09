@@ -19,35 +19,40 @@ export interface OverlaySeries {
 interface Props {
   series: OverlaySeries[]
   widthPx?: number
-  heightPx?: number
+  maxHeightPx?: number // ceiling on the canvas height, not a fixed value -- see layout()
   minCarryYds?: number
   maxCarryYds: number
   widthYds: number
 }
 
+const MARGIN = 20
+const MIN_HEIGHT_PX = 320
+
 // Same single-source-of-truth transform pattern as DispersionCanvas: every
-// point on this chart (any series, any color) goes through this one config.
-// The visible window is [minCarryYds, maxCarryYds], not always [0, max] --
-// see DispersionCanvas for why (otherwise short clubs render as a tiny
-// cluster at the top of a mostly-empty canvas).
-function buildTransform(
-  widthPx: number,
-  heightPx: number,
-  minCarryYds: number,
-  maxCarryYds: number,
-  widthYds: number
-): TransformConfig {
-  const margin = 20
+// point on this chart (any series, any color) goes through this one
+// config, and the canvas height is derived from the data's aspect ratio
+// rather than fixed -- see DispersionCanvas.layout() for why a fixed
+// width+height pair leaves whichever axis is over-provisioned empty
+// instead of centering the content.
+function layout(widthPx: number, maxHeightPx: number, minCarryYds: number, maxCarryYds: number, widthYds: number) {
   const carrySpan = Math.max(maxCarryYds - minCarryYds, 1)
-  const scaleX = widthPx / widthYds
-  const scaleY = (heightPx - margin * 2) / carrySpan
-  const scale = Math.min(scaleX, scaleY)
-  const originY = heightPx - margin + minCarryYds * scale
-  return { originX: widthPx / 2, originY, scale }
+  const idealScale = widthPx / widthYds
+  let heightPx = carrySpan * idealScale + MARGIN * 2
+  let scale = idealScale
+  if (heightPx > maxHeightPx) {
+    heightPx = maxHeightPx
+    scale = (heightPx - MARGIN * 2) / carrySpan
+  } else if (heightPx < MIN_HEIGHT_PX) {
+    heightPx = MIN_HEIGHT_PX
+  }
+  const usedContentHeight = carrySpan * scale
+  const verticalPadding = (heightPx - usedContentHeight) / 2
+  const originY = heightPx - verticalPadding + minCarryYds * scale
+  return { heightPx, cfg: { originX: widthPx / 2, originY, scale } as TransformConfig }
 }
 
-export function OverlayCanvas({ series, widthPx = 640, heightPx = 640, minCarryYds = 0, maxCarryYds, widthYds }: Props) {
-  const cfg = buildTransform(widthPx, heightPx, minCarryYds, maxCarryYds, widthYds)
+export function OverlayCanvas({ series, widthPx = 640, maxHeightPx = 640, minCarryYds = 0, maxCarryYds, widthYds }: Props) {
+  const { heightPx, cfg } = layout(widthPx, maxHeightPx, minCarryYds, maxCarryYds, widthYds)
   const tee = yardsToPixels({ carryYds: 0, offlineYds: 0 }, cfg)
 
   const NICE_STEPS = [5, 10, 25, 50, 100]
