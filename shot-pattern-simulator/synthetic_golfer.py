@@ -768,8 +768,18 @@ class SyntheticGolfer:
             # because the measured lower bound is much harder: across
             # 159 driver and 62 7-iron shots, NOTHING came in below 90%
             # of the mean.
+            #
+            # This floor represents a normal full swing that makes clean
+            # contact -- the range data it's measured from doesn't contain
+            # real duffs (those happen on course, not on a mat). A shot
+            # already flagged is_mishit has its own one-sided strike
+            # penalty above (line ~688) specifically to let a true chunk
+            # or thin go meaningfully short; squashing it back up to this
+            # floor would cancel that out and make every mishit land in
+            # a near-identical spot just below the floor line instead of
+            # a natural, tapering short tail. So mishits skip this clamp.
             floor = profile["mean_carry"] * (1.0 - _MIN_CARRY_K * profile["distance_cv"])
-            if carry_yds < floor:
+            if carry_yds < floor and not is_mishit:
                 carry_yds = floor - (floor - carry_yds) * 0.08
 
             offline_yds = carry_yds * np.tan(np.radians(start_line_deg)) + curve_yds
