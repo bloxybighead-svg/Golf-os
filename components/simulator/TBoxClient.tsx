@@ -22,10 +22,77 @@ const DEFAULT_TEES: TeeOption[] = [
   { name: "White", totalYardage: 6000, courseRating: 69.0, slopeRating: 122, par: 72 },
 ]
 
+interface CourseSearchResult {
+  id: string
+  name: string
+  city: string | null
+  state: string | null
+  par: number | null
+}
+
+interface OpenGolfApiTee {
+  tee_name: string
+  gender: string
+  course_rating: number
+  slope: number
+  par: number
+  yardage: number
+}
+
 export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
   const [handicapIndex, setHandicapIndex] = useState(10)
   const [driverCarryYds, setDriverCarryYds] = useState(defaultDriverCarryYds ?? 230)
   const [tees, setTees] = useState<TeeOption[]>(DEFAULT_TEES)
+  const [activeCourseName, setActiveCourseName] = useState<string | null>(null)
+
+  const [query, setQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<CourseSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [loadingTees, setLoadingTees] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
+
+  async function searchCourses() {
+    if (query.trim().length < 2) return
+    setSearching(true)
+    setSearchError(null)
+    try {
+      const res = await fetch(`/api/courses/search?q=${encodeURIComponent(query)}`)
+      const data = await res.json()
+      setSearchResults(data.courses ?? [])
+    } catch {
+      setSearchError("Search failed — try again.")
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  async function loadRealCourse(course: CourseSearchResult) {
+    setLoadingTees(true)
+    setSearchError(null)
+    try {
+      const res = await fetch(`/api/courses/${course.id}/tees`)
+      const data = await res.json()
+      const realTees: TeeOption[] = (data.tees ?? []).map((t: OpenGolfApiTee) => ({
+        name: t.gender === "Female" ? `${t.tee_name} (W)` : t.tee_name,
+        totalYardage: t.yardage,
+        courseRating: t.course_rating,
+        slopeRating: t.slope,
+        par: t.par,
+      }))
+      if (realTees.length === 0) {
+        setSearchError(`${course.name} has no tee data in OpenGolfAPI yet — try manual entry below.`)
+        return
+      }
+      setTees(realTees)
+      setActiveCourseName(course.name)
+      setSearchResults([])
+      setQuery("")
+    } catch {
+      setSearchError("Couldn't load tee data — try again.")
+    } finally {
+      setLoadingTees(false)
+    }
+  }
 
   const result = useMemo(() => {
     try {
@@ -36,10 +103,12 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
   }, [handicapIndex, driverCarryYds, tees])
 
   function updateTee(i: number, patch: Partial<TeeOption>) {
+    setActiveCourseName(null) // no longer exactly the real course's tees once hand-edited
     setTees((prev) => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)))
   }
 
   function addTee() {
+    setActiveCourseName(null)
     setTees((prev) => [...prev, { name: `Tee ${prev.length + 1}`, totalYardage: 6000, courseRating: 70, slopeRating: 125, par: 72 }])
   }
 
@@ -48,6 +117,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
   }
 
   function loadCourse(course: KnownCourse) {
+    setActiveCourseName(null)
     setTees((prev) => [
       ...prev,
       { name: course.courseName, totalYardage: 6000, courseRating: course.courseRating, slopeRating: course.slopeRating, par: course.par },
@@ -97,24 +167,76 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
         )}
       </div>
 
-      {knownCourses.length > 0 && (
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-4">
-          <p className="mb-2 text-xs font-medium text-[#6b7280]">
-            Load rating/slope/par from a course you&rsquo;ve already logged (yardage still needs to be entered):
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {knownCourses.map((c) => (
+      <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-4">
+        <p className="mb-2 text-xs font-medium text-[#6b7280]">
+          Search a real course &mdash; pulls every tee&rsquo;s actual rating, slope, par, and yardage automatically
+          (via{" "}
+          <a href="https://opengolfapi.org" target="_blank" rel="noreferrer" className="underline">
+            OpenGolfAPI
+          </a>
+          , free &amp; keyless):
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && searchCourses()}
+            placeholder="e.g. Pebble Beach"
+            className="flex-1 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+          />
+          <button
+            onClick={searchCourses}
+            disabled={searching}
+            className="rounded-lg bg-[#22c55e] px-4 py-1.5 text-sm font-semibold text-black disabled:opacity-50"
+          >
+            {searching ? "Searching..." : "Search"}
+          </button>
+        </div>
+
+        {searchError && <p className="mt-2 text-xs text-yellow-500">{searchError}</p>}
+
+        {searchResults.length > 0 && (
+          <div className="mt-3 space-y-1">
+            {searchResults.map((c) => (
               <button
-                key={c.courseName}
-                onClick={() => loadCourse(c)}
-                className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-xs text-[#d1d5db] hover:border-[#22c55e]/50 hover:text-white"
+                key={c.id}
+                onClick={() => loadRealCourse(c)}
+                disabled={loadingTees}
+                className="block w-full rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-2 text-left text-sm text-[#d1d5db] hover:border-[#22c55e]/50 hover:text-white disabled:opacity-50"
               >
-                {c.courseName} ({c.courseRating}/{c.slopeRating})
+                {c.name}
+                {c.city && <span className="text-[#6b7280]"> &middot; {c.city}, {c.state}</span>}
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+
+        {activeCourseName && (
+          <p className="mt-3 text-xs text-[#22c55e]">
+            Showing real tees for <strong>{activeCourseName}</strong>
+          </p>
+        )}
+
+        {knownCourses.length > 0 && (
+          <>
+            <p className="mb-2 mt-4 text-xs font-medium text-[#6b7280]">
+              Or load rating/slope/par from a course you&rsquo;ve already logged (yardage still needs manual entry
+              — logged rounds don&rsquo;t track it):
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {knownCourses.map((c) => (
+                <button
+                  key={c.courseName}
+                  onClick={() => loadCourse(c)}
+                  className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-xs text-[#d1d5db] hover:border-[#22c55e]/50 hover:text-white"
+                >
+                  {c.courseName} ({c.courseRating}/{c.slopeRating})
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-[#111111]">
         <table className="w-full text-left text-sm">
