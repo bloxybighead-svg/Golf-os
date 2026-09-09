@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "golf-os-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:fast"],
+      "port": 3000
+    }
+  ]
+}
