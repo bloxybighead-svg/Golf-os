@@ -199,11 +199,60 @@ revisited with this in mind — worth a note to Bryant.
   (multi-word queries like "Spyglass Hill" only return `course_name`) --
   route now prefers `course_name` with a fallback chain.
 
+**Step 4 (aim-point optimization) + statistical validation, done
+(2026-09-19):**
+- `statistical_analysis.py` — three checks, all against real Dillon
+  shots (`reference_data/real_shots.csv`, full swings only):
+  1. **Significance tests** (simulated calibrated-profile output vs
+     real): two-sample t-test + two-sample KS test on carry and
+     offline, per club. Result: **11/11 clubs pass the KS test on both
+     carry and offline (p>0.05)** — the simulator's output is
+     statistically indistinguishable from the real data it's fit to.
+     No detectable bias from the skew/clamp/taper/curve-link machinery.
+  2. **Bootstrap 95% CIs** (percentile method, 5000 resamples) for
+     real-shot mean carry and SD, every club with n>=5.
+  3. **Power analysis**: for Driver (n=159) and 7-Iron (n=62),
+     subsample increasing real-shot counts and bootstrap the CI at each
+     n. Answer to "how many real shots before the fit means anything":
+     **mean carry CI half-width drops under ~2 yards around n=25-35 for
+     an iron, but needs ~100-130 for Driver** (driver's higher variance
+     needs more data for the same precision). SD estimates track
+     similarly. Clubs below ~15-20 real shots (PW n=10, 3-Wood n=11,
+     4-Iron n=7, 9-Iron n=5 in Dillon's own data) should be flagged as
+     low-confidence in any UI that surfaces calibrated profiles.
+  Also produced a visual distribution-overlap check (histograms,
+  simulated vs real, Driver + 7-Iron, carry and offline) — matches the
+  KS-test result visually. Added scipy as a dependency (t-test, KS
+  test) -- `pip install scipy`, now in requirements.txt.
+- `aim_point_optimizer.py` — grid search over aim point (offline x
+  carry offset from the pin, 11x5=55 candidates), 3,000 simulated
+  shots per candidate, scored against an **illustrative** hole: a green
+  guarded by a bunker (left) and water (right), with a simple
+  distance-to-pin cost model. Note the hole/hazard geometry AND the
+  stroke-cost numbers are placeholders (no real hole geometry exists
+  anywhere in this project) -- the point was proving the optimization
+  mechanics work correctly, not producing a course-accurate number.
+  Ran it two ways: Dillon's tight calibrated dispersion shows **no
+  significant benefit** to aiming off the pin (t-test p=0.696 vs the
+  pin-aim cell — the apparent 0.004-stroke "savings" is smaller than
+  the Monte Carlo noise at this sample size, so it can't be claimed as
+  real). A synthetic 22-handicap golfer through the same hole shows a
+  **real, significant** benefit (p=0.042, ~0.03 strokes/approach,
+  aiming short-left away from both hazards) — aim-point strategy
+  matters more the less consistent you are, which is the expected
+  shape of this result and a good sanity check that the mechanics are
+  right. This t-test-against-the-runner-up pattern is worth keeping any
+  time this reports an "optimal" grid cell -- a single Monte Carlo
+  estimate per cell can look different from its neighbors by chance
+  alone, and won't always be a real edge.
+
 **Remaining milestones, in order:**
-4. Aim-point optimization — simulate 1,000 shots per candidate aim
-   point, score against hazard costs, grid-search for the optimum.
 5. Calibration screen — golfers enter real shots in the app, model
    refits live. Then write the README and make the repo public.
+6. Real hole/hazard geometry for aim-point optimization (currently an
+   illustrative placeholder) and a cited stroke-cost model (currently a
+   simple distance-based stand-in) — both flagged above as the honest
+   next step if this needs to be more than a demo.
 
 The CSV schema (`club, carry_yds, offline_yds, start_line_deg,
 curve_yds, session_id, is_mishit`) is already shaped for step 2's
