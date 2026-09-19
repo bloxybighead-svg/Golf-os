@@ -20,6 +20,9 @@ from scipy import stats
 
 from synthetic_golfer import SyntheticGolfer
 
+pd.set_option("display.width", 200)
+pd.set_option("display.max_columns", 20)
+
 REAL_SHOTS_PATH = "reference_data/real_shots.csv"
 PROFILE_PATH = "reference_data/dillon_profile.json"
 BOOTSTRAP_ITERS = 5000
@@ -83,7 +86,6 @@ def section_1_significance_tests(real: pd.DataFrame) -> pd.DataFrame:
         )
 
     result = pd.DataFrame(rows).set_index("club").sort_values("n_real", ascending=False)
-    pd.set_option("display.width", 120)
     print(result.round(4))
 
     n_pass_carry = (result["carry_ks_p"] > 0.05).sum()
