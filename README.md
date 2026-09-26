@@ -122,6 +122,7 @@ Detailed numeric results for the last three are in [`STATISTICAL_ANALYSIS.md`](s
 | `/simulator` — dispersion charts with polygon QA | Yes |
 | `/simulator/compare` — two-golfer overlay + sample-size convergence demo | Yes |
 | `/simulator/tbox` — which tee to play, with real course search | Uses your `rounds` table; course search uses a free public API |
+| `/simulator/course` — search any course, stand anywhere on a satellite map, see which club to hit | Optional (falls back to a handicap-based golfer); course shapes come from OpenStreetMap |
 
 ## Quick start
 
