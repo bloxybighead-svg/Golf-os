@@ -136,15 +136,16 @@ export async function GET(req: NextRequest) {
     if (!els) return busy()
     geometry = parseOverpass(els, "radius")
   }
-  let stored = false
+  let writeStatus = "not-attempted"
   if (geometry.scope === "course-area") {
     cache.set(key, { at: Date.now(), body: geometry })
     // Only persist plausible single courses (9 or 18 holes): a boundary that
     // swallows several courses would otherwise be saved and served as wrong data.
     const plausible = geometry.holes.length === 9 || geometry.holes.length === 18
-    if (dbKey && plausible) stored = await writeCachedGeometry(dbKey, { name, lat: qLat, lng: qLng }, geometry)
+    if (dbKey && plausible) writeStatus = await writeCachedGeometry(dbKey, { name, lat: qLat, lng: qLng }, geometry)
   }
   return NextResponse.json(geometry, {
-    headers: { "Cache-Control": CDN, "X-Course-Cache": stored ? "miss-stored" : "miss" },
+    headers: { "Cache-Control": CDN, "X-Course-Cache": writeStatus === "stored" ? "miss-stored" : "miss",
+      "X-Course-Cache-Write": writeStatus.replace(/[^ -~]/g, " ") },
   })
 }

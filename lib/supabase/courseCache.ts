@@ -43,15 +43,19 @@ export async function readCachedGeometry(key: string): Promise<CourseGeometry | 
   }
 }
 
-/** Returns true if the geometry was stored. Silent no-op without the service key. */
+/**
+ * Returns "stored" on success, otherwise a short reason ("no-service-key" or
+ * the database error) that the route exposes in a response header so a
+ * misconfigured deploy is easy to diagnose.
+ */
 export async function writeCachedGeometry(
   key: string,
   meta: { name?: string; lat: number; lng: number },
   geometry: CourseGeometry
-): Promise<boolean> {
+): Promise<string> {
   try {
     const db = writeClient()
-    if (!db) return false
+    if (!db) return "no-service-key"
     const { error } = await db.from("course_geometry").upsert({
       course_key: key,
       name: meta.name ?? null,
@@ -60,8 +64,8 @@ export async function writeCachedGeometry(
       geometry,
       fetched_at: new Date().toISOString(),
     })
-    return !error
-  } catch {
-    return false
+    return error ? `db-error: ${error.message.slice(0, 80)}` : "stored"
+  } catch (e) {
+    return `exception: ${e instanceof Error ? e.message.slice(0, 80) : "unknown"}`
   }
 }
