@@ -10,4 +10,6 @@ export const LIE_COLORS: Record<Lie, string> = {
   rough: "#fbbf24",
   bunker: "#f472b6",
   water: "#38bdf8",
+  trees: "#c084fc",
+  oob: "#ef4444",
 }

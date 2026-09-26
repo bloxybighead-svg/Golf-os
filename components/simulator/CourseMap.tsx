@@ -18,6 +18,8 @@ const FEATURE_STYLE: Record<FeatureKind, L.PathOptions> = {
   bunker: { color: "#fde68a", weight: 1, fillColor: "#fde68a", fillOpacity: 0.45 },
   water: { color: "#38bdf8", weight: 1, fillColor: "#38bdf8", fillOpacity: 0.35 },
   tee: { color: "#d4d4d4", weight: 1, fillColor: "#d4d4d4", fillOpacity: 0.25 },
+  trees: { color: "#c084fc", weight: 1, fillColor: "#c084fc", fillOpacity: 0.12, dashArray: "3 4" },
+  range: { color: "#ef4444", weight: 1.5, fillColor: "#ef4444", fillOpacity: 0.18, dashArray: "6 4" },
 }
 
 interface Props {

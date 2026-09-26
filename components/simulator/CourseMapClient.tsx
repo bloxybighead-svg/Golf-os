@@ -10,10 +10,11 @@ import {
   lineLengthYds,
   pointAlongLine,
   ringCentroid,
+  toLocal,
   type LatLng,
 } from "@/lib/course/geo"
 import { buildLieMap, type Lie } from "@/lib/course/lies"
-import type { CourseGeometry, CourseHole } from "@/lib/course/overpass"
+import { GEOMETRY_VERSION, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
 import { seededSample } from "@/lib/dispersion/stats"
 import { generateCustomGolferShots } from "@/lib/golfer/build"
@@ -47,8 +48,35 @@ interface Props {
 
 const DOTS_SHOWN = 400
 const HANDICAP_SHOTS_PER_CLUB = 1000
-const LIES: Lie[] = ["green", "fairway", "rough", "bunker", "water"]
-const LIE_LABEL: Record<Lie, string> = { green: "Green", fairway: "Fairway", rough: "Rough", bunker: "Bunker", water: "Water" }
+const LIES: Lie[] = ["green", "fairway", "rough", "bunker", "water", "trees", "oob"]
+const LIE_LABEL: Record<Lie, string> = {
+  green: "Green",
+  fairway: "Fairway",
+  rough: "Rough",
+  bunker: "Bunker",
+  water: "Water",
+  trees: "Trees",
+  oob: "Out of bounds",
+}
+const LIE_SHORT: Record<Lie, string> = { green: "Grn", fairway: "Fwy", rough: "Rgh", bunker: "Bkr", water: "Wtr", trees: "Tre", oob: "OB" }
+const ALWAYS_SHOWN: Lie[] = ["green", "fairway", "rough"]
+const CORRIDOR_OPTIONS = [0, 30, 40, 50, 60] // yards each side of the hole line; 0 = off
+
+/** Distance in yards from a point to a polyline (planar approximation, fine at hole scale). */
+function distanceToLine(p: LatLng, line: LatLng[]): number {
+  const pt = toLocal(p, p) // origin at p
+  let best = Infinity
+  for (let i = 1; i < line.length; i++) {
+    const a = toLocal(p, line[i - 1])
+    const b = toLocal(p, line[i])
+    const dx = b.x - a.x
+    const dy = b.y - a.y
+    const len2 = dx * dx + dy * dy
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / len2))
+    best = Math.min(best, Math.hypot(a.x + t * dx - pt.x, a.y + t * dy - pt.y))
+  }
+  return best
+}
 
 function boundsOf(points: LatLng[]): [[number, number], [number, number]] | null {
   if (points.length === 0) return null
@@ -89,6 +117,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [pinManual, setPinManual] = useState<LatLng | null>(null)
   const [placing, setPlacing] = useState<Placing>("ball")
   const [clubChoice, setClubChoice] = useState<string>("auto")
+  const [corridorYds, setCorridorYds] = useState(40)
   const [aimNote, setAimNote] = useState<string | null>(null)
   const [gpsError, setGpsError] = useState("")
   const [fit, setFit] = useState<{ bounds: [[number, number], [number, number]] | null; key: string }>({
@@ -142,7 +171,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setLoadError("")
     // The free map-data servers are often busy. The API route keeps whatever
     // it already fetched, so retrying picks up where the last try stopped.
-    const url = `/api/courses/geometry?lat=${c.lat}&lng=${c.lng}&name=${encodeURIComponent(c.name)}&id=${encodeURIComponent(c.id)}`
+    const url = `/api/courses/geometry?lat=${c.lat}&lng=${c.lng}&name=${encodeURIComponent(c.name)}&id=${encodeURIComponent(c.id)}&v=${GEOMETRY_VERSION}`
     let lastError = "Could not load course map data"
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt > 0) setLoadError(`Map data server is busy, retrying (${attempt + 1}/3)…`)
@@ -233,9 +262,20 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const aim = aimManual ?? defaultAim
 
   // ---------- planning ----------
+  // The corridor only makes sense while the ball is inside it (someone
+  // standing in the trees shouldn't have every shot count as trees).
+  const corridor = useMemo(() => {
+    if (!hole || corridorYds === 0 || !ball) return undefined
+    const local = (p: LatLng) => distanceToLine(p, hole.line)
+    return local(ball) > corridorYds ? undefined : { line: hole.line, halfWidthYds: corridorYds }
+  }, [hole, corridorYds, ball])
+
   const lies = useMemo(
-    () => (course?.lat != null && course.lng != null ? buildLieMap({ lat: course.lat, lng: course.lng }, geometry?.features ?? [], geometry?.coast ?? []) : null),
-    [course, geometry]
+    () =>
+      course?.lat != null && course.lng != null
+        ? buildLieMap({ lat: course.lat, lng: course.lng }, geometry?.features ?? [], geometry?.coast ?? [], corridor)
+        : null,
+    [course, geometry, corridor]
   )
 
   const ranking = useMemo(() => {
@@ -243,6 +283,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     return rankClubs(clubShots, { from: ball, aim, pin, lies })
   }, [ball, aim, pin, lies, clubShots])
 
+  const shownLies = LIES.filter((l) => ALWAYS_SHOWN.includes(l) || ranking.some((r) => r.lieShare[l] >= 0.005))
   const chosen = ranking.find((r) => r.club === clubChoice) ?? ranking[0] ?? null
   const chosenShots = chosen ? clubShots.find((c) => c.club === chosen.club) : undefined
 
@@ -285,7 +326,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
   const stats = useMemo(() => {
     const count = (k: string) => (geometry?.features ?? []).filter((f) => f.kind === k).length
-    return { greens: count("green"), fairways: count("fairway"), bunkers: count("bunker"), water: count("water") }
+    return { greens: count("green"), fairways: count("fairway"), bunkers: count("bunker"), water: count("water"), trees: count("trees"), range: count("range") }
   }, [geometry])
 
   const distPin = ball && pin ? distanceYds(ball, pin) : null
@@ -391,7 +432,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           {geometry && (
             <span>
               {holes.length} holes · {stats.greens} greens · {stats.fairways} fairways · {stats.bunkers} bunkers ·{" "}
-              {stats.water} water
+              {stats.water} water · {stats.trees} tree areas{stats.range > 0 ? ` · ${stats.range} range/practice` : ""}
             </span>
           )}
         </div>
@@ -467,6 +508,24 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 Reset aim
               </button>
             )}
+            <label className="ml-auto flex items-center gap-1.5 text-[#6b7280]" title="Many courses have no trees mapped. Land farther than this from the hole line, and not mapped as anything else, counts as trees (punch-out).">
+              Trees beyond
+              <select
+                value={corridorYds}
+                onChange={(e) => {
+                  setCorridorYds(Number(e.target.value))
+                  setAimNote(null)
+                }}
+                className="rounded-md border border-white/[0.08] bg-[#0a0a0a] px-1.5 py-1 text-[#9ca3af]"
+              >
+                {CORRIDOR_OPTIONS.map((y) => (
+                  <option key={y} value={y}>
+                    {y === 0 ? "off" : `${y} yd`}
+                  </option>
+                ))}
+              </select>
+              of hole line
+            </label>
             {gpsError && <span className="text-red-400">{gpsError}</span>}
           </div>
           <div className="relative h-[68vh] min-h-[420px] overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a]">
@@ -572,9 +631,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                     <tr className="border-b border-white/[0.06] text-left text-[#6b7280]">
                       <th className="px-2 py-2 font-medium">Club</th>
                       <th className="px-1 py-2 text-right font-medium">Carry</th>
-                      {LIES.map((l) => (
+                      {shownLies.map((l) => (
                         <th key={l} className="px-1 py-2 text-right font-medium" title={LIE_LABEL[l]}>
-                          {LIE_LABEL[l].slice(0, 3)}
+                          {LIE_SHORT[l]}
                         </th>
                       ))}
                       <th className="px-2 py-2 text-right font-medium" title="This shot plus expected strokes remaining">
@@ -596,7 +655,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                           {i === 0 && <span className="ml-1 text-[10px] text-[#22c55e]">★</span>}
                         </td>
                         <td className="px-1 py-1.5 text-right text-[#9ca3af]">{Math.round(r.meanCarryYds)}</td>
-                        {LIES.map((l) => (
+                        {shownLies.map((l) => (
                           <td key={l} className="px-1 py-1.5 text-right text-[#9ca3af]">
                             {pct(r.lieShare[l])}
                           </td>
@@ -608,10 +667,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 </table>
               </div>
               <p className="text-[11px] leading-relaxed text-[#6b7280]">
-                Clubs are ranked by expected strokes to hole out from where each simulated shot lands. The stroke
-                values are approximate placeholders (not yet tied to a published strokes-gained table) and the course
-                shapes come from OpenStreetMap volunteers, so treat close calls as ties. Trees, slope, wind and
-                elevation aren&rsquo;t modelled; anything not traced as green, fairway, bunker or water counts as rough.
+                Clubs are ranked by expected strokes to hole out from where each simulated shot lands. Water,
+                trees and out of bounds (a driving range or practice area) carry penalties; trees are mapped woods
+                plus, optionally, anything farther than the chosen distance from the hole line, because many courses
+                have no trees traced. The stroke values are approximate placeholders (not yet tied to a published
+                strokes-gained table) and the course shapes come from OpenStreetMap volunteers, so treat close calls
+                as ties. Slope, wind, elevation and individual trees aren&rsquo;t modelled; anything else unmapped
+                counts as rough.
               </p>
             </>
           )}

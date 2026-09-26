@@ -46,13 +46,14 @@ export function simulateLandings(shots: ShotSample[], from: LatLng, aimBearing: 
   })
 }
 
-function scoreLandings(club: string, shots: ShotSample[], landings: Landing[], pin: LatLng): ClubPlan {
-  const lieShare: Record<Lie, number> = { water: 0, bunker: 0, green: 0, fairway: 0, rough: 0 }
+function scoreLandings(club: string, shots: ShotSample[], landings: Landing[], from: LatLng, pin: LatLng): ClubPlan {
+  const lieShare: Record<Lie, number> = { water: 0, oob: 0, bunker: 0, green: 0, fairway: 0, trees: 0, rough: 0 }
+  const originDist = distanceYds(from, pin)
   let strokes = 0
   let carry = 0
   landings.forEach((l, i) => {
     lieShare[l.lie] += 1
-    strokes += 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin))
+    strokes += 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), originDist)
     carry += shots[i].carryYds
   })
   const n = landings.length || 1
@@ -63,7 +64,7 @@ function scoreLandings(club: string, shots: ShotSample[], landings: Landing[], p
 export function evaluateClub(club: ClubShots, ctx: PlanContext, aimBearingOverride?: number): ClubPlan {
   const bearing = aimBearingOverride ?? bearingDeg(ctx.from, ctx.aim)
   const landings = simulateLandings(club.shots, ctx.from, bearing, ctx.lies)
-  return scoreLandings(club.club, club.shots, landings, ctx.pin)
+  return scoreLandings(club.club, club.shots, landings, ctx.from, ctx.pin)
 }
 
 /** Every club, best (lowest expected strokes) first. */

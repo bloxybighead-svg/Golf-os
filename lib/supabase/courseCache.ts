@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import type { CourseGeometry } from "@/lib/course/overpass"
+import { GEOMETRY_VERSION, type CourseGeometry } from "@/lib/course/overpass"
 
 // Persistent cache of course geometry in Supabase (table course_geometry).
 // Reads use the public anon key (the table is public-read). Writes need the
@@ -37,7 +37,9 @@ export async function readCachedGeometry(key: string): Promise<CourseGeometry | 
     if (error || !data) return null
     if (Date.now() - new Date(data.fetched_at).getTime() > CACHE_MAX_AGE_MS) return null
     const g = data.geometry as CourseGeometry
-    return g && Array.isArray(g.holes) && g.holes.length > 0 ? { ...g, coast: g.coast ?? [] } : null
+    // Rows written by an older geometry version lack newer feature kinds (trees, range): refetch.
+    if (!g || g.version !== GEOMETRY_VERSION || !Array.isArray(g.holes) || g.holes.length === 0) return null
+    return { ...g, coast: g.coast ?? [] }
   } catch {
     return null
   }

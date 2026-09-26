@@ -35,11 +35,18 @@ function fairwayStrokes(distYds: number): number {
   return 2.35 + 0.0045 * distYds
 }
 
-const ROUGH_PENALTY = 0.3
+const ROUGH_PENALTY = 0.4
 const BUNKER_PENALTY = 0.5
 const WATER_PENALTY = 1.0 // one penalty stroke, then play on from near where it entered
+const TREES_PENALTY = 1.0 // usually a punch-out sideways, sometimes a lost or unplayable ball
+const OOB_PENALTY = 1.0 // stroke and distance: one penalty stroke, then replay from where you hit
 
-export function expectedStrokesRemaining(lie: Lie, distToPinYds: number): number {
+/**
+ * Expected strokes remaining from a lie. `originDistYds` is the distance to
+ * the pin from where the shot was hit; only out-of-bounds needs it, because
+ * that shot is replayed from there.
+ */
+export function expectedStrokesRemaining(lie: Lie, distToPinYds: number, originDistYds = distToPinYds): number {
   switch (lie) {
     case "green":
       return puttingStrokes(distToPinYds * 3)
@@ -51,5 +58,9 @@ export function expectedStrokesRemaining(lie: Lie, distToPinYds: number): number
       return fairwayStrokes(distToPinYds) + BUNKER_PENALTY
     case "water":
       return fairwayStrokes(distToPinYds) + WATER_PENALTY
+    case "trees":
+      return fairwayStrokes(distToPinYds) + TREES_PENALTY
+    case "oob":
+      return OOB_PENALTY + fairwayStrokes(originDistYds)
   }
 }

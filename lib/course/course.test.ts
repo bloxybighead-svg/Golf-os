@@ -223,3 +223,67 @@ describe("parseCoast", () => {
     expect(lines.map((l) => l.length)).toEqual([2, 3])
   })
 })
+
+import { markPracticeAreas } from "./overpass"
+
+describe("trees, range and out of bounds", () => {
+  const pin = fromLocal(ORIGIN, { x: 0, y: 250 })
+  const holeLine = [ORIGIN, pin]
+
+  it("maps woods to trees and driving ranges to out of bounds; real surfaces beat woods", () => {
+    const woods = squareAround(fromLocal(ORIGIN, { x: 0, y: 100 }), 80)
+    const fairway = squareAround(fromLocal(ORIGIN, { x: 0, y: 100 }), 20)
+    const range = squareAround(fromLocal(ORIGIN, { x: 200, y: 100 }), 30)
+    const lies = buildLieMap(ORIGIN, [
+      { kind: "trees", ring: woods },
+      { kind: "fairway", ring: fairway },
+      { kind: "range", ring: range },
+    ])
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 0, y: 100 }))).toBe("fairway")
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 50, y: 100 }))).toBe("trees")
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 200, y: 100 }))).toBe("oob")
+  })
+
+  it("optional corridor turns unmapped land far from the hole line into trees", () => {
+    const lies = buildLieMap(ORIGIN, [], [], { line: holeLine, halfWidthYds: 40 })
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 25, y: 120 }))).toBe("rough")
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 60, y: 120 }))).toBe("trees")
+  })
+
+  it("reclassifies a fairway no hole line touches as a practice range", () => {
+    const real = squareAround(fromLocal(ORIGIN, { x: 0, y: 120 }), 15)
+    const practice = squareAround(fromLocal(ORIGIN, { x: 300, y: 120 }), 40)
+    const features = [
+      { kind: "fairway" as const, ring: real },
+      { kind: "fairway" as const, ring: practice },
+    ]
+    markPracticeAreas([{ id: "h1", ref: 1, par: 4, line: holeLine }], features)
+    expect(features.map((f) => f.kind)).toEqual(["fairway", "range"])
+    // no hole lines mapped -> nothing to compare against, leave as is
+    const f2 = [{ kind: "fairway" as const, ring: practice }]
+    markPracticeAreas([], f2)
+    expect(f2[0].kind).toBe("fairway")
+  })
+
+  it("penalises trees, and out of bounds costs a replay from where you hit", () => {
+    const fw = expectedStrokesRemaining("fairway", 100)
+    expect(expectedStrokesRemaining("trees", 100)).toBeGreaterThan(expectedStrokesRemaining("rough", 100))
+    expect(expectedStrokesRemaining("trees", 100)).toBeCloseTo(fw + 1.0, 5)
+    // OB from a 250 yd tee shot: 1 penalty + replaying from 250 yd, whatever the landing spot
+    expect(expectedStrokesRemaining("oob", 30, 250)).toBeCloseTo(1 + expectedStrokesRemaining("fairway", 250), 5)
+  })
+
+  it("a tight club beats a long, wide one when the trees start close", () => {
+    const rng = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
+    const r = rng(7)
+    const wide = Array.from({ length: 600 }, () => ({ carryYds: 265 + (r() - 0.5) * 20, offlineYds: (r() - 0.5) * 100 }))
+    const tight = Array.from({ length: 600 }, () => ({ carryYds: 215 + (r() - 0.5) * 12, offlineYds: (r() - 0.5) * 24 }))
+    const far = fromLocal(ORIGIN, { x: 0, y: 420 })
+    const lies = buildLieMap(ORIGIN, [], [], { line: [ORIGIN, far], halfWidthYds: 25 })
+    const [best] = rankClubs(
+      [{ club: "Driver", shots: wide }, { club: "7-Wood", shots: tight }],
+      { from: ORIGIN, aim: fromLocal(ORIGIN, { x: 0, y: 265 }), pin: far, lies }
+    )
+    expect(best.club).toBe("7-Wood")
+  })
+})

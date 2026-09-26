@@ -6,7 +6,7 @@
 import { pointInRing, toLocal, type LatLng, type XY } from "./geo"
 import type { CourseFeature } from "./overpass"
 
-export type Lie = "water" | "bunker" | "green" | "fairway" | "rough"
+export type Lie = "water" | "oob" | "bunker" | "green" | "fairway" | "trees" | "rough"
 
 interface PreparedRing {
   ring: XY[]
@@ -24,10 +24,12 @@ export interface LieMap {
 // fairway is a bunker; a green inside a fairway polygon is a green).
 const PRIORITY: { kind: CourseFeature["kind"]; lie: Lie }[] = [
   { kind: "water", lie: "water" },
+  { kind: "range", lie: "oob" },
   { kind: "bunker", lie: "bunker" },
   { kind: "green", lie: "green" },
   { kind: "fairway", lie: "fairway" },
   { kind: "tee", lie: "fairway" },
+  { kind: "trees", lie: "trees" }, // mapped woods only lose to real playing surfaces
 ]
 
 const COAST_MAX_YDS = 1500 // farther than this from any coastline segment, don't guess
@@ -62,7 +64,33 @@ function onSeaSide(x: number, y: number, segs: Segment[]): boolean {
   return sea
 }
 
-export function buildLieMap(origin: LatLng, features: CourseFeature[], coast: LatLng[][] = []): LieMap {
+export interface Corridor {
+  line: LatLng[] // the hole's centerline
+  halfWidthYds: number // land farther than this from it (and not mapped as anything) counts as trees
+}
+
+/** Shortest distance from (x, y) to a polyline given as XY points. */
+function distToPolyline(x: number, y: number, pts: XY[]): number {
+  let best = Infinity
+  for (let i = 1; i < pts.length; i++) {
+    const ax = pts[i - 1].x
+    const ay = pts[i - 1].y
+    const dx = pts[i].x - ax
+    const dy = pts[i].y - ay
+    const len2 = dx * dx + dy * dy
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2))
+    best = Math.min(best, Math.hypot(ax + t * dx - x, ay + t * dy - y))
+  }
+  return best
+}
+
+export function buildLieMap(
+  origin: LatLng,
+  features: CourseFeature[],
+  coast: LatLng[][] = [],
+  corridor?: Corridor
+): LieMap {
+  const corridorPts = corridor && corridor.line.length >= 2 ? corridor.line.map((p) => toLocal(origin, p)) : null
   const segs: Segment[] = []
   for (const line of coast) {
     const pts = line.map((p) => toLocal(origin, p))
@@ -99,7 +127,11 @@ export function buildLieMap(origin: LatLng, features: CourseFeature[], coast: La
           if (pointInRing(x, y, r.ring)) return lie
         }
       }
-      return segs.length > 0 && onSeaSide(x, y, segs) ? "water" : "rough"
+      if (segs.length > 0 && onSeaSide(x, y, segs)) return "water"
+      // Nothing mapped here. Many courses have no tree polygons at all, so
+      // optionally treat land well away from the hole as trees.
+      if (corridorPts && corridor && distToPolyline(x, y, corridorPts) > corridor.halfWidthYds) return "trees"
+      return "rough"
     },
   }
 }

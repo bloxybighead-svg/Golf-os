@@ -5,9 +5,14 @@
 // bunker traced, some only the hole centerlines -- so the parser reports
 // what it found instead of assuming.
 
-import type { LatLng } from "./geo"
+import { distanceYds, pointInRing, toLocal, type LatLng } from "./geo"
 
-export type FeatureKind = "green" | "fairway" | "bunker" | "water" | "tee"
+// "trees": mapped woods/forest (punch-out or lost ball). "range": driving range
+// or practice area -- out of play, treated as out of bounds.
+export type FeatureKind = "green" | "fairway" | "bunker" | "water" | "tee" | "trees" | "range"
+
+/** Bump when the shape or meaning of CourseGeometry changes; older cached rows are refetched. */
+export const GEOMETRY_VERSION = 2
 
 export interface CourseFeature {
   kind: FeatureKind
@@ -30,6 +35,7 @@ export interface CourseGeometry {
    */
   coast: LatLng[][]
   scope: "course-area" | "radius" // how the features were selected
+  version: number
 }
 
 interface OverpassGeomPoint {
@@ -70,8 +76,11 @@ function featureKind(tags: Record<string, string>): FeatureKind | null {
     case "water_hazard":
     case "lateral_water_hazard":
       return "water"
+    case "driving_range":
+      return "range"
   }
   if (tags.natural === "water") return "water"
+  if (tags.natural === "wood" || tags.landuse === "forest") return "trees"
   return null
 }
 
@@ -112,7 +121,46 @@ export function parseOverpass(elements: OverpassElement[], scope: CourseGeometry
   }
 
   holes.sort((a, b) => (a.ref ?? 999) - (b.ref ?? 999))
-  return { holes, features, coast: [], scope }
+  markPracticeAreas(holes, features)
+  return { holes, features, coast: [], scope, version: GEOMETRY_VERSION }
+}
+
+const ORPHAN_SAMPLE_YDS = 10
+const ORPHAN_NEAR_YDS = 20
+
+/**
+ * OSM has no reliable tag for a range's landing area -- mappers often draw it
+ * as golf=fairway. A real fairway has a hole centerline running through (or
+ * right beside) it, so a "fairway" that no centerline touches is a practice
+ * area: reclassify it as "range" (out of play). Skipped when no hole lines
+ * are mapped, since then there is nothing to compare against.
+ */
+export function markPracticeAreas(holes: CourseHole[], features: CourseFeature[]): void {
+  if (holes.length === 0) return
+  const samples: LatLng[] = []
+  for (const h of holes) {
+    for (let i = 1; i < h.line.length; i++) {
+      const a = h.line[i - 1]
+      const b = h.line[i]
+      const len = distanceYds(a, b)
+      const n = Math.max(1, Math.ceil(len / ORPHAN_SAMPLE_YDS))
+      for (let k = 0; k <= n; k++) {
+        const t = k / n
+        samples.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t })
+      }
+    }
+  }
+  for (const f of features) {
+    if (f.kind !== "fairway") continue
+    const origin = f.ring[0]
+    const ring = f.ring.map((p) => toLocal(origin, p))
+    const touched = samples.some((s) => {
+      const q = toLocal(origin, s)
+      if (pointInRing(q.x, q.y, ring)) return true
+      return ring.some((v) => Math.hypot(v.x - q.x, v.y - q.y) < ORPHAN_NEAR_YDS)
+    })
+    if (!touched) f.kind = "range"
+  }
 }
 
 /** Nearby golf_course boundaries (with bounding boxes), used to pick the right course. */
@@ -166,7 +214,7 @@ export function pickBoundary(cands: CourseBoundary[], lat: number, lng: number, 
   return scored[0].c
 }
 
-const GOLF_TYPES = "hole|green|fairway|bunker|tee|water_hazard|lateral_water_hazard"
+const GOLF_TYPES = "hole|green|fairway|bunker|tee|water_hazard|lateral_water_hazard|driving_range"
 
 /**
  * Step 1 of loading a course: the ids of every mapped golf way (and water
@@ -181,7 +229,8 @@ export function courseWayIdsQuery(b: Pick<CourseBoundary, "type" | "id">): strin
 area(${areaId})->.c;
 (
   way(area.c)["golf"~"^(${GOLF_TYPES})$"];
-  way(area.c)["natural"="water"];
+  way(area.c)["natural"~"^(water|wood)$"];
+  way(area.c)["landuse"="forest"];
 );
 out ids;`
 }
@@ -198,7 +247,8 @@ export function radiusQuery(lat: number, lng: number, radiusM: number): string {
   return `[out:json][timeout:40];
 (
   way(around:${radiusM},${lat},${lng})["golf"];
-  way(around:${radiusM},${lat},${lng})["natural"="water"];
+  way(around:${radiusM},${lat},${lng})["natural"~"^(water|wood)$"];
+  way(around:${radiusM},${lat},${lng})["landuse"="forest"];
   relation(around:${radiusM},${lat},${lng})["natural"="water"];
 );
 out geom tags;`
