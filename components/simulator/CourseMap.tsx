@@ -30,6 +30,7 @@ interface Props {
   aim: LatLng | null
   pin: LatLng | null
   landings: Landing[]
+  labels: { pos: LatLng; text: string }[]
   placing: Placing
   fitBounds: [[number, number], [number, number]] | null
   fitKey: string
@@ -58,10 +59,12 @@ export default function CourseMap(props: Props) {
     features: L.LayerGroup
     holes: L.LayerGroup
     landings: L.LayerGroup
+    labels: L.LayerGroup
     ball?: L.Marker
     aim?: L.Marker
     pin?: L.Marker
     path?: L.Polyline
+    pinPath?: L.Polyline
   } | null>(null)
   const cb = useRef(props)
   cb.current = props
@@ -89,6 +92,7 @@ export default function CourseMap(props: Props) {
       features: L.layerGroup().addTo(map),
       holes: L.layerGroup().addTo(map),
       landings: L.layerGroup().addTo(map),
+      labels: L.layerGroup().addTo(map),
     }
     mapRef.current = map
     return () => {
@@ -164,6 +168,18 @@ export default function CourseMap(props: Props) {
 
     l.path?.remove()
     l.path = undefined
+    l.pinPath?.remove()
+    l.pinPath = undefined
+    // aim -> pin: what is left after a shot that lands on the aim point
+    if (props.aim && props.pin) {
+      l.pinPath = L.polyline([ll(props.aim), ll(props.pin)], {
+        color: "#ffffff",
+        weight: 2,
+        opacity: 0.8,
+        dashArray: "2 6",
+        interactive: false,
+      }).addTo(map)
+    }
     if (props.ball && props.aim) {
       l.path = L.polyline([ll(props.ball), ll(props.aim)], {
         color: "#facc15",
@@ -173,6 +189,24 @@ export default function CourseMap(props: Props) {
       }).addTo(map)
     }
   }, [props.ball, props.aim, props.pin])
+
+  // Yardage labels on the ball->aim and aim->pin lines.
+  useEffect(() => {
+    const g = layers.current?.labels
+    if (!g) return
+    g.clearLayers()
+    for (const lab of props.labels) {
+      L.marker(ll(lab.pos), {
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({
+          className: "",
+          iconSize: [0, 0],
+          html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;padding:2px 7px;border-radius:9999px;background:rgba(10,10,10,.82);border:1px solid rgba(255,255,255,.35);font:600 11px system-ui;color:#fff">${lab.text}</div>`,
+        }),
+      }).addTo(g)
+    }
+  }, [props.labels])
 
   // Simulated landing dots.
   useEffect(() => {

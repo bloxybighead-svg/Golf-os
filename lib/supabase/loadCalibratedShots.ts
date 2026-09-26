@@ -34,6 +34,7 @@ export async function loadCalibratedShots(
         .from("simulated_shots")
         .select("carry_yds, offline_yds")
         .eq("golfer_profile_id", p.id)
+        .order("id") // stable order, or paging can skip and repeat rows
         .range(from, from + 999)
       if (e) return null
       if (!page || page.length === 0) break

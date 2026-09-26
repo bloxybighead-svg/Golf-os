@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { DispersionCanvas } from "./DispersionCanvas"
 import { makeFairwayPolygon } from "@/lib/dispersion/polygon"
 import { generateCustomGolferShots } from "@/lib/golfer/build"
@@ -75,9 +74,6 @@ export function CustomGolferClient() {
             browser.
           </p>
         </div>
-        <Link href="/simulator" className="text-xs text-[#22c55e] hover:underline">
-          &larr; Dispersion Simulator
-        </Link>
       </div>
 
       <div className="space-y-4 rounded-xl border border-white/[0.06] bg-[#111111] p-4">

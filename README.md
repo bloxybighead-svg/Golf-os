@@ -15,7 +15,7 @@ Built as a school capstone extension by Dillon Cady, a 1.9–4 handicap golfer w
 | **Synthetic golfer model** (Python) | "Generate realistic shots for a golfer of handicap *H*, or with these carries, or fitted to my real shots." |
 | **Statistical validation** | "Do the simulated shots look like real ones, including on sessions the model never saw? How many real shots does a golfer need before a fitted profile can be trusted?" |
 | **Aim-point optimizer** | "Given my dispersion and this hole's hazards, is aiming at the pin actually the best strategy, and by how much?" |
-| **Browser tools** (`/simulator/*`) | Live dispersion charts, two-golfer comparison, a custom-golfer generator, and a tee-box recommender with real course lookup. |
+| **Browser tools** (`/planner/*`) | Live dispersion charts, two-golfer comparison, a custom-golfer generator, and a tee-box recommender with real course lookup. |
 | **Supabase backend** | Golfer profiles, simulated and real shots, and SQL views for dispersion stats and club-gapping analysis. |
 
 ## Key results
@@ -92,7 +92,7 @@ Parameters are anchored to published sources where they exist (Broadie's Golfmet
 | [`shot-pattern-simulator/`](shot-pattern-simulator/) | **The Python project.** The simulator model, calibration, statistical validation, and aim-point analysis. Everything in the research results is produced here. |
 | `shot-pattern-simulator/reference_data/` | Input data: the author's real shots (`real_shots.csv`), the fitted profile (`dillon_profile.json`), and a reference synthetic dataset used as a sanity check. |
 | `shot-pattern-simulator/output/` | Generated plots and CSVs (git-ignored; recreate by running the scripts). |
-| [`app/`](app/) | The Next.js website. `app/simulator/` holds the new pages; `app/api/courses/` proxies the free OpenGolfAPI for course search. The rest is the original Golf OS app. |
+| [`app/`](app/) | The Next.js website. `app/planner/` holds the new pages; `app/api/courses/` proxies the free OpenGolfAPI for course search. The rest is the original Golf OS app. |
 | [`components/simulator/`](components/simulator/) | React components: the SVG dispersion canvas, the two-golfer overlay, and the client pages. |
 | [`lib/`](lib/) | Tested TypeScript logic: `dispersion/` (yards↔pixels, point-in-polygon, stats), `golfer/` (browser port of the handicap model), `tbox/` (USGA Course Handicap and tee recommendation). |
 | [`supabase/`](supabase/) | SQL schemas, analytics views, and example queries. Run manually in the Supabase SQL editor. |
@@ -118,11 +118,11 @@ Detailed numeric results for the last three are in [`STATISTICAL_ANALYSIS.md`](s
 
 | Route | Needs seeded Supabase data? |
 |---|---|
-| `/simulator/custom` — enter a handicap and carries, generate live in the browser | No — runs fully client-side |
-| `/simulator` — dispersion charts with polygon QA | Yes |
-| `/simulator/compare` — two-golfer overlay + sample-size convergence demo | Yes |
-| `/simulator/tbox` — which tee to play, with real course search | Uses your `rounds` table; course search uses a free public API |
-| `/simulator/course` — search any course, stand anywhere on a satellite map, see which club to hit | Optional (falls back to a handicap-based golfer); course shapes come from OpenStreetMap |
+| `/planner/custom` — enter a handicap and carries, generate live in the browser | No — runs fully client-side |
+| `/planner/dispersion` — dispersion charts with polygon QA | Yes |
+| `/planner/compare` — two-golfer overlay + sample-size convergence demo | Yes |
+| `/planner/tbox` — which tee to play, with real course search | Uses your `rounds` table; course search uses a free public API |
+| `/planner` — search any course, stand anywhere on a satellite map, see which club to hit | Optional (falls back to a handicap-based golfer); course shapes come from OpenStreetMap |
 
 ## Quick start
 

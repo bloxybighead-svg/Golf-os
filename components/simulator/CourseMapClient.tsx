@@ -2,17 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react"
 import dynamic from "next/dynamic"
-import Link from "next/link"
 import {
   bearingDeg,
   distanceYds,
   landingPoint,
-  lineLengthYds,
-  pointAlongLine,
   ringCentroid,
   toLocal,
   type LatLng,
 } from "@/lib/course/geo"
+import { defaultTeeAim } from "@/lib/course/aim"
 import { buildLieMap, type Lie } from "@/lib/course/lies"
 import { GEOMETRY_VERSION, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
@@ -253,12 +251,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
   const defaultAim: LatLng | null = useMemo(() => {
     if (!pin) return null
-    if (hole && ball && distanceYds(ball, hole.line[0]) < 25 && lineLengthYds(hole.line) > longestCarry + 40) {
-      return pointAlongLine(hole.line, longestCarry)
+    if (hole && ball && distanceYds(ball, hole.line[0]) < 25) {
+      // On the tee: aim for the middle of the fairway.
+      return defaultTeeAim(hole.line, pin, geometry?.features ?? [], longestCarry)
     }
-    return pin
+    return pin // anywhere else: aim at the pin
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hole, ball, pin, longestCarry])
+  }, [hole, ball, pin, longestCarry, geometry])
   const aim = aimManual ?? defaultAim
 
   // ---------- planning ----------
@@ -331,6 +330,24 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
   const distPin = ball && pin ? distanceYds(ball, pin) : null
   const distAim = ball && aim ? distanceYds(ball, aim) : null
+  const aimToPin = aim && pin ? distanceYds(aim, pin) : null
+  const aimIsPin = aimToPin != null && aimToPin < 3
+  // Where the recommended club's average shot ends up, and what that leaves.
+  const avgLeft =
+    ball && aim && pin && chosen
+      ? distanceYds(landingPoint(ball, bearingDeg(ball, aim), chosen.meanCarryYds, 0), pin)
+      : null
+
+  const labels = useMemo(() => {
+    const out: { pos: LatLng; text: string }[] = []
+    if (ball && aim && distAim != null && distAim > 3) {
+      out.push({ pos: { lat: (ball.lat + aim.lat) / 2, lng: (ball.lng + aim.lng) / 2 }, text: `${Math.round(distAim)} yd` })
+    }
+    if (aim && pin && aimToPin != null && aimToPin >= 3) {
+      out.push({ pos: { lat: (aim.lat + pin.lat) / 2, lng: (aim.lng + pin.lng) / 2 }, text: `${Math.round(aimToPin)} to pin` })
+    }
+    return out
+  }, [ball, aim, pin, distAim, aimToPin])
   const best = ranking[0]
 
   return (
@@ -342,9 +359,6 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             Pick any course, stand anywhere, and see where each club&rsquo;s simulated shots land on the real hole.
           </p>
         </div>
-        <Link href="/simulator" className="text-xs text-[#22c55e] hover:underline">
-          &larr; Dispersion Simulator
-        </Link>
       </div>
 
       {/* controls */}
@@ -538,6 +552,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 aim={aim}
                 pin={pin}
                 landings={landings}
+                labels={labels}
                 placing={placing}
                 fitBounds={fit.bounds}
                 fitKey={fit.key}
@@ -590,12 +605,22 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           ) : (
             <>
               <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-xs text-[#6b7280]">
-                    {hole ? `Hole ${hole.ref ?? "?"}${hole.par ? ` · par ${hole.par}` : ""} · ` : ""}
-                    {distPin != null && <>pin {Math.round(distPin)} yd</>}
-                    {distAim != null && aim !== pin && <> · aim {Math.round(distAim)} yd</>}
-                  </p>
+                <p className="text-xs text-[#6b7280]">
+                  {hole ? `Hole ${hole.ref ?? "?"}${hole.par ? ` · par ${hole.par}` : ""}` : "Free placement"}
+                </p>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-white/[0.04] px-2 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-[#6b7280]">Ball to aim</p>
+                    <p className="text-lg font-bold text-white">{distAim != null ? Math.round(distAim) : "–"}<span className="ml-0.5 text-xs font-normal text-[#6b7280]">yd</span></p>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.04] px-2 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-[#6b7280]">{aimIsPin ? "Aim is the pin" : "Left after aim"}</p>
+                    <p className="text-lg font-bold text-white">{aimIsPin ? "0" : aimToPin != null ? Math.round(aimToPin) : "–"}<span className="ml-0.5 text-xs font-normal text-[#6b7280]">yd</span></p>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.04] px-2 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-[#6b7280]">Ball to pin</p>
+                    <p className="text-lg font-bold text-white">{distPin != null ? Math.round(distPin) : "–"}<span className="ml-0.5 text-xs font-normal text-[#6b7280]">yd</span></p>
+                  </div>
                 </div>
                 {best && (
                   <p className="mt-2 text-lg font-bold text-white">
@@ -603,6 +628,12 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                     <span className="ml-2 text-xs font-normal text-[#6b7280]">
                       avg {Math.round(best.meanCarryYds)} yd carry · {best.expectedStrokes.toFixed(2)} expected strokes
                     </span>
+                  </p>
+                )}
+                {chosen && avgLeft != null && (
+                  <p className="mt-1 text-xs text-[#9ca3af]">
+                    {chosen.club} averages {Math.round(chosen.meanCarryYds)} yd, leaving about{" "}
+                    <span className="font-semibold text-white">{Math.round(avgLeft)} yd</span> to the pin.
                   </p>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -3,13 +3,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+// Four main tabs. "match" lists every path prefix that keeps a tab highlighted,
+// so the Practice tab stays lit on Log, Drills and Trends, and Course Planner
+// stays lit on all its sub-pages.
 const NAV_ITEMS = [
-  { label: "Home",   href: "/"       },
-  { label: "Log",    href: "/log"    },
-  { label: "Drills", href: "/drills" },
-  { label: "Rounds", href: "/rounds" },
-  { label: "Trends", href: "/trends" },
-  { label: "Simulator", href: "/simulator" },
+  { label: "Home", href: "/", match: [] as string[] },
+  { label: "Practice", href: "/log", match: ["/log", "/drills", "/trends"] },
+  { label: "Rounds", href: "/rounds", match: ["/rounds"] },
+  { label: "Course Planner", href: "/planner", match: ["/planner"] },
 ] as const
 
 export default function NavBar() {
@@ -28,8 +29,11 @@ export default function NavBar() {
 
         {/* Nav items */}
         <nav className="flex items-center gap-0.5">
-          {NAV_ITEMS.map(({ label, href }) => {
-            const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/")
+          {NAV_ITEMS.map(({ label, href, match }) => {
+            const active =
+              href === "/"
+                ? pathname === "/"
+                : match.some((m) => pathname === m || pathname.startsWith(m + "/"))
             return (
               <Link
                 key={href}

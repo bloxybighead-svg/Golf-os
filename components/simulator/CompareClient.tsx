@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { OverlayCanvas, type OverlaySeries } from "./OverlayCanvas"
 import { computeDispersionStats, seededSample, type DispersionStats } from "@/lib/dispersion/stats"
 
@@ -130,9 +129,6 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
             Overlay two golfers&rsquo; simulated dispersion, plus real shots where available.
           </p>
         </div>
-        <Link href="/simulator" className="text-xs text-[#22c55e] hover:underline">
-          &larr; Dispersion Simulator
-        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-4 rounded-xl border border-white/[0.06] bg-[#111111] p-4 sm:grid-cols-2">

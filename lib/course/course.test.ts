@@ -287,3 +287,45 @@ describe("trees, range and out of bounds", () => {
     expect(best.club).toBe("7-Wood")
   })
 })
+
+import { defaultTeeAim, fairwayExtent, projectOnLine } from "./aim"
+
+describe("default tee aim", () => {
+  const rect = (x0: number, y0: number, x1: number, y1: number) => [
+    fromLocal(ORIGIN, { x: x0, y: y0 }), fromLocal(ORIGIN, { x: x1, y: y0 }),
+    fromLocal(ORIGIN, { x: x1, y: y1 }), fromLocal(ORIGIN, { x: x0, y: y1 }),
+  ]
+  const pin = fromLocal(ORIGIN, { x: 0, y: 400 })
+  const line = [ORIGIN, pin]
+
+  it("projects a point onto the line", () => {
+    const q = projectOnLine(line, fromLocal(ORIGIN, { x: 12, y: 150 }))
+    expect(q.along).toBeCloseTo(150, 1)
+    expect(q.off).toBeCloseTo(12, 1)
+  })
+
+  it("finds the fairway extent along the hole, ignoring fairways on other holes", () => {
+    const features = [
+      { kind: "fairway" as const, ring: rect(-15, 150, 15, 330) },
+      { kind: "fairway" as const, ring: rect(300, 100, 330, 300) }, // some other hole
+    ]
+    const ext = fairwayExtent(line, features)
+    expect(ext?.start).toBeCloseTo(150, 0)
+    expect(ext?.end).toBeCloseTo(330, 0)
+  })
+
+  it("aims for the middle of the fairway on a par 4", () => {
+    const features = [{ kind: "fairway" as const, ring: rect(-15, 150, 15, 330) }]
+    const aim = toLocal(ORIGIN, defaultTeeAim(line, pin, features, 264))
+    expect(aim.y).toBeCloseTo(240, 0)
+    expect(Math.abs(aim.x)).toBeLessThan(0.5)
+  })
+
+  it("never aims past the longest carry, and aims at the pin when there is no fairway to use", () => {
+    const far = [{ kind: "fairway" as const, ring: rect(-15, 250, 15, 390) }] // middle 320 > 264 carry
+    expect(toLocal(ORIGIN, defaultTeeAim(line, pin, far, 264)).y).toBeCloseTo(264, 0)
+    const par3pin = fromLocal(ORIGIN, { x: 0, y: 150 })
+    const p3 = toLocal(ORIGIN, defaultTeeAim([ORIGIN, par3pin], par3pin, [], 264))
+    expect(p3.y).toBeCloseTo(150, 0)
+  })
+})

@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { DispersionCanvas } from "./DispersionCanvas"
 import { makeFairwayPolygon } from "@/lib/dispersion/polygon"
 
@@ -63,20 +62,6 @@ export function SimulatorClient({ clubs, shots, golferName }: Props) {
           <p className="mt-0.5 text-xs text-[#6b7280]">
             {golferName}&rsquo;s calibrated profile &middot; {shots.length.toLocaleString()} simulated shots
           </p>
-        </div>
-        <div className="flex gap-4">
-          <Link href="/simulator/course" className="text-xs font-semibold text-[#22c55e] hover:underline">
-            Course Planner &rarr;
-          </Link>
-          <Link href="/simulator/custom" className="text-xs text-[#22c55e] hover:underline">
-            Custom Golfer &rarr;
-          </Link>
-          <Link href="/simulator/compare" className="text-xs text-[#22c55e] hover:underline">
-            Compare Golfers &rarr;
-          </Link>
-          <Link href="/simulator/tbox" className="text-xs text-[#22c55e] hover:underline">
-            Tee Box Estimator &rarr;
-          </Link>
         </div>
       </div>
 

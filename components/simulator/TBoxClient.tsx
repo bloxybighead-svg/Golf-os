@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { recommendTee, type TeeOption } from "@/lib/tbox/estimate"
 
 export interface KnownCourse {
@@ -134,9 +133,6 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
             approximate distance guideline.
           </p>
         </div>
-        <Link href="/simulator" className="text-xs text-[#22c55e] hover:underline">
-          &larr; Dispersion Simulator
-        </Link>
       </div>
 
       <div className="flex flex-wrap gap-6 rounded-xl border border-white/[0.06] bg-[#111111] p-4">

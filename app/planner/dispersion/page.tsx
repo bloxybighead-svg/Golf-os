@@ -36,6 +36,7 @@ export default async function SimulatorPage() {
       .from("simulated_shots")
       .select("golfer_profile_id, carry_yds, offline_yds, is_mishit")
       .in("golfer_profile_id", profileIds)
+      .order("id") // stable order, or paging can skip and repeat rows
       .range(from, from + pageSize - 1)
     if (error) {
       shotsError = error

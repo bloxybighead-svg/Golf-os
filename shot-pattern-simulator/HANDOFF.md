@@ -60,7 +60,7 @@ and verified live in the browser:
   landed inside the shaded area (X%)" readout — the actual "are the
   sampled points inside the polygon" QA, run against the real 2,000-shot
   Supabase dataset, not a synthetic fixture.
-- `app/simulator` — new page, club picker + adjustable target width,
+- `app/planner` — new page, club picker + adjustable target width,
   reads live from `golfer_profiles`/`simulated_shots` (had to paginate
   the Supabase query — it silently caps at 1,000 rows per request).
 - `lib/tbox/estimate.ts` — USGA Course Handicap formula (exact, sourced)
@@ -69,14 +69,14 @@ and verified live in the browser:
   from memory — flagged as unverified, same as the model's other
   unsourced constants, replace with the real published table if
   precision matters).
-- `app/simulator/tbox` — new page, tee-comparison table with a "load
+- `app/planner/tbox` — new page, tee-comparison table with a "load
   rating/slope/par from a course you've already logged" shortcut that
   pulls real data straight from the `rounds` table (the actual link
   between this feature and Golf OS's existing tables) — yardage still
   needs manual entry since `rounds` doesn't track it.
 
 **Rest of Step 3, done (2026-09-09):**
-- `app/simulator/compare` — two-golfer overlay UI. Since no second real
+- `app/planner/compare` — two-golfer overlay UI. Since no second real
   golfer exists yet (see Known limitations), the second "player" is a
   synthetic `from_band("2-4")` golfer seeded as `golfer_name = "Average
   2-4 Handicap"` — a legitimate, labeled stand-in, not a fabricated
@@ -173,7 +173,7 @@ on sign" framing in the Weak/assumed section above should probably be
 revisited with this in mind — worth a note to Bryant.
 
 **Custom Golfer tool + real course lookup added (2026-09-09):**
-- `app/simulator/custom` — the browser now has the same "plug in
+- `app/planner/custom` — the browser now has the same "plug in
   handicap + carries, generate" flow as `generate_shots.py --handicap N
   --carry CLUB=YDS`, running fully client-side. Required porting the
   handicap/band path of `synthetic_golfer.py` (not the calibrated/
@@ -269,9 +269,16 @@ curve_yds, session_id, is_mishit`) is already shaped for step 2's
 tables, and `carry_yds`/`offline_yds` are exactly the coordinates step
 3's renderer needs.
 
+### Navigation (2026-09-26)
+
+Four top tabs: Home, Practice (Log / Drills / Trends sub-tabs, URLs unchanged),
+Rounds, Course Planner (`/planner` map + sub-tabs Dispersion, Compare golfers,
+Custom golfer, Tee box). The old `/simulator/*` URLs redirect (next.config.mjs).
+Sub-nav lives in `components/SubNav.tsx` + per-section layouts.
+
 ### Course Planner (added 2026-09-26, branch `course-map`)
 
-`/simulator/course` overlays simulated dispersion on a real course.
+`/planner` overlays simulated dispersion on a real course.
 Search a course (OpenGolfAPI gives its lat/lng) -> `/api/courses/geometry`
 finds its boundary in OpenStreetMap, then loads holes, greens, fairways,
 bunkers, tees, water ways and nearby coastline through the Overpass API
@@ -419,7 +426,7 @@ and a session drift redrawn every ~60 shots.
   not just the 8 previously "deep" ones -- 24,200 rows for Dillon,
   26,400 for the band-2-4 stand-in).
 - **Fixed 2026-09-09 (round 1): dispersion charts wasted most of their
-  canvas.** Both `/simulator` and `/simulator/compare` always drew the
+  canvas.** Both `/planner/dispersion` and `/planner/compare` always drew the
   Y-axis from literal 0 (the tee) up to the club's max carry. For a
   163y-average 7-Iron, that's a ~0-200y range where the actual shot
   cluster (roughly 140-180y) only fills the top ~20% of the canvas —
