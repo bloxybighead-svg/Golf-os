@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { courseKey, readCachedGeometry, writeCachedGeometry } from "@/lib/supabase/courseCache"
 import {
   boundaryQuery,
   coastQuery,
@@ -85,42 +86,62 @@ export async function GET(req: NextRequest) {
   const qLat = Math.round(lat * 1e4) / 1e4
   const qLng = Math.round(lng * 1e4) / 1e4
   const key = `${qLat},${qLng},${name ?? ""}`
+  const dbKey = courseKey(req.nextUrl.searchParams.get("id"))
+  const CDN = "public, s-maxage=86400, stale-while-revalidate=604800"
+
+  // 1) in-memory (this server instance), 2) Supabase (shared, survives deploys)
   const hit = cache.get(key)
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-    return NextResponse.json(hit.body, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } })
+    return NextResponse.json(hit.body, { headers: { "Cache-Control": CDN, "X-Course-Cache": "memory" } })
+  }
+  if (dbKey) {
+    const stored = await readCachedGeometry(dbKey)
+    if (stored) {
+      cache.set(key, { at: Date.now(), body: stored })
+      return NextResponse.json(stored, { headers: { "Cache-Control": CDN, "X-Course-Cache": "supabase" } })
+    }
   }
 
   const deadline = Date.now() + 52000
   let geometry = null
-  let complete = true // false if an optional query (coastline) failed, so we don't cache a partial result
+  // A query that FAILS (server busy) is reported as 502 so the client retries;
+  // only a query that succeeds but finds nothing falls through to the wider
+  // radius search. Successful queries are cached in memory, so a retry only
+  // repeats the ones that failed.
+  const busy = () => NextResponse.json({ error: "Map data service is busy, try again in a moment" }, { status: 502 })
+
   const boundaries = await runQuery(boundaryQuery(qLat, qLng, BOUNDARY_SEARCH_RADIUS_M), deadline)
-  const chosen = boundaries ? pickBoundary(parseBoundaries(boundaries), qLat, qLng, name) : null
+  if (!boundaries) return busy()
+  const chosen = pickBoundary(parseBoundaries(boundaries), qLat, qLng, name)
   if (chosen) {
     const idEls = await runQuery(courseWayIdsQuery(chosen), deadline)
-    const ids = (idEls ?? []).filter((e) => e.type === "way").map((e) => e.id)
+    if (!idEls) return busy()
+    const ids = idEls.filter((e) => e.type === "way").map((e) => e.id)
     if (ids.length > 0) {
       const els = await runQuery(courseGeometryQuery(ids), deadline)
-      if (els) {
-        const g = parseOverpass(els, "course-area")
-        if (g.holes.length > 0) {
-          geometry = g
-          // Coastline is best-effort: a failure just means no ocean hazard.
-          const coastEls = await runQuery(coastQuery(chosen.bounds), deadline)
-          if (coastEls) geometry.coast = parseCoast(coastEls)
-          else complete = false
-        }
+      if (!els) return busy()
+      const g = parseOverpass(els, "course-area")
+      if (g.holes.length > 0) {
+        // Coastline decides whether the sea counts as water, so it is required
+        // (a missing one would silently turn ocean into "rough").
+        const coastEls = await runQuery(coastQuery(chosen.bounds), deadline)
+        if (!coastEls) return busy()
+        g.coast = parseCoast(coastEls)
+        geometry = g
       }
     }
   }
   if (!geometry) {
     const els = await runQuery(radiusQuery(qLat, qLng, FALLBACK_RADIUS_M), deadline)
-    if (!els) {
-      return NextResponse.json({ error: "Map data service is busy, try again in a moment" }, { status: 502 })
-    }
+    if (!els) return busy()
     geometry = parseOverpass(els, "radius")
   }
-  if (geometry.scope === "course-area" && complete) cache.set(key, { at: Date.now(), body: geometry })
+  let stored = false
+  if (geometry.scope === "course-area") {
+    cache.set(key, { at: Date.now(), body: geometry })
+    if (dbKey) stored = await writeCachedGeometry(dbKey, { name, lat: qLat, lng: qLng }, geometry)
+  }
   return NextResponse.json(geometry, {
-    headers: { "Cache-Control": complete ? "public, s-maxage=86400, stale-while-revalidate=604800" : "no-store" },
+    headers: { "Cache-Control": CDN, "X-Course-Cache": stored ? "miss-stored" : "miss" },
   })
 }

@@ -72,6 +72,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [query, setQuery] = useState("")
   const [hits, setHits] = useState<CourseHit[]>([])
   const [searching, setSearching] = useState(false)
+  const [searched, setSearched] = useState(false)
   const [course, setCourse] = useState<CourseHit | null>(null)
   const [geometry, setGeometry] = useState<CourseGeometry | null>(null)
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">("idle")
@@ -100,6 +101,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     const q = query.trim()
     if (q.length < 3) {
       setHits([])
+      setSearched(false)
       return
     }
     const ctl = new AbortController()
@@ -109,6 +111,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         const res = await fetch(`/api/courses/search?q=${encodeURIComponent(q)}`, { signal: ctl.signal })
         const data = await res.json()
         setHits(data.courses ?? [])
+        setSearched(true)
       } catch {
         /* aborted or offline: leave the previous list */
       } finally {
@@ -137,19 +140,29 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     }
     setLoadState("loading")
     setLoadError("")
-    try {
-      const res = await fetch(`/api/courses/geometry?lat=${c.lat}&lng=${c.lng}&name=${encodeURIComponent(c.name)}`)
-      const data = await res.json().catch(() => null)
-      if (!res.ok || !data) throw new Error(data?.error ?? "Could not load course map data")
-      const g = { ...(data as CourseGeometry), coast: (data as CourseGeometry).coast ?? [] }
-      setGeometry(g)
-      const pts: LatLng[] = g.holes.flatMap((h) => h.line)
-      setFit({ bounds: boundsOf(pts.length ? pts : [{ lat: c.lat, lng: c.lng }]), key: `course-${c.id}` })
-      setLoadState("idle")
-    } catch (e) {
-      setLoadState("error")
-      setLoadError(e instanceof Error ? e.message : "Could not load course map data")
+    // The free map-data servers are often busy. The API route keeps whatever
+    // it already fetched, so retrying picks up where the last try stopped.
+    const url = `/api/courses/geometry?lat=${c.lat}&lng=${c.lng}&name=${encodeURIComponent(c.name)}&id=${encodeURIComponent(c.id)}`
+    let lastError = "Could not load course map data"
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) setLoadError(`Map data server is busy, retrying (${attempt + 1}/3)…`)
+      try {
+        const res = await fetch(url)
+        const data = await res.json().catch(() => null)
+        if (!res.ok || !data) throw new Error(data?.error ?? lastError)
+        const g = { ...(data as CourseGeometry), coast: (data as CourseGeometry).coast ?? [] }
+        setGeometry(g)
+        const pts: LatLng[] = g.holes.flatMap((h) => h.line)
+        setFit({ bounds: boundsOf(pts.length ? pts : [{ lat: c.lat, lng: c.lng }]), key: `course-${c.id}` })
+        setLoadError("")
+        setLoadState("idle")
+        return
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : lastError
+      }
     }
+    setLoadState("error")
+    setLoadError(lastError)
   }
 
   // ---------- golfer shots ----------
@@ -303,9 +316,10 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             placeholder={course ? `${course.name} — search another…` : "Search a course, e.g. Pebble Beach"}
             className="mt-1.5 w-full rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
           />
-          {(hits.length > 0 || searching) && (
+          {(hits.length > 0 || searching || (searched && query.trim().length >= 3)) && (
             <div className="absolute z-[1200] mt-1 max-h-64 w-full overflow-auto rounded-lg border border-white/[0.1] bg-[#0a0a0a] shadow-xl">
               {searching && hits.length === 0 && <p className="px-3 py-2 text-xs text-[#6b7280]">Searching…</p>}
+              {!searching && hits.length === 0 && <p className="px-3 py-2 text-xs text-[#6b7280]">No courses found. Try fewer words.</p>}
               {hits.map((h) => (
                 <button
                   key={h.id}
@@ -365,7 +379,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       {course && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-[#9ca3af]">
           <span className="font-semibold text-white">{course.name}</span>
-          {loadState === "loading" && <span>Loading map data…</span>}
+          {loadState === "loading" && <span>{loadError || "Loading map data…"}</span>}
           {loadState === "error" && (
             <>
               <span className="text-red-400">{loadError}</span>
@@ -403,7 +417,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
       {holes.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {holes.map((h) => (
+          {holes.map((h, i) => (
             <button
               key={h.id}
               onClick={() => pickHole(h)}
@@ -414,7 +428,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   : "border-white/[0.08] text-[#9ca3af] hover:text-white"
               }`}
             >
-              {h.ref ?? "?"}
+              {h.ref ?? i + 1}
             </button>
           ))}
         </div>

@@ -290,8 +290,16 @@ tour strokes-gained pattern, NOT a cited table (top item to fix before the
 paper uses any number from this page); anything not traced in OSM counts as
 rough; lakes mapped as multipolygon relations are skipped; no trees, slope,
 wind or elevation; best-aim reuses the shots it picks on (optimistic).
-Overpass reliability is the weak link -- a persistent geometry cache (e.g. a
-Supabase table) is the natural next step. Tests: `lib/course/course.test.ts`.
+Overpass reliability was the weak link, so geometry is now cached: memory ->
+Supabase table `course_geometry` (SQL in `supabase/course_geometry_cache.sql`,
+public read, keyed by OpenGolfAPI course id) -> live Overpass. The route only
+WRITES the cache if `SUPABASE_SERVICE_ROLE_KEY` is set (Vercel env + optional
+.env.local); without it everything still works but nothing is persisted.
+A failed (busy) query returns 502 and the page auto-retries 3x; successful
+sub-queries are memoised so retries only repeat what failed. Courses with no
+OSM boundary/hole tagging fall back to a radius search (warned in the UI;
+hole numbers may be missing and neighbouring courses may appear, e.g.
+Bethpage). Tests: `lib/course/course.test.ts`.
 
 ## Files
 
