@@ -211,40 +211,50 @@ revisited with this in mind — worth a note to Bryant.
      No detectable bias from the skew/clamp/taper/curve-link machinery.
   2. **Bootstrap 95% CIs** (percentile method, 5000 resamples) for
      real-shot mean carry and SD, every club with n>=5.
-  3. **Power analysis**: for Driver (n=159) and 7-Iron (n=62),
-     subsample increasing real-shot counts and bootstrap the CI at each
-     n. Answer to "how many real shots before the fit means anything":
-     **mean carry CI half-width drops under ~2 yards around n=25-35 for
-     an iron, but needs ~100-130 for Driver** (driver's higher variance
-     needs more data for the same precision). SD estimates track
-     similarly. Clubs below ~15-20 real shots (PW n=10, 3-Wood n=11,
-     4-Iron n=7, 9-Iron n=5 in Dillon's own data) should be flagged as
-     low-confidence in any UI that surfaces calibrated profiles.
+  3. **Power analysis** (revised 2026-09-26): for each n, average the
+     bootstrap CI half-width over 200 random subsamples (the earlier
+     single-subsample curve was noisy). Answer to "how many real shots
+     before the fit means anything": **mean-carry CI half-width reaches
+     +/-2 yd at ~35 shots for a 7-iron and ~140 for the driver**, matching
+     n = (1.96*s/h)^2 (33 and 139). Clubs below ~15-20 real shots (PW n=10,
+     3-Wood n=11, 4-Iron n=7, 9-Iron n=5) should be flagged low-confidence.
+     (The earlier "25-35 / 100-130" figures are superseded.)
+  4. **Held-out validation** (added 2026-09-26): 5-fold, whole SESSIONS
+     held out (19 full-swing sessions). 7/7 testable clubs pass KS on
+     carry and offline on unseen sessions; wedges borderline (56 deg
+     p~0.06). An uncalibrated handicap-3 model passes KS on carry for
+     only 3/8 clubs. Section 1's 11/11 remains in-sample.
   Also produced a visual distribution-overlap check (histograms,
   simulated vs real, Driver + 7-Iron, carry and offline) — matches the
   KS-test result visually. Added scipy as a dependency (t-test, KS
   test) -- `pip install scipy`, now in requirements.txt.
 - `aim_point_optimizer.py` — grid search over aim point (offline x
   carry offset from the pin, 11x5=55 candidates), 3,000 simulated
-  shots per candidate, scored against an **illustrative** hole: a green
-  guarded by a bunker (left) and water (right), with a simple
-  distance-to-pin cost model. Note the hole/hazard geometry AND the
-  stroke-cost numbers are placeholders (no real hole geometry exists
-  anywhere in this project) -- the point was proving the optimization
-  mechanics work correctly, not producing a course-accurate number.
-  Ran it two ways: Dillon's tight calibrated dispersion shows **no
-  significant benefit** to aiming off the pin (t-test p=0.696 vs the
-  pin-aim cell — the apparent 0.004-stroke "savings" is smaller than
-  the Monte Carlo noise at this sample size, so it can't be claimed as
-  real). A synthetic 22-handicap golfer through the same hole shows a
-  **real, significant** benefit (p=0.042, ~0.03 strokes/approach,
-  aiming short-left away from both hazards) — aim-point strategy
-  matters more the less consistent you are, which is the expected
-  shape of this result and a good sanity check that the mechanics are
-  right. This t-test-against-the-runner-up pattern is worth keeping any
-  time this reports an "optimal" grid cell -- a single Monte Carlo
-  estimate per cell can look different from its neighbors by chance
-  alone, and won't always be a real edge.
+  shots per candidate, scored against an **illustrative** hole (organic
+  green, kidney bunker front-left, water right) with a simple
+  distance-to-pin cost model (cost = strokes REMAINING after the shot
+  lands; excludes the approach shot). Hole geometry AND stroke costs are
+  placeholders -- the point is the mechanics. **Fixed 2026-09-26:** the
+  winner (best of 55) used to be t-tested on the same shots that picked it,
+  which is optimistic AND underpowered. It is now re-tested on a fresh,
+  paired 10,000-shot sample. Results: calibrated Dillon aims +5 yd right
+  (his natural miss averages -3.9 yd left), saving 0.024 strokes/approach
+  (95% CI 0.014-0.033, p<0.001) -- this REPLACES the earlier "not
+  significant (p=0.696/0.368)" claim, which was a power problem, not
+  evidence of no effect. One synthetic 22-handicap (seed 99): 0.037
+  strokes, aims -5/-5, but its personal bias is +15.9 yd right, so that
+  direction is a property of that random golfer.
+- `aim_point_population.py` (new 2026-09-26) — 200 random golfers each at
+  handicaps 3/10/22, vectorized scoring (checked 100% against the
+  ray-casting scorer), each winner confirmed on 10,000 fresh paired
+  shots. Median saving 0.003 / 0.017 / 0.051 strokes per approach; aim
+  direction correlates -0.78/-0.91/-0.97 with the golfer's own average
+  miss; 100% of 22 and 98.5% of 10 handicaps aim short. See
+  STATISTICAL_ANALYSIS.md sections 6-7.
+- Plots were restyled per advisor feedback (2026-09-19 meeting): white
+  page, light-gray plot areas, distinct dot colors (white = aimed at pin,
+  yellow = aimed at recommended point, magenta diamonds = real shots), and
+  a zoomed panel on the pin vs recommended aim.
 
 **Remaining milestones, in order:**
 5. Calibration screen — golfers enter real shots in the app, model
@@ -269,6 +279,9 @@ tables, and `carry_yds`/`offline_yds` are exactly the coordinates step
 | `parse_sessions.py` | Reads raw launch-monitor session CSVs into one tidy file. |
 | `calibrate.py` | Fits model parameters *from* real shots instead of guessing. |
 | `validate_against_reference.py` | Compares output to a reference synthetic dataset. |
+| `statistical_analysis.py` | t/KS tests, bootstrap CIs, power analysis, overlap figure, held-out validation. |
+| `aim_point_optimizer.py` | Aim-point grid search + paired confirmation + 3-panel hole figure. |
+| `aim_point_population.py` | Aim-point study over 200 random golfers per handicap. |
 | `reference_data/real_shots.csv` | 589 parsed real shots (451 full), 13 clubs, 23 sessions. |
 | `reference_data/dillon_profile.json` | Profile fit from those shots. |
 | `reference_data/synthetic_shots_all_clubs_by_handicap.csv` | Reference seed dataset from another source. |
