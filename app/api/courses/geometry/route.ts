@@ -139,7 +139,10 @@ export async function GET(req: NextRequest) {
   let stored = false
   if (geometry.scope === "course-area") {
     cache.set(key, { at: Date.now(), body: geometry })
-    if (dbKey) stored = await writeCachedGeometry(dbKey, { name, lat: qLat, lng: qLng }, geometry)
+    // Only persist plausible single courses (9 or 18 holes): a boundary that
+    // swallows several courses would otherwise be saved and served as wrong data.
+    const plausible = geometry.holes.length === 9 || geometry.holes.length === 18
+    if (dbKey && plausible) stored = await writeCachedGeometry(dbKey, { name, lat: qLat, lng: qLng }, geometry)
   }
   return NextResponse.json(geometry, {
     headers: { "Cache-Control": CDN, "X-Course-Cache": stored ? "miss-stored" : "miss" },
