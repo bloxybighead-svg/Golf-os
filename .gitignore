@@ -29,3 +29,7 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# python simulator generated artifacts
+shot-pattern-simulator/output/
+__pycache__/

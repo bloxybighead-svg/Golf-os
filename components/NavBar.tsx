@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { label: "Drills", href: "/drills" },
   { label: "Rounds", href: "/rounds" },
   { label: "Trends", href: "/trends" },
+  { label: "Simulator", href: "/simulator" },
 ] as const
 
 export default function NavBar() {
