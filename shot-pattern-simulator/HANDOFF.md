@@ -276,6 +276,15 @@ Rounds, Course Planner (`/planner` map + sub-tabs Dispersion, Compare golfers,
 Custom golfer, Tee box). The old `/simulator/*` URLs redirect (next.config.mjs).
 Sub-nav lives in `components/SubNav.tsx` + per-section layouts.
 
+### Golfer inputs (2026-09-26)
+
+Handicap-based golfers (Course Planner and Custom golfer) take handicap, known
+carries (Driver / 7-iron in the planner; any clubs on Custom golfer) and a miss
+tendency (`lib/golfer/build.ts`: straight / left / right / both ways x slight,
+moderate, strong = 0.5, 1.0, 2.0 degrees of average start-line bias; these
+degree values are judgement, not measured). A stated tendency replaces the
+handicap's random per-golfer lean (bias SD drops to 0.3 deg).
+
 ### Course Planner (added 2026-09-26, branch `course-map`)
 
 `/planner` overlays simulated dispersion on a real course.

@@ -5,6 +5,8 @@ import { DispersionCanvas } from "./DispersionCanvas"
 import { makeFairwayPolygon } from "@/lib/dispersion/polygon"
 import { generateCustomGolferShots } from "@/lib/golfer/build"
 import { BAG_ORDER, type Club } from "@/lib/golfer/tables"
+import type { Tendency } from "@/lib/golfer/build"
+import { TendencyPicker } from "./TendencyPicker"
 
 interface CarryRow {
   club: Club
@@ -13,6 +15,7 @@ interface CarryRow {
 
 export function CustomGolferClient() {
   const [handicapIndex, setHandicapIndex] = useState(10)
+  const [tendency, setTendency] = useState<Tendency>({ side: "auto", strength: "moderate" })
   const [nShots, setNShots] = useState(1000)
   const [seed, setSeed] = useState(1)
   const [carryRows, setCarryRows] = useState<CarryRow[]>([{ club: "Driver", yards: 220 }])
@@ -29,7 +32,7 @@ export function CustomGolferClient() {
   const shots = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _ = generation // dependency: regenerate only when the button is clicked
-    return generateCustomGolferShots({ handicapIndex, knownCarries }, nShots, seed)
+    return generateCustomGolferShots({ handicapIndex, knownCarries, tendency }, nShots, seed)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generation])
 
@@ -100,6 +103,7 @@ export function CustomGolferClient() {
               className="w-28 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
             />
           </label>
+          <TendencyPicker value={tendency} onChange={setTendency} />
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-[#6b7280]">Seed (optional)</span>
             <input

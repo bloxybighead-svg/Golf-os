@@ -51,3 +51,27 @@ describe("generateCustomGolferShots", () => {
     expect(maxCount / shots.length).toBeLessThan(0.02)
   })
 })
+
+describe("stated miss tendency", () => {
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
+  const offline = (side: "auto" | "straight" | "left" | "right" | "both", strength: "slight" | "moderate" | "strong" = "moderate") =>
+    generateCustomGolferShots({ handicapIndex: 10, tendency: { side, strength } }, 6000, 5, ["7-Iron"]).map((s) => s.offlineYds)
+
+  it("left pushes the average miss left, right pushes it right", () => {
+    expect(mean(offline("left"))).toBeLessThan(-2)
+    expect(mean(offline("right"))).toBeGreaterThan(2)
+  })
+  it("straight centres the pattern", () => {
+    expect(Math.abs(mean(offline("straight")))).toBeLessThan(2)
+  })
+  it("a stronger tendency shifts it further", () => {
+    expect(mean(offline("right", "strong"))).toBeGreaterThan(mean(offline("right", "slight")) + 2)
+  })
+  it("both-ways misses split about evenly left and right", () => {
+    const o = offline("both", "strong")
+    const rightShare = o.filter((x) => x > 0).length / o.length
+    expect(rightShare).toBeGreaterThan(0.35)
+    expect(rightShare).toBeLessThan(0.65)
+    expect(o.filter((x) => Math.abs(x) > 8).length / o.length).toBeGreaterThan(0.3)
+  })
+})

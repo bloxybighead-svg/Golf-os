@@ -15,7 +15,9 @@ import { buildLieMap, type Lie } from "@/lib/course/lies"
 import { GEOMETRY_VERSION, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
 import { seededSample } from "@/lib/dispersion/stats"
-import { generateCustomGolferShots } from "@/lib/golfer/build"
+import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
+import type { Club } from "@/lib/golfer/tables"
+import { TendencyPicker } from "./TendencyPicker"
 import { LIE_COLORS, type Placing } from "./courseColors"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
@@ -107,6 +109,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   // --- golfer ---
   const [source, setSource] = useState<"calibrated" | "handicap">(calibrated ? "calibrated" : "handicap")
   const [handicap, setHandicap] = useState(10)
+  const [driverCarry, setDriverCarry] = useState("") // yards; blank = handicap average
+  const [sevenIronCarry, setSevenIronCarry] = useState("")
+  const [tendency, setTendency] = useState<Tendency>({ side: "auto", strength: "moderate" })
 
   // --- positions ---
   const [holeId, setHoleId] = useState<string | null>(null)
@@ -197,7 +202,17 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     if (source === "calibrated" && calibrated) {
       return calibrated.map((c) => ({ club: c.club, shots: c.shots }))
     }
-    const all = generateCustomGolferShots({ handicapIndex: handicap }, HANDICAP_SHOTS_PER_CLUB * 12, 42)
+    // Blank or out-of-range carries are ignored, so a half-typed number doesn't warp the bag.
+    const known: Partial<Record<Club, number>> = {}
+    const d = Number(driverCarry)
+    const i7 = Number(sevenIronCarry)
+    if (d >= 120 && d <= 380) known.Driver = d
+    if (i7 >= 60 && i7 <= 240) known["7-Iron"] = i7
+    const all = generateCustomGolferShots(
+      { handicapIndex: handicap, knownCarries: known, tendency },
+      HANDICAP_SHOTS_PER_CLUB * 12,
+      42
+    )
     const by = new Map<string, { carryYds: number; offlineYds: number }[]>()
     for (const s of all) {
       const list = by.get(s.club) ?? []
@@ -205,7 +220,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       by.set(s.club, list)
     }
     return Array.from(by, ([club, shots]) => ({ club, shots }))
-  }, [source, calibrated, handicap])
+  }, [source, calibrated, handicap, driverCarry, sevenIronCarry, tendency])
 
   const longestCarry = useMemo(() => {
     let best = 0
@@ -362,8 +377,8 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       </div>
 
       {/* controls */}
-      <div className="grid gap-3 rounded-xl border border-white/[0.06] bg-[#111111] p-4 md:grid-cols-[1fr_auto]">
-        <div className="relative">
+      <div className="flex flex-col gap-4 rounded-xl border border-white/[0.06] bg-[#111111] p-4">
+        <div className="relative max-w-xl">
           <label className="text-xs font-medium text-[#6b7280]">Course</label>
           <input
             value={query}
@@ -412,21 +427,56 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             </select>
           </label>
           {source === "handicap" && (
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-[#6b7280]">Handicap</span>
-              <input
-                type="number"
-                min={0}
-                max={36}
-                step={1}
-                value={handicap}
-                onChange={(e) => {
-                  setHandicap(Math.min(36, Math.max(0, Number(e.target.value) || 0)))
+            <>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-[#6b7280]">Handicap</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={36}
+                  step={1}
+                  value={handicap}
+                  onChange={(e) => {
+                    setHandicap(Math.min(36, Math.max(0, Number(e.target.value) || 0)))
+                    setAimNote(null)
+                  }}
+                  className="w-20 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-[#6b7280]">Driver carry (yd)</span>
+                <input
+                  type="number"
+                  placeholder="avg"
+                  value={driverCarry}
+                  onChange={(e) => {
+                    setDriverCarry(e.target.value)
+                    setAimNote(null)
+                  }}
+                  className="w-24 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white placeholder:text-[#4b5563]"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-[#6b7280]">7-iron carry (yd)</span>
+                <input
+                  type="number"
+                  placeholder="avg"
+                  value={sevenIronCarry}
+                  onChange={(e) => {
+                    setSevenIronCarry(e.target.value)
+                    setAimNote(null)
+                  }}
+                  className="w-24 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white placeholder:text-[#4b5563]"
+                />
+              </label>
+              <TendencyPicker
+                value={tendency}
+                onChange={(t) => {
+                  setTendency(t)
                   setAimNote(null)
                 }}
-                className="w-20 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
               />
-            </label>
+            </>
           )}
         </div>
       </div>
