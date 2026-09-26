@@ -431,28 +431,29 @@ _ELLIPSE_CONTAINMENT = 0.90
 # specific golfer's measured tilt.
 _DEFAULT_CURVE_CARRY_SLOPE = -0.20
 
-# Plot theme. Dark background so bright club colors pop; the previous
-# green-on-white made adjacent clubs hard to tell apart.
-_BG = "#0d0d0d"
-_FG = "#e8e8e8"
+# Plot theme (advisor request): white figure, light-gray plot area, dark
+# text. Club colors are darker/saturated so they stay readable on gray.
+_BG = "#ffffff"
+_AX_BG = "#e8e8e8"
+_FG = "#222222"
 
 # One fixed, high-contrast color per club, ordered so NEIGHBORING clubs
 # (which overlap most on the plot) are far apart on the color wheel --
 # the old sequential colormap gave 7-iron and 8-iron near-identical
 # shades exactly where they overlap.
 _CLUB_COLORS = {
-    "Driver": "#ff3b30",   # red
-    "3-Wood": "#ff9500",   # orange
-    "5-Wood": "#ffcc00",   # yellow
-    "4-Iron": "#34c759",   # green
-    "5-Iron": "#00e5ff",   # cyan
-    "6-Iron": "#0a84ff",   # blue
-    "7-Iron": "#bf5af2",   # purple
-    "8-Iron": "#ff2d95",   # magenta
-    "9-Iron": "#ffffff",   # white
-    "PW": "#00ffa3",       # mint
-    "GW": "#ffd6a5",       # peach
-    "SW": "#8e8e93",       # grey
+    "Driver": "#d62728",   # red
+    "3-Wood": "#e07b00",   # orange
+    "5-Wood": "#a89400",   # olive
+    "4-Iron": "#2ca02c",   # green
+    "5-Iron": "#008fa3",   # teal
+    "6-Iron": "#1f5fbf",   # blue
+    "7-Iron": "#7b3fbf",   # purple
+    "8-Iron": "#d81b7e",   # magenta
+    "9-Iron": "#111111",   # near-black
+    "PW": "#8c564b",       # brown
+    "GW": "#d9a400",       # gold
+    "SW": "#6b7280",       # gray
 }
 _FALLBACK_COLORS = list(_CLUB_COLORS.values())
 
@@ -590,6 +591,12 @@ class SyntheticGolfer:
         import json
 
         profiles = json.loads(Path(json_path).read_text())
+        return cls.from_profile_dict(profiles, name=name, seed=seed, **kwargs)
+
+    @classmethod
+    def from_profile_dict(cls, profiles: dict, name: str = "calibrated", seed: int | None = None, **kwargs) -> "SyntheticGolfer":
+        """Same as from_profile_json but takes the fitted profile dict
+        directly (e.g. the output of calibrate.calibrate())."""
         kwargs.setdefault("mishit_rate", 0.0)
         kwargs.setdefault("drift_direction_sd_deg", 0.0)
         kwargs.setdefault("drift_distance_sd_pct", 0.0)
@@ -843,17 +850,17 @@ class SyntheticGolfer:
         fig_h = 11.0
         fig_w = float(np.clip(fig_h * span_x / span_y, 3.5, 13.0)) + 2.2  # +legend
         fig, ax = plt.subplots(figsize=(fig_w, fig_h), facecolor=_BG)
-        ax.set_facecolor(_BG)
+        ax.set_facecolor(_AX_BG)
         ax.set_xlim(-half_width, half_width)
         ax.set_ylim(y_lo, y_hi)
         ax.set_aspect("equal", adjustable="box")
         for spine in ax.spines.values():
-            spine.set_color("#555555")
+            spine.set_color("#999999")
         ax.tick_params(colors=_FG, labelsize=8)
 
         for d in range(50, int(max_dist) + 50, 50):
-            ax.axhline(d, color=_FG, alpha=0.18, linewidth=0.8, zorder=1)
-            ax.text(-half_width * 0.98, d, f"{d}y", color=_FG, alpha=0.45, fontsize=7, va="bottom")
+            ax.axhline(d, color="white", alpha=0.9, linewidth=1.0, zorder=1)
+            ax.text(-half_width * 0.98, d, f"{d}y", color=_FG, alpha=0.6, fontsize=7, va="bottom")
 
         ax.axvline(0, color=_FG, linestyle="--", alpha=0.5, linewidth=1, zorder=1)
         ax.scatter(0, 0, color=_FG, marker="s", s=40, zorder=3, label="Tee")
@@ -917,7 +924,7 @@ class SyntheticGolfer:
         ax.set_ylabel("Carry distance (yds)", color=_FG)
         ax.set_title(f"{len(df):,} synthetic shots — {self.skill_level}", color=_FG)
         leg = ax.legend(markerscale=2.5, loc="upper left", bbox_to_anchor=(1.02, 1),
-                        fontsize=8, facecolor="#1a1a1a", edgecolor="#555555", labelcolor=_FG)
+                        fontsize=8, facecolor="white", edgecolor="#999999", labelcolor=_FG)
         leg.get_frame().set_alpha(0.95)
         fig.tight_layout()
 

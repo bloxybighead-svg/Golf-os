@@ -1,0 +1,15 @@
+Vectorized scorer agrees with ray-casting scorer on 100.00% of 5,000 random points.
+  handicap 3: 200 golfers done (60s elapsed)
+  handicap 10: 200 golfers done (128s elapsed)
+  handicap 22: 200 golfers done (195s elapsed)
+
+==============================================================================
+POPULATION AIM-POINT STUDY: 200 random golfers per handicap, 7-Iron
+==============================================================================
+          median_offline_sd_yd  sd_of_golfer_bias_yd  median_pin_cost  median_saving   iqr_saving  pct_significant  pct_best_is_pin  pct_aim_opposite_bias  corr_bias_vs_best_off
+handicap                                                                                                                                                                         
+3                       11.639                 2.099            2.731          0.003  0.000-0.009             25.5             23.5                 97.101                 -0.780
+10                      12.932                 3.679            2.781          0.017  0.011-0.027             85.5              0.5                 96.667                 -0.910
+22                      15.354                 6.935            2.898          0.051  0.036-0.083            100.0              0.0                100.000                 -0.971
+
+Saved output/aim_point_population.png, output/aim_point_population.csv, output/aim_point_population_summary.csv

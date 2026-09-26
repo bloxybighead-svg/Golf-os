@@ -1,15 +1,19 @@
 Grid-searching aim point for 7-Iron, pin at (0.0, 165.0)...
 
 --- Dillon's calibrated profile (tight dispersion) ---
-Aiming straight at the pin: expected 2.634 strokes
-Grid-search optimum: +5yd offline, +0yd carry from pin -> expected 2.629 strokes
-Apparent savings: 0.004 strokes/approach (SE of that difference: 0.011, t-test p=0.696)
--> NOT statistically significant at this sample size: the apparent optimum could just be Monte Carlo noise. Either the true cost surface is a flat plateau near the pin (aim-at-pin is fine), or more shots per grid point are needed to tell -- can't claim a real edge yet.
+Aiming straight at the pin: expected 2.673 strokes remaining after the shot
+Grid-search optimum: +5yd offline, +0yd carry from pin -> expected 2.663 strokes
+Apparent savings in the search sample: 0.011 strokes/approach (SE 0.012, t-test p=0.368) -- OPTIMISTIC, picked as best of 55 on the same shots
+Fresh-sample paired confirmation (10,000 new shots): saving 0.0236 strokes/approach, 95% CI [0.0142, 0.0329], p=0.0000
+-> statistically significant on fresh data: aiming off the pin helps here (check the effect size below).
+   Effect size: 0.024 strokes per approach shot.
 Saved output/aim_point_grid_search_calibrated.png
 
 --- Synthetic 22-handicap golfer (wide dispersion) ---
-Aiming straight at the pin: expected 2.875 strokes
-Grid-search optimum: -5yd offline, -5yd carry from pin -> expected 2.848 strokes
-Apparent savings: 0.027 strokes/approach (SE of that difference: 0.013, t-test p=0.042)
--> statistically significant: aiming off the pin genuinely helps here.
+Aiming straight at the pin: expected 2.877 strokes remaining after the shot
+Grid-search optimum: -5yd offline, -5yd carry from pin -> expected 2.845 strokes
+Apparent savings in the search sample: 0.032 strokes/approach (SE 0.013, t-test p=0.012) -- OPTIMISTIC, picked as best of 55 on the same shots
+Fresh-sample paired confirmation (10,000 new shots): saving 0.0366 strokes/approach, 95% CI [0.0270, 0.0463], p=0.0000
+-> statistically significant on fresh data: aiming off the pin helps here (check the effect size below).
+   Effect size: 0.037 strokes per approach shot.
 Saved output/aim_point_grid_search_wide.png
