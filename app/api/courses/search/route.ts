@@ -23,12 +23,14 @@ export async function GET(req: NextRequest) {
   // `course_name`) -- that field is present on every result seen so far.
   const courses = (data.courses ?? [])
     .slice(0, 15)
-    .map((c: { id: string; name?: string; course_name?: string; city: string | null; state: string | null; par: number | null }) => ({
+    .map((c: { id: string; name?: string; course_name?: string; city: string | null; state: string | null; par: number | null; lat?: number | null; lng?: number | null }) => ({
       id: c.id,
       name: c.course_name ?? c.name ?? "Unnamed course",
       city: c.city,
       state: c.state,
       par: c.par,
+      lat: c.lat ?? null,
+      lng: c.lng ?? null,
     }))
   return NextResponse.json({ courses })
 }

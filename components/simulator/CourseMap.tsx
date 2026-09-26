@@ -1,0 +1,201 @@
+"use client"
+
+// Leaflet map over satellite imagery. All course math lives in lib/course;
+// this component only draws and reports drags/clicks back up. Imported with
+// next/dynamic (ssr: false) because Leaflet touches `window` on import.
+
+import { useEffect, useRef } from "react"
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
+import type { LatLng } from "@/lib/course/geo"
+import type { CourseGeometry, FeatureKind } from "@/lib/course/overpass"
+import type { Landing } from "@/lib/course/plan"
+import { LIE_COLORS, type Placing } from "./courseColors"
+
+const FEATURE_STYLE: Record<FeatureKind, L.PathOptions> = {
+  green: { color: "#22c55e", weight: 1.5, fillColor: "#22c55e", fillOpacity: 0.3 },
+  fairway: { color: "#a3e635", weight: 1, fillColor: "#a3e635", fillOpacity: 0.12 },
+  bunker: { color: "#fde68a", weight: 1, fillColor: "#fde68a", fillOpacity: 0.45 },
+  water: { color: "#38bdf8", weight: 1, fillColor: "#38bdf8", fillOpacity: 0.35 },
+  tee: { color: "#d4d4d4", weight: 1, fillColor: "#d4d4d4", fillOpacity: 0.25 },
+}
+
+interface Props {
+  center: LatLng
+  geometry: CourseGeometry | null
+  selectedHoleId: string | null
+  ball: LatLng | null
+  aim: LatLng | null
+  pin: LatLng | null
+  landings: Landing[]
+  placing: Placing
+  fitBounds: [[number, number], [number, number]] | null
+  fitKey: string
+  onBall: (p: LatLng) => void
+  onAim: (p: LatLng) => void
+  onPin: (p: LatLng) => void
+  onPickHole: (id: string) => void
+}
+
+const ll = (p: LatLng): L.LatLngTuple => [p.lat, p.lng]
+
+function markerIcon(color: string, label: string, ring = false): L.DivIcon {
+  const size = 22
+  return L.divIcon({
+    className: "",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${ring ? "transparent" : color};border:3px solid ${color};box-shadow:0 0 0 2px rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font:700 10px system-ui;color:${ring ? color : "#111"}">${label}</div>`,
+  })
+}
+
+export default function CourseMap(props: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<L.Map | null>(null)
+  const layers = useRef<{
+    features: L.LayerGroup
+    holes: L.LayerGroup
+    landings: L.LayerGroup
+    ball?: L.Marker
+    aim?: L.Marker
+    pin?: L.Marker
+    path?: L.Polyline
+  } | null>(null)
+  const cb = useRef(props)
+  cb.current = props
+
+  // Create the map once.
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return
+    const map = L.map(containerRef.current, { zoomControl: true, preferCanvas: true, maxZoom: 21 }).setView(
+      ll(props.center),
+      16
+    )
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxNativeZoom: 19,
+      maxZoom: 21,
+      attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics | Course data &copy; OpenStreetMap contributors",
+    }).addTo(map)
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      const p = { lat: e.latlng.lat, lng: e.latlng.lng }
+      const { placing, onBall, onAim, onPin } = cb.current
+      if (placing === "ball") onBall(p)
+      else if (placing === "aim") onAim(p)
+      else onPin(p)
+    })
+    layers.current = {
+      features: L.layerGroup().addTo(map),
+      holes: L.layerGroup().addTo(map),
+      landings: L.layerGroup().addTo(map),
+    }
+    mapRef.current = map
+    return () => {
+      map.remove()
+      mapRef.current = null
+      layers.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Course polygons.
+  useEffect(() => {
+    const g = layers.current?.features
+    if (!g) return
+    g.clearLayers()
+    for (const f of props.geometry?.features ?? []) {
+      L.polygon(f.ring.map(ll), { ...FEATURE_STYLE[f.kind], interactive: false }).addTo(g)
+    }
+  }, [props.geometry])
+
+  // Hole centerlines (click to select).
+  useEffect(() => {
+    const g = layers.current?.holes
+    if (!g) return
+    g.clearLayers()
+    for (const h of props.geometry?.holes ?? []) {
+      const selected = h.id === props.selectedHoleId
+      const line = L.polyline(h.line.map(ll), {
+        color: selected ? "#facc15" : "#ffffff",
+        weight: selected ? 3 : 2,
+        opacity: selected ? 0.95 : 0.55,
+        dashArray: selected ? undefined : "4 6",
+      }).addTo(g)
+      line.bindTooltip(`${h.ref ?? "?"}${h.par ? ` · par ${h.par}` : ""}`, { sticky: true })
+      line.on("click", (e: L.LeafletMouseEvent) => {
+        L.DomEvent.stopPropagation(e)
+        cb.current.onPickHole(h.id)
+      })
+    }
+  }, [props.geometry, props.selectedHoleId])
+
+  // Ball / aim / pin markers and the ball->aim line.
+  useEffect(() => {
+    const map = mapRef.current
+    const l = layers.current
+    if (!map || !l) return
+    const upsert = (
+      key: "ball" | "aim" | "pin",
+      pos: LatLng | null,
+      icon: L.DivIcon,
+      onMove: (p: LatLng) => void
+    ) => {
+      const existing = l[key]
+      if (!pos) {
+        existing?.remove()
+        l[key] = undefined
+        return
+      }
+      if (existing) {
+        existing.setLatLng(ll(pos))
+        return
+      }
+      const m = L.marker(ll(pos), { icon, draggable: true, zIndexOffset: key === "ball" ? 1000 : 900 }).addTo(map)
+      m.on("dragend", () => {
+        const p = m.getLatLng()
+        onMove({ lat: p.lat, lng: p.lng })
+      })
+      l[key] = m
+    }
+    upsert("ball", props.ball, markerIcon("#ffffff", "B"), (p) => cb.current.onBall(p))
+    upsert("aim", props.aim, markerIcon("#facc15", "A", true), (p) => cb.current.onAim(p))
+    upsert("pin", props.pin, markerIcon("#ef4444", "P"), (p) => cb.current.onPin(p))
+
+    l.path?.remove()
+    l.path = undefined
+    if (props.ball && props.aim) {
+      l.path = L.polyline([ll(props.ball), ll(props.aim)], {
+        color: "#facc15",
+        weight: 2,
+        dashArray: "6 6",
+        interactive: false,
+      }).addTo(map)
+    }
+  }, [props.ball, props.aim, props.pin])
+
+  // Simulated landing dots.
+  useEffect(() => {
+    const g = layers.current?.landings
+    if (!g) return
+    g.clearLayers()
+    for (const s of props.landings) {
+      L.circleMarker(ll(s.point), {
+        radius: 3,
+        color: "#111",
+        weight: 0.5,
+        fillColor: LIE_COLORS[s.lie],
+        fillOpacity: 0.9,
+        interactive: false,
+      }).addTo(g)
+    }
+  }, [props.landings])
+
+  // Fit the view when a course or hole is picked.
+  useEffect(() => {
+    if (props.fitBounds && mapRef.current) {
+      mapRef.current.fitBounds(props.fitBounds, { padding: [30, 30], maxZoom: 18 })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.fitKey])
+
+  return <div ref={containerRef} className="h-full w-full" />
+}

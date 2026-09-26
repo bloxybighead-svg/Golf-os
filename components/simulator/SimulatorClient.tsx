@@ -65,6 +65,9 @@ export function SimulatorClient({ clubs, shots, golferName }: Props) {
           </p>
         </div>
         <div className="flex gap-4">
+          <Link href="/simulator/course" className="text-xs font-semibold text-[#22c55e] hover:underline">
+            Course Planner &rarr;
+          </Link>
           <Link href="/simulator/custom" className="text-xs text-[#22c55e] hover:underline">
             Custom Golfer &rarr;
           </Link>

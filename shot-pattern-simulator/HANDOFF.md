@@ -269,6 +269,38 @@ curve_yds, session_id, is_mishit`) is already shaped for step 2's
 tables, and `carry_yds`/`offline_yds` are exactly the coordinates step
 3's renderer needs.
 
+### Course Planner (added 2026-09-26, branch `course-map`)
+
+`/simulator/course` overlays simulated dispersion on a real course.
+Search a course (OpenGolfAPI gives its lat/lng) -> `/api/courses/geometry`
+finds its boundary in OpenStreetMap, then loads holes, greens, fairways,
+bunkers, tees, water ways and nearby coastline through the Overpass API
+(three small queries, because the public servers reject "area + full
+geometry" queries; they are also often busy, so the route races two servers
+and retries within a 52 s budget). The map is Leaflet over Esri World
+Imagery. The golfer drags a ball / aim / pin marker (or uses browser GPS);
+every club's shots are fired along the ball->aim line, each landing is
+classified water / bunker / green / fairway / rough by point-in-polygon
+(`lib/course/lies.ts`, coastline = sea on the right of the way), and clubs
+are ranked by expected strokes (`lib/course/plan.ts`, `cost.ts`).
+"Find best aim" shifts the aim left/right in 2 yd steps.
+
+Known limits: `lib/course/cost.ts` values are rounded approximations of the
+tour strokes-gained pattern, NOT a cited table (top item to fix before the
+paper uses any number from this page); anything not traced in OSM counts as
+rough; lakes mapped as multipolygon relations are skipped; no trees, slope,
+wind or elevation; best-aim reuses the shots it picks on (optimistic).
+Overpass reliability was the weak link, so geometry is now cached: memory ->
+Supabase table `course_geometry` (SQL in `supabase/course_geometry_cache.sql`,
+public read, keyed by OpenGolfAPI course id) -> live Overpass. The route only
+WRITES the cache if `SUPABASE_SERVICE_ROLE_KEY` is set (Vercel env + optional
+.env.local); without it everything still works but nothing is persisted.
+A failed (busy) query returns 502 and the page auto-retries 3x; successful
+sub-queries are memoised so retries only repeat what failed. Courses with no
+OSM boundary/hole tagging fall back to a radius search (warned in the UI;
+hole numbers may be missing and neighbouring courses may appear, e.g.
+Bethpage). Tests: `lib/course/course.test.ts`.
+
 ## Files
 
 | File | Purpose |
