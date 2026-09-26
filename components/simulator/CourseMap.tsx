@@ -43,7 +43,8 @@ interface Props {
 const ll = (p: LatLng): L.LatLngTuple => [p.lat, p.lng]
 
 function markerIcon(color: string, label: string, ring = false): L.DivIcon {
-  const size = 22
+  const coarse = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches
+  const size = coarse ? 32 : 22 // fingers need a bigger handle than a mouse
   return L.divIcon({
     className: "",
     iconSize: [size, size],

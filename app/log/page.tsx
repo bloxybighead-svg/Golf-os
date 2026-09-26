@@ -154,7 +154,7 @@ export default async function LogPage() {
       </div>
 
       {/* ── Header row ────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">Practice Log</h2>
           <p className="mt-1 text-sm text-[#6b7280]">
@@ -163,7 +163,7 @@ export default async function LogPage() {
               : `${sessionList.length} session${sessionList.length !== 1 ? "s" : ""} logged`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <ExportButtons clubWorkRows={clubWorkRows} drillRows={drillRows} />
           <Link
             href="/log/new"

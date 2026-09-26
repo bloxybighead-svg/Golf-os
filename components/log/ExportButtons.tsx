@@ -15,7 +15,7 @@ export function ExportButtons({ clubWorkRows, drillRows }: Props) {
   const stamp = () => new Date().toISOString().split("T")[0]
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <button
         onClick={() => downloadCSV(`golf-os-clubwork-${stamp()}.csv`, toCSV(clubWorkRows))}
         disabled={clubWorkRows.length === 0}

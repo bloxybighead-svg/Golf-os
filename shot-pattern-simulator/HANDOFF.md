@@ -276,6 +276,18 @@ Rounds, Course Planner (`/planner` map + sub-tabs Dispersion, Compare golfers,
 Custom golfer, Tee box). The old `/simulator/*` URLs redirect (next.config.mjs).
 Sub-nav lives in `components/SubNav.tsx` + per-section layouts.
 
+### Phone / app-store readiness (2026-09-26)
+
+Mobile-first pass: bottom tab bar on phones (top tabs on desktop), safe-area
+padding, 16px inputs (stops iOS zoom), 40px touch targets on coarse pointers,
+scrolling sub-tabs / hole strip / toolbar, collapsed golfer settings, an
+on-map HUD (club, to aim, left, to pin), Follow-my-GPS (`watchPosition`,
+2.5 s throttle), settings + recent courses + course maps saved on the device
+(localStorage; offline course reuse, tiles still need signal), web app
+manifest + icons so it installs to the home screen. Real App Store / Play
+Store distribution would wrap this in Capacitor (needs Apple developer
+account, privacy policy, and Sign in with Apple once accounts exist).
+
 ### Golfer inputs (2026-09-26)
 
 Handicap-based golfers (Course Planner and Custom golfer) take handicap, known

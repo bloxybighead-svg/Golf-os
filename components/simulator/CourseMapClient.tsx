@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import {
   bearingDeg,
@@ -61,6 +61,12 @@ const LIE_LABEL: Record<Lie, string> = {
 const LIE_SHORT: Record<Lie, string> = { green: "Grn", fairway: "Fwy", rough: "Rgh", bunker: "Bkr", water: "Wtr", trees: "Tre", oob: "OB" }
 const ALWAYS_SHOWN: Lie[] = ["green", "fairway", "rough"]
 const CORRIDOR_OPTIONS = [0, 30, 40, 50, 60] // yards each side of the hole line; 0 = off
+const SETTINGS_KEY = "golfos.planner.v1"
+const RECENT_KEY = "golfos.recentCourses.v1"
+const COURSE_CACHE_MAX_AGE_MS = 30 * 24 * 3600 * 1000
+const YD_PER_M = 1.09361
+const SIDES = ["auto", "straight", "left", "right", "both"]
+const STRENGTHS = ["slight", "moderate", "strong"]
 
 /** Distance in yards from a point to a polyline (planar approximation, fine at hole scale). */
 function distanceToLine(p: LatLng, line: LatLng[]): number {
@@ -121,12 +127,64 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [placing, setPlacing] = useState<Placing>("ball")
   const [clubChoice, setClubChoice] = useState<string>("auto")
   const [corridorYds, setCorridorYds] = useState(40)
+  const [showSettings, setShowSettings] = useState(false) // phones: golfer settings are collapsed by default
+  const [recent, setRecent] = useState<CourseHit[]>([])
+  const [hydrated, setHydrated] = useState(false)
+  const [following, setFollowing] = useState(false)
+  const [gpsAccuracyYds, setGpsAccuracyYds] = useState<number | null>(null)
+  const mapWrapRef = useRef<HTMLDivElement>(null)
+  const watchId = useRef<number | null>(null)
+  const lastFollowAt = useRef(0)
   const [aimNote, setAimNote] = useState<string | null>(null)
   const [gpsError, setGpsError] = useState("")
   const [fit, setFit] = useState<{ bounds: [[number, number], [number, number]] | null; key: string }>({
     bounds: null,
     key: "none",
   })
+
+  // ---------- remembered settings and recent courses (this device only) ----------
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY)
+      if (raw) {
+        const v = JSON.parse(raw)
+        if (v.source === "handicap" || (v.source === "calibrated" && calibrated)) setSource(v.source)
+        if (typeof v.handicap === "number") setHandicap(Math.min(36, Math.max(0, v.handicap)))
+        if (typeof v.driverCarry === "string") setDriverCarry(v.driverCarry.slice(0, 4))
+        if (typeof v.sevenIronCarry === "string") setSevenIronCarry(v.sevenIronCarry.slice(0, 4))
+        if (v.tendency && SIDES.includes(v.tendency.side) && STRENGTHS.includes(v.tendency.strength)) setTendency(v.tendency)
+        if (CORRIDOR_OPTIONS.includes(v.corridorYds)) setCorridorYds(v.corridorYds)
+      }
+      const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")
+      if (Array.isArray(r)) setRecent(r.filter((c) => c && typeof c.id === "string" && typeof c.name === "string").slice(0, 5))
+    } catch {
+      /* private mode or corrupt data: start from defaults */
+    }
+    setHydrated(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ source, handicap, driverCarry, sevenIronCarry, tendency, corridorYds }))
+    } catch {
+      /* storage full or blocked: settings just won't be remembered */
+    }
+  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, tendency, corridorYds])
+
+  // Keep the selected hole's button visible in the scrolling strip.
+  useEffect(() => {
+    if (!holeId) return
+    document.getElementById(`hole-btn-${holeId}`)?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" })
+  }, [holeId])
+
+  // Stop GPS following when leaving the page.
+  useEffect(() => {
+    return () => {
+      if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current)
+    }
+  }, [])
 
   // ---------- course search ----------
   useEffect(() => {
@@ -170,6 +228,32 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       setLoadError("This course has no coordinates in the course database, so it can't be placed on the map.")
       return
     }
+    remember(c)
+    const cacheKey = `golfos.course.${c.id}.v${GEOMETRY_VERSION}`
+    const apply = (g: CourseGeometry) => {
+      setGeometry(g)
+      const pts: LatLng[] = g.holes.flatMap((h) => h.line)
+      setFit({ bounds: boundsOf(pts.length ? pts : [{ lat: c.lat as number, lng: c.lng as number }]), key: `course-${c.id}` })
+      setLoadError("")
+      setLoadState("idle")
+    }
+    // Saved on this device (great for a round with weak signal): use it if it is recent.
+    let stale: CourseGeometry | null = null
+    try {
+      const raw = localStorage.getItem(cacheKey)
+      if (raw) {
+        const saved = JSON.parse(raw)
+        if (saved?.geometry?.holes?.length) {
+          if (Date.now() - saved.at < COURSE_CACHE_MAX_AGE_MS) {
+            apply({ ...saved.geometry, coast: saved.geometry.coast ?? [] })
+            return
+          }
+          stale = { ...saved.geometry, coast: saved.geometry.coast ?? [] }
+        }
+      }
+    } catch {
+      /* ignore unreadable saved data */
+    }
     setLoadState("loading")
     setLoadError("")
     // The free map-data servers are often busy. The API route keeps whatever
@@ -183,18 +267,38 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         const data = await res.json().catch(() => null)
         if (!res.ok || !data) throw new Error(data?.error ?? lastError)
         const g = { ...(data as CourseGeometry), coast: (data as CourseGeometry).coast ?? [] }
-        setGeometry(g)
-        const pts: LatLng[] = g.holes.flatMap((h) => h.line)
-        setFit({ bounds: boundsOf(pts.length ? pts : [{ lat: c.lat, lng: c.lng }]), key: `course-${c.id}` })
-        setLoadError("")
-        setLoadState("idle")
+        apply(g)
+        if (g.scope === "course-area") {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), geometry: g }))
+          } catch {
+            /* storage full: fine, it just won't be available offline */
+          }
+        }
         return
       } catch (e) {
         lastError = e instanceof Error ? e.message : lastError
       }
     }
+    if (stale) {
+      apply(stale)
+      setLoadError("Showing the copy saved on this phone (couldn't refresh it).")
+      return
+    }
     setLoadState("error")
     setLoadError(lastError)
+  }
+
+  function remember(c: CourseHit) {
+    setRecent((prev) => {
+      const next = [c, ...prev.filter((x) => x.id !== c.id)].slice(0, 5)
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
   }
 
   // ---------- golfer shots ----------
@@ -253,6 +357,10 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   }
 
   function pickHole(h: CourseHole) {
+    // On a phone the map is below the hole strip: bring it into view after picking a hole.
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setTimeout(() => mapWrapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 60)
+    }
     setHoleId(h.id)
     setBall(h.line[0])
     setAimManual(null)
@@ -317,6 +425,42 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         ? `Aiming where you are now is already best for the ${chosenShots.club}.`
         : `Best aim for the ${chosenShots.club}: ${Math.abs(r.offsetYds)} yd ${r.offsetYds < 0 ? "left" : "right"} of the old aim, ` +
             `saving about ${saved.toFixed(2)} strokes (measured on the same shots it was picked on, so a little optimistic).`
+    )
+  }
+
+  function stopFollowing() {
+    if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current)
+    watchId.current = null
+    setFollowing(false)
+    setGpsAccuracyYds(null)
+  }
+
+  // Keeps the ball on your live GPS position (about every 2.5 s) so the yardages update as you walk.
+  function toggleFollow() {
+    if (following) {
+      stopFollowing()
+      return
+    }
+    setGpsError("")
+    if (!navigator.geolocation) {
+      setGpsError("This browser has no location access.")
+      return
+    }
+    setFollowing(true)
+    watchId.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const now = Date.now()
+        if (now - lastFollowAt.current < 2500) return
+        lastFollowAt.current = now
+        setBall({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setGpsAccuracyYds(Math.round(pos.coords.accuracy * YD_PER_M))
+        setAimNote(null)
+      },
+      (err) => {
+        setGpsError(err.code === err.PERMISSION_DENIED ? "Location permission was denied." : "Couldn't get your location.")
+        stopFollowing()
+      },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 }
     )
   }
 
@@ -410,7 +554,34 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           )}
         </div>
 
-        <div className="flex flex-wrap items-end gap-3">
+        {recent.length > 0 && (
+          <div className="no-scrollbar -mt-2 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap">
+            <span className="text-xs text-[#6b7280]">Recent:</span>
+            {recent.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => loadCourse(r)}
+                className="shrink-0 rounded-full border border-white/[0.08] px-3 py-1.5 text-xs text-[#d1d5db] hover:border-[#22c55e]/50"
+              >
+                {r.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setShowSettings((v) => !v)}
+          aria-expanded={showSettings}
+          className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-2 text-left text-sm text-[#d1d5db] md:hidden"
+        >
+          <span>
+            <span className="text-[#6b7280]">Golfer: </span>
+            {source === "calibrated" ? calibratedName : `Handicap ${handicap}`}
+          </span>
+          <span className="text-xs text-[#22c55e]">{showSettings ? "Hide" : "Change"}</span>
+        </button>
+        <div className={`${showSettings ? "flex" : "hidden"} flex-wrap items-end gap-3 md:flex`}>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-[#6b7280]">Golfer</span>
             <select
@@ -448,6 +619,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 <input
                   type="number"
                   placeholder="avg"
+                  inputMode="numeric"
                   value={driverCarry}
                   onChange={(e) => {
                     setDriverCarry(e.target.value)
@@ -461,6 +633,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 <input
                   type="number"
                   placeholder="avg"
+                  inputMode="numeric"
                   value={sevenIronCarry}
                   onChange={(e) => {
                     setSevenIronCarry(e.target.value)
@@ -521,13 +694,14 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       )}
 
       {holes.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
           {holes.map((h, i) => (
             <button
               key={h.id}
+              id={`hole-btn-${h.id}`}
               onClick={() => pickHole(h)}
               title={h.par ? `Par ${h.par}` : undefined}
-              className={`min-w-[2.25rem] rounded-md border px-2 py-1 text-xs font-medium ${
+              className={`min-w-[2.75rem] shrink-0 rounded-md border px-2 py-2 text-sm font-medium md:min-w-[2.25rem] md:py-1 md:text-xs ${
                 h.id === holeId
                   ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]"
                   : "border-white/[0.08] text-[#9ca3af] hover:text-white"
@@ -540,15 +714,15 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_440px]">
-        {/* map */}
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-[#6b7280]">Click the map to place:</span>
+        {/* map (min-w-0 stops the scrolling toolbar from stretching the whole page on phones) */}
+        <div className="min-w-0 space-y-2">
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs md:flex-wrap md:overflow-visible">
+            <span className="shrink-0 text-[#6b7280]">Tap the map to place:</span>
             {(["ball", "aim", "pin"] as Placing[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPlacing(p)}
-                className={`rounded-md border px-2.5 py-1 font-medium capitalize ${
+                className={`shrink-0 rounded-md border px-3 py-2 font-medium capitalize md:px-2.5 md:py-1 ${
                   placing === p ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]" : "border-white/[0.08] text-[#9ca3af] hover:text-white"
                 }`}
               >
@@ -557,9 +731,18 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             ))}
             <button
               onClick={useMyLocation}
-              className="rounded-md border border-white/[0.08] px-2.5 py-1 font-medium text-[#9ca3af] hover:text-white"
+              className="shrink-0 rounded-md border border-white/[0.08] px-3 py-2 font-medium text-[#9ca3af] hover:text-white md:px-2.5 md:py-1"
             >
               Use my location
+            </button>
+            <button
+              onClick={toggleFollow}
+              aria-pressed={following}
+              className={`shrink-0 rounded-md border px-3 py-2 font-medium md:px-2.5 md:py-1 ${
+                following ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]" : "border-white/[0.08] text-[#9ca3af] hover:text-white"
+              }`}
+            >
+              {following ? `Following GPS${gpsAccuracyYds != null ? ` ±${gpsAccuracyYds} yd` : "…"}` : "Follow my GPS"}
             </button>
             {aimManual && (
               <button
@@ -567,12 +750,12 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   setAimManual(null)
                   setAimNote(null)
                 }}
-                className="rounded-md border border-white/[0.08] px-2.5 py-1 font-medium text-[#9ca3af] hover:text-white"
+                className="shrink-0 rounded-md border border-white/[0.08] px-3 py-2 font-medium text-[#9ca3af] hover:text-white md:px-2.5 md:py-1"
               >
                 Reset aim
               </button>
             )}
-            <label className="ml-auto flex items-center gap-1.5 text-[#6b7280]" title="Many courses have no trees mapped. Land farther than this from the hole line, and not mapped as anything else, counts as trees (punch-out).">
+            <label className="ml-auto flex shrink-0 items-center gap-1.5 text-[#6b7280]" title="Many courses have no trees mapped. Land farther than this from the hole line, and not mapped as anything else, counts as trees (punch-out).">
               Trees beyond
               <select
                 value={corridorYds}
@@ -580,7 +763,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   setCorridorYds(Number(e.target.value))
                   setAimNote(null)
                 }}
-                className="rounded-md border border-white/[0.08] bg-[#0a0a0a] px-1.5 py-1 text-[#9ca3af]"
+                className="rounded-md border border-white/[0.08] bg-[#0a0a0a] px-1.5 py-1.5 text-[#9ca3af]"
               >
                 {CORRIDOR_OPTIONS.map((y) => (
                   <option key={y} value={y}>
@@ -592,7 +775,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             </label>
             {gpsError && <span className="text-red-400">{gpsError}</span>}
           </div>
-          <div className="relative h-[68vh] min-h-[420px] overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a]">
+          <div ref={mapWrapRef} className="relative h-[60svh] min-h-[380px] overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] md:h-[68vh] md:min-h-[420px]">
             {course?.lat != null && course.lng != null ? (
               <CourseMap
                 center={{ lat: course.lat, lng: course.lng }}
@@ -607,6 +790,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 fitBounds={fit.bounds}
                 fitKey={fit.key}
                 onBall={(p) => {
+                  stopFollowing()
                   setBall(p)
                   setAimNote(null)
                 }}
@@ -628,6 +812,22 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 Search for a course above to load its satellite map.
               </div>
             )}
+            {/* Phone HUD: the numbers you need mid-round, on the map itself */}
+            {ball && pin && distPin != null && (
+              <div className="pointer-events-none absolute bottom-7 left-2 right-2 z-[1100] grid grid-cols-4 gap-px overflow-hidden rounded-xl border border-white/20 bg-white/10 text-center backdrop-blur-sm md:hidden">
+                {[
+                  { k: "Club", v: chosen?.club ?? "–", small: true },
+                  { k: "To aim", v: distAim != null ? `${Math.round(distAim)}` : "–" },
+                  { k: aimIsPin ? "Pin" : "Left", v: aimIsPin ? "0" : aimToPin != null ? `${Math.round(aimToPin)}` : "–" },
+                  { k: "To pin", v: `${Math.round(distPin)}` },
+                ].map((cell) => (
+                  <div key={cell.k} className="bg-black/75 px-1 py-1.5">
+                    <p className="text-[9px] uppercase tracking-wide text-[#9ca3af]">{cell.k}</p>
+                    <p className={`font-bold text-white ${cell.small ? "truncate text-sm" : "text-lg leading-tight"}`}>{cell.v}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#9ca3af]">
             {LIES.map((l) => (
@@ -643,7 +843,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         </div>
 
         {/* results */}
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {!ball || !pin ? (
             <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-4 text-sm text-[#9ca3af]">
               {holes.length > 0
@@ -706,7 +906,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 {aimNote && <p className="mt-2 text-xs text-[#9ca3af]">{aimNote}</p>}
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#111111]">
+              <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-[#111111]">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-white/[0.06] text-left text-[#6b7280]">
@@ -727,11 +927,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                       <tr
                         key={r.club}
                         onClick={() => setClubChoice(r.club)}
-                        className={`cursor-pointer border-b border-white/[0.04] last:border-0 hover:bg-white/[0.04] ${
+                        className={`cursor-pointer border-b border-white/[0.04] last:border-0 hover:bg-white/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
                           chosen?.club === r.club ? "bg-[#22c55e]/10" : ""
                         }`}
                       >
-                        <td className="px-2 py-1.5 text-white">
+                        <td className="whitespace-nowrap px-2 py-1.5 text-white">
                           {r.club}
                           {i === 0 && <span className="ml-1 text-[10px] text-[#22c55e]">★</span>}
                         </td>

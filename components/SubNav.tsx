@@ -14,7 +14,7 @@ export interface SubNavItem {
 export default function SubNav({ items, ariaLabel }: { items: SubNavItem[]; ariaLabel: string }) {
   const pathname = usePathname()
   return (
-    <nav aria-label={ariaLabel} className="mb-6 flex flex-wrap gap-1.5 border-b border-white/[0.06] pb-3">
+    <nav aria-label={ariaLabel} className="no-scrollbar -mx-4 mb-5 flex gap-1.5 overflow-x-auto whitespace-nowrap border-b border-white/[0.06] px-4 pb-3 md:mx-0 md:mb-6 md:px-0">
       {items.map(({ label, href }) => {
         const isRoot = items.some((o) => o !== items.find((i) => i.href === href) && o.href.startsWith(href + "/"))
         const active = isRoot ? pathname === href : pathname === href || pathname.startsWith(href + "/")
@@ -22,7 +22,7 @@ export default function SubNav({ items, ariaLabel }: { items: SubNavItem[]; aria
           <Link
             key={href}
             href={href}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-md px-3 py-2 text-xs font-medium transition-colors md:py-1.5 ${
               active ? "bg-[#22c55e]/15 text-[#22c55e]" : "text-[#9ca3af] hover:bg-white/[0.05] hover:text-white"
             }`}
           >

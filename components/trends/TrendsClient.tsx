@@ -332,14 +332,14 @@ export function TrendsClient({ rounds, sessions, milestones }: Props) {
     <div className="space-y-8">
 
       {/* Header + filter */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">Trends</h2>
           <p className="mt-1 text-sm text-[#6b7280]">
             {filtered.length} round{filtered.length !== 1 ? "s" : ""} in view
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex rounded-lg border border-white/[0.08] overflow-hidden">
             {FILTER_OPTIONS.map(({ value, label }) => (
               <button

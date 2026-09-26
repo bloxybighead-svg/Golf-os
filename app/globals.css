@@ -39,3 +39,20 @@ body {
 .label-xs {
   @apply text-xs font-medium uppercase tracking-widest text-[#6b7280];
 }
+
+/* ---- Phone / touch ---- */
+html { -webkit-text-size-adjust: 100%; }
+
+/* iOS zooms the page when a focused field is under 16px */
+@media (max-width: 767px) {
+  input, select, textarea { font-size: 16px !important; }
+}
+
+/* Fingers need bigger targets than mouse pointers */
+@media (pointer: coarse) {
+  button, select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) { min-height: 40px; }
+  a[class*="rounded"] { min-height: 36px; }
+}
+
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
