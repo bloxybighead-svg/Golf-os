@@ -87,18 +87,23 @@ export async function GET(req: NextRequest) {
   const qLng = Math.round(lng * 1e4) / 1e4
   const key = `${qLat},${qLng},${name ?? ""}`
   const dbKey = courseKey(req.nextUrl.searchParams.get("id"))
-  const CDN = "public, s-maxage=86400, stale-while-revalidate=604800"
+  // "Refresh course data": skip every cache layer and re-fetch from OpenStreetMap, then
+  // overwrite whatever was cached so the NEXT normal load (no force) picks up the refresh.
+  const force = req.nextUrl.searchParams.get("force") === "1"
+  const CDN = force ? "no-store" : "public, s-maxage=86400, stale-while-revalidate=604800"
 
   // 1) in-memory (this server instance), 2) Supabase (shared, survives deploys)
-  const hit = cache.get(key)
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-    return NextResponse.json(hit.body, { headers: { "Cache-Control": CDN, "X-Course-Cache": "memory" } })
-  }
-  if (dbKey) {
-    const stored = await readCachedGeometry(dbKey)
-    if (stored) {
-      cache.set(key, { at: Date.now(), body: stored })
-      return NextResponse.json(stored, { headers: { "Cache-Control": CDN, "X-Course-Cache": "supabase" } })
+  if (!force) {
+    const hit = cache.get(key)
+    if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+      return NextResponse.json(hit.body, { headers: { "Cache-Control": CDN, "X-Course-Cache": "memory" } })
+    }
+    if (dbKey) {
+      const stored = await readCachedGeometry(dbKey)
+      if (stored) {
+        cache.set(key, { at: Date.now(), body: stored })
+        return NextResponse.json(stored, { headers: { "Cache-Control": CDN, "X-Course-Cache": "supabase" } })
+      }
     }
   }
 

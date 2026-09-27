@@ -20,6 +20,7 @@ import {
   MapPin,
   Navigation,
   Pencil,
+  RefreshCw,
   RotateCcw,
   Search,
   Target,
@@ -151,6 +152,46 @@ function saveNoHazard(courseId: string, map: NoHazardMap) {
   }
 }
 
+const LAST_POSITION_KEY = "golfos.lastPosition.v1"
+interface LastPosition {
+  course: CourseHit
+  holeId: string | null
+}
+
+/** The last course (and hole, if one was picked) the golfer had open, so reopening the
+ * planner can resume there instead of starting from an empty search every time. */
+function loadLastPosition(): LastPosition | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAST_POSITION_KEY) ?? "null")
+    return v && v.course && typeof v.course.id === "string" && typeof v.course.name === "string" ? v : null
+  } catch {
+    return null
+  }
+}
+
+function saveLastPosition(pos: LastPosition) {
+  try {
+    localStorage.setItem(LAST_POSITION_KEY, JSON.stringify(pos))
+  } catch {
+    /* storage full or blocked: it just won't resume next time */
+  }
+}
+
+// Updates just the remembered hole, keeping whichever course loadCourse already saved --
+// reading it back (instead of taking the course as a parameter) sidesteps a stale-closure
+// trap: pickHole can run inside the SAME async call that is still in the middle of loading
+// a course, before that course's own setCourse state update has actually rendered.
+function updateLastPositionHole(holeId: string) {
+  try {
+    const raw = localStorage.getItem(LAST_POSITION_KEY)
+    if (!raw) return
+    const v = JSON.parse(raw)
+    if (v?.course) localStorage.setItem(LAST_POSITION_KEY, JSON.stringify({ course: v.course, holeId }))
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Zones a golfer hand-marks for a course (trees, OB, water, ...), saved on this device. */
 function loadZones(courseId: string): UserZone[] {
   try {
@@ -202,6 +243,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [geometry, setGeometry] = useState<CourseGeometry | null>(null)
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">("idle")
   const [loadError, setLoadError] = useState("")
+  const [refreshing, setRefreshing] = useState(false) // "Refresh course data": refetches geometry only, leaves ball/aim/pin alone
 
   // --- golfer ---
   const [source, setSource] = useState<"calibrated" | "handicap">(calibrated ? "calibrated" : "handicap")
@@ -267,6 +309,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       }
       const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")
       if (Array.isArray(r)) setRecent(r.filter((c) => c && typeof c.id === "string" && typeof c.name === "string").slice(0, 5))
+      // Resume where the golfer left off instead of opening to an empty search every time.
+      const last = loadLastPosition()
+      if (last) void loadCourse(last.course, { autoHoleId: last.holeId ?? undefined })
     } catch {
       /* private mode or corrupt data: start from defaults */
     }
@@ -359,7 +404,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     }
   }, [query])
 
-  async function loadCourse(c: CourseHit) {
+  async function loadCourse(c: CourseHit, opts?: { autoHoleId?: string }) {
     setCourse(c)
     setHits([])
     setGeometry(null)
@@ -372,12 +417,24 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setPendingPoints([])
     void loadZonesFor(c)
     setNoHazard(loadNoHazard(c.id))
+    saveLastPosition({ course: c, holeId: null })
     if (c.lat == null || c.lng == null) {
       setLoadState("error")
       setLoadError("This course has no coordinates in the course database, so it can't be placed on the map.")
       return
     }
     remember(c)
+    await fetchGeometry(c, opts)
+  }
+
+  /**
+   * The actual geometry fetch: this device's cache, then the shared Supabase cache and
+   * OpenStreetMap (both behind `/api/courses/geometry`), in that order. Split out from
+   * `loadCourse` so "Refresh course data" can re-run just this half -- it should leave
+   * the golfer's current ball/aim/pin exactly where they are, not reset the whole page
+   * the way picking a *different* course does.
+   */
+  async function fetchGeometry(c: CourseHit, opts?: { force?: boolean; autoHoleId?: string }) {
     const cacheKey = `golfos.course.${c.id}.v${GEOMETRY_VERSION}`
     const apply = (g: CourseGeometry) => {
       setGeometry(g)
@@ -385,29 +442,37 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       setFit({ bounds: boundsOf(pts.length ? pts : [{ lat: c.lat as number, lng: c.lng as number }]), key: `course-${c.id}` })
       setLoadError("")
       setLoadState("idle")
+      // Resuming a remembered position (mount-time auto-load only): pickHole does its
+      // own state resets, which is fine here since nothing golfer-specific was set yet.
+      const target = opts?.autoHoleId ? g.holes.find((h) => h.id === opts.autoHoleId) : null
+      if (target) pickHole(target)
     }
-    // Saved on this device (great for a round with weak signal): use it if it is recent.
+    // Saved on this device (great for a round with weak signal): use it if it is recent,
+    // unless a refresh was explicitly requested.
     let stale: CourseGeometry | null = null
-    try {
-      const raw = localStorage.getItem(cacheKey)
-      if (raw) {
-        const saved = JSON.parse(raw)
-        if (saved?.geometry?.holes?.length) {
-          if (Date.now() - saved.at < COURSE_CACHE_MAX_AGE_MS) {
-            apply({ ...saved.geometry, coast: saved.geometry.coast ?? [] })
-            return
+    if (!opts?.force) {
+      try {
+        const raw = localStorage.getItem(cacheKey)
+        if (raw) {
+          const saved = JSON.parse(raw)
+          if (saved?.geometry?.holes?.length) {
+            if (Date.now() - saved.at < COURSE_CACHE_MAX_AGE_MS) {
+              apply({ ...saved.geometry, coast: saved.geometry.coast ?? [] })
+              return
+            }
+            stale = { ...saved.geometry, coast: saved.geometry.coast ?? [] }
           }
-          stale = { ...saved.geometry, coast: saved.geometry.coast ?? [] }
         }
+      } catch {
+        /* ignore unreadable saved data */
       }
-    } catch {
-      /* ignore unreadable saved data */
     }
     setLoadState("loading")
     setLoadError("")
     // The free map-data servers are often busy. The API route keeps whatever
     // it already fetched, so retrying picks up where the last try stopped.
-    const url = `/api/courses/geometry?lat=${c.lat}&lng=${c.lng}&name=${encodeURIComponent(c.name)}&id=${encodeURIComponent(c.id)}&v=${GEOMETRY_VERSION}`
+    // force=1 also skips the server's own (Supabase) cache, so a stale entry there gets replaced.
+    const url = `/api/courses/geometry?lat=${c.lat}&lng=${c.lng}&name=${encodeURIComponent(c.name)}&id=${encodeURIComponent(c.id)}&v=${GEOMETRY_VERSION}${opts?.force ? "&force=1" : ""}`
     let lastError = "Could not load course map data"
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt > 0) setLoadError(`Map data server is busy, retrying (${attempt + 1}/3)…`)
@@ -436,6 +501,16 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     }
     setLoadState("error")
     setLoadError(lastError)
+  }
+
+  async function refreshCourseData() {
+    if (!course || refreshing) return
+    setRefreshing(true)
+    try {
+      await fetchGeometry(course, { force: true })
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   // Loads hand-marked zones for a course: from the signed-in user's account if
@@ -556,6 +631,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setAimNote(null)
     setClubChoice("auto")
     setFit({ bounds: boundsOf([...h.line, holePinFor(h)]), key: `hole-${h.id}` })
+    updateLastPositionHole(h.id)
   }
 
   // Memoized so its reference only changes when the underlying pin genuinely
@@ -1308,6 +1384,17 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             <Flag size={14} className="text-[#22c55e]" />
             {course.name}
           </span>
+          {geometry && loadState !== "loading" && (
+            <button
+              onClick={refreshCourseData}
+              disabled={refreshing}
+              title="Re-fetch this course's map data instead of using the cached copy"
+              className="flex items-center gap-1 rounded-md border border-white/[0.08] px-2 py-0.5 text-[#9ca3af] hover:text-white disabled:opacity-50"
+            >
+              <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
+              {refreshing ? "Refreshing…" : "Refresh course data"}
+            </button>
+          )}
           {loadState === "loading" && (
             <span className="flex items-center gap-1.5">
               <Loader2 size={12} className="animate-spin" /> {loadError || "Loading map data…"}
