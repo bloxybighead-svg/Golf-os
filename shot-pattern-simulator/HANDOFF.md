@@ -729,6 +729,87 @@ zoom 19, zoom-out capping at 16 (`leaflet-disabled` class on the button),
 scroll-wheel zoom working/not-working exactly per device type, and zoom
 value persisting to `localStorage` per course.
 
+Reverted (2026-09-27, later still): Dillon confirmed the Ctrl/Cmd+wheel
+convention was the right call after all -- plain scroll-wheel zoom is back
+to requiring the modifier, matching the original pre-Session-4 behavior
+(and how most embedded maps, Google Maps included, avoid hijacking page
+scroll). `scrollWheelZoom: false` + the manual Ctrl/Cmd-checked `wheel`
+listener are both back in `CourseMap.tsx`; everything else from Session 4
+(compass, zoom min/max, zoom control position, persistence) is unchanged.
+
+Course corrections (2026-09-27, later still): Dillon's spec wanted a way to
+fix wrong OpenGolfAPI/OSM course data (its own example: Colts Neck hole 12
+tagged Par 3, should be Par 4) globally, for every golfer. Two real
+deviations from the literal spec, both because the app's actual data model
+doesn't match what the spec assumed:
+- **Keyed by `hole_id` (the stable OSM way id, `CourseHole.id`), not
+  `hole_number`.** A hole's OSM `ref` tag (the human hole number) can be
+  missing; `id` is what the planner already uses everywhere to identify a
+  hole, so corrections reuse that instead of introducing a second, weaker
+  key.
+- **No "round card" integration.** The spec's own test case ("load a new
+  round at Colts Neck, hole 12 -- par is 4 on card") assumes a hole-by-hole
+  round-logging UI. `rounds` is a single aggregate entry per round (total
+  score, total par, course/slope rating) -- there is no per-hole scorecard
+  anywhere in this app to wire a corrected per-hole par into. Corrections
+  apply everywhere that DOES read per-hole course data today: the map, the
+  hole strip's par label, and every strokes-gained calculation that uses
+  `hole.par`/the tee position.
+`supabase/course_corrections.sql` (applied): `course_key` (same format as
+`course_geometry.course_key`), `hole_id`, `field_name` (`par`/`tee_lat`/
+`tee_lng`/`yardage`/`handicap`), `original_value`, `corrected_value`,
+`reason`, `submitted_by`, `user_id` (owner, `references auth.users`),
+unique on `(course_key, hole_id, field_name)`. RLS: public read (anon key,
+same as `course_geometry`); insert requires being signed in
+(`auth.uid() = user_id`) -- a deliberate floor above the spec's own
+"anonymous" option, so a correction is at least tied to an accountable
+account, given there's no moderation queue yet; update is open to any
+signed-in user (not owner-only), matching the spec's own "global, shared,
+latest wins" framing -- this is metadata, not personal data like
+`course_zones`, so there's no real owner to protect. Verified live: anon
+key can `select` (`[]`... actually returns the real rows, correctly public)
+but an `insert` returns `42501` (RLS violation), same verification pattern
+used for every other RLS table this project has added.
+
+`lib/course/corrections.ts` (new, pure, tested): `validateCorrection` (par
+in {3,4,5,6}; lat/lng in range AND within ~50 miles of the course center,
+the spec's own "catch a typo" check; yardage 50-800 -- widened past the
+spec's "50-600+" since real par 5s run past 600; stroke index 1-18) and
+`applyCorrections(geometry, rows)`, which merges corrections onto
+`CourseGeometry.holes` at READ TIME, never baked into any cache layer, so a
+new correction is visible on the very next load -- not after the Supabase
+cache's 90-day TTL or the in-memory 6h TTL expires. Wired into
+`/api/courses/geometry`'s three return paths (memory hit, Supabase hit,
+fresh fetch) in `route.ts`. `CourseHole` gained `strokeIndex`, `yardageYds`
+(both new fields OSM never tags at all -- null until a golfer corrects
+them; the map's own live ball/pin distance is still what scoring actually
+uses, this is a scorecard-style display number only) and `correctedFields`
+(drives the "corrected" badge). `GEOMETRY_VERSION` bumped 2->3 for the
+shape change, so every existing cached row refetches once, correctly, on
+its own.
+
+UI: an "Edit" button + a "corrected" badge (hover shows which fields) sit
+right on the hole card next to "Hole 12 · Par 4"; `EditHoleModal.tsx` (new,
+presentational only -- no Supabase calls of its own) has the par dropdown,
+tee lat/lng, yardage, handicap and an optional reason, prefilled from
+current values (including any existing correction) and validated inline
+via the same `validateCorrection` the route uses. Only fields that
+actually changed get submitted -- opening the modal and only typing a
+reason submits nothing. On success: `course_corrections` upsert (any
+existing row for that hole/field is overwritten, per the "latest wins"
+design above), a confirmation toast, and an immediate forced geometry
+refetch (`fetchGeometry(course, {force:true})`) so the fix shows up
+without a manual page reload -- strictly better than the spec's own
+"refresh page" test case. Manually backfilled the Colts Neck hole 12 par
+correction Dillon's spec named as the known example (`way/917183416`,
+`par` 3 -> 4, attributed to his real account like every other admin
+backfill this project has done). Verified live end to end: Colts Neck hole
+12 shows "Par 4" + the "corrected" badge on load, survives "Refresh course
+data", and the modal's inline validation correctly rejects an out-of-range
+latitude before Submit is even clickable. 7 new tests (103 total,
+`applyCorrections`/`validateCorrection`), typecheck and `npm run build`
+clean.
+
 ## Files
 
 | File | Purpose |

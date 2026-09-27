@@ -12,18 +12,28 @@ import { distanceYds, pointInRing, toLocal, type LatLng } from "./geo"
 export type FeatureKind = "green" | "fairway" | "bunker" | "water" | "tee" | "trees" | "range"
 
 /** Bump when the shape or meaning of CourseGeometry changes; older cached rows are refetched. */
-export const GEOMETRY_VERSION = 2
+export const GEOMETRY_VERSION = 3
 
 export interface CourseFeature {
   kind: FeatureKind
   ring: LatLng[]
 }
 
+export type CorrectableField = "par" | "tee_lat" | "tee_lng" | "yardage" | "handicap"
+
 export interface CourseHole {
   id: string
   ref: number | null // hole number as tagged in OSM
   par: number | null
   line: LatLng[] // tee -> green centerline
+  /** Stroke index (1-18, how hard the hole plays relative to the others) -- not tagged
+   * in OSM at all, so this only ever comes from a golfer's own correction. */
+  strokeIndex?: number | null
+  /** Tee-to-green yardage. Not tagged in OSM either; absent unless corrected (the map already
+   * shows live, precise ball/pin distances -- this is just a scorecard-style display number). */
+  yardageYds?: number | null
+  /** Which fields (if any) a golfer has corrected for this hole -- drives the "corrected" badge. */
+  correctedFields?: CorrectableField[]
 }
 
 export interface CourseGeometry {
@@ -99,6 +109,9 @@ export function parseOverpass(elements: OverpassElement[], scope: CourseGeometry
         ref: Number.isFinite(ref) ? ref : null,
         par: Number.isFinite(par) ? par : null,
         line: toLatLngs(el.geometry),
+        strokeIndex: null,
+        yardageYds: null,
+        correctedFields: [],
       })
       continue
     }

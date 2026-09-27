@@ -4,6 +4,8 @@ import { buildLieMap } from "./lies"
 import { parseOverpass, type OverpassElement } from "./overpass"
 import { expectedFromStart, expectedStrokesRemaining, tourExpected, tourPutting } from "./cost"
 import { bestAim, rankClubs } from "./plan"
+import { applyCorrections, validateCorrection, type CorrectionRow } from "./corrections"
+import type { CourseGeometry, CourseHole } from "./overpass"
 
 const ORIGIN = { lat: 36.5685, lng: -121.949 }
 
@@ -561,5 +563,72 @@ describe("bestAim re-scores its winner on held-out shots", () => {
     const openLies = buildLieMap(ORIGIN, [{ kind: "bunker", ring: bunker }]) // nothing else mapped anywhere
     const r = bestAim({ club: "7-Iron", shots }, { from: ORIGIN, aim: pin, pin, lies: openLies })
     expect(Math.abs(r.offsetYds)).toBeLessThan(30) // well short of the +-60 search boundary
+  })
+})
+
+describe("course corrections", () => {
+  function hole(overrides: Partial<CourseHole> = {}): CourseHole {
+    return { id: "way/1", ref: 12, par: 3, line: [ORIGIN, fromLocal(ORIGIN, { x: 0, y: 400 })], ...overrides }
+  }
+  function geometry(holes: CourseHole[]): CourseGeometry {
+    return { holes, features: [], coast: [], scope: "course-area", version: 3 }
+  }
+  function row(field: CorrectionRow["field_name"], value: string, holeId = "way/1"): CorrectionRow {
+    return { hole_id: holeId, field_name: field, corrected_value: value }
+  }
+
+  it("leaves a hole with no matching correction untouched, same object reference", () => {
+    const h = hole()
+    const g = geometry([h])
+    const out = applyCorrections(g, [row("par", "4", "way/999")])
+    expect(out.holes[0]).toBe(h) // reference equality: nothing should re-render off this
+  })
+
+  it("overrides par (the Colts Neck hole 12 case)", () => {
+    const g = geometry([hole({ par: 3 })])
+    const out = applyCorrections(g, [row("par", "4")])
+    expect(out.holes[0].par).toBe(4)
+    expect(out.holes[0].correctedFields).toEqual(["par"])
+  })
+
+  it("ignores an out-of-range corrected par instead of applying garbage", () => {
+    const g = geometry([hole({ par: 3 })])
+    const out = applyCorrections(g, [row("par", "7")])
+    expect(out.holes[0].par).toBe(3)
+  })
+
+  it("moves only the tee point, and only the coordinate that was actually corrected", () => {
+    const original = hole()
+    const g = geometry([original])
+    const out = applyCorrections(g, [row("tee_lat", String(ORIGIN.lat + 0.001))])
+    expect(out.holes[0].line[0].lat).toBeCloseTo(ORIGIN.lat + 0.001, 6)
+    expect(out.holes[0].line[0].lng).toBe(original.line[0].lng) // untouched
+    expect(out.holes[0].line[1]).toEqual(original.line[1]) // green end untouched
+  })
+
+  it("sets yardage and stroke index, fields OSM never provides", () => {
+    const g = geometry([hole()])
+    const out = applyCorrections(g, [row("yardage", "410"), row("handicap", "7")])
+    expect(out.holes[0].yardageYds).toBe(410)
+    expect(out.holes[0].strokeIndex).toBe(7)
+    expect(out.holes[0].correctedFields).toEqual(expect.arrayContaining(["yardage", "handicap"]))
+  })
+
+  it("validates par, coordinates, yardage and stroke index", () => {
+    const center = ORIGIN
+    expect(validateCorrection({ par: 2 }, center).par).toBeTruthy()
+    expect(validateCorrection({ par: 4 }, center).par).toBeUndefined()
+    expect(validateCorrection({ teeLat: 200 }, center).teeLat).toBeTruthy()
+    expect(validateCorrection({ yardageYds: 30 }, center).yardageYds).toBeTruthy()
+    expect(validateCorrection({ yardageYds: 410 }, center).yardageYds).toBeUndefined()
+    expect(validateCorrection({ strokeIndex: 0 }, center).strokeIndex).toBeTruthy()
+    expect(validateCorrection({ strokeIndex: 19 }, center).strokeIndex).toBeTruthy()
+    expect(validateCorrection({ strokeIndex: 7 }, center).strokeIndex).toBeUndefined()
+  })
+
+  it("rejects a tee point far enough away to be a likely typo", () => {
+    const farAway = fromLocal(ORIGIN, { x: 0, y: 200_000 }) // ~115 miles
+    const errors = validateCorrection({ teeLat: farAway.lat, teeLng: farAway.lng }, ORIGIN)
+    expect(errors.teeLat).toBeTruthy()
   })
 })

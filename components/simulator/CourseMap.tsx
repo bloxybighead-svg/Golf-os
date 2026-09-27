@@ -106,16 +106,14 @@ export default function CourseMap(props: Props) {
   // Create the map once.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
-    // Touch devices get pinch-to-zoom (Leaflet's default) instead of scroll-to-zoom, so a
-    // finger scrolling the page over the map doesn't accidentally zoom it; a mouse gets plain
-    // scroll-to-zoom, no modifier key needed.
-    const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0)
+    // Wheel-zoom is off so scrolling the page over the map does not hijack it; Ctrl/Cmd + wheel zooms
+    // (touch devices get pinch-to-zoom, Leaflet's default, regardless).
     const map = L.map(containerRef.current, {
       zoomControl: false,
       preferCanvas: true,
       minZoom: 16,
       maxZoom: 19,
-      scrollWheelZoom: !isTouch,
+      scrollWheelZoom: false,
       touchZoom: true,
       zoomSnap: 0.5,
       zoomDelta: 0.5,
@@ -130,6 +128,12 @@ export default function CourseMap(props: Props) {
       attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics | Course data &copy; OpenStreetMap contributors",
     }).addTo(map)
     map.on("zoomend", () => cb.current.onZoomChange?.(map.getZoom()))
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      map.setZoom(map.getZoom() + (e.deltaY < 0 ? 0.5 : -0.5))
+    }
+    map.getContainer().addEventListener("wheel", onWheel, { passive: false })
     map.on("click", (e: L.LeafletMouseEvent) => {
       const p = { lat: e.latlng.lat, lng: e.latlng.lng }
       const { drawKind, pendingPoints, onDrawPoint, onDrawClose, placing, onBall, onAim, onPin } = cb.current
@@ -165,6 +169,7 @@ export default function CourseMap(props: Props) {
     }
     mapRef.current = map
     return () => {
+      map.getContainer().removeEventListener("wheel", onWheel)
       map.remove()
       mapRef.current = null
       layers.current = null

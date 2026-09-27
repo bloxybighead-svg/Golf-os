@@ -23,6 +23,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  SquarePen,
   Target,
   Undo2,
   User,
@@ -57,6 +58,7 @@ import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
 import type { Club } from "@/lib/golfer/tables"
 import { createClient } from "@/lib/supabase/client"
 import { TendencyPicker } from "./TendencyPicker"
+import { EditHoleModal, type HoleCorrectionSubmission } from "./EditHoleModal"
 import { LIE_COLORS, type Placing } from "./courseColors"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
@@ -269,6 +271,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [loadError, setLoadError] = useState("")
   const [refreshing, setRefreshing] = useState(false) // "Refresh course data": refetches geometry only, leaves ball/aim/pin alone
   const [initialZoom, setInitialZoom] = useState<number | undefined>(undefined) // remembered per course, initial view only
+  const [editingHole, setEditingHole] = useState(false)
+  const [correctionSubmitting, setCorrectionSubmitting] = useState(false)
+  const [correctionNote, setCorrectionNote] = useState<string | null>(null)
 
   // --- golfer ---
   const [source, setSource] = useState<"calibrated" | "handicap">(calibrated ? "calibrated" : "handicap")
@@ -856,6 +861,48 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     if (authUser) await supabaseRef.current!.from("course_zones").delete().eq("id", id)
   }
 
+  // Corrections are global (course_key, hole_id, field_name), not per-user -- any
+  // signed-in golfer can submit or overwrite one, so this is a plain upsert, not
+  // scoped to the current account's own rows the way zones are.
+  async function submitHoleCorrection(input: HoleCorrectionSubmission) {
+    if (!authUser || !course || !hole) return
+    const rows: { course_key: string; hole_id: string; field_name: string; original_value: string | null; corrected_value: string; reason: string | null; user_id: string; submitted_by: string | null }[] = []
+    const add = (field: string, original: string | null, corrected: number | undefined) => {
+      if (corrected == null) return
+      rows.push({
+        course_key: `ogapi:${course.id}`,
+        hole_id: hole.id,
+        field_name: field,
+        original_value: original,
+        corrected_value: String(corrected),
+        reason: input.reason || null,
+        user_id: authUser.id,
+        submitted_by: authUser.email,
+      })
+    }
+    add("par", hole.par != null ? String(hole.par) : null, input.par)
+    add("tee_lat", String(hole.line[0].lat), input.teeLat)
+    add("tee_lng", String(hole.line[0].lng), input.teeLng)
+    add("yardage", hole.yardageYds != null ? String(hole.yardageYds) : null, input.yardageYds)
+    add("handicap", hole.strokeIndex != null ? String(hole.strokeIndex) : null, input.strokeIndex)
+    if (rows.length === 0) {
+      setEditingHole(false)
+      return
+    }
+    setCorrectionSubmitting(true)
+    try {
+      const { error } = await supabaseRef.current!.from("course_corrections").upsert(rows, { onConflict: "course_key,hole_id,field_name" })
+      if (!error) {
+        setEditingHole(false)
+        setCorrectionNote("Correction submitted. This will help other golfers.")
+        setTimeout(() => setCorrectionNote(null), 5000)
+        await fetchGeometry(course, { force: true }) // see the fix immediately, not after a manual reload
+      }
+    } finally {
+      setCorrectionSubmitting(false)
+    }
+  }
+
   function stopFollowing() {
     if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current)
     watchId.current = null
@@ -957,8 +1004,27 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const planCard = (
     <div className="rounded-2xl border border-white/[0.07] bg-[#111111] p-4 shadow-lg shadow-black/20">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold text-white">
-          {hole ? `Hole ${hole.ref ?? "?"}${hole.par ? ` · Par ${hole.par}` : ""}` : "Free placement"}
+        <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-sm font-semibold text-white">
+          {hole
+            ? `Hole ${hole.ref ?? "?"}${hole.par ? ` · Par ${hole.par}` : ""}${hole.yardageYds ? ` · ${hole.yardageYds} yd` : ""}`
+            : "Free placement"}
+          {hole && !!hole.correctedFields?.length && (
+            <span
+              className="rounded-full bg-[#22c55e]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#22c55e]"
+              title={`Corrected: ${hole.correctedFields.join(", ")}`}
+            >
+              corrected
+            </span>
+          )}
+          {hole && (
+            <button
+              onClick={() => setEditingHole(true)}
+              title="Edit hole data"
+              className="flex items-center gap-1 text-[10px] font-medium text-[#6b7280] hover:text-white"
+            >
+              <SquarePen size={11} /> Edit
+            </button>
+          )}
         </p>
         <p className="text-[11px] text-[#6b7280]">from {fromLabel}</p>
       </div>
@@ -1893,6 +1959,23 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             <ChevronDown size={16} className={`shrink-0 text-[#9ca3af] transition-transform ${sheetOpen ? "" : "rotate-180"}`} />
           </button>
           <div className="overflow-y-auto pb-[env(safe-area-inset-bottom)]">{clubTable}</div>
+        </div>
+      )}
+
+      {editingHole && hole && course?.lat != null && course.lng != null && (
+        <EditHoleModal
+          hole={hole}
+          defaultYardageYds={distanceYds(hole.line[0], hole.line[hole.line.length - 1])}
+          courseCenter={{ lat: course.lat, lng: course.lng }}
+          signedIn={!!authUser}
+          submitting={correctionSubmitting}
+          onClose={() => setEditingHole(false)}
+          onSubmit={submitHoleCorrection}
+        />
+      )}
+      {correctionNote && (
+        <div className="fixed bottom-20 left-1/2 z-[1400] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl border border-[#22c55e]/30 bg-[#111111] px-4 py-3 text-center text-sm text-white shadow-2xl md:bottom-6">
+          {correctionNote}
         </div>
       )}
     </div>

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
+import { applyCorrections } from "@/lib/course/corrections"
 import { courseKey, readCachedGeometry, writeCachedGeometry } from "@/lib/supabase/courseCache"
+import { readCorrections } from "@/lib/supabase/courseCorrections"
 import {
   boundaryQuery,
   coastQuery,
@@ -10,6 +12,7 @@ import {
   parseOverpass,
   pickBoundary,
   radiusQuery,
+  type CourseGeometry,
   type OverpassElement,
 } from "@/lib/course/overpass"
 
@@ -91,18 +94,23 @@ export async function GET(req: NextRequest) {
   // overwrite whatever was cached so the NEXT normal load (no force) picks up the refresh.
   const force = req.nextUrl.searchParams.get("force") === "1"
   const CDN = force ? "no-store" : "public, s-maxage=86400, stale-while-revalidate=604800"
+  // Applied fresh on every request, on top of whatever cache layer served the geometry --
+  // never baked into the cached copy itself -- so a new correction takes effect on the very
+  // next load instead of waiting for that cache to expire (90 days for Supabase, 6h in-memory).
+  const corrections = dbKey ? await readCorrections(dbKey) : []
+  const withCorrections = (g: CourseGeometry) => applyCorrections(g, corrections)
 
   // 1) in-memory (this server instance), 2) Supabase (shared, survives deploys)
   if (!force) {
     const hit = cache.get(key)
     if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-      return NextResponse.json(hit.body, { headers: { "Cache-Control": CDN, "X-Course-Cache": "memory" } })
+      return NextResponse.json(withCorrections(hit.body as CourseGeometry), { headers: { "Cache-Control": CDN, "X-Course-Cache": "memory" } })
     }
     if (dbKey) {
       const stored = await readCachedGeometry(dbKey)
       if (stored) {
         cache.set(key, { at: Date.now(), body: stored })
-        return NextResponse.json(stored, { headers: { "Cache-Control": CDN, "X-Course-Cache": "supabase" } })
+        return NextResponse.json(withCorrections(stored), { headers: { "Cache-Control": CDN, "X-Course-Cache": "supabase" } })
       }
     }
   }
@@ -149,7 +157,7 @@ export async function GET(req: NextRequest) {
     const plausible = geometry.holes.length === 9 || geometry.holes.length === 18
     if (dbKey && plausible) writeStatus = await writeCachedGeometry(dbKey, { name, lat: qLat, lng: qLng }, geometry)
   }
-  return NextResponse.json(geometry, {
+  return NextResponse.json(withCorrections(geometry), {
     headers: { "Cache-Control": CDN, "X-Course-Cache": writeStatus === "stored" ? "miss-stored" : "miss",
       "X-Course-Cache-Write": writeStatus.replace(/[^ -~]/g, " ") },
   })
