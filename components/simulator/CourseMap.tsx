@@ -60,6 +60,8 @@ interface Props {
   onPin: (p: LatLng) => void
   onPickHole: (id: string) => void
   onDrawPoint: (p: LatLng) => void
+  /** Called instead of onDrawPoint when the tap lands on/near the first pending vertex, closing the shape. */
+  onDrawClose: () => void
 }
 
 const ll = (p: LatLng): L.LatLngTuple => [p.lat, p.lng]
@@ -118,8 +120,20 @@ export default function CourseMap(props: Props) {
     }).addTo(map)
     map.on("click", (e: L.LeafletMouseEvent) => {
       const p = { lat: e.latlng.lat, lng: e.latlng.lng }
-      const { drawKind, onDrawPoint, placing, onBall, onAim, onPin } = cb.current
+      const { drawKind, pendingPoints, onDrawPoint, onDrawClose, placing, onBall, onAim, onPin } = cb.current
       if (drawKind) {
+        // Tapping on (or near, for a finger) the first vertex closes the shape --
+        // easier on a phone than hunting for the Finish button.
+        if (pendingPoints.length >= 3) {
+          const coarse = window.matchMedia?.("(pointer: coarse)").matches
+          const thresholdPx = coarse ? 26 : 14
+          const first = map.latLngToContainerPoint(L.latLng(pendingPoints[0].lat, pendingPoints[0].lng))
+          const tapped = map.latLngToContainerPoint(e.latlng)
+          if (Math.hypot(first.x - tapped.x, first.y - tapped.y) <= thresholdPx) {
+            onDrawClose()
+            return
+          }
+        }
         onDrawPoint(p)
         return
       }
@@ -288,9 +302,17 @@ export default function CourseMap(props: Props) {
       if (pts.length >= 3) {
         L.polyline([ll(pts[pts.length - 1]), ll(pts[0])], { color, weight: 2, dashArray: "4 4", opacity: 0.7, interactive: false }).addTo(g)
       }
-      for (const p of pts) {
-        L.circleMarker(ll(p), { radius: 5, color: "#111", weight: 1.5, fillColor: color, fillOpacity: 1, interactive: false }).addTo(g)
-      }
+      pts.forEach((p, i) => {
+        // The first vertex is drawn bigger: tapping it (or near it, on a touchscreen) closes the shape.
+        L.circleMarker(ll(p), {
+          radius: i === 0 && pts.length >= 3 ? 9 : 5,
+          color: "#111",
+          weight: i === 0 ? 2 : 1.5,
+          fillColor: color,
+          fillOpacity: 1,
+          interactive: false,
+        }).addTo(g)
+      })
     }
   }, [props.pendingPoints, props.drawKind])
 

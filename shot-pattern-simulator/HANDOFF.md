@@ -353,14 +353,32 @@ trouble was only on one -- wrong aim, wrong strokes gained. "Mark area" in the
 map toolbar lets the golfer hand-draw trees, water, a bunker, out of bounds,
 or a safe fairway/rough/green patch (to correct a wrong map) directly on the
 satellite image; each is a tap-to-add-vertex polygon (`>=3` points, Undo/
-Finish/Cancel), stored per course in `localStorage`
-(`golfos.zones.<courseId>.v1`, see `loadZones`/`saveZones` in
-`CourseMapClient.tsx`) -- not in Supabase, so marks don't sync across devices
-yet. In `lib/course/lies.ts`, `buildLieMap`'s zones are checked BEFORE the
-OSM-derived polygons and coastline, last-drawn-wins on overlap, so a zone
-always overrides the map. `UserZone` reuses the `Lie` type directly (no
-FeatureKind indirection). Cached geometry carries `version` (GEOMETRY_VERSION);
-older rows are ignored and refetched. Tests: `lib/course/course.test.ts`.
+Finish/Cancel, or tap the enlarged first vertex again to close it -- a mobile
+shortcut, pixel-distance hit test in `CourseMap.tsx`'s click handler). In
+`lib/course/lies.ts`, `buildLieMap`'s zones are checked BEFORE the OSM-derived
+polygons and coastline, last-drawn-wins on overlap, so a zone always overrides
+the map. `UserZone` reuses the `Lie` type directly (no FeatureKind
+indirection). Cached geometry carries `version` (GEOMETRY_VERSION); older rows
+are ignored and refetched. Tests: `lib/course/course.test.ts`.
+
+Accounts + per-user zone sync (2026-09-27): Supabase Auth (email/password),
+`middleware.ts` refreshes the session cookie every request, `/login` (sign
+in + create account, `components/auth/LoginForm.tsx`), `AccountMenu` in
+`NavBar` (email + sign out) fed by a server-side `auth.getUser()` in
+`app/layout.tsx`. New table `public.course_zones` (`supabase/course_zones.sql`
+-- course_id, user_id, lie, ring jsonb; RLS owner-only, `auth.uid() = user_id`
+on every policy). Signed-in: zones read/write straight to that table from
+`CourseMapClient.tsx` (no server route -- RLS does the enforcement). Signed
+out: unchanged localStorage behavior (`golfos.zones.<courseId>.v1`). Marks
+made before signing in are offered a one-time upload ("Save to my account"
+banner, `localOnlyZones`/`syncLocalZonesToAccount`) rather than silently lost
+or merged. **Gotcha that cost a debug cycle:** supabase-js query builders are
+lazy thenables -- `void supabase.from(...).delete()...` builds the request but
+never SENDS it; it must be `await`ed (or `.then()`-ed) or nothing happens over
+the wire, even though nothing throws. Caught by checking row counts in the DB
+directly, not by trusting the (optimistically-updated) UI. Only `course_zones`
+is user-scoped so far -- Log/Drills/Rounds/Trends and the calibrated golfer
+profile are still open to anyone with the anon key (same gap as before).
 
 ## Files
 

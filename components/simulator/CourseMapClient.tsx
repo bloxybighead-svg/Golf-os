@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import Link from "next/link"
 import {
   Check,
   ChevronDown,
@@ -42,6 +43,7 @@ import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/cour
 import { seededSample } from "@/lib/dispersion/stats"
 import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
 import type { Club } from "@/lib/golfer/tables"
+import { createClient } from "@/lib/supabase/client"
 import { TendencyPicker } from "./TendencyPicker"
 import { LIE_COLORS, type Placing } from "./courseColors"
 
@@ -167,6 +169,8 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [placing, setPlacing] = useState<Placing>("ball")
   const [clubChoice, setClubChoice] = useState<string>("auto")
   const [zones, setZones] = useState<UserZone[]>([])
+  const [localOnlyZones, setLocalOnlyZones] = useState<UserZone[] | null>(null) // marks made before signing in
+  const [syncingZones, setSyncingZones] = useState(false)
   const [drawKind, setDrawKind] = useState<Lie | null>(null)
   const [pendingPoints, setPendingPoints] = useState<LatLng[]>([])
   const [showTrouble, setShowTrouble] = useState(false)
@@ -179,6 +183,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const mapWrapRef = useRef<HTMLDivElement>(null)
   const watchId = useRef<number | null>(null)
   const lastFollowAt = useRef(0)
+  const supabaseRef = useRef<ReturnType<typeof createClient>>()
+  if (!supabaseRef.current) supabaseRef.current = createClient()
+  const [authUser, setAuthUser] = useState<{ id: string; email: string | null } | null>(null)
   const [aimNote, setAimNote] = useState<string | null>(null)
   const [gpsError, setGpsError] = useState("")
   const [fit, setFit] = useState<{ bounds: [[number, number], [number, number]] | null; key: string }>({
@@ -216,11 +223,28 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     }
   }, [hydrated, source, handicap, driverCarry, sevenIronCarry, tendency])
 
-  // Save hand-marked zones for the loaded course whenever they change.
+  // Save hand-marked zones for the loaded course whenever they change (guest/offline
+  // fallback -- while signed in, marks are already the source of truth in Supabase,
+  // but keeping a local mirror costs nothing and covers a failed write).
   useEffect(() => {
     if (!course) return
     saveZones(course.id, zones)
   }, [course, zones])
+
+  // Track sign-in state so hand-marked areas can be saved per account instead of
+  // just to this browser.
+  useEffect(() => {
+    const supabase = supabaseRef.current!
+    supabase.auth.getUser().then(({ data }) => {
+      setAuthUser(data.user ? { id: data.user.id, email: data.user.email ?? null } : null)
+    })
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   // Keep the selected hole's button visible in the scrolling strip.
   useEffect(() => {
@@ -272,9 +296,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setAimManual(null)
     setPinManual(null)
     setAimNote(null)
-    setZones(loadZones(c.id))
     setDrawKind(null)
     setPendingPoints([])
+    void loadZonesFor(c)
     if (c.lat == null || c.lng == null) {
       setLoadState("error")
       setLoadError("This course has no coordinates in the course database, so it can't be placed on the map.")
@@ -339,6 +363,43 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     }
     setLoadState("error")
     setLoadError(lastError)
+  }
+
+  // Loads hand-marked zones for a course: from the signed-in user's account if
+  // there is one, otherwise from this browser's local storage. If the account
+  // has none yet but this browser does (marks made before signing in, or on a
+  // guest session), those are offered for one-time upload rather than silently
+  // dropped or silently merged.
+  async function loadZonesFor(c: CourseHit) {
+    const local = loadZones(c.id)
+    if (authUser) {
+      const { data, error } = await supabaseRef.current!.from("course_zones").select("id, lie, ring").eq("course_id", c.id)
+      if (!error && data) {
+        const remote = data as { id: string; lie: Lie; ring: LatLng[] }[]
+        setZones(remote)
+        setLocalOnlyZones(remote.length === 0 && local.length > 0 ? local : null)
+        return
+      }
+      // Read failed (offline, RLS hiccup, ...): fall back to the local copy rather than showing nothing.
+    }
+    setZones(local)
+    setLocalOnlyZones(null)
+  }
+
+  async function syncLocalZonesToAccount() {
+    if (!authUser || !course || !localOnlyZones || localOnlyZones.length === 0) return
+    setSyncingZones(true)
+    try {
+      const rows = localOnlyZones.map((z) => ({ user_id: authUser.id, course_id: course.id, lie: z.lie, ring: z.ring }))
+      const { data, error } = await supabaseRef.current!.from("course_zones").insert(rows).select("id, lie, ring")
+      if (!error && data) {
+        setZones(data as { id: string; lie: Lie; ring: LatLng[] }[])
+        setLocalOnlyZones(null)
+        saveZones(course.id, []) // now that the account has them, this browser doesn't need its own copy
+      }
+    } finally {
+      setSyncingZones(false)
+    }
   }
 
   function remember(c: CourseHit) {
@@ -511,15 +572,32 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setDrawKind(null)
     setPendingPoints([])
   }
-  function finishDraw() {
+  async function finishDraw() {
     if (!drawKind || pendingPoints.length < 3) return
-    const zone: UserZone = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, lie: drawKind, ring: pendingPoints }
-    setZones((prev) => [...prev, zone])
+    const lie = drawKind
+    const ring = pendingPoints
     setDrawKind(null)
     setPendingPoints([])
+    if (authUser && course) {
+      const { data, error } = await supabaseRef.current!
+        .from("course_zones")
+        .insert({ user_id: authUser.id, course_id: course.id, lie, ring })
+        .select("id, lie, ring")
+        .single()
+      if (!error && data) {
+        setZones((prev) => [...prev, data as { id: string; lie: Lie; ring: LatLng[] }])
+        return
+      }
+      // Write failed (offline, etc): still keep the mark locally rather than lose it.
+    }
+    const zone: UserZone = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, lie, ring }
+    setZones((prev) => [...prev, zone])
   }
-  function deleteZone(id: string) {
-    setZones((prev) => prev.filter((z) => z.id !== id))
+  async function deleteZone(id: string) {
+    setZones((prev) => prev.filter((z) => z.id !== id)) // optimistic
+    // supabase-js query builders are lazy thenables -- they only actually send the
+    // request once awaited/`.then()`-ed, so this must be awaited, not just built.
+    if (authUser) await supabaseRef.current!.from("course_zones").delete().eq("id", id)
   }
 
   function stopFollowing() {
@@ -908,8 +986,10 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               <span className="text-[#d1d5db]">
                 Tap the map to outline the <strong>{LIE_LABEL[drawKind].toLowerCase()}</strong> area
                 {pendingPoints.length > 0 ? ` — ${pendingPoints.length} point${pendingPoints.length === 1 ? "" : "s"}` : ""}.
+                {pendingPoints.length >= 3 && " Tap the first (bigger) point again to close it."}
               </span>
-              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              {/* Duplicated as a floating bar over the map on phones (below), so this row is desktop/tablet only. */}
+              <div className="ml-auto hidden shrink-0 items-center gap-1.5 md:flex">
                 <button
                   onClick={undoDrawPoint}
                   disabled={pendingPoints.length === 0}
@@ -971,6 +1051,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   if (h) pickHole(h)
                 }}
                 onDrawPoint={addDrawPoint}
+                onDrawClose={finishDraw}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
@@ -983,8 +1064,8 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 </p>
               </div>
             )}
-            {/* Phone HUD: the numbers you need mid-round, on the map itself */}
-            {ball && pin && distPin != null && (
+            {/* Phone HUD: the numbers you need mid-round, on the map itself (hidden while drawing, replaced by the controls below) */}
+            {ball && pin && distPin != null && !drawKind && (
               <div className="pointer-events-none absolute bottom-7 left-2 right-2 z-[1100] grid grid-cols-4 gap-px overflow-hidden rounded-xl border border-white/20 bg-white/10 text-center backdrop-blur-sm md:hidden">
                 {[
                   { k: "Club", v: chosen?.club ?? "–", small: true },
@@ -997,6 +1078,28 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                     <p className={`font-bold text-white ${cell.small ? "truncate text-sm" : "text-lg leading-tight"}`}>{cell.v}</p>
                   </div>
                 ))}
+              </div>
+            )}
+            {/* Drawing controls, pinned over the map so a thumb never has to leave it to tap Finish. */}
+            {drawKind && (
+              <div className="absolute bottom-3 left-2 right-2 z-[1100] flex items-center justify-center gap-2 md:hidden">
+                <button
+                  onClick={undoDrawPoint}
+                  disabled={pendingPoints.length === 0}
+                  className="flex items-center gap-1 rounded-full border border-white/25 bg-black/80 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm disabled:opacity-30"
+                >
+                  <Undo2 size={13} /> Undo
+                </button>
+                <button
+                  onClick={finishDraw}
+                  disabled={pendingPoints.length < 3}
+                  className="flex items-center gap-1 rounded-full bg-[#22c55e] px-4 py-2 text-xs font-semibold text-black shadow-lg disabled:opacity-30"
+                >
+                  <Check size={13} /> Finish
+                </button>
+                <button onClick={cancelDraw} className="flex items-center gap-1 rounded-full border border-white/25 bg-black/80 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm">
+                  <X size={13} /> Cancel
+                </button>
               </div>
             )}
           </div>
@@ -1017,9 +1120,36 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             <span className="text-[#6b7280]">B = ball · A = aim · P = pin (drag any). Dots: {DOTS_SHOWN} simulated shots. Ctrl/⌘ + scroll zooms the map.</span>
           </div>
 
+          {localOnlyZones && localOnlyZones.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#22c55e]/25 bg-[#22c55e]/[0.07] px-3 py-2 text-xs text-[#d1d5db]">
+              <span>
+                You have {localOnlyZones.length} mark{localOnlyZones.length === 1 ? "" : "s"} saved on this device from
+                before signing in.
+              </span>
+              <button
+                onClick={syncLocalZonesToAccount}
+                disabled={syncingZones}
+                className="ml-auto flex shrink-0 items-center gap-1 rounded-md bg-[#22c55e] px-2.5 py-1 font-semibold text-black disabled:opacity-50"
+              >
+                {syncingZones ? <Loader2 size={12} className="animate-spin" /> : null}
+                {syncingZones ? "Saving…" : "Save to my account"}
+              </button>
+              <button onClick={() => setLocalOnlyZones(null)} className="shrink-0 text-[#6b7280] hover:text-white">
+                Not now
+              </button>
+            </div>
+          )}
+
           {zones.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-              <span className="text-[#6b7280]">Your marks:</span>
+              <span className="text-[#6b7280]">
+                Your marks{authUser ? " (synced to your account)" : " (saved on this device only)"}:
+              </span>
+              {!authUser && (
+                <Link href="/login" className="text-[#22c55e] hover:underline">
+                  Sign in to sync
+                </Link>
+              )}
               {zones.map((z) => (
                 <span
                   key={z.id}
