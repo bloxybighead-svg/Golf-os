@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server"
 import { TrendsClient } from "@/components/trends/TrendsClient"
+import { SignedOutNotice } from "@/components/auth/SignedOutNotice"
 import type { Round, Milestone, PracticeSession } from "@/lib/supabase/types"
 
 export default async function TrendsPage() {
   const supabase = createClient()
 
-  // Single-user app (no auth / RLS yet) — every row belongs to the user.
-  const [{ data: rounds, error: roundsError }, { data: sessions }, { data: milestones }] = await Promise.all([
+  const [{ data: { user } }, { data: rounds, error: roundsError }, { data: sessions }, { data: milestones }] = await Promise.all([
+    supabase.auth.getUser(),
     supabase.from("rounds").select("*").order("date", { ascending: true }),
     supabase.from("practice_sessions").select("*").order("date", { ascending: true }),
     supabase.from("milestones").select("*").order("date", { ascending: true }),
@@ -24,10 +25,13 @@ export default async function TrendsPage() {
   }
 
   return (
-    <TrendsClient
-      rounds={(rounds ?? []) as Round[]}
-      sessions={(sessions ?? []) as PracticeSession[]}
-      milestones={(milestones ?? []) as Milestone[]}
-    />
+    <div className="space-y-6">
+      {!user && <SignedOutNotice feature="trends" />}
+      <TrendsClient
+        rounds={(rounds ?? []) as Round[]}
+        sessions={(sessions ?? []) as PracticeSession[]}
+        milestones={(milestones ?? []) as Milestone[]}
+      />
+    </div>
   )
 }

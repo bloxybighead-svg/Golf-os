@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { RoundsClient } from "@/components/rounds/RoundsClient"
+import { SignedOutNotice } from "@/components/auth/SignedOutNotice"
 import type { Round } from "@/lib/supabase/types"
 
 function startOfMonthISO() {
@@ -19,11 +20,14 @@ export default async function RoundsPage({
 }) {
   const supabase = createClient()
 
-  const { data, error } = await supabase
-    .from("rounds")
-    .select("*")
-    .order("date", { ascending: false })
-    .order("created_at", { ascending: false })
+  const [{ data: { user } }, { data, error }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("rounds")
+      .select("*")
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false }),
+  ])
 
   if (error) {
     return (
@@ -183,6 +187,8 @@ export default async function RoundsPage({
           )}
         </div>
       </div>
+
+      {!user && <SignedOutNotice feature="rounds" />}
 
       <RoundsClient rounds={rounds} casualGirAvg={casualGirAvg} initialAdding={searchParams?.new === "1"} />
     </div>

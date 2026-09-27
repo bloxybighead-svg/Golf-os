@@ -27,13 +27,17 @@ interface RoundPayload {
 
 export async function createRound(data: RoundPayload) {
   const supabase = createClient()
-  const { error } = await supabase.from("rounds").insert(data)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Sign in to save rounds.")
+  const { error } = await supabase.from("rounds").insert({ ...data, user_id: user.id })
   if (error) throw new Error(error.message)
   revalidatePath("/rounds")
 }
 
 export async function updateRound(id: string, data: RoundPayload) {
   const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Sign in to edit rounds.")
   const { error } = await supabase.from("rounds").update(data).eq("id", id)
   if (error) throw new Error(error.message)
   revalidatePath("/rounds")
@@ -41,6 +45,8 @@ export async function updateRound(id: string, data: RoundPayload) {
 
 export async function deleteRound(id: string) {
   const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Sign in to delete rounds.")
   const { error } = await supabase.from("rounds").delete().eq("id", id)
   if (error) throw new Error(error.message)
   revalidatePath("/rounds")

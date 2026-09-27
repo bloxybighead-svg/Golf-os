@@ -3,6 +3,7 @@ import { Flag } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { DeleteSessionButton } from "@/components/log/DeleteSessionButton"
 import { ExportButtons } from "@/components/log/ExportButtons"
+import { SignedOutNotice } from "@/components/auth/SignedOutNotice"
 import type { BlockActivity, ClubWorkEntry } from "@/lib/supabase/types"
 
 function formatDate(dateStr: string) {
@@ -23,6 +24,8 @@ function startOfWeekISO() {
 
 export default async function LogPage() {
   const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
 
   const [{ data: sessions, error }, { data: blocks }, { data: allSessions }, { data: drills }] = await Promise.all([
     supabase
@@ -174,6 +177,8 @@ export default async function LogPage() {
           </Link>
         </div>
       </div>
+
+      {!user && <SignedOutNotice feature="practice sessions" />}
 
       {/* ── Error state ───────────────────────────────────── */}
       {error && (

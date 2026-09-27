@@ -90,7 +90,15 @@ export default function NewSessionPage() {
   const saveQuickSession = async () => {
     setSaving(true)
     setSaveError(null)
-    const { error } = await createClient().from("practice_sessions").insert({
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setSaveError("Sign in to save sessions.")
+      setSaving(false)
+      return
+    }
+    const { error } = await supabase.from("practice_sessions").insert({
+      user_id: user.id,
       date,
       start_time: null,
       duration_minutes: quickDurationMin || null,
@@ -114,10 +122,17 @@ export default function NewSessionPage() {
     setSaving(true)
     setSaveError(null)
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setSaveError("Sign in to save sessions.")
+      setSaving(false)
+      return
+    }
 
     const { data: session, error: sessionError } = await supabase
       .from("practice_sessions")
       .insert({
+        user_id: user.id,
         date,
         start_time: startTime || null,
         duration_minutes: totalDuration || quickDurationMin || null,
@@ -140,7 +155,7 @@ export default function NewSessionPage() {
 
     if (blocks.length > 0) {
       const { error: blocksError } = await supabase.from("session_blocks").insert(
-        blocks.map((b, i) => ({ session_id: session.id, block_order: i, ...b }))
+        blocks.map((b, i) => ({ session_id: session.id, block_order: i, user_id: user.id, ...b }))
       )
       if (blocksError) {
         setSaveError(blocksError.message)

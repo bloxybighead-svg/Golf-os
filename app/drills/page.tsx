@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/server"
 import { DrillsClient } from "@/components/drills/DrillsClient"
 import { WedgeNumbers, deriveWedgeStats } from "@/components/drills/WedgeNumbers"
+import { SignedOutNotice } from "@/components/auth/SignedOutNotice"
 import type { ClubWorkEntry, Drill } from "@/lib/supabase/types"
 
 export default async function DrillsPage() {
   const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { data: drills, error } = await supabase
     .from("drills")
@@ -50,6 +53,7 @@ export default async function DrillsPage() {
 
   return (
     <div className="space-y-4 pt-4">
+      {!user && <SignedOutNotice feature="drills" />}
       <WedgeNumbers stats={wedgeStats} />
       <DrillsClient drills={(drills ?? []) as Drill[]} usageCounts={usageCounts} />
     </div>

@@ -376,9 +376,35 @@ or merged. **Gotcha that cost a debug cycle:** supabase-js query builders are
 lazy thenables -- `void supabase.from(...).delete()...` builds the request but
 never SENDS it; it must be `await`ed (or `.then()`-ed) or nothing happens over
 the wire, even though nothing throws. Caught by checking row counts in the DB
-directly, not by trusting the (optimistically-updated) UI. Only `course_zones`
-is user-scoped so far -- Log/Drills/Rounds/Trends and the calibrated golfer
-profile are still open to anyone with the anon key (same gap as before).
+directly, not by trusting the (optimistically-updated) UI.
+
+Full per-user RLS rollout (2026-09-27): extended the `course_zones` pattern to
+every other personal-data table -- `rounds`, `drills`, `practice_sessions`,
+`session_blocks`, `milestones` (`supabase/per_user_data.sql`). Each got a
+`user_id uuid references auth.users(id) on delete cascade`, backfilled to
+Dillon's real account (`dilloncady@yahoo.com`, not the mailinator test
+account) since all existing rows were his, then set `NOT NULL` with the same
+4-policy owner-only RLS as `course_zones`. `wedge_reference` (unused by the
+app, a shared lookup table, not per-user) just got RLS turned on with a
+public-read policy, closing the anon-write hole without touching its meaning.
+`golfer_profiles`/`real_shots`/`simulated_shots`/`course_geometry` were left
+alone -- checked every call site first (`grep .from(...)` across the whole
+app) and confirmed they're read-only shared reference/calibration data with no
+in-app write path, so "public read" is correct for them, not a gap.
+
+Every server action that inserts now requires a signed-in user and stamps
+`user_id`; update/delete actions also require one so a signed-out call fails
+with a clear "Sign in to ..." message instead of a silent RLS no-op. Reads
+still rely on RLS alone (no explicit `.eq("user_id", ...)` needed) -- signed
+out, every list is legitimately empty, so Home/Rounds/Drills/Log/Trends each
+got a `SignedOutNotice` banner (`components/auth/SignedOutNotice.tsx`) so that
+reads as "sign in to see this" rather than "your data is gone." **This is a
+real behavior change**: Log/Drills/Rounds/Trends now require an account to use
+at all (previously fully usable as a guest) -- the course planner's hand-drawn
+zones are the only feature that still has a guest/localStorage fallback.
+Verified with the anon key directly: `select` returns `[]`, `insert` returns
+`42501` (RLS violation), same as the `course_zones` check. `dilloncady@yahoo.com`
+already existed in `auth.users` from earlier testing.
 
 ## Files
 

@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
+import { SignedOutNotice } from "@/components/auth/SignedOutNotice"
 import type { Round } from "@/lib/supabase/types"
 import { ArrowDownRight, ArrowUpRight, ClipboardList, Flag, Map as MapIcon, ArrowRight } from "lucide-react"
 
@@ -42,7 +43,8 @@ function estimateHandicap(rounds: Round[]): number | null {
 export default async function Home() {
   const supabase = createClient()
 
-  const [{ data: roundsData, error }, { data: sessionsData }] = await Promise.all([
+  const [{ data: { user } }, { data: roundsData, error }, { data: sessionsData }] = await Promise.all([
+    supabase.auth.getUser(),
     supabase.from("rounds").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }),
     supabase.from("practice_sessions").select("date"),
   ])
@@ -117,6 +119,8 @@ export default async function Home() {
           </Link>
         </div>
       </div>
+
+      {!user && <SignedOutNotice feature="home stats" />}
 
       {/* Course Planner promo */}
       <Link
