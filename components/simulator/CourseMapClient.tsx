@@ -47,7 +47,7 @@ import {
   type SurfaceStatus,
 } from "@/lib/course/dataQuality"
 import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
-import { buildLieMap, type Lie, type UserZone } from "@/lib/course/lies"
+import { buildLieMap, type Lie, type LieMap, type UserZone } from "@/lib/course/lies"
 import { GEOMETRY_VERSION, type CourseFeature, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
 import { seededSample } from "@/lib/dispersion/stats"
@@ -86,6 +86,9 @@ interface Props {
 type AimNote = { club: string; optimal: true } | { club: string; optimal: false; offsetYds: number; savedStrokes: number }
 
 const DOTS_SHOWN = 400
+// Below this many strokes, a "saving" is noise (search-vs-holdout disagreement
+// or plain sampling variance), not a real improvement worth moving the aim for.
+const MEANINGFUL_SAVING = 0.05
 const HANDICAP_SHOTS_PER_CLUB = 1000
 const LIES: Lie[] = ["green", "fairway", "rough", "bunker", "water", "trees", "oob"]
 const LIE_LABEL: Record<Lie, string> = {
@@ -531,7 +534,15 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setFit({ bounds: boundsOf([...h.line, holePinFor(h)]), key: `hole-${h.id}` })
   }
 
-  const pin: LatLng | null = pinManual ?? (hole ? holePinFor(hole) : null)
+  // Memoized so its reference only changes when the underlying pin genuinely
+  // moves -- holePinFor can return a freshly-built point (nearest green
+  // centroid), and several effects below tell "a new stance" from "just
+  // re-rendered" by reference, which an unstable pin would break.
+  const pin: LatLng | null = useMemo(
+    () => pinManual ?? (hole ? holePinFor(hole) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pinManual, hole, geometry]
+  )
 
   const defaultAim: LatLng | null = useMemo(() => {
     if (!pin) return null
@@ -593,6 +604,50 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const chosen = ranking.find((r) => r.club === clubChoice) ?? ranking[0] ?? null
   const chosenShots = chosen ? clubShots.find((c) => c.club === chosen.club) : undefined
 
+  // Which club auto-aim should optimize for -- ranked at the HEURISTIC aim,
+  // never the live (possibly hand-dragged) one. Using the live "chosen" club
+  // here would create a feedback loop: dragging the aim to a deliberately
+  // bad spot can make a different club rank best there, which would then
+  // retrigger auto-aim (below) and immediately snap the drag back.
+  const autoTargetClub = useMemo(() => {
+    if (clubChoice !== "auto") return clubChoice
+    if (!ball || !defaultAim || !pin || !lies) return null
+    return rankClubs(clubShots, { from: ball, aim: defaultAim, pin, lies, startLie })[0]?.club ?? null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clubChoice, ball, defaultAim, pin, lies, clubShots, startLie])
+
+  // Auto-aim: the heuristic default (tee -> fairway middle, or the pin) is
+  // just a starting guess, not a search result -- left alone, "the" aim shown
+  // the instant a hole loads could be beaten by a hand-dragged one, which is
+  // backwards for a strokes-gained tool. Whenever the golfer's actual stance
+  // (ball, pin, mapped/hand-drawn geometry, or which club is being planned
+  // for) genuinely changes, silently re-run the same search "Find best aim"
+  // uses and lock in whatever it finds -- so the number on screen is always
+  // the best this tool knows how to find, with no click required. A manual
+  // aim drag *within* the same stance (nothing above changed) is left alone.
+  const autoAimRef = useRef<{ ball: LatLng | null; pin: LatLng | null; lies: LieMap | null; club: string | null }>({
+    ball: null,
+    pin: null,
+    lies: null,
+    club: null,
+  })
+  useEffect(() => {
+    if (!ball || !defaultAim || !pin || !lies || !autoTargetClub) return
+    const targetShots = clubShots.find((c) => c.club === autoTargetClub)
+    if (!targetShots) return
+    const last = autoAimRef.current
+    if (last.ball === ball && last.pin === pin && last.lies === lies && last.club === autoTargetClub) return
+    autoAimRef.current = { ball, pin, lies, club: autoTargetClub }
+    const r = bestAim(targetShots, { from: ball, aim: defaultAim, pin, lies, startLie })
+    const saved = r.baselineStrokes - r.plan.expectedStrokes
+    if (saved >= MEANINGFUL_SAVING) {
+      const dist = distanceYds(ball, defaultAim)
+      setAimManual(landingPoint(ball, r.bearingDeg, dist, 0))
+    } else {
+      setAimManual(null) // the heuristic default is already (near enough) optimal
+    }
+  }, [ball, defaultAim, pin, lies, autoTargetClub, clubShots, startLie])
+
   const landings = useMemo(() => {
     if (!chosenShots || !ball || !aim || !lies) return []
     return simulateLandings(seededSample(chosenShots.shots, DOTS_SHOWN, 3), ball, bearingDeg(ball, aim), lies)
@@ -614,10 +669,6 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     const pts = landings.map((l) => l.point)
     return [dispersionRing(pts, 1.177), dispersionRing(pts, 2.146)].filter((r) => r.length > 0)
   }, [showRings, landings])
-
-  // Below this many strokes, a "saving" is noise (search-vs-holdout disagreement
-  // or plain sampling variance), not a real improvement worth moving the aim for.
-  const MEANINGFUL_SAVING = 0.05
 
   function findBestAim() {
     if (!chosenShots || !ball || !aim || !pin || !lies) return
