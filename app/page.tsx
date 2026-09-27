@@ -2,9 +2,13 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { SignedOutNotice } from "@/components/auth/SignedOutNotice"
 import { HandicapCard } from "@/components/home/HandicapCard"
-import type { Round, HandicapEntry } from "@/lib/supabase/types"
+import { TrendsCard } from "@/components/home/TrendsCard"
+import type { Round, HandicapEntry, RoundAnalysis } from "@/lib/supabase/types"
 import { estimateHandicapIndex } from "@/lib/handicap"
+import { aggregateCategoryTrends } from "@/lib/sgBenchmarks"
 import { ArrowDownRight, ArrowUpRight, ClipboardList, Flag, Map as MapIcon, ArrowRight } from "lucide-react"
+
+const TRENDS_WINDOW_ROUNDS = 10 // "last 10 rounds" -- more stable than a fixed date window across streaky logging habits
 
 function mondayOfWeekISO(offsetWeeks: number) {
   const d = new Date()
@@ -61,6 +65,13 @@ export default async function Home() {
   const liveEstimate = estimateHandicapIndex(
     rounds.slice(0, 20).map((r) => r.differential).filter((d): d is number => d != null)
   )
+
+  // Strengths & weaknesses: SG-proxy deltas averaged over the last 10 rounds.
+  const trendsWindowRoundIds = rounds.slice(0, TRENDS_WINDOW_ROUNDS).map((r) => r.id)
+  const { data: analysisData } = trendsWindowRoundIds.length > 0
+    ? await supabase.from("round_analysis").select("*").in("round_id", trendsWindowRoundIds)
+    : { data: [] as RoundAnalysis[] }
+  const categoryTrends = aggregateCategoryTrends((analysisData ?? []) as RoundAnalysis[])
 
   // 3. GIR insight: most recent 10 rounds vs the 10 before that (needs ≥10 rounds)
   let insight = "Log more rounds to unlock insights."
@@ -193,6 +204,9 @@ export default async function Home() {
 
       {/* Handicap Index — tracked history + manual/calculated recalculation */}
       <HandicapCard latest={latestHandicap} liveEstimate={liveEstimate} signedIn={!!user} />
+
+      {/* Strengths & weaknesses vs. this golfer's own handicap bracket */}
+      <TrendsCard trends={categoryTrends} />
     </div>
   )
 }

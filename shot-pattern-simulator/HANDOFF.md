@@ -893,6 +893,102 @@ and the math were verified instead via anon-key curl and against his real
 selection, the 20-round cutoff, truncation vs. rounding), 111 total.
 Typecheck and `npm run build` both clean.
 
+Session 6b -- SG-vs-handicap benchmarks + trends display (2026-09-27): the
+spec's premise doesn't hold for this app's actual data. It assumes each
+round already carries a per-category strokes-gained number ("get user's SG
+for that category from round") to compare against a benchmark table. Real
+strokes-gained (the same Broadie/ShotLink methodology `lib/course/cost.ts`
+already uses for the Course Planner) needs per-shot distance/lie data --
+the Rounds feature only ever logs aggregate box-score stats per round
+(fairways%, GIR%, putts, up-and-downs), the same gap Session 5 hit with its
+assumed per-hole round card. Built the spec's literal tables/flow anyway,
+but `user_sg` is a documented PROXY derived from those box-score stats, not
+measured SG -- flagging this prominently rather than quietly presenting an
+invented number as real strokes gained.
+
+`lib/sgBenchmarks.ts` (new, pure, tested -- 14 tests): each handicap
+bracket's typical fairways%/GIR%/putts-per-18/up-and-down% was researched
+(not invented) from public handicap-stat breakdowns -- breakxgolf.com
+(fairways%/GIR%), mygolfspy.com (putts/round), practical-golf.com
+(up-and-down%, sourced from Broadie's own pros-vs-amateurs analysis) --
+replacing the spec's own placeholder seed numbers (its text explicitly
+allowed this: "seed with reasonable data ... can refine over time").
+Converting a stat GAP into a strokes value uses per-event stroke-cost
+estimates reasoned from published ranges (missed fairway ~0.06-0.25 strokes
+depending on source, used 0.2; missed green cited anywhere from ~0.3 to
+~1.6, used 0.5; failed up-and-down assumed the same order of magnitude) --
+these three conversion constants are NOT independently measured for this
+app, only reasoned from what's publicly cited, same spirit as the
+`APPROX_COURSE_YARDS_PER_DRIVE_YARD` constant `lib/tbox/estimate.ts`
+already flags the same way. Putting is the one exact category: a putt
+literally is a stroke, so `puttingSg` is a real count (putts taken vs. the
+scratch-bracket average for that many holes) with no conversion constant
+at all. Every `user_sg`/`benchmark_sg` is measured against the same fixed
+scratch-bracket reference point, per-hole-scaled internally so a 9-hole
+round earns roughly half the possible swing of an 18 -- deliberately
+avoiding the exact "forgot to scale a partial round" bug class Session 6a
+just fixed. A round missing a needed stat (e.g. no fairways_pct logged)
+simply omits that category rather than guessing.
+
+`supabase/sg_benchmarks.sql` (applied, migrations `sg_benchmarks` +
+`round_analysis`): `sg_benchmarks` seeded with the 7-bracket x 4-category
+table computed by that same formula (worked arithmetic mirrored in
+`lib/sgBenchmarks.test.ts`, so the seed data and the code can never quietly
+drift apart), public-read RLS (reference data, no client write path, same
+pattern as `golfer_profiles`/`course_geometry`) -- left `sample_size` null
+rather than inventing a fake one, since no real sample backs these
+estimates. `round_analysis` (owner-only RLS, no update policy) holds one
+row per round per category; `app/rounds/actions.ts` computes it on every
+`createRound`/`updateRound` by deleting any existing rows for that round
+and reinserting fresh ones -- simpler than reconciling partial edits,
+cheap at up to 4 rows. Looks up the bracket from the round's *own*
+snapshotted `handicap_index` (not today's live number) so an edited old
+round is still graded against the handicap the golfer actually had then.
+Skips the whole computation (and correctly leaves no rows) when a round or
+its owner has no tracked handicap yet, matching the spec's own precondition.
+
+`components/home/TrendsCard.tsx` (new, client): bars per category
+(green/red by sign of the last-10-rounds average delta, width proportional
+to the delta up to a +/-2-stroke reference scale), a qualitative label
+(`qualifierFor` in `lib/sgBenchmarks.ts`), and an explicit disclaimer
+line every time it renders -- this is a proxy, not shot-tracked SG. Mobile:
+a compact "Your weakest: ..." summary line is always rendered (so nothing
+shifts on expand/collapse) with the full 4-bar breakdown behind a
+`hidden md:block` toggle, following this app's existing `md:`-breakpoint
+convention rather than a second component. Aggregation (last 10 rounds) is
+done in `app/page.tsx` with a plain JS reduce over `round_analysis` rows
+for those 10 round ids, not a SQL view as the spec offered as an option --
+this app has never used a SQL view for this kind of rollup, everything
+else in Trends/Rounds/Home aggregates in TS, so a JS reduce matches the
+rest of the codebase rather than introducing a new pattern for one card.
+
+Verified: RLS both ways for both new tables via the anon-key technique used
+throughout this project (`sg_benchmarks` select succeeds/insert `42501`;
+`round_analysis` select returns `[]`/insert `42501`). Manually replayed the
+full pipeline against Dillon's real logged box-score stats through the
+Supabase MCP connection (read-only SQL, no writes) and confirmed the
+numbers come out directionally sensible -- e.g. his 2026-08-22 round (38%
+fairways, 33% GIR, 35 putts) scores notably negative across all four
+categories against the (2,5) handicap bracket, which matches those being
+weak box-score stats for a low-single-digit-handicap round regardless of
+what the final score was. Did not sign into his real account to exercise
+the actual save-a-round flow end-to-end or populate real `round_analysis`
+rows, same policy as every prior session; the empty-state ("Log rounds
+with fairways%/GIR%/putts...") was verified live signed-out at both desktop
+and an emulated 375px viewport, no console errors, no layout overflow.
+The mobile expand/collapse toggle's actual bar rendering could only be
+verified indirectly, through the passing `aggregateCategoryTrends`/
+`qualifierFor` unit tests and code review against the same `hidden
+md:block` pattern this app has used successfully elsewhere -- flagging
+this the same way Session 4 flagged pinch-zoom as needing a real check,
+since populating it live would require either real account credentials or
+fabricated round data, both against this project's standing policy.
+
+14 new tests (`lib/sgBenchmarks.test.ts` -- zero-at-scratch, hand-worked
+bracket arithmetic, 9-vs-18-hole scaling, missing-stat omission, up-and-down
+rate clamping, bracket lookup, trend aggregation, qualifier thresholds),
+125 total. Typecheck and `npm run build` both clean.
+
 ## Files
 
 | File | Purpose |
