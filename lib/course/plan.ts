@@ -124,17 +124,38 @@ function splitShots(shots: ShotSample[]): { search: ShotSample[]; holdout: ShotS
  * aim_point_optimizer.py's paired-resample fix, same idea); a held-out half
  * removes that without needing fresh real-world data, which isn't available
  * for a calibrated golfer's fixed shot history.
+ *
+ * Only the BEARING from `ctx.from` matters for scoring (`evaluateClub` never
+ * reads how far away `ctx.aim` is -- shots land wherever the club's own carry
+ * distribution puts them, not at some nominal "aim distance"), so a 2D grid
+ * over aim points would just re-test the same bearings from different,
+ * scoring-irrelevant distances. The real bug this fixes: converting an
+ * "off" (yards) into an angle needs a radius, and using `ctx.aim`'s distance
+ * for that radius was wrong -- that distance is arbitrary UI state (wherever
+ * the aim marker happens to be, e.g. still sitting near the pin while a much
+ * shorter club is being evaluated), so the same +-30 yard search silently
+ * covered a much smaller (or larger) real lateral range than 30 yards
+ * whenever the marker's distance didn't match the club's own landing
+ * distance -- easily missing an improvement a manual drag could stumble
+ * onto. Using the club's own mean carry as the radius instead ties the
+ * search's yard range to where its shots actually land.
  */
-export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 30, stepYds = 2): AimResult {
+export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 60, stepYds = 2): AimResult {
   const { search, holdout } = splitShots(club.shots)
   const searchClub: ClubShots = { club: club.club, shots: search }
   const confirmClub: ClubShots = { club: club.club, shots: holdout.length > 0 ? holdout : search }
 
   const baseBearing = bearingDeg(ctx.from, ctx.aim)
-  const dist = Math.max(distanceYds(ctx.from, ctx.aim), 10)
+  const meanCarryYds = club.shots.reduce((sum, s) => sum + s.carryYds, 0) / Math.max(club.shots.length, 1)
+  const dist = Math.max(meanCarryYds, 10)
   let winner: { offsetYds: number; bearingDeg: number } | null = null
   let winnerStrokes = Infinity
-  for (let off = -maxOffsetYds; off <= maxOffsetYds; off += stepYds) {
+  // Search outward from 0 (not left-to-right) so a tie -- e.g. everywhere past
+  // some point is equally plain rough -- keeps the smallest, least-disruptive
+  // offset instead of arbitrarily locking onto the search's farthest edge.
+  const offsets: number[] = [0]
+  for (let d = stepYds; d <= maxOffsetYds; d += stepYds) offsets.push(-d, d)
+  for (const off of offsets) {
     const bearing = (baseBearing + (Math.atan2(off, dist) * 180) / Math.PI + 360) % 360
     const strokes = evaluateClub(searchClub, ctx, bearing).expectedStrokes
     if (strokes < winnerStrokes) {

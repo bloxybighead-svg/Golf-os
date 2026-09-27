@@ -472,6 +472,34 @@ side. Verified live: confirming, reloading the page, and picking the hole
 again all correctly keep it dismissed. 1 new test (95 total) covering the
 downgrade and its no-op when the hazard turns out to actually be mapped.
 
+"Best aim" beatable by a manual drag (2026-09-27, same day, later still):
+Dillon reported the auto-aim could be beaten by dragging the aim marker
+somewhere else by hand -- traced to a real bug in `bestAim` (`plan.ts`), not
+missing dimensionality. `evaluateClub` only ever reads the BEARING from the
+ball to the aim point (shots land wherever the club's own carry distribution
+puts them, never at some nominal "aim distance"), so a literal 2D grid over
+aim positions -- what the pasted spec asked for -- would just re-test the
+same bearings from scoring-irrelevant distances; skipped it as wasted work
+once this was confirmed. The actual bug: turning a "+-N yard" search into an
+angle needs a radius, and the code used `ctx.aim`'s (arbitrary, whatever the
+on-screen marker happens to be) distance for that radius instead of the
+club's own landing distance. Whenever those two differ a lot -- e.g. the aim
+marker still sitting near the pin while a much shorter club is being
+evaluated, an extremely common case -- the search's real lateral coverage
+silently shrank far below its stated +-30 yd, missing improvements a manual
+drag could stumble onto. Fixed by using the club's own mean carry as the
+radius (proven with a test that fails on the old radius and passes on the
+new one -- confirmed by literally reverting the one line and watching it
+fail, 29% residual water contact vs <5%). Also widened the default search to
++-60 yd (2 yd steps, same as before) now that the range is finally measuring
+something real, and changed the sweep to search outward from 0 yd rather
+than left-to-right, so a genuine tie prefers the smallest/least-disruptive
+offset instead of whichever end the loop happens to start from. Verified
+live: Colts Neck hole 13 (0 mapped fairways, 66 bunkers course-wide -- a
+worst-case stress test) and Rumson hole 1 from both the tee and mid-fairway,
+both instant (well under a second, no async/caching needed) and correct,
+including "already optimal" firing when it should. 2 new tests (96 total).
+
 ## Files
 
 | File | Purpose |

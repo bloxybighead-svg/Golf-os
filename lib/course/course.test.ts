@@ -531,4 +531,35 @@ describe("bestAim re-scores its winner on held-out shots", () => {
     expect(r.plan.n).toBe(200) // scored on the held-out half only, not all 400
     expect(r.plan.expectedStrokes).toBeLessThanOrEqual(r.baselineStrokes)
   })
+
+  it("searches a lateral range tied to where the club's shots actually land, not wherever the aim marker sits", () => {
+    // Aim marker sits at the pin, 400 yd away (as if planning a much longer
+    // club) -- but THIS club only carries ~150 yd, and a hazard sits directly
+    // on the aim line at that landing distance, wide enough that essentially
+    // every shot is in it at zero offset; fully escaping it needs about a
+    // 20 yd shift. Sizing the search's yard-to-angle conversion off the aim
+    // marker's (unrelated) 400 yd distance caps the real lateral reach at
+    // 150 * (60/400) = 22.5 yd -- borderline/insufficient. Sizing it off the
+    // club's own ~150 yd mean carry allows the full +-60 yd requested, easily
+    // enough.
+    const farAim = fromLocal(ORIGIN, { x: 0, y: 400 })
+    const onLineWater = squareAround(fromLocal(ORIGIN, { x: 0, y: 150 }), 10)
+    const farLies = buildLieMap(ORIGIN, [{ kind: "water", ring: onLineWater }])
+    const farCtx = { from: ORIGIN, aim: farAim, pin: farAim, lies: farLies }
+    const shots = Array.from({ length: 400 }, (_, i) => ({ carryYds: 150, offlineYds: (i % 21) - 10 }))
+    const r = bestAim({ club: "7-Iron", shots }, farCtx)
+    expect(r.plan.lieShare.water).toBeLessThan(0.05) // fully escapes, not just partially
+  })
+
+  it("converges on an interior optimum, not the search's outer edge, once a single hazard is cleared", () => {
+    // Distance-to-pin keeps rising with lateral offset in open rough, so once
+    // a shift clears the one bunker in the way, going further only gets
+    // worse -- the search should settle near that clearing point, not at
+    // its own +-60 yd boundary.
+    const shots = Array.from({ length: 400 }, (_, i) => ({ carryYds: 150, offlineYds: (i % 21) - 10 }))
+    const bunker = squareAround(fromLocal(ORIGIN, { x: 0, y: 150 }), 8) // dead center, needs ~16 yd to clear
+    const openLies = buildLieMap(ORIGIN, [{ kind: "bunker", ring: bunker }]) // nothing else mapped anywhere
+    const r = bestAim({ club: "7-Iron", shots }, { from: ORIGIN, aim: pin, pin, lies: openLies })
+    expect(Math.abs(r.offsetYds)).toBeLessThan(30) // well short of the +-60 search boundary
+  })
 })
