@@ -28,7 +28,12 @@ export interface SubNavItem {
 export default function SubNav({ items, ariaLabel }: { items: SubNavItem[]; ariaLabel: string }) {
   const pathname = usePathname()
   return (
-    <nav aria-label={ariaLabel} className="no-scrollbar -mx-4 mb-5 flex gap-1.5 overflow-x-auto whitespace-nowrap border-b border-white/[0.06] px-4 pb-3 md:mx-0 md:mb-6 md:px-0">
+    <nav
+      aria-label={ariaLabel}
+      // The fade hints there's more to scroll to on a phone, where these tabs have no visible
+      // scrollbar (no-scrollbar) and can otherwise silently run off the right edge.
+      className="no-scrollbar -mx-4 mb-5 flex gap-1.5 overflow-x-auto whitespace-nowrap border-b border-white/[0.06] px-4 pb-3 [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)] md:mx-0 md:mb-6 md:px-0 md:[mask-image:none]"
+    >
       {items.map(({ label, href, icon }) => {
         const Icon = icon ? ICONS[icon] : null
         const isRoot = items.some((o) => o !== items.find((i) => i.href === href) && o.href.startsWith(href + "/"))

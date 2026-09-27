@@ -500,6 +500,112 @@ worst-case stress test) and Rumson hole 1 from both the tee and mid-fairway,
 both instant (well under a second, no async/caching needed) and correct,
 including "already optimal" firing when it should. 2 new tests (96 total).
 
+Auto-optimize aim on load, not just on manual click (2026-09-27, same day,
+later still): even after the radius fix above, Dillon reported the *default*
+aim shown on load (no click) still lost to a manual drag -- Rumson hole 1
+loaded aiming left at 4.1 strokes, a manual drag found 4.05. Root cause: the
+optimizer was opt-in only. The aim shown on load was always
+`defaultAim`/`defaultTeeAim`, a pure heuristic that never runs through
+`bestAim` -- "Find best aim" had to be clicked by hand to get the real
+number. Fixed in `CourseMapClient.tsx` with an effect that calls `bestAim`
+automatically whenever the golfer's stance (ball, pin, geometry, or the club
+being planned for) genuinely changes, tracked in a ref so it only re-runs on
+a real change, not every render; a manual drag within an unchanged stance
+still persists (falls back to the heuristic default only if the saving is
+below the existing 0.05-stroke noise floor). Two bugs caught and fixed before/
+during live testing, neither reported by Dillon:
+- `pin` was computed inline in the render body (`holePinFor(hole)`,
+  unmemoized), sometimes returning a brand-new object via `ringCentroid` --
+  would have broken the new effect's `last.pin === pin` change-detection
+  (infinite re-runs). Wrapped in `useMemo`, caught before it ever ran live.
+- First version of the effect keyed its "did the stance change" check on
+  `chosenShots.club`, resolved from the LIVE (possibly manually-dragged) aim.
+  Dragging to a deliberately bad bearing could flip which club ranks best at
+  that bearing, retriggering the effect, which recomputed from the stable
+  heuristic aim and snapped the manual drag back -- a self-created feedback
+  loop, found live within minutes of first testing. Fixed with a new
+  `autoTargetClub` that always ranks clubs at the STABLE heuristic
+  (`defaultAim`), never the live aim, decoupling the effect's trigger from
+  any manual-drag side effect.
+Verified live: Rumson hole 1 now shows 4.01 automatically on load from the
+tee (beats Dillon's manually-found 4.05), re-optimizes correctly on a ball
+move, a manual drag to a worse spot persists instead of snapping back, and
+"Reset aim" still correctly returns to the heuristic default. 96/96 tests
+still passing (pure-function suite, unaffected by this React-only change).
+Committed `74541e7`, pushed to `main`.
+
+Mobile layout: map-first, compact UI (2026-09-27, later still): on a phone
+the map didn't appear until scrolling ~760px past the full search panel,
+golfer settings, course stats and hole strip -- this pass collapses all of
+that so the map is visible immediately, per an 8-part spec. All changes are
+in `CourseMapClient.tsx` (plus a one-line fade-mask fix in the shared
+`SubNav.tsx`) and are CSS/`md:`-breakpoint-driven, matching the file's
+existing mobile-vs-desktop pattern, so desktop/tablet (verified unaffected
+live) render exactly as before:
+- **Sticky one-line header.** Once a course is loaded, a `sticky` bar
+  ("Rumson Golf Club · Hole 1 ▾", phones only) sits right below the fixed
+  NavBar and replaces the full search/golfer panel, which collapses
+  (`setupOpen` state, defaulted collapsed the moment `pickHole` runs). Tap
+  it to re-expand. The subtitle under "Course Planner" and the course-wide
+  stats pills ("18 holes, 4 greens, ...") are hidden on phones for the same
+  reason (pure fluff once the map is what matters) -- the stats moved to a
+  tap-to-reveal info icon next to the per-hole data-quality badge instead of
+  disappearing outright.
+- **Compact toolbar.** Ball/Aim/Pin (and Reset aim, when relevant) stay on
+  the toolbar; My location, Follow GPS, Trouble map, Shot rings and My marks
+  move behind a phone-only "Layers" button. That dropdown is rendered
+  through a React portal straight to `document.body` with viewport-fixed
+  coordinates computed from the button's own `getBoundingClientRect()`,
+  closed via a `document`-level click listener rather than a visible
+  backdrop -- both were necessary fixes, not stylistic choices: the map
+  wrapper below establishes its own CSS stacking context (Leaflet's base
+  styles put `position:relative` + an explicit `z-index` on
+  `.leaflet-container`), which silently painted a same-tree, higher-z-index
+  dropdown UNDER the map regardless of the z-index number used, and a
+  `fixed inset-0` backdrop button hit the identical problem from the other
+  side. Confirmed by literally checking `document.elementFromPoint()` on the
+  dropdown's own screen coordinates before concluding a portal was needed,
+  not guessing from CSS alone.
+- **Club table as a phone-only bottom sheet.** The old single `<aside>`
+  (info card + table + "how this is scored") is now `hidden md:block`
+  (desktop/tablet, unchanged) plus a `md:hidden` mobile version: the info
+  card and "how this is scored" render inline below the map as before, but
+  the table itself moves into a `fixed` sheet pinned just above the bottom
+  tab bar, collapsed by default to one line ("Driver · 264y · 400 to pin ·
+  4.01 strokes"), tapping it toggles `max-height` between that one line and
+  ~65vh with its own internal scroll. (The spec's "drag the sheet up/down"
+  is tap-to-expand only here -- no drag-gesture library is in this project,
+  and adding one felt like scope creep for a collapse/expand toggle that
+  already solves the actual problem.) To avoid duplicating ~150 lines of
+  JSX between the desktop and phone renders, the info card, the table and
+  the scoring details are each a local `const ... = (<>...)` built once from
+  the same component state and referenced in both places -- so both copies
+  exist in the DOM at once (one hidden by CSS depending on viewport), the
+  same tradeoff the file already made elsewhere for its drawing controls
+  (a desktop row vs. a floating phone bar).
+- **Reserved space for "Find best aim".** Its result paragraph now renders
+  inside an always-present `min-h-[2.75rem]` wrapper instead of only
+  appearing after a tap, so clicking it doesn't shift the buttons below and
+  cause a mis-tap -- true on any screen size, not just phones.
+- **Sub-nav scroll affordance.** `SubNav.tsx` (shared by every section) gets
+  a right-edge fade (`mask-image`, phones only, cancelled at `md:`) hinting
+  there's more to scroll to, since the tabs already scrolled horizontally
+  with no visible scrollbar (`no-scrollbar`) and no other affordance.
+Verified on an emulated 375x812 phone viewport at Rumson GC hole 1: header
+collapse/expand, Layers menu open/close/toggle (Trouble map confirmed
+turning on from inside it), bottom sheet collapse/expand showing the full
+table, the geometry-count info icon, and "Find best aim" -> "Current aim is
+already optimal" all working; then re-verified desktop/tablet unaffected
+(full toolbar, no Layers button, no bottom sheet, stats pills visible).
+96/96 tests pass (no test-covered logic changed) and the production build
+is clean. **One real testing-tool gotcha, not a product bug**: with Chrome's
+mobile/touch emulation on, the browser automation tool's synthetic
+coordinate clicks silently failed to register on buttons that plain
+`element.click()` handled correctly -- confirmed by comparing the same
+click at desktop width (worked with the tool) vs. phone width (needed
+`.click()`); worth remembering next time a mobile emulation test "does
+nothing" for what looks like a real regression.
+
 ## Files
 
 | File | Purpose |
