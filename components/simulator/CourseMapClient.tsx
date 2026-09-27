@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
+  Check,
   ChevronDown,
   Circle,
   Crosshair,
@@ -14,11 +15,13 @@ import {
   Map as MapIcon,
   MapPin,
   Navigation,
+  Pencil,
   RotateCcw,
   Search,
   Target,
-  TreePine,
+  Undo2,
   User,
+  X,
   type LucideIcon,
 } from "lucide-react"
 import PageHeader from "@/components/PageHeader"
@@ -28,13 +31,12 @@ import {
   distanceYds,
   landingPoint,
   ringCentroid,
-  toLocal,
   type LatLng,
 } from "@/lib/course/geo"
 import { defaultTeeAim } from "@/lib/course/aim"
 import type { StartLie } from "@/lib/course/cost"
 import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
-import { buildLieMap, type Lie } from "@/lib/course/lies"
+import { buildLieMap, type Lie, type UserZone } from "@/lib/course/lies"
 import { GEOMETRY_VERSION, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
 import { seededSample } from "@/lib/dispersion/stats"
@@ -83,7 +85,10 @@ const LIE_LABEL: Record<Lie, string> = {
 }
 const LIE_SHORT: Record<Lie, string> = { green: "Grn", fairway: "Fwy", rough: "Rgh", bunker: "Bkr", water: "Wtr", trees: "Tre", oob: "OB" }
 const ALWAYS_SHOWN: Lie[] = ["green", "fairway", "rough"]
-const CORRIDOR_OPTIONS = [0, 30, 40, 50, 60] // yards each side of the hole line; 0 = off
+// Options offered by "Mark area" for hand-drawing what the map doesn't show
+// (or gets wrong): "fairway"/"rough"/"green" let you mark a SAFE area too,
+// e.g. to correct a wrongly-guessed out-of-bounds patch.
+const DRAW_KINDS: Lie[] = ["trees", "water", "bunker", "oob", "fairway", "rough", "green"]
 const SETTINGS_KEY = "golfos.planner.v1"
 const RECENT_KEY = "golfos.recentCourses.v1"
 const COURSE_CACHE_MAX_AGE_MS = 30 * 24 * 3600 * 1000
@@ -91,20 +96,32 @@ const YD_PER_M = 1.09361
 const SIDES = ["auto", "straight", "left", "right", "both"]
 const STRENGTHS = ["slight", "moderate", "strong"]
 
-/** Distance in yards from a point to a polyline (planar approximation, fine at hole scale). */
-function distanceToLine(p: LatLng, line: LatLng[]): number {
-  const pt = toLocal(p, p) // origin at p
-  let best = Infinity
-  for (let i = 1; i < line.length; i++) {
-    const a = toLocal(p, line[i - 1])
-    const b = toLocal(p, line[i])
-    const dx = b.x - a.x
-    const dy = b.y - a.y
-    const len2 = dx * dx + dy * dy
-    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / len2))
-    best = Math.min(best, Math.hypot(a.x + t * dx - pt.x, a.y + t * dy - pt.y))
+function zonesKey(courseId: string): string {
+  return `golfos.zones.${courseId}.v1`
+}
+
+/** Zones a golfer hand-marks for a course (trees, OB, water, ...), saved on this device. */
+function loadZones(courseId: string): UserZone[] {
+  try {
+    const raw = localStorage.getItem(zonesKey(courseId))
+    if (!raw) return []
+    const v = JSON.parse(raw)
+    if (!Array.isArray(v)) return []
+    return v.filter(
+      (z): z is UserZone =>
+        !!z && typeof z.id === "string" && (DRAW_KINDS as string[]).includes(z.lie) && Array.isArray(z.ring) && z.ring.length >= 3
+    )
+  } catch {
+    return []
   }
-  return best
+}
+
+function saveZones(courseId: string, zones: UserZone[]) {
+  try {
+    localStorage.setItem(zonesKey(courseId), JSON.stringify(zones))
+  } catch {
+    /* storage full or blocked: the marks just won't be remembered */
+  }
 }
 
 function boundsOf(points: LatLng[]): [[number, number], [number, number]] | null {
@@ -149,7 +166,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [pinManual, setPinManual] = useState<LatLng | null>(null)
   const [placing, setPlacing] = useState<Placing>("ball")
   const [clubChoice, setClubChoice] = useState<string>("auto")
-  const [corridorYds, setCorridorYds] = useState(40)
+  const [zones, setZones] = useState<UserZone[]>([])
+  const [drawKind, setDrawKind] = useState<Lie | null>(null)
+  const [pendingPoints, setPendingPoints] = useState<LatLng[]>([])
   const [showTrouble, setShowTrouble] = useState(false)
   const [showRings, setShowRings] = useState(true)
   const [showSettings, setShowSettings] = useState(false) // phones: golfer settings are collapsed by default
@@ -178,7 +197,6 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         if (typeof v.driverCarry === "string") setDriverCarry(v.driverCarry.slice(0, 4))
         if (typeof v.sevenIronCarry === "string") setSevenIronCarry(v.sevenIronCarry.slice(0, 4))
         if (v.tendency && SIDES.includes(v.tendency.side) && STRENGTHS.includes(v.tendency.strength)) setTendency(v.tendency)
-        if (CORRIDOR_OPTIONS.includes(v.corridorYds)) setCorridorYds(v.corridorYds)
       }
       const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")
       if (Array.isArray(r)) setRecent(r.filter((c) => c && typeof c.id === "string" && typeof c.name === "string").slice(0, 5))
@@ -192,11 +210,17 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   useEffect(() => {
     if (!hydrated) return
     try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ source, handicap, driverCarry, sevenIronCarry, tendency, corridorYds }))
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ source, handicap, driverCarry, sevenIronCarry, tendency }))
     } catch {
       /* storage full or blocked: settings just won't be remembered */
     }
-  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, tendency, corridorYds])
+  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, tendency])
+
+  // Save hand-marked zones for the loaded course whenever they change.
+  useEffect(() => {
+    if (!course) return
+    saveZones(course.id, zones)
+  }, [course, zones])
 
   // Keep the selected hole's button visible in the scrolling strip.
   useEffect(() => {
@@ -248,6 +272,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setAimManual(null)
     setPinManual(null)
     setAimNote(null)
+    setZones(loadZones(c.id))
+    setDrawKind(null)
+    setPendingPoints([])
     if (c.lat == null || c.lng == null) {
       setLoadState("error")
       setLoadError("This course has no coordinates in the course database, so it can't be placed on the map.")
@@ -409,20 +436,12 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const aim = aimManual ?? defaultAim
 
   // ---------- planning ----------
-  // The corridor only makes sense while the ball is inside it (someone
-  // standing in the trees shouldn't have every shot count as trees).
-  const corridor = useMemo(() => {
-    if (!hole || corridorYds === 0 || !ball) return undefined
-    const local = (p: LatLng) => distanceToLine(p, hole.line)
-    return local(ball) > corridorYds ? undefined : { line: hole.line, halfWidthYds: corridorYds }
-  }, [hole, corridorYds, ball])
-
   const lies = useMemo(
     () =>
       course?.lat != null && course.lng != null
-        ? buildLieMap({ lat: course.lat, lng: course.lng }, geometry?.features ?? [], geometry?.coast ?? [], corridor)
+        ? buildLieMap({ lat: course.lat, lng: course.lng }, geometry?.features ?? [], geometry?.coast ?? [], zones)
         : null,
-    [course, geometry, corridor]
+    [course, geometry, zones]
   )
 
   // Where the ball is lying: the tee uses the tour tee-shot baseline, anything else its mapped lie.
@@ -475,6 +494,32 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         : `Best aim for the ${chosenShots.club}: ${Math.abs(r.offsetYds)} yd ${r.offsetYds < 0 ? "left" : "right"} of the old aim, ` +
             `saving about ${saved.toFixed(2)} strokes per shot (measured on the same shots it was picked on, so a little optimistic).`
     )
+  }
+
+  // ---------- hand-marking trees / water / OB / etc that aren't on the map ----------
+  function startDraw(lie: Lie) {
+    setDrawKind(lie)
+    setPendingPoints([])
+  }
+  function addDrawPoint(p: LatLng) {
+    setPendingPoints((prev) => [...prev, p])
+  }
+  function undoDrawPoint() {
+    setPendingPoints((prev) => prev.slice(0, -1))
+  }
+  function cancelDraw() {
+    setDrawKind(null)
+    setPendingPoints([])
+  }
+  function finishDraw() {
+    if (!drawKind || pendingPoints.length < 3) return
+    const zone: UserZone = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, lie: drawKind, ring: pendingPoints }
+    setZones((prev) => [...prev, zone])
+    setDrawKind(null)
+    setPendingPoints([])
+  }
+  function deleteZone(id: string) {
+    setZones((prev) => prev.filter((z) => z.id !== id))
   }
 
   function stopFollowing() {
@@ -803,9 +848,10 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 <button
                   key={p}
                   onClick={() => setPlacing(p)}
+                  disabled={!!drawKind}
                   aria-pressed={placing === p}
                   title={`Tap the map to move the ${p}`}
-                  className={`flex items-center gap-1.5 px-3 py-2 font-medium capitalize md:py-1.5 ${
+                  className={`flex items-center gap-1.5 px-3 py-2 font-medium capitalize disabled:opacity-30 md:py-1.5 ${
                     placing === p ? "bg-[#22c55e] text-black" : "bg-[#141414] text-[#9ca3af] hover:text-white"
                   }`}
                 >
@@ -834,29 +880,56 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             <span className="hidden h-5 w-px shrink-0 bg-white/[0.1] md:block" />
             <ToolButton onClick={() => setShowTrouble((v) => !v)} icon={Layers} active={showTrouble} label="Trouble map" title="Colour every spot by strokes lost or gained versus a fairway lie at the same distance" />
             <ToolButton onClick={() => setShowRings((v) => !v)} icon={Target} active={showRings} label="Shot rings" title="Show where 50% and 90% of this club's shots land" />
-            <label
-              className="ml-auto flex shrink-0 items-center gap-1.5 text-[#6b7280]"
-              title="Many courses have no trees mapped. Land farther than this from the hole line, and not mapped as anything else, counts as trees (recovery shot)."
-            >
-              <TreePine size={13} />
-              Trees beyond
+            <label className="ml-auto flex shrink-0 items-center gap-1.5 text-[#6b7280]">
+              <Pencil size={13} />
               <select
-                value={corridorYds}
-                onChange={(e) => {
-                  setCorridorYds(Number(e.target.value))
-                  setAimNote(null)
-                }}
+                value={drawKind ?? ""}
+                onChange={(e) => (e.target.value ? startDraw(e.target.value as Lie) : cancelDraw())}
+                title="Outline trees, water, out of bounds or a safe area the map doesn't show (or gets wrong) so the aim and strokes gained account for it"
                 className="rounded-md border border-white/[0.08] bg-[#0a0a0a] px-1.5 py-1.5 text-[#9ca3af]"
               >
-                {CORRIDOR_OPTIONS.map((y) => (
-                  <option key={y} value={y}>
-                    {y === 0 ? "off" : `${y} yd`}
+                <option value="">Mark area…</option>
+                {DRAW_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {LIE_LABEL[k]}
                   </option>
                 ))}
               </select>
             </label>
             {gpsError && <span className="shrink-0 text-red-400">{gpsError}</span>}
           </div>
+
+          {drawKind && (
+            <div
+              className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs"
+              style={{ borderColor: `${LIE_COLORS[drawKind]}55`, backgroundColor: `${LIE_COLORS[drawKind]}14` }}
+            >
+              <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: LIE_COLORS[drawKind] }} />
+              <span className="text-[#d1d5db]">
+                Tap the map to outline the <strong>{LIE_LABEL[drawKind].toLowerCase()}</strong> area
+                {pendingPoints.length > 0 ? ` — ${pendingPoints.length} point${pendingPoints.length === 1 ? "" : "s"}` : ""}.
+              </span>
+              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                <button
+                  onClick={undoDrawPoint}
+                  disabled={pendingPoints.length === 0}
+                  className="flex items-center gap-1 rounded-md border border-white/[0.15] px-2 py-1 font-medium text-[#d1d5db] hover:text-white disabled:opacity-30"
+                >
+                  <Undo2 size={12} /> Undo
+                </button>
+                <button
+                  onClick={finishDraw}
+                  disabled={pendingPoints.length < 3}
+                  className="flex items-center gap-1 rounded-md bg-[#22c55e] px-2 py-1 font-semibold text-black disabled:opacity-30"
+                >
+                  <Check size={12} /> Finish
+                </button>
+                <button onClick={cancelDraw} className="flex items-center gap-1 rounded-md border border-white/[0.15] px-2 py-1 font-medium text-[#d1d5db] hover:text-white">
+                  <X size={12} /> Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           <div
             ref={mapWrapRef}
@@ -873,6 +946,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 landings={landings}
                 cells={troubleCells}
                 rings={rings}
+                zones={zones}
+                drawKind={drawKind}
+                pendingPoints={pendingPoints}
                 labels={labels}
                 placing={placing}
                 fitBounds={fit.bounds}
@@ -894,6 +970,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   const h = holes.find((x) => x.id === id)
                   if (h) pickHole(h)
                 }}
+                onDrawPoint={addDrawPoint}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
@@ -939,6 +1016,29 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             )}
             <span className="text-[#6b7280]">B = ball · A = aim · P = pin (drag any). Dots: {DOTS_SHOWN} simulated shots. Ctrl/⌘ + scroll zooms the map.</span>
           </div>
+
+          {zones.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="text-[#6b7280]">Your marks:</span>
+              {zones.map((z) => (
+                <span
+                  key={z.id}
+                  className="flex items-center gap-1.5 rounded-full border px-2 py-1 text-[#d1d5db]"
+                  style={{ borderColor: `${LIE_COLORS[z.lie]}70` }}
+                >
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: LIE_COLORS[z.lie] }} />
+                  {LIE_LABEL[z.lie]}
+                  <button
+                    onClick={() => deleteZone(z.id)}
+                    aria-label={`Remove marked ${LIE_LABEL[z.lie]} area`}
+                    className="text-[#6b7280] hover:text-red-400"
+                  >
+                    <X size={11} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ---- shot plan ---- */}
@@ -1074,8 +1174,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   </p>
                   <p>
                     It is a <strong className="text-[#d1d5db]">tour</strong> baseline, so a handicap golfer&rsquo;s SG is usually negative. Compare clubs and
-                    aim points against each other. Shapes come from OpenStreetMap volunteers; anything untraced counts as rough, trees can be
-                    approximated with the &ldquo;Trees beyond&rdquo; setting, and slope, wind and elevation aren&rsquo;t modelled.
+                    aim points against each other. Shapes come from OpenStreetMap volunteers, so anything untraced counts as rough — use
+                    &ldquo;Mark area&rdquo; to outline trees, water, out of bounds, or a safe patch the map got wrong; your marks beat the map
+                    and are remembered on this device. Slope, wind and elevation still aren&rsquo;t modelled.
                   </p>
                 </div>
               </details>

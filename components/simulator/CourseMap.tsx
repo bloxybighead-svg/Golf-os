@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import type { LatLng } from "@/lib/course/geo"
+import type { Lie, UserZone } from "@/lib/course/lies"
 import type { CourseGeometry, FeatureKind } from "@/lib/course/overpass"
 import type { Landing } from "@/lib/course/plan"
 import { LIE_COLORS, type Placing } from "./courseColors"
@@ -47,6 +48,10 @@ interface Props {
   labels: { pos: LatLng; text: string }[]
   cells: { sw: LatLng; ne: LatLng; color: string; opacity: number }[]
   rings: LatLng[][]
+  zones: UserZone[]
+  /** Hand-marking mode: while set, taps add vertices instead of moving ball/aim/pin. */
+  drawKind: Lie | null
+  pendingPoints: LatLng[]
   placing: Placing
   fitBounds: [[number, number], [number, number]] | null
   fitKey: string
@@ -54,6 +59,7 @@ interface Props {
   onAim: (p: LatLng) => void
   onPin: (p: LatLng) => void
   onPickHole: (id: string) => void
+  onDrawPoint: (p: LatLng) => void
 }
 
 const ll = (p: LatLng): L.LatLngTuple => [p.lat, p.lng]
@@ -79,6 +85,8 @@ export default function CourseMap(props: Props) {
     labels: L.LayerGroup
     cells: L.LayerGroup
     rings: L.LayerGroup
+    zones: L.LayerGroup
+    drawing: L.LayerGroup
     ball?: L.Marker
     aim?: L.Marker
     pin?: L.Marker
@@ -110,7 +118,11 @@ export default function CourseMap(props: Props) {
     }).addTo(map)
     map.on("click", (e: L.LeafletMouseEvent) => {
       const p = { lat: e.latlng.lat, lng: e.latlng.lng }
-      const { placing, onBall, onAim, onPin } = cb.current
+      const { drawKind, onDrawPoint, placing, onBall, onAim, onPin } = cb.current
+      if (drawKind) {
+        onDrawPoint(p)
+        return
+      }
       if (placing === "ball") onBall(p)
       else if (placing === "aim") onAim(p)
       else onPin(p)
@@ -126,8 +138,10 @@ export default function CourseMap(props: Props) {
       features: L.layerGroup().addTo(map),
       holes: L.layerGroup().addTo(map),
       cells: L.layerGroup().addTo(map),
+      zones: L.layerGroup().addTo(map),
       landings: L.layerGroup().addTo(map),
       rings: L.layerGroup().addTo(map),
+      drawing: L.layerGroup().addTo(map),
       labels: L.layerGroup().addTo(map),
     }
     mapRef.current = map
@@ -242,6 +256,44 @@ export default function CourseMap(props: Props) {
     }
   }, [props.cells])
 
+  // User-drawn zones (hand-marked trees/water/OB/etc). Dashed outline distinguishes
+  // them from the solid OSM-sourced polygons.
+  useEffect(() => {
+    const g = layers.current?.zones
+    if (!g) return
+    g.clearLayers()
+    for (const z of props.zones) {
+      L.polygon(z.ring.map(ll), {
+        color: LIE_COLORS[z.lie],
+        weight: 2,
+        opacity: 0.9,
+        fillColor: LIE_COLORS[z.lie],
+        fillOpacity: 0.28,
+        dashArray: "6 4",
+        interactive: false,
+      }).addTo(g)
+    }
+  }, [props.zones])
+
+  // Live preview while hand-marking a new zone: vertex dots, joining lines, and a
+  // dashed closing edge back to the first point once there are enough to close.
+  useEffect(() => {
+    const g = layers.current?.drawing
+    if (!g) return
+    g.clearLayers()
+    const pts = props.pendingPoints
+    const color = props.drawKind ? LIE_COLORS[props.drawKind] : "#facc15"
+    if (pts.length > 0) {
+      L.polyline(pts.map(ll), { color, weight: 2, interactive: false }).addTo(g)
+      if (pts.length >= 3) {
+        L.polyline([ll(pts[pts.length - 1]), ll(pts[0])], { color, weight: 2, dashArray: "4 4", opacity: 0.7, interactive: false }).addTo(g)
+      }
+      for (const p of pts) {
+        L.circleMarker(ll(p), { radius: 5, color: "#111", weight: 1.5, fillColor: color, fillOpacity: 1, interactive: false }).addTo(g)
+      }
+    }
+  }, [props.pendingPoints, props.drawKind])
+
   // Dispersion rings.
   useEffect(() => {
     const g = layers.current?.rings
@@ -301,5 +353,5 @@ export default function CourseMap(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.fitKey])
 
-  return <div ref={containerRef} className="h-full w-full" />
+  return <div ref={containerRef} className="h-full w-full" style={{ cursor: props.drawKind ? "crosshair" : undefined }} />
 }

@@ -340,13 +340,26 @@ sub-queries are memoised so retries only repeat what failed. Courses with no
 OSM boundary/hole tagging fall back to a radius search (warned in the UI;
 hole numbers may be missing and neighbouring courses may appear, e.g.
 Bethpage). Penalty lies (added after Dillon's feedback that drivers were always
-recommended): water +1.0, trees +1.0 (mapped `natural=wood`/`landuse=forest`
-plus an optional "trees beyond N yd of the hole line" corridor, default 40,
-because most courses have no trees traced -- Pebble has 2 polygons), and out
-of bounds = a driving range / practice area (`golf=driving_range`, or a
+recommended): water, rough, bunker and trees (mapped `natural=wood`/
+`landuse=forest`) all cost real strokes via the Broadie tables above; out of
+bounds is a driving range / practice area (`golf=driving_range`, or a
 "fairway" no hole centerline touches) costing a stroke plus a replay from
-where you hit. Rough is +0.4. These are still uncited placeholders in
-`lib/course/cost.ts`. Cached geometry carries `version` (GEOMETRY_VERSION);
+where you hit.
+
+Hand-marked zones (2026-09-27, replaces the old "trees beyond N yd of hole
+line" corridor): most courses have few or no trees traced in OSM, and a
+symmetric distance-based corridor penalised BOTH sides of a hole even when
+trouble was only on one -- wrong aim, wrong strokes gained. "Mark area" in the
+map toolbar lets the golfer hand-draw trees, water, a bunker, out of bounds,
+or a safe fairway/rough/green patch (to correct a wrong map) directly on the
+satellite image; each is a tap-to-add-vertex polygon (`>=3` points, Undo/
+Finish/Cancel), stored per course in `localStorage`
+(`golfos.zones.<courseId>.v1`, see `loadZones`/`saveZones` in
+`CourseMapClient.tsx`) -- not in Supabase, so marks don't sync across devices
+yet. In `lib/course/lies.ts`, `buildLieMap`'s zones are checked BEFORE the
+OSM-derived polygons and coastline, last-drawn-wins on overlap, so a zone
+always overrides the map. `UserZone` reuses the `Lie` type directly (no
+FeatureKind indirection). Cached geometry carries `version` (GEOMETRY_VERSION);
 older rows are ignored and refetched. Tests: `lib/course/course.test.ts`.
 
 ## Files

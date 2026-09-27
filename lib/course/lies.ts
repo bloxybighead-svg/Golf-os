@@ -2,11 +2,23 @@
 // using the course polygons. Anything not inside a mapped polygon is
 // "rough" -- so on a sparsely mapped course the rough share is inflated.
 // Coastline (sea on the right of each way) counts as water.
+//
+// User-drawn zones (see UserZone) take priority over everything else,
+// including the mapped course polygons: the golfer standing there knows the
+// course better than OpenStreetMap does, and can correct a wrong map or fill
+// in what it's missing (trees, out of bounds, a hidden bunker, ...).
 
 import { pointInRing, toLocal, type LatLng, type XY } from "./geo"
 import type { CourseFeature } from "./overpass"
 
 export type Lie = "water" | "oob" | "bunker" | "green" | "fairway" | "trees" | "rough"
+
+/** A user-drawn area on the map, overriding the mapped/inferred lie inside it. */
+export interface UserZone {
+  id: string
+  lie: Lie
+  ring: LatLng[]
+}
 
 interface PreparedRing {
   ring: XY[]
@@ -64,33 +76,30 @@ function onSeaSide(x: number, y: number, segs: Segment[]): boolean {
   return sea
 }
 
-export interface Corridor {
-  line: LatLng[] // the hole's centerline
-  halfWidthYds: number // land farther than this from it (and not mapped as anything) counts as trees
-}
-
-/** Shortest distance from (x, y) to a polyline given as XY points. */
-function distToPolyline(x: number, y: number, pts: XY[]): number {
-  let best = Infinity
-  for (let i = 1; i < pts.length; i++) {
-    const ax = pts[i - 1].x
-    const ay = pts[i - 1].y
-    const dx = pts[i].x - ax
-    const dy = pts[i].y - ay
-    const len2 = dx * dx + dy * dy
-    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2))
-    best = Math.min(best, Math.hypot(ax + t * dx - x, ay + t * dy - y))
+function prepare(origin: LatLng, ring: LatLng[]): PreparedRing {
+  const xy = ring.map((p) => toLocal(origin, p))
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (const p of xy) {
+    if (p.x < minX) minX = p.x
+    if (p.x > maxX) maxX = p.x
+    if (p.y < minY) minY = p.y
+    if (p.y > maxY) maxY = p.y
   }
-  return best
+  return { ring: xy, minX, maxX, minY, maxY }
 }
 
 export function buildLieMap(
   origin: LatLng,
   features: CourseFeature[],
   coast: LatLng[][] = [],
-  corridor?: Corridor
+  zones: UserZone[] = []
 ): LieMap {
-  const corridorPts = corridor && corridor.line.length >= 2 ? corridor.line.map((p) => toLocal(origin, p)) : null
+  // Most-recently-drawn zone wins where zones overlap, so check in reverse.
+  const preparedZones = zones.map((z) => ({ lie: z.lie, prepared: prepare(origin, z.ring) })).reverse()
+
   const segs: Segment[] = []
   for (const line of coast) {
     const pts = line.map((p) => toLocal(origin, p))
@@ -102,25 +111,18 @@ export function buildLieMap(
   }
   const byKind = new Map<string, PreparedRing[]>()
   for (const f of features) {
-    const ring = f.ring.map((p) => toLocal(origin, p))
-    let minX = Infinity
-    let maxX = -Infinity
-    let minY = Infinity
-    let maxY = -Infinity
-    for (const p of ring) {
-      if (p.x < minX) minX = p.x
-      if (p.x > maxX) maxX = p.x
-      if (p.y < minY) minY = p.y
-      if (p.y > maxY) maxY = p.y
-    }
     const list = byKind.get(f.kind) ?? []
-    list.push({ ring, minX, maxX, minY, maxY })
+    list.push(prepare(origin, f.ring))
     byKind.set(f.kind, list)
   }
 
   return {
     lieAt(p: LatLng): Lie {
       const { x, y } = toLocal(origin, p)
+      for (const { lie, prepared: r } of preparedZones) {
+        if (x < r.minX || x > r.maxX || y < r.minY || y > r.maxY) continue
+        if (pointInRing(x, y, r.ring)) return lie
+      }
       for (const { kind, lie } of PRIORITY) {
         for (const r of byKind.get(kind) ?? []) {
           if (x < r.minX || x > r.maxX || y < r.minY || y > r.maxY) continue
@@ -128,9 +130,6 @@ export function buildLieMap(
         }
       }
       if (segs.length > 0 && onSeaSide(x, y, segs)) return "water"
-      // Nothing mapped here. Many courses have no tree polygons at all, so
-      // optionally treat land well away from the hole as trees.
-      if (corridorPts && corridor && distToPolyline(x, y, corridorPts) > corridor.halfWidthYds) return "trees"
       return "rough"
     },
   }

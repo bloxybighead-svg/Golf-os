@@ -244,12 +244,6 @@ describe("trees, range and out of bounds", () => {
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 200, y: 100 }))).toBe("oob")
   })
 
-  it("optional corridor turns unmapped land far from the hole line into trees", () => {
-    const lies = buildLieMap(ORIGIN, [], [], { line: holeLine, halfWidthYds: 40 })
-    expect(lies.lieAt(fromLocal(ORIGIN, { x: 25, y: 120 }))).toBe("rough")
-    expect(lies.lieAt(fromLocal(ORIGIN, { x: 60, y: 120 }))).toBe("trees")
-  })
-
   it("reclassifies a fairway no hole line touches as a practice range", () => {
     const real = squareAround(fromLocal(ORIGIN, { x: 0, y: 120 }), 15)
     const practice = squareAround(fromLocal(ORIGIN, { x: 300, y: 120 }), 40)
@@ -275,18 +269,58 @@ describe("trees, range and out of bounds", () => {
     expect(expectedStrokesRemaining("oob", 250)).toBeCloseTo(1 + tourExpected("fairway", 250), 5)
   })
 
-  it("a tight club beats a long, wide one when the trees start close", () => {
+  it("a tight club beats a long, wide one when hand-marked trees line one side only", () => {
     const rng = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
     const r = rng(7)
-    const wide = Array.from({ length: 600 }, () => ({ carryYds: 265 + (r() - 0.5) * 20, offlineYds: (r() - 0.5) * 100 }))
+    // The driver's natural miss leans right (a common real tendency), which is exactly
+    // the side the golfer has hand-marked as trees -- a symmetric assumption would miss this.
+    const wide = Array.from({ length: 600 }, () => ({ carryYds: 265 + (r() - 0.5) * 20, offlineYds: (r() - 0.5) * 100 + 15 }))
     const tight = Array.from({ length: 600 }, () => ({ carryYds: 215 + (r() - 0.5) * 12, offlineYds: (r() - 0.5) * 24 }))
     const far = fromLocal(ORIGIN, { x: 0, y: 420 })
-    const lies = buildLieMap(ORIGIN, [], [], { line: [ORIGIN, far], halfWidthYds: 25 })
+    // Trees on the right of the hole only (15-200 yd off the line); nothing marked on the left.
+    const treesRight = [
+      fromLocal(ORIGIN, { x: 15, y: 0 }),
+      fromLocal(ORIGIN, { x: 200, y: 0 }),
+      fromLocal(ORIGIN, { x: 200, y: 420 }),
+      fromLocal(ORIGIN, { x: 15, y: 420 }),
+    ]
+    const lies = buildLieMap(ORIGIN, [], [], [{ id: "z1", lie: "trees", ring: treesRight }])
     const [best] = rankClubs(
       [{ club: "Driver", shots: wide }, { club: "7-Wood", shots: tight }],
       { from: ORIGIN, aim: fromLocal(ORIGIN, { x: 0, y: 265 }), pin: far, lies }
     )
     expect(best.club).toBe("7-Wood")
+    // A wide-left miss stays in the (unmarked) rough, not trees, confirming the marking is one-sided.
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: -100, y: 200 }))).toBe("rough")
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 100, y: 200 }))).toBe("trees")
+  })
+})
+
+describe("user-drawn zones", () => {
+  it("override the mapped lie entirely, including inside a fairway", () => {
+    const fairway = squareAround(fromLocal(ORIGIN, { x: 0, y: 150 }), 60)
+    const water = [{ id: "z1", lie: "water" as const, ring: squareAround(fromLocal(ORIGIN, { x: 20, y: 150 }), 10) }]
+    const lies = buildLieMap(ORIGIN, [{ kind: "fairway", ring: fairway }], [], water)
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 20, y: 150 }))).toBe("water")
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: -20, y: 150 }))).toBe("fairway")
+  })
+
+  it("can mark a safe area inside something the map got wrong (e.g. a bogus out-of-bounds zone)", () => {
+    const range = squareAround(fromLocal(ORIGIN, { x: 0, y: 150 }), 60)
+    const safe = [{ id: "z1", lie: "fairway" as const, ring: squareAround(fromLocal(ORIGIN, { x: 0, y: 150 }), 20) }]
+    const lies = buildLieMap(ORIGIN, [{ kind: "range", ring: range }], [], safe)
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 0, y: 150 }))).toBe("fairway")
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 55, y: 150 }))).toBe("oob")
+  })
+
+  it("the most recently drawn zone wins where two user zones overlap", () => {
+    const zones = [
+      { id: "older", lie: "trees" as const, ring: squareAround(ORIGIN, 20) },
+      { id: "newer", lie: "water" as const, ring: squareAround(ORIGIN, 10) },
+    ]
+    const lies = buildLieMap(ORIGIN, [], [], zones)
+    expect(lies.lieAt(ORIGIN)).toBe("water")
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 15, y: 0 }))).toBe("trees")
   })
 })
 
