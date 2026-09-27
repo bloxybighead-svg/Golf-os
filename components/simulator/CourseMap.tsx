@@ -55,6 +55,11 @@ interface Props {
   placing: Placing
   fitBounds: [[number, number], [number, number]] | null
   fitKey: string
+  /** Zoom to open the map at (e.g. remembered from last time). Only used for the initial view -- picking a hole still fits its own bounds, which is a better default than a stale remembered number. */
+  initialZoom?: number
+  onZoomChange?: (zoom: number) => void
+  /** Degrees clockwise from north the hole plays (tee -> green), for the compass overlay. Null hides it. */
+  holeBearingDeg: number | null
   onBall: (p: LatLng) => void
   onAim: (p: LatLng) => void
   onPin: (p: LatLng) => void
@@ -101,23 +106,30 @@ export default function CourseMap(props: Props) {
   // Create the map once.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
-    // Wheel-zoom is off so scrolling the page over the map does not hijack it; Ctrl/Cmd + wheel zooms.
+    // Touch devices get pinch-to-zoom (Leaflet's default) instead of scroll-to-zoom, so a
+    // finger scrolling the page over the map doesn't accidentally zoom it; a mouse gets plain
+    // scroll-to-zoom, no modifier key needed.
+    const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0)
     const map = L.map(containerRef.current, {
-      zoomControl: true,
+      zoomControl: false,
       preferCanvas: true,
-      maxZoom: 21,
-      scrollWheelZoom: false,
+      minZoom: 16,
+      maxZoom: 19,
+      scrollWheelZoom: !isTouch,
+      touchZoom: true,
       zoomSnap: 0.5,
       zoomDelta: 0.5,
     }).setView(
       ll(props.center),
-      16
+      props.initialZoom ?? 16
     )
+    L.control.zoom({ position: "bottomright" }).addTo(map)
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       maxNativeZoom: 19,
-      maxZoom: 21,
+      maxZoom: 19,
       attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics | Course data &copy; OpenStreetMap contributors",
     }).addTo(map)
+    map.on("zoomend", () => cb.current.onZoomChange?.(map.getZoom()))
     map.on("click", (e: L.LeafletMouseEvent) => {
       const p = { lat: e.latlng.lat, lng: e.latlng.lng }
       const { drawKind, pendingPoints, onDrawPoint, onDrawClose, placing, onBall, onAim, onPin } = cb.current
@@ -141,13 +153,6 @@ export default function CourseMap(props: Props) {
       else if (placing === "aim") onAim(p)
       else onPin(p)
     })
-    const el = map.getContainer()
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return
-      e.preventDefault()
-      map.setZoom(map.getZoom() + (e.deltaY < 0 ? 0.5 : -0.5))
-    }
-    el.addEventListener("wheel", onWheel, { passive: false })
     layers.current = {
       features: L.layerGroup().addTo(map),
       holes: L.layerGroup().addTo(map),
@@ -160,7 +165,6 @@ export default function CourseMap(props: Props) {
     }
     mapRef.current = map
     return () => {
-      el.removeEventListener("wheel", onWheel)
       map.remove()
       mapRef.current = null
       layers.current = null
@@ -375,5 +379,31 @@ export default function CourseMap(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.fitKey])
 
-  return <div ref={containerRef} className="h-full w-full" style={{ cursor: props.drawKind ? "crosshair" : undefined }} />
+  return (
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" style={{ cursor: props.drawKind ? "crosshair" : undefined }} />
+      {props.holeBearingDeg != null && <CompassOverlay bearingDeg={props.holeBearingDeg} />}
+    </div>
+  )
+}
+
+// Static, decorative: shows which way the hole plays relative to true north (the map itself
+// isn't rotated -- north is always up -- so this is the only "orientation" cue on screen).
+// Lives outside Leaflet's own DOM/control system entirely: it's just an absolutely-positioned
+// sibling, so there's no risk of it interfering with the map's own click/drag coordinate math.
+function CompassOverlay({ bearingDeg }: { bearingDeg: number }) {
+  return (
+    <div
+      className="pointer-events-none absolute right-2 top-2 z-[1050] flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/60 backdrop-blur-sm"
+      title={`Hole plays ${Math.round(bearingDeg)}° from north`}
+    >
+      <span className="absolute top-0.5 text-[8px] font-bold text-[#9ca3af]">N</span>
+      <div className="relative h-7 w-7" style={{ transform: `rotate(${bearingDeg}deg)` }}>
+        <svg viewBox="0 0 24 24" className="h-full w-full">
+          <path d="M12 1 L17 15 L12 11.5 L7 15 Z" fill="#facc15" />
+          <path d="M12 23 L9 13 L12 15.5 L15 13 Z" fill="#6b7280" />
+        </svg>
+      </div>
+    </div>
+  )
 }

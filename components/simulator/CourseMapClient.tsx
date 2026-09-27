@@ -126,6 +126,30 @@ function zonesKey(courseId: string): string {
   return `golfos.zones.${courseId}.v1`
 }
 
+function zoomKey(courseId: string): string {
+  return `golfos.zoom.${courseId}.v1`
+}
+
+/** Remembered zoom for a course, used only as the INITIAL view when it loads -- picking a
+ * hole still fits that hole's own bounds, which is a smarter default than a stale number
+ * from a differently-shaped hole. */
+function loadZoom(courseId: string): number | undefined {
+  try {
+    const v = Number(localStorage.getItem(zoomKey(courseId)))
+    return Number.isFinite(v) && v >= 10 && v <= 21 ? v : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function saveZoom(courseId: string, zoom: number) {
+  try {
+    localStorage.setItem(zoomKey(courseId), String(zoom))
+  } catch {
+    /* storage full or blocked: it just won't be remembered next time */
+  }
+}
+
 type NoHazardMap = Record<string, Partial<Record<ConfirmableHazard, boolean>>> // holeId -> which hazards are confirmed absent
 
 function noHazardKey(courseId: string): string {
@@ -244,6 +268,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">("idle")
   const [loadError, setLoadError] = useState("")
   const [refreshing, setRefreshing] = useState(false) // "Refresh course data": refetches geometry only, leaves ball/aim/pin alone
+  const [initialZoom, setInitialZoom] = useState<number | undefined>(undefined) // remembered per course, initial view only
 
   // --- golfer ---
   const [source, setSource] = useState<"calibrated" | "handicap">(calibrated ? "calibrated" : "handicap")
@@ -417,6 +442,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setPendingPoints([])
     void loadZonesFor(c)
     setNoHazard(loadNoHazard(c.id))
+    setInitialZoom(loadZoom(c.id))
     saveLastPosition({ course: c, holeId: null })
     if (c.lat == null || c.lng == null) {
       setLoadState("error")
@@ -654,6 +680,10 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hole, ball, pin, longestCarry, geometry])
   const aim = aimManual ?? defaultAim
+
+  // Which way the hole plays (tee -> green), for the compass overlay -- the hole's own
+  // fixed direction, not wherever the golfer currently stands.
+  const holeBearingDeg = useMemo(() => (hole && pin ? bearingDeg(hole.line[0], pin) : null), [hole, pin])
 
   // ---------- planning ----------
   // What's actually mapped for the CURRENT hole vs. hand-drawn vs. missing --
@@ -1682,6 +1712,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 placing={placing}
                 fitBounds={fit.bounds}
                 fitKey={fit.key}
+                initialZoom={initialZoom}
+                onZoomChange={(z) => course && saveZoom(course.id, z)}
+                holeBearingDeg={holeBearingDeg}
                 onBall={(p) => {
                   stopFollowing()
                   setBall(p)

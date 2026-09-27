@@ -660,6 +660,75 @@ worse, not better. What WAS actually missing, and got built:
 Typecheck, `npx vitest run` (96/96, untouched by this work), and
 `npm run build` all clean.
 
+Map orientation + zoom (2026-09-27, later still): Dillon's spec asked for
+the map itself to physically rotate so the hole always faces up (CSS
+`transform: rotate()` on the Leaflet container), plus a compass, pinch/
+scroll zoom, zoom buttons, min/max zoom, and zoom persistence. **Rotation
+was flagged as a real risk before building anything, then dropped at
+Dillon's direction** -- Leaflet has no native map-rotation support, and the
+spec's own suggested technique (CSS-rotating the container) is a
+well-documented broken pattern: Leaflet's click/drag hit-testing works in
+the container's own unrotated pixel space, so a CSS-rotated container
+computes the WRONG lat/lng for every tap and drag once rotated. That's not
+cosmetic here -- ball/aim/pin placement IS the app's core mechanic, so a
+rotation bug would silently corrupt strokes-gained numbers, not just look
+wrong. Checked the one real alternative (`leaflet-rotate`, which patches
+Leaflet's internals to fix this properly): last published to npm 3 years
+ago, and its README doesn't document compatibility with a canvas renderer
+or draggable markers -- both of which this app depends on. Presented this
+tradeoff to Dillon directly (skip rotation / hand-roll corrected click
+mapping / adopt the unmaintained plugin) rather than silently picking a
+lesser version or silently taking on the risk; he chose to skip rotation
+entirely. Everything else shipped in full:
+- **Compass** (`CompassOverlay` in `CourseMap.tsx`) -- since the map itself
+  doesn't rotate, north is always up already, so a rotating "north needle"
+  would carry no information. Repurposed as a static hole-direction
+  indicator instead: a yellow arrow showing which way the CURRENT hole
+  plays (tee -> green bearing, via the existing `bearingDeg` -- not the
+  spec's own flat `atan2(dLng, dLat)` formula, which is a cruder
+  small-angle approximation of the same thing `bearingDeg` already gets
+  right). Rendered as a plain absolutely-positioned React div, entirely
+  outside Leaflet's own DOM/control system -- zero risk of interfering with
+  click/drag math, unlike a real map rotation would have been.
+- **Zoom**, all built and verified live: `minZoom: 16, maxZoom: 19` (also
+  dropped the tile layer's old `maxZoom: 21` over-zoom, which only ever
+  produced blurry upscaled tiles past its `maxNativeZoom: 19` anyway, so
+  this is a strict quality improvement too); Leaflet's default zoom control
+  moved to bottom-right (`L.control.zoom({position:"bottomright"})`),
+  confirmed via the control's own `leaflet-bottom leaflet-right` CSS class
+  in the live DOM; pinch-to-zoom is Leaflet's own default behavior
+  (`touchZoom: true`, unchanged, not independently verifiable through
+  browser automation -- no synthetic multi-touch gesture available, so this
+  one still wants a real-phone check next time Dillon has the course
+  planner open on his own device). Plain scroll-wheel zoom is now enabled
+  on desktop and OFF on touch (detected via `ontouchstart`/`maxTouchPoints`,
+  same test used elsewhere in this file for coarse-pointer marker sizing) --
+  **replaces the previous Ctrl/Cmd+wheel-only convention** (a deliberate
+  choice from the original build, made specifically so an embedded map
+  wouldn't hijack page-scrolling; Google Maps and most other map embeds use
+  that same Ctrl+scroll convention for exactly that reason). Verified live
+  with a raw `WheelEvent` dispatched at the map center: zooms 16->17 on a
+  non-touch viewport, no-ops (same tile, unchanged) under touch emulation.
+  Flagging this explicitly since it's a real, deliberate-choice reversal:
+  hovering the map on desktop and scrolling now zooms it instead of
+  scrolling the page underneath it -- say if that's not actually wanted
+  and it can go back to Ctrl+scroll.
+- **Zoom persistence**: `golfos.zoom.<courseId>.v1`, saved on every
+  `zoomend`, but only applied as the map's INITIAL view zoom when a course
+  first loads -- not reapplied on every hole switch as the literal spec
+  asked, since hole switches already call `fitBounds` to frame that hole's
+  actual shape, which is a strictly better "sensible default" (the spec's
+  own fallback language) than a stale zoom number from a differently-shaped
+  hole. Verified the value is written correctly to `localStorage` after
+  zooming.
+Typecheck, `npx vitest run` (96/96, untouched), and `npm run build` all
+clean. Verified live at both desktop and an emulated 375-wide touch
+viewport: compass position (8px from the map's top-right corner, measured
+via `getBoundingClientRect`, not just eyeballed), zoom-in capping at tile
+zoom 19, zoom-out capping at 16 (`leaflet-disabled` class on the button),
+scroll-wheel zoom working/not-working exactly per device type, and zoom
+value persisting to `localStorage` per course.
+
 ## Files
 
 | File | Purpose |
