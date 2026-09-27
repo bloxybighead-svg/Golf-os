@@ -106,23 +106,47 @@ export interface AimResult {
   baselineStrokes: number // same club, aimed at the original aim point
 }
 
+/** Deterministic disjoint split (even/odd index) -- no shuffle needed since the
+ * shots array is already in an arbitrary (seeded-random) order upstream. */
+function splitShots(shots: ShotSample[]): { search: ShotSample[]; holdout: ShotSample[] } {
+  const search: ShotSample[] = []
+  const holdout: ShotSample[] = []
+  shots.forEach((s, i) => (i % 2 === 0 ? search : holdout).push(s))
+  return { search, holdout }
+}
+
 /**
- * Shift the aim left/right in 2-yard steps and keep the best. Same shots
- * are reused for every candidate, so the winner's saving is slightly
- * optimistic (see STATISTICAL_ANALYSIS.md, "winner's curse"); treat small
- * differences as noise.
+ * Shift the aim left/right in 2-yard steps and keep the best candidate --
+ * found using only HALF the club's shots. The winner (and the original aim,
+ * for comparison) are then re-scored on the other half, which the search
+ * never touched. Grading a search's own winner on the data that picked it is
+ * optimistic (the "winner's curse" -- see STATISTICAL_ANALYSIS.md and
+ * aim_point_optimizer.py's paired-resample fix, same idea); a held-out half
+ * removes that without needing fresh real-world data, which isn't available
+ * for a calibrated golfer's fixed shot history.
  */
 export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 30, stepYds = 2): AimResult {
+  const { search, holdout } = splitShots(club.shots)
+  const searchClub: ClubShots = { club: club.club, shots: search }
+  const confirmClub: ClubShots = { club: club.club, shots: holdout.length > 0 ? holdout : search }
+
   const baseBearing = bearingDeg(ctx.from, ctx.aim)
   const dist = Math.max(distanceYds(ctx.from, ctx.aim), 10)
-  const baseline = evaluateClub(club, ctx, baseBearing).expectedStrokes
-  let best: AimResult | null = null
+  let winner: { offsetYds: number; bearingDeg: number } | null = null
+  let winnerStrokes = Infinity
   for (let off = -maxOffsetYds; off <= maxOffsetYds; off += stepYds) {
     const bearing = (baseBearing + (Math.atan2(off, dist) * 180) / Math.PI + 360) % 360
-    const plan = evaluateClub(club, ctx, bearing)
-    if (!best || plan.expectedStrokes < best.plan.expectedStrokes) {
-      best = { offsetYds: off, bearingDeg: bearing, plan, baselineStrokes: baseline }
+    const strokes = evaluateClub(searchClub, ctx, bearing).expectedStrokes
+    if (strokes < winnerStrokes) {
+      winnerStrokes = strokes
+      winner = { offsetYds: off, bearingDeg: bearing }
     }
   }
-  return best as AimResult
+  const w = winner as { offsetYds: number; bearingDeg: number }
+  return {
+    offsetYds: w.offsetYds,
+    bearingDeg: w.bearingDeg,
+    plan: evaluateClub(confirmClub, ctx, w.bearingDeg),
+    baselineStrokes: evaluateClub(confirmClub, ctx, baseBearing).expectedStrokes,
+  }
 }

@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import {
+  AlertTriangle,
   Check,
   ChevronDown,
   Circle,
   Crosshair,
+  Eye,
   Flag,
   History,
   Info,
@@ -36,9 +38,10 @@ import {
 } from "@/lib/course/geo"
 import { defaultTeeAim } from "@/lib/course/aim"
 import type { StartLie } from "@/lib/course/cost"
+import { assessHoleDataQuality, estimatedFairwayCorridor, type HoleDataQuality, type SurfaceStatus } from "@/lib/course/dataQuality"
 import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
 import { buildLieMap, type Lie, type UserZone } from "@/lib/course/lies"
-import { GEOMETRY_VERSION, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
+import { GEOMETRY_VERSION, type CourseFeature, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
 import { seededSample } from "@/lib/dispersion/stats"
 import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
@@ -73,6 +76,8 @@ interface Props {
   calibratedName: string
 }
 
+type AimNote = { club: string; optimal: true } | { club: string; optimal: false; offsetYds: number; savedStrokes: number }
+
 const DOTS_SHOWN = 400
 const HANDICAP_SHOTS_PER_CLUB = 1000
 const LIES: Lie[] = ["green", "fairway", "rough", "bunker", "water", "trees", "oob"]
@@ -86,6 +91,12 @@ const LIE_LABEL: Record<Lie, string> = {
   oob: "Out of bounds",
 }
 const LIE_SHORT: Record<Lie, string> = { green: "Grn", fairway: "Fwy", rough: "Rgh", bunker: "Bkr", water: "Wtr", trees: "Tre", oob: "OB" }
+const STATUS_TITLE: Record<SurfaceStatus, string> = {
+  mapped: "Mapped in the course data",
+  "hand-drawn": "Hand-drawn by you",
+  estimated: "Not mapped — using an estimated fallback",
+  missing: "Not mapped",
+}
 const ALWAYS_SHOWN: Lie[] = ["green", "fairway", "rough"]
 // Options offered by "Mark area" for hand-drawing what the map doesn't show
 // (or gets wrong): "fairway"/"rough"/"green" let you mark a SAFE area too,
@@ -175,6 +186,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [pendingPoints, setPendingPoints] = useState<LatLng[]>([])
   const [showTrouble, setShowTrouble] = useState(false)
   const [showRings, setShowRings] = useState(true)
+  const [showZones, setShowZones] = useState(true)
   const [showSettings, setShowSettings] = useState(false) // phones: golfer settings are collapsed by default
   const [recent, setRecent] = useState<CourseHit[]>([])
   const [hydrated, setHydrated] = useState(false)
@@ -186,7 +198,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const supabaseRef = useRef<ReturnType<typeof createClient>>()
   if (!supabaseRef.current) supabaseRef.current = createClient()
   const [authUser, setAuthUser] = useState<{ id: string; email: string | null } | null>(null)
-  const [aimNote, setAimNote] = useState<string | null>(null)
+  const [aimNote, setAimNote] = useState<AimNote | null>(null)
   const [gpsError, setGpsError] = useState("")
   const [fit, setFit] = useState<{ bounds: [[number, number], [number, number]] | null; key: string }>({
     bounds: null,
@@ -497,13 +509,28 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const aim = aimManual ?? defaultAim
 
   // ---------- planning ----------
-  const lies = useMemo(
-    () =>
-      course?.lat != null && course.lng != null
-        ? buildLieMap({ lat: course.lat, lng: course.lng }, geometry?.features ?? [], geometry?.coast ?? [], zones)
-        : null,
-    [course, geometry, zones]
-  )
+  // What's actually mapped for the CURRENT hole vs. hand-drawn vs. missing --
+  // drives both the data-quality badge and the fairway fallback below.
+  const holeQuality: HoleDataQuality | null = useMemo(() => {
+    if (!hole || !geometry) return null
+    return assessHoleDataQuality(hole, geometry.features, zones)
+  }, [hole, geometry, zones])
+
+  const lies = useMemo(() => {
+    if (course?.lat == null || course.lng == null) return null
+    // "estimated" only happens when neither OSM nor a hand-drawn zone has a
+    // fairway for this hole -- fill in a corridor so club/aim scoring has
+    // something to work with instead of treating the whole hole as rough.
+    const extraFeatures: CourseFeature[] =
+      hole && geometry && holeQuality?.fairway === "estimated" ? [estimatedFairwayCorridor(hole, holePinFor(hole))] : []
+    return buildLieMap(
+      { lat: course.lat, lng: course.lng },
+      [...(geometry?.features ?? []), ...extraFeatures],
+      geometry?.coast ?? [],
+      zones
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course, geometry, zones, hole, holeQuality])
 
   // Where the ball is lying: the tee uses the tour tee-shot baseline, anything else its mapped lie.
   const startLie: StartLie = useMemo(() => {
@@ -543,18 +570,21 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     return [dispersionRing(pts, 1.177), dispersionRing(pts, 2.146)].filter((r) => r.length > 0)
   }, [showRings, landings])
 
+  // Below this many strokes, a "saving" is noise (search-vs-holdout disagreement
+  // or plain sampling variance), not a real improvement worth moving the aim for.
+  const MEANINGFUL_SAVING = 0.05
+
   function findBestAim() {
     if (!chosenShots || !ball || !aim || !pin || !lies) return
     const r = bestAim(chosenShots, { from: ball, aim, pin, lies, startLie })
+    const saved = r.baselineStrokes - r.plan.expectedStrokes
+    if (saved < MEANINGFUL_SAVING) {
+      setAimNote({ club: chosenShots.club, optimal: true })
+      return
+    }
     const dist = distanceYds(ball, aim)
     setAimManual(landingPoint(ball, r.bearingDeg, dist, 0))
-    const saved = r.baselineStrokes - r.plan.expectedStrokes
-    setAimNote(
-      r.offsetYds === 0
-        ? `Aiming where you are now is already best for the ${chosenShots.club}.`
-        : `Best aim for the ${chosenShots.club}: ${Math.abs(r.offsetYds)} yd ${r.offsetYds < 0 ? "left" : "right"} of the old aim, ` +
-            `saving about ${saved.toFixed(2)} strokes per shot (measured on the same shots it was picked on, so a little optimistic).`
-    )
+    setAimNote({ club: chosenShots.club, optimal: false, offsetYds: r.offsetYds, savedStrokes: saved })
   }
 
   // ---------- hand-marking trees / water / OB / etc that aren't on the map ----------
@@ -958,6 +988,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             <span className="hidden h-5 w-px shrink-0 bg-white/[0.1] md:block" />
             <ToolButton onClick={() => setShowTrouble((v) => !v)} icon={Layers} active={showTrouble} label="Trouble map" title="Colour every spot by strokes lost or gained versus a fairway lie at the same distance" />
             <ToolButton onClick={() => setShowRings((v) => !v)} icon={Target} active={showRings} label="Shot rings" title="Show where 50% and 90% of this club's shots land" />
+            {zones.length > 0 && (
+              <ToolButton onClick={() => setShowZones((v) => !v)} icon={Eye} active={showZones} label="My marks" title="Show or hide your hand-drawn marks (separate from the course map itself)" />
+            )}
             <label className="ml-auto flex shrink-0 items-center gap-1.5 text-[#6b7280]">
               <Pencil size={13} />
               <select
@@ -1026,7 +1059,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 landings={landings}
                 cells={troubleCells}
                 rings={rings}
-                zones={zones}
+                zones={showZones ? zones : []}
                 drawKind={drawKind}
                 pendingPoints={pendingPoints}
                 labels={labels}
@@ -1193,6 +1226,71 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   </p>
                   <p className="text-[11px] text-[#6b7280]">from {fromLabel}</p>
                 </div>
+
+                {holeQuality && (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                    {(
+                      [
+                        ["fairway", "Fairway", holeQuality.fairway],
+                        ["greens", "Greens", holeQuality.greens],
+                        ["bunkers", "Bunkers", holeQuality.bunkers],
+                        ["water", "Water", holeQuality.water],
+                      ] as [keyof HoleDataQuality, string, SurfaceStatus][]
+                    ).map(([key, label, status]) => (
+                      <span key={key} className="flex items-center gap-1" title={STATUS_TITLE[status]}>
+                        {status === "mapped" ? (
+                          <Check size={12} className="text-[#22c55e]" />
+                        ) : status === "missing" ? (
+                          <X size={12} className="text-[#f87171]" />
+                        ) : (
+                          <AlertTriangle size={12} className="text-yellow-500" />
+                        )}
+                        <span className="text-[#9ca3af]">{label}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {holeQuality &&
+                  (holeQuality.fairway === "estimated" ||
+                    holeQuality.bunkers === "missing" ||
+                    holeQuality.water === "missing" ||
+                    holeQuality.greens === "missing") && (
+                    <div className="mt-1.5 space-y-1 text-[11px] text-yellow-500/90">
+                      {holeQuality.fairway === "estimated" && (
+                        <p>
+                          Fairway isn&rsquo;t mapped here — using an estimated corridor.{" "}
+                          <button onClick={() => startDraw("fairway")} className="font-semibold text-[#22c55e] hover:underline">
+                            Mark fairway
+                          </button>
+                        </p>
+                      )}
+                      {holeQuality.bunkers === "missing" && (
+                        <p>
+                          Bunkers not mapped — actual SG may vary.{" "}
+                          <button onClick={() => startDraw("bunker")} className="font-semibold text-[#22c55e] hover:underline">
+                            Mark bunkers
+                          </button>
+                        </p>
+                      )}
+                      {holeQuality.water === "missing" && (
+                        <p>
+                          Water not mapped — actual SG may vary.{" "}
+                          <button onClick={() => startDraw("water")} className="font-semibold text-[#22c55e] hover:underline">
+                            Mark water
+                          </button>
+                        </p>
+                      )}
+                      {holeQuality.greens === "missing" && (
+                        <p>
+                          Green not mapped — actual SG may vary.{" "}
+                          <button onClick={() => startDraw("green")} className="font-semibold text-[#22c55e] hover:underline">
+                            Mark green
+                          </button>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                   <StatTile label="Ball to aim" value={distAim != null ? Math.round(distAim) : null} />
                   <StatTile label={aimIsPin ? "Aim is pin" : "Left after aim"} value={aimIsPin ? 0 : aimToPin != null ? Math.round(aimToPin) : null} />
@@ -1204,12 +1302,10 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-[#22c55e]">
                       {clubChoice === "auto" || chosen.club === best.club ? "Best club" : "Selected club"}
                     </p>
-                    <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3">
-                      <p className="text-2xl font-bold text-white">{chosen.club}</p>
-                      <p className={`text-sm font-semibold ${sgClass(chosen.strokesGained)}`} title="Strokes gained per shot vs a PGA Tour average shot from the same spot (Broadie baseline)">
-                        {fmtSG(chosen.strokesGained)} SG
-                      </p>
-                    </div>
+                    <p className="mt-0.5 text-2xl font-bold text-white">{chosen.club}</p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      Expected {chosen.expectedStrokes.toFixed(2)} strokes to hole out
+                    </p>
                     <p className="mt-1 text-xs text-[#9ca3af]">
                       Averages {Math.round(chosen.meanCarryYds)} yd
                       {avgLeft != null && (
@@ -1217,11 +1313,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                           , leaving about <span className="font-semibold text-white">{Math.round(avgLeft)} yd</span>
                         </>
                       )}
-                      . Expected {chosen.expectedStrokes.toFixed(2)} strokes to hole out including this shot.
+                      .
                     </p>
                     {clubChoice !== "auto" && chosen.club !== best.club && (
                       <p className="mt-1 text-xs text-[#9ca3af]">
-                        The planner prefers <span className="font-semibold text-white">{best.club}</span> ({fmtSG(best.strokesGained)} SG).
+                        The planner prefers <span className="font-semibold text-white">{best.club}</span>, saving{" "}
+                        <span className="font-semibold text-[#22c55e]">{(chosen.expectedStrokes - best.expectedStrokes).toFixed(2)}</span>{" "}
+                        strokes.
                       </p>
                     )}
                   </div>
@@ -1244,7 +1342,19 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                     </button>
                   )}
                 </div>
-                {aimNote && <p className="mt-2 text-xs text-[#9ca3af]">{aimNote}</p>}
+                {aimNote && (
+                  <p className="mt-2 text-xs text-[#9ca3af]">
+                    {aimNote.optimal ? (
+                      <>Current aim is already optimal for the {aimNote.club}.</>
+                    ) : (
+                      <>
+                        Best aim for the {aimNote.club}: {Math.abs(aimNote.offsetYds)} yd {aimNote.offsetYds < 0 ? "left" : "right"} of
+                        the old aim, saving about{" "}
+                        <span className="font-semibold text-[#22c55e]">+{aimNote.savedStrokes.toFixed(2)} strokes per shot</span>.
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
 
               <div className="overflow-x-auto rounded-2xl border border-white/[0.07] bg-[#111111] shadow-lg shadow-black/20">
@@ -1258,8 +1368,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                           {LIE_SHORT[l]}
                         </th>
                       ))}
-                      <th className="px-3 py-2.5 text-right font-medium" title="Strokes gained per shot vs a PGA Tour average shot from the same spot">
-                        SG
+                      <th
+                        className="px-3 py-2.5 text-right font-medium"
+                        title={`Extra strokes to hole out vs the best club here (${best?.club ?? "—"}), on the same shots`}
+                      >
+                        SG (vs {best?.club ?? "best"})
                       </th>
                     </tr>
                   </thead>
@@ -1282,7 +1395,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                             {pct(r.lieShare[l])}
                           </td>
                         ))}
-                        <td className={`px-3 text-right font-semibold ${sgClass(r.strokesGained)}`}>{fmtSG(r.strokesGained)}</td>
+                        <td className="px-3 text-right font-semibold text-[#22c55e]">
+                          +{(r.expectedStrokes - best.expectedStrokes).toFixed(2)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1296,17 +1411,25 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                     Every simulated shot is placed on the map and given a lie (green, fairway, rough, bunker, trees, water or out of bounds).
                     Its value is the PGA TOUR average number of strokes to hole out from that lie and distance, from Mark Broadie&rsquo;s
                     published benchmark (<em>Assessing Golfer Performance on the PGA TOUR</em>, Interfaces 2012, Table 9; putting from{" "}
-                    <em>Putts Gained</em>, 2011). Strokes gained = the value where you stand − the value where the shot ends − 1.
+                    <em>Putts Gained</em>, 2011). &ldquo;Expected strokes to hole out&rdquo; is that value, plus one for the shot itself.
+                  </p>
+                  <p>
+                    The table&rsquo;s &ldquo;SG&rdquo; column compares every club against the best one HERE, not against a tour player —
+                    the best club is always +0.00 and every other club shows how many extra strokes it&rsquo;s expected to cost, so the
+                    numbers are always positive and about the choice in front of you, not a tour-average comparison that&rsquo;s usually
+                    negative for a handicap golfer.
                   </p>
                   <p>
                     Water costs one penalty stroke plus a drop; out of bounds is stroke and distance; trees use the benchmark&rsquo;s
                     &ldquo;recovery&rdquo; column. These rules are my assumptions, since the benchmark doesn&rsquo;t cover them.
                   </p>
                   <p>
-                    It is a <strong className="text-[#d1d5db]">tour</strong> baseline, so a handicap golfer&rsquo;s SG is usually negative. Compare clubs and
-                    aim points against each other. Shapes come from OpenStreetMap volunteers, so anything untraced counts as rough — use
-                    &ldquo;Mark area&rdquo; to outline trees, water, out of bounds, or a safe patch the map got wrong; your marks beat the map
-                    and are remembered on this device. Slope, wind and elevation still aren&rsquo;t modelled.
+                    Shapes come from OpenStreetMap volunteers, so anything untraced counts as rough — the badge above the stats shows what
+                    is (✓), isn&rsquo;t (✗), or is only estimated (⚠) for this hole; use &ldquo;Mark area&rdquo; (or the badge&rsquo;s own
+                    links) to outline trees, water, out of bounds, or a safe patch the map got wrong. Your marks beat the map, and a missing
+                    fairway is estimated as a corridor down the middle until you draw the real one. Slope, wind and elevation still
+                    aren&rsquo;t modelled. &ldquo;Find best aim&rdquo; re-checks its own suggestion on a held-out half of the shots it didn&rsquo;t
+                    use to pick that aim, so the reported saving isn&rsquo;t just the search grading its own winner.
                   </p>
                 </div>
               </details>
@@ -1319,17 +1442,6 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 }
 
 // ---------- small presentational helpers ----------
-
-function fmtSG(x: number): string {
-  const v = Math.abs(x) < 0.005 ? 0 : x
-  return `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(2)}`
-}
-
-function sgClass(x: number): string {
-  if (x > 0.02) return "text-[#22c55e]"
-  if (x < -0.02) return "text-[#f87171]"
-  return "text-[#9ca3af]"
-}
 
 function StatTile({ label, value }: { label: string; value: number | null }) {
   return (

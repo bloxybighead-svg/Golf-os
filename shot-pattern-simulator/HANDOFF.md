@@ -406,6 +406,56 @@ Verified with the anon key directly: `select` returns `[]`, `insert` returns
 `42501` (RLS violation), same as the `course_zones` check. `dilloncady@yahoo.com`
 already existed in `auth.users` from earlier testing.
 
+Data-quality badge + trustworthy SG (2026-09-27, later): Rumson GC exposed a
+real trust problem -- it has only 4 greens, 3 fairways and 5 bunkers traced
+across 18 holes, so most holes silently treated an unmapped fairway as rough,
+skewing club/aim recommendations toward avoiding rough that was never really
+there. `lib/course/dataQuality.ts` (new) adds `assessHoleDataQuality(hole,
+features, zones)`, checking each of fairway/greens/bunkers/water against
+`aim.ts`'s existing `projectOnLine`/near-hole-line logic: `"mapped"` (OSM),
+`"hand-drawn"` (a `UserZone` near this hole), `"estimated"` (fairway only --
+no fallback exists for the other three, so they go straight to `"missing"`),
+or `"missing"`. A hole card badge (✓/⚠/✗ per surface) sits under the hole
+title, with a "Mark X" link (pre-selects that lie in the existing Draw tool)
+for anything not mapped. When fairway comes back `"estimated"`,
+`estimatedFairwayCorridor(hole, pin)` builds a straight 32yd-wide tee-to-pin
+rectangle and it's added to `lies`' `features` (NOT `zones`, so a real
+mapped/hand-drawn hazard on top of it still wins -- priority is hand-drawn >
+OSM-mapped > this fallback, per the spec). It doesn't follow a dogleg's bend;
+labelled "estimated" for exactly that reason.
+
+SG display was rebuilt around actual user confusion ("all red, all
+negative", because the old number was Broadie's TOUR baseline, which a
+handicap golfer is basically always behind): the club table's "SG" column
+and the "Best club" card no longer show that number at all. The table now
+shows each club's extra expected strokes **vs the best club on this shot**
+(`r.expectedStrokes - best.expectedStrokes`) -- always >= 0, always green,
+best club is always +0.00. The "Best club" card's headline is now "Expected
+X.XX strokes to hole out" instead of a colored SG badge. The tour-baseline
+number still drives every calculation underneath (unchanged), it's just not
+shown as the primary UI number anymore.
+
+"Find best aim" had its own honesty problem: it graded its own grid-search
+winner on the exact shots that picked it, then LABELLED the result "a little
+optimistic" instead of fixing it. `bestAim` (`lib/course/plan.ts`) now splits
+a club's shots by index parity into a search half and a holdout half, picks
+the best offset using only the search half, then reports the winner's (and
+the original aim's) `expectedStrokes` from the holdout half only -- the same
+"grade on data the search never touched" fix `aim_point_optimizer.py` already
+used for the winner's-curse problem, just without needing fresh real-world
+shots (which don't exist for a calibrated golfer's fixed history). Below a
+0.05-stroke saving on the holdout half, the UI says "Current aim is already
+optimal" instead of moving the aim for noise.
+
+Also added: a "My marks" map toggle (only shown once zones exist) to hide/
+show hand-drawn zones separately from the base map, per the spec's Part 3.
+7 new tests in `lib/course/course.test.ts` (93 total): data-quality
+mapped/estimated/hand-drawn/missing cases, the fallback corridor's priority
+against a real hazard, and `bestAim`'s holdout split. Manually verified live
+against Rumson GC hole 1 (fairway ⚠ estimated + water ✗ missing, "Mark
+fairway"/"Mark water" links open the Draw tool pre-selected) and hole 2 (all
+four ✓, no prompts, "Find best aim" correctly says "already optimal").
+
 ## Files
 
 | File | Purpose |

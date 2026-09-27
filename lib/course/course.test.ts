@@ -445,3 +445,75 @@ describe("trouble map and dispersion rings", () => {
     expect(dispersionRing(pts.slice(0, 3), 1)).toEqual([])
   })
 })
+
+import { assessHoleDataQuality, estimatedFairwayCorridor } from "./dataQuality"
+
+describe("hole data-quality badge", () => {
+  const pin = fromLocal(ORIGIN, { x: 0, y: 150 })
+  const hole = { id: "h1", ref: 1, par: 4, line: [ORIGIN, pin] }
+
+  it("is mapped when OSM has fairway, greens, bunkers and water near the hole", () => {
+    const features = [
+      { kind: "fairway" as const, ring: squareAround(fromLocal(ORIGIN, { x: 0, y: 75 }), 20) },
+      { kind: "green" as const, ring: squareAround(pin, 15) },
+      { kind: "bunker" as const, ring: squareAround(fromLocal(ORIGIN, { x: 20, y: 130 }), 8) },
+      { kind: "water" as const, ring: squareAround(fromLocal(ORIGIN, { x: -25, y: 100 }), 10) },
+    ]
+    const q = assessHoleDataQuality(hole, features, [])
+    expect(q).toEqual({ fairway: "mapped", greens: "mapped", bunkers: "mapped", water: "mapped" })
+  })
+
+  it("falls back to estimated fairway and missing bunkers/water/greens when nothing is mapped or drawn", () => {
+    const q = assessHoleDataQuality(hole, [], [])
+    expect(q).toEqual({ fairway: "estimated", greens: "missing", bunkers: "missing", water: "missing" })
+  })
+
+  it("recognizes a hand-drawn zone as hand-drawn, not mapped or missing", () => {
+    const zones = [{ id: "z1", lie: "bunker" as const, ring: squareAround(fromLocal(ORIGIN, { x: 10, y: 100 }), 8) }]
+    const q = assessHoleDataQuality(hole, [], zones)
+    expect(q.bunkers).toBe("hand-drawn")
+    expect(q.fairway).toBe("estimated") // hand-drawing a bunker doesn't invent a fairway
+  })
+
+  it("a feature far from this hole's line doesn't count as mapped for it", () => {
+    const farAway = [{ kind: "fairway" as const, ring: squareAround(fromLocal(ORIGIN, { x: 500, y: 500 }), 20) }]
+    expect(assessHoleDataQuality(hole, farAway, []).fairway).toBe("estimated")
+  })
+
+  it("the estimated fairway corridor runs from tee to pin and is used by buildLieMap as fairway", () => {
+    const corridor = estimatedFairwayCorridor(hole, pin, 30)
+    expect(corridor.kind).toBe("fairway")
+    const lies = buildLieMap(ORIGIN, [corridor])
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 0, y: 75 }))).toBe("fairway") // middle of the corridor
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 100, y: 75 }))).toBe("rough") // well outside its width
+  })
+
+  it("a real hazard still beats the estimated fairway corridor (priority 1: mapped/drawn > 2: fallback)", () => {
+    const corridor = estimatedFairwayCorridor(hole, pin, 30)
+    const water = squareAround(fromLocal(ORIGIN, { x: 0, y: 75 }), 8)
+    const lies = buildLieMap(ORIGIN, [corridor, { kind: "water", ring: water }])
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 0, y: 75 }))).toBe("water")
+  })
+})
+
+describe("bestAim re-scores its winner on held-out shots", () => {
+  const pin = fromLocal(ORIGIN, { x: 0, y: 150 })
+  const lies = buildLieMap(ORIGIN, [
+    { kind: "green", ring: squareAround(pin, 15) },
+    { kind: "water", ring: [
+      fromLocal(ORIGIN, { x: 12, y: 100 }),
+      fromLocal(ORIGIN, { x: 80, y: 100 }),
+      fromLocal(ORIGIN, { x: 80, y: 200 }),
+      fromLocal(ORIGIN, { x: 12, y: 200 }),
+    ] },
+  ])
+  const ctx = { from: ORIGIN, aim: pin, pin, lies }
+
+  it("still finds the same real signal (aim away from water) split across two disjoint halves", () => {
+    const spread = Array.from({ length: 400 }, (_, i) => ({ carryYds: 150, offlineYds: (i % 40) - 20 }))
+    const r = bestAim({ club: "7-Iron", shots: spread }, ctx)
+    expect(r.offsetYds).toBeLessThan(0)
+    expect(r.plan.n).toBe(200) // scored on the held-out half only, not all 400
+    expect(r.plan.expectedStrokes).toBeLessThanOrEqual(r.baselineStrokes)
+  })
+})
