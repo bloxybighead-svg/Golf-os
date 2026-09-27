@@ -32,16 +32,6 @@ function avg(nums: number[]): number | null {
 const r1 = (n: number) => Math.round(n * 10) / 10
 const r2 = (n: number) => Math.round(n * 100) / 100
 
-// Differentials off a partial-round rating are on a smaller scale, so scale
-// them up to an 18-hole basis by 18 / holes_played (exactly ×2 for a 9-hole
-// round, ×1.29 for a 14-hole round). Approximation — not the official GHIN conversion.
-function normalizedDiff(r: Round): number | null {
-  if (r.differential == null) return null
-  return r.holes_played > 0 && r.holes_played < 18
-    ? r.differential * (18 / r.holes_played)
-    : r.differential
-}
-
 const FILTER_OPTIONS: { value: Filter; label: string }[] = [
   { value: "all",         label: "All Rounds"       },
   { value: "competitive", label: "Competitive Only"  },
@@ -252,13 +242,13 @@ export function TrendsClient({ rounds, sessions, milestones }: Props) {
     return true
   })
 
-  // ── Differential (normalized) + rolling avg + fallback ──────────
+  // ── Differential + rolling avg + fallback ────────────────────────
   const diffSeq: number[] = []
   const diffPoints = filtered.map((r) => {
-    const norm = normalizedDiff(r)
+    const diff = r.differential
     let roll: number | null = null
-    if (norm != null) {
-      diffSeq.push(norm)
+    if (diff != null) {
+      diffSeq.push(diff)
       roll = r1(avg(diffSeq.slice(-5))!)
     }
     // Fallback for rounds with no rating/slope: strokes vs par per hole
@@ -268,7 +258,7 @@ export function TrendsClient({ rounds, sessions, milestones }: Props) {
     return {
       rawDate: r.date,
       date: shortDate(r.date),
-      Differential: norm != null ? r1(norm) : null,
+      Differential: diff != null ? r1(diff) : null,
       "5-round avg": roll,
       "Strokes vs Par / hole": svp,
     }
@@ -276,9 +266,8 @@ export function TrendsClient({ rounds, sessions, milestones }: Props) {
   const hasFallback = diffPoints.some((p) => p["Strokes vs Par / hole"] != null)
   const diffCount = diffPoints.filter((p) => p.Differential != null).length
 
-  const normDiffs = filtered.map(normalizedDiff).filter((n): n is number => n != null)
-  const avgDiff = avg(normDiffs)
-  const hasPartial = filtered.some((r) => r.differential != null && r.holes_played < 18)
+  const diffs = filtered.map((r) => r.differential).filter((n): n is number => n != null)
+  const avgDiff = avg(diffs)
 
   // ── Fairways / GIR ──────────────────────────────────────────────
   const fwGirRounds = filtered.filter((r) => r.fairways_pct != null || r.gir_pct != null)
@@ -371,7 +360,7 @@ export function TrendsClient({ rounds, sessions, milestones }: Props) {
         <StatCard
           label="Avg Differential"
           value={avgDiff != null ? avgDiff.toFixed(1) : "—"}
-          sub={avgDiff != null ? (hasPartial ? "scaled to 18 holes" : "USGA-style") : "add rating/slope"}
+          sub={avgDiff != null ? "USGA-style" : "add rating/slope"}
         />
         <StatCard
           label="Putts / Hole"
@@ -393,7 +382,7 @@ export function TrendsClient({ rounds, sessions, milestones }: Props) {
           {/* 1. Score Differential over time */}
           <Card
             title="Score Differential over time"
-            caption={`${diffCount} of ${filtered.length} rounds have rating/slope. Differential normalized: partial rounds scaled to an 18-hole basis (×18/holes — e.g. ×2 for 9 holes, ×1.29 for 14) for comparison (approximation, not official GHIN).${hasFallback ? " Grey line = Strokes vs Par per hole (right axis) for rounds without rating/slope." : ""}`}
+            caption={`${diffCount} of ${filtered.length} rounds have rating/slope. Same USGA formula for 9- and 18-hole rounds — no scaling needed, since the rating/slope entered already reflect the tees actually played.${hasFallback ? " Grey line = Strokes vs Par per hole (right axis) for rounds without rating/slope." : ""}`}
           >
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={diffPoints} margin={{ top: 12, right: 8, left: -20, bottom: 0 }}>

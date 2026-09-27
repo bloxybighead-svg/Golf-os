@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import type { Round } from "@/lib/supabase/types"
 import { BREAKDOWN_TAGS } from "@/lib/supabase/types"
+import { calcDifferential } from "@/lib/handicap"
 import { createRound, updateRound } from "@/app/rounds/actions"
 
 interface Props {
@@ -43,12 +44,8 @@ function PctInput({ value, onChange, placeholder }: { value: string; onChange: (
   )
 }
 
-function calcDifferential(score: string, courseRating: string, slopeRating: string): number | null {
-  const s = parseFloat(score)
-  const cr = parseFloat(courseRating)
-  const sr = parseFloat(slopeRating)
-  if (isNaN(s) || isNaN(cr) || isNaN(sr) || sr === 0) return null
-  return Math.round(((s - cr) * 113 / sr) * 10) / 10
+function previewDifferential(score: string, courseRating: string, slopeRating: string): number | null {
+  return calcDifferential(parseFloat(score), parseFloat(courseRating), parseFloat(slopeRating))
 }
 
 export function RoundForm({ round, onDone }: Props) {
@@ -85,7 +82,7 @@ export function RoundForm({ round, onDone }: Props) {
   }
 
   const relToPar = score && par ? parseInt(score) - parseInt(par) : null
-  const differential = calcDifferential(score, courseRating, slopeRating)
+  const differential = previewDifferential(score, courseRating, slopeRating)
 
   function submit() {
     if (!date || !course.trim() || !score || !par) {
@@ -105,7 +102,7 @@ export function RoundForm({ round, onDone }: Props) {
           par: parseInt(par),
           course_rating: courseRating !== "" ? parseFloat(courseRating) : null,
           slope_rating: slopeRating !== "" ? parseInt(slopeRating) : null,
-          differential: calcDifferential(score, courseRating, slopeRating),
+          differential: previewDifferential(score, courseRating, slopeRating),
           penalties: penalties !== "" ? parseInt(penalties) : null,
           fairways_pct: fairwaysPct !== "" ? parseFloat(fairwaysPct) : null,
           gir_pct: girPct !== "" ? parseFloat(girPct) : null,

@@ -810,6 +810,89 @@ latitude before Submit is even clickable. 7 new tests (103 total,
 `applyCorrections`/`validateCorrection`), typecheck and `npm run build`
 clean.
 
+Session 6a -- 9-hole differential fix + handicap tracking (2026-09-27): the
+spec said the 9-hole differential was "off"; the root cause turned out to
+be a bug, not a missing feature. `RoundForm`'s `calcDifferential` (score,
+courseRating, slopeRating) was already correct and holes-agnostic -- the
+USGA formula doesn't need a hole-count adjustment because the rating/slope
+*entered* for a 9-hole round already reflect that shorter course (the form
+already warns golfers to enter the 9-hole rating/slope, not half the
+18-hole numbers). The actual bug was downstream, in a `normalizedDiff()`
+helper duplicated in both `app/page.tsx` and `TrendsClient.tsx`, which then
+multiplied every partial round's already-correct differential by another
+`18/holes_played` (~×2 for 9 holes) before it fed the "best 8 of 20"
+handicap estimate or the Trends chart -- silently doubling roughly a third
+of Dillon's logged rounds and pushing the estimate to a fictitious ~5 HCP.
+Deleted both copies of `normalizedDiff` outright rather than patching them,
+since a differential is a differential -- no per-file "normalization" layer
+belongs between it and any consumer. Confirmed the fix against Dillon's
+real 45 logged rounds before touching any code: best-8-of-last-20 on the
+*unscaled* differentials averages to ~2.3 -> ×0.96 = **2.2**, in line with
+the spec's own ~2.4 expectation; the pre-fix scaled numbers would have
+landed north of 5.
+
+`lib/handicap.ts` (new, pure, tested): `calcDifferential` (moved here
+verbatim from `RoundForm`'s local copy, now the single source shared by the
+client-side live preview, `app/rounds/actions.ts`, and the dashboard) and
+`estimateHandicapIndex(differentials)` -- best 8 of up to the most recent
+20 (list must be ordered most-recent-first; returns `null` under 8). One
+deviation from the literal spec: relaxed the old dashboard's hard gate of
+"needs 20 rounds logged, full stop" to "needs 8 differentials among your
+last 20 rounds" -- "last 20 rounds" was never actually a requirement to
+*have* 20 rounds, and the old gate meant a golfer with 15 well-logged
+rounds saw nothing at all despite having enough for a real USGA-style
+estimate.
+
+`app/rounds/actions.ts`: `differential` is now recomputed server-side from
+`score`/`course_rating`/`slope_rating` on every save rather than trusted
+from the client payload (defense in depth -- a stale or hand-edited value
+can no longer make it into a saved round). `createRound` also snapshots
+the golfer's most recently tracked `handicap_index` onto the new row
+(read from `handicap_tracking`, not recomputed), so handicap progression
+over time can be plotted later even as the tracked index moves on;
+`updateRound` deliberately leaves an existing snapshot untouched -- editing
+a round's putts or notes shouldn't retroactively rewrite history.
+
+`supabase/handicap_tracking.sql` (applied, migration `handicap_tracking`):
+new table (`user_id`, `handicap_index numeric(4,1)`, `source` check
+`'manual'|'calculated'`, `calculation_date`, `rounds_used`, `notes`),
+owner-only RLS (select/insert/delete own rows only -- no update policy,
+since a handicap history is an append-only log, not something you edit in
+place). `rounds` gained `handicap_index numeric(4,1)` (nullable snapshot)
+and `is_9_hole boolean generated always as (holes_played = 9) stored` --
+a generated column rather than something the app sets by hand, so it can
+never drift out of sync with `holes_played`. Verified RLS the same way as
+every other table here: anon key `select` returns `[]` (correctly
+filtered, not an error), anon `insert` returns `42501`.
+
+`app/handicap/actions.ts` (new): `recalculateHandicap()` queries the
+signed-in user's last 20 rounds (RLS-scoped, no manual `user_id` filter --
+same convention as every other action in this app), computes the index via
+`estimateHandicapIndex`, and inserts a `source: 'calculated'` row;
+`saveManualHandicap(index, notes)` inserts a `source: 'manual'` row for
+GHIN or other official numbers. `components/home/HandicapCard.tsx` (new,
+client) replaces the dashboard's old always-computed inline block:
+shows the latest persisted `handicap_tracking` row if one exists (with its
+source and calculation date), falling back to a live "best 8 of loaded
+rounds" preview otherwise; "Recalculate" and "Enter manually" (a small
+inline form) both disabled with a `title` hint when signed out, matching
+`EditHoleModal`'s existing convention. Live-verified signed out: the card
+renders "Log at least 8 rated rounds to calculate" with both buttons
+visibly disabled; separately verified `previewDifferential` (the client
+preview, now backed by the shared `lib/handicap.ts`) against one of
+Dillon's actual logged 9-hole rounds (score 40, par 37, rating 35.6, slope
+140) and it reproduced the exact stored value, 3.6 -- confirms the shared
+calc function behaves identically to the old inline one. Did not sign into
+Dillon's real account to exercise "Recalculate" end-to-end or log a test
+round, same policy as every prior session: no real credentials, and
+inserting a fabricated round would corrupt his actual round history. RLS
+and the math were verified instead via anon-key curl and against his real
+45 rows directly through the Supabase MCP connection.
+
+8 new tests (`lib/handicap.test.ts` -- differential formula, best-8
+selection, the 20-round cutoff, truncation vs. rounding), 111 total.
+Typecheck and `npm run build` both clean.
+
 ## Files
 
 | File | Purpose |

@@ -65,6 +65,20 @@ export interface Round {
   miss_left_pct: number | null
   miss_right_pct: number | null
   notes: string | null
+  handicap_index: number | null   // golfer's tracked index at the time this round was saved
+  is_9_hole: boolean              // derived from holes_played, kept only for convenient filtering
+  created_at: string
+}
+
+export type HandicapSource = 'manual' | 'calculated'
+
+export interface HandicapEntry {
+  id: string
+  handicap_index: number
+  source: HandicapSource
+  calculation_date: string
+  rounds_used: number | null
+  notes: string | null
   created_at: string
 }
 
