@@ -446,7 +446,7 @@ describe("trouble map and dispersion rings", () => {
   })
 })
 
-import { assessHoleDataQuality, estimatedFairwayCorridor } from "./dataQuality"
+import { applyConfirmedAbsent, assessHoleDataQuality, estimatedFairwayCorridor } from "./dataQuality"
 
 describe("hole data-quality badge", () => {
   const pin = fromLocal(ORIGIN, { x: 0, y: 150 })
@@ -493,6 +493,21 @@ describe("hole data-quality badge", () => {
     const water = squareAround(fromLocal(ORIGIN, { x: 0, y: 75 }), 8)
     const lies = buildLieMap(ORIGIN, [corridor, { kind: "water", ring: water }])
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 0, y: 75 }))).toBe("water")
+  })
+
+  it("confirming a missing hazard as absent downgrades it, but leaves other surfaces and a real mapped hazard alone", () => {
+    const q = assessHoleDataQuality(hole, [], [])
+    expect(q.bunkers).toBe("missing")
+    expect(q.water).toBe("missing")
+    const confirmed = applyConfirmedAbsent(q, { water: true })
+    expect(confirmed.water).toBe("confirmed-absent")
+    expect(confirmed.bunkers).toBe("missing") // not confirmed, unaffected
+    expect(confirmed.fairway).toBe("estimated") // untouched surface unaffected
+
+    const mappedFeatures = [{ kind: "bunker" as const, ring: squareAround(fromLocal(ORIGIN, { x: 10, y: 100 }), 8) }]
+    const q2 = assessHoleDataQuality(hole, mappedFeatures, [])
+    // confirming "absent" on a hazard that's actually mapped is a no-op, not a downgrade
+    expect(applyConfirmedAbsent(q2, { bunkers: true }).bunkers).toBe("mapped")
   })
 })
 

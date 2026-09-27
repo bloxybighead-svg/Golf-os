@@ -38,7 +38,14 @@ import {
 } from "@/lib/course/geo"
 import { defaultTeeAim } from "@/lib/course/aim"
 import type { StartLie } from "@/lib/course/cost"
-import { assessHoleDataQuality, estimatedFairwayCorridor, type HoleDataQuality, type SurfaceStatus } from "@/lib/course/dataQuality"
+import {
+  applyConfirmedAbsent,
+  assessHoleDataQuality,
+  estimatedFairwayCorridor,
+  type ConfirmableHazard,
+  type HoleDataQuality,
+  type SurfaceStatus,
+} from "@/lib/course/dataQuality"
 import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
 import { buildLieMap, type Lie, type UserZone } from "@/lib/course/lies"
 import { GEOMETRY_VERSION, type CourseFeature, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
@@ -96,6 +103,7 @@ const STATUS_TITLE: Record<SurfaceStatus, string> = {
   "hand-drawn": "Hand-drawn by you",
   estimated: "Not mapped — using an estimated fallback",
   missing: "Not mapped",
+  "confirmed-absent": "You confirmed there's none here — click to undo",
 }
 const ALWAYS_SHOWN: Lie[] = ["green", "fairway", "rough"]
 // Options offered by "Mark area" for hand-drawing what the map doesn't show
@@ -111,6 +119,32 @@ const STRENGTHS = ["slight", "moderate", "strong"]
 
 function zonesKey(courseId: string): string {
   return `golfos.zones.${courseId}.v1`
+}
+
+type NoHazardMap = Record<string, Partial<Record<ConfirmableHazard, boolean>>> // holeId -> which hazards are confirmed absent
+
+function noHazardKey(courseId: string): string {
+  return `golfos.noHazard.${courseId}.v1`
+}
+
+/** Which hazards the golfer has confirmed don't exist on which holes, saved on this device. */
+function loadNoHazard(courseId: string): NoHazardMap {
+  try {
+    const raw = localStorage.getItem(noHazardKey(courseId))
+    if (!raw) return {}
+    const v = JSON.parse(raw)
+    return v && typeof v === "object" ? v : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveNoHazard(courseId: string, map: NoHazardMap) {
+  try {
+    localStorage.setItem(noHazardKey(courseId), JSON.stringify(map))
+  } catch {
+    /* storage full or blocked: the confirmations just won't be remembered */
+  }
 }
 
 /** Zones a golfer hand-marks for a course (trees, OB, water, ...), saved on this device. */
@@ -180,6 +214,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [placing, setPlacing] = useState<Placing>("ball")
   const [clubChoice, setClubChoice] = useState<string>("auto")
   const [zones, setZones] = useState<UserZone[]>([])
+  const [noHazard, setNoHazard] = useState<NoHazardMap>({})
   const [localOnlyZones, setLocalOnlyZones] = useState<UserZone[] | null>(null) // marks made before signing in
   const [syncingZones, setSyncingZones] = useState(false)
   const [drawKind, setDrawKind] = useState<Lie | null>(null)
@@ -311,6 +346,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setDrawKind(null)
     setPendingPoints([])
     void loadZonesFor(c)
+    setNoHazard(loadNoHazard(c.id))
     if (c.lat == null || c.lng == null) {
       setLoadState("error")
       setLoadError("This course has no coordinates in the course database, so it can't be placed on the map.")
@@ -513,8 +549,17 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   // drives both the data-quality badge and the fairway fallback below.
   const holeQuality: HoleDataQuality | null = useMemo(() => {
     if (!hole || !geometry) return null
-    return assessHoleDataQuality(hole, geometry.features, zones)
-  }, [hole, geometry, zones])
+    return applyConfirmedAbsent(assessHoleDataQuality(hole, geometry.features, zones), noHazard[hole.id] ?? {})
+  }, [hole, geometry, zones, noHazard])
+
+  function setHazardConfirmed(hazard: ConfirmableHazard, value: boolean) {
+    if (!hole || !course) return
+    setNoHazard((prev) => {
+      const next = { ...prev, [hole.id]: { ...prev[hole.id], [hazard]: value } }
+      saveNoHazard(course.id, next)
+      return next
+    })
+  }
 
   const lies = useMemo(() => {
     if (course?.lat == null || course.lng == null) return null
@@ -1236,18 +1281,32 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                         ["bunkers", "Bunkers", holeQuality.bunkers],
                         ["water", "Water", holeQuality.water],
                       ] as [keyof HoleDataQuality, string, SurfaceStatus][]
-                    ).map(([key, label, status]) => (
-                      <span key={key} className="flex items-center gap-1" title={STATUS_TITLE[status]}>
-                        {status === "mapped" ? (
+                    ).map(([key, label, status]) => {
+                      const icon =
+                        status === "mapped" || status === "confirmed-absent" ? (
                           <Check size={12} className="text-[#22c55e]" />
                         ) : status === "missing" ? (
                           <X size={12} className="text-[#f87171]" />
                         ) : (
                           <AlertTriangle size={12} className="text-yellow-500" />
-                        )}
-                        <span className="text-[#9ca3af]">{label}</span>
-                      </span>
-                    ))}
+                        )
+                      return status === "confirmed-absent" ? (
+                        <button
+                          key={key}
+                          onClick={() => setHazardConfirmed(key as ConfirmableHazard, false)}
+                          className="flex items-center gap-1 hover:opacity-75"
+                          title={STATUS_TITLE[status]}
+                        >
+                          {icon}
+                          <span className="text-[#9ca3af]">{label}</span>
+                        </button>
+                      ) : (
+                        <span key={key} className="flex items-center gap-1" title={STATUS_TITLE[status]}>
+                          {icon}
+                          <span className="text-[#9ca3af]">{label}</span>
+                        </span>
+                      )
+                    })}
                   </div>
                 )}
                 {holeQuality &&
@@ -1269,6 +1328,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                           Bunkers not mapped — actual SG may vary.{" "}
                           <button onClick={() => startDraw("bunker")} className="font-semibold text-[#22c55e] hover:underline">
                             Mark bunkers
+                          </button>{" "}
+                          ·{" "}
+                          <button
+                            onClick={() => setHazardConfirmed("bunkers", true)}
+                            className="text-[#9ca3af] hover:text-white hover:underline"
+                          >
+                            No bunkers here
                           </button>
                         </p>
                       )}
@@ -1277,6 +1343,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                           Water not mapped — actual SG may vary.{" "}
                           <button onClick={() => startDraw("water")} className="font-semibold text-[#22c55e] hover:underline">
                             Mark water
+                          </button>{" "}
+                          ·{" "}
+                          <button
+                            onClick={() => setHazardConfirmed("water", true)}
+                            className="text-[#9ca3af] hover:text-white hover:underline"
+                          >
+                            No water here
                           </button>
                         </p>
                       )}

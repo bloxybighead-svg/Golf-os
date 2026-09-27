@@ -456,6 +456,22 @@ against Rumson GC hole 1 (fairway ⚠ estimated + water ✗ missing, "Mark
 fairway"/"Mark water" links open the Draw tool pre-selected) and hole 2 (all
 four ✓, no prompts, "Find best aim" correctly says "already optimal").
 
+Confirm-absent for hazards (2026-09-27, same day, later): most holes
+genuinely have no water and no bunkers at all, so the "missing" badge/prompt
+fired on nearly every hole -- noise, not a real warning. Every hole has SOME
+fairway and green, so those two weren't touched; only bunkers and water can
+legitimately not exist. `applyConfirmedAbsent(quality, confirmed)` in
+`dataQuality.ts` downgrades a `"missing"` status to a new `"confirmed-absent"`
+one (renders the same ✓ as mapped, distinct tooltip, click to undo) --
+`assessHoleDataQuality` itself is untouched/still pure, the override is
+applied in `CourseMapClient`. Confirmations are per-hole, saved on this
+device (`golfos.noHazard.<courseId>.v1`, same pattern as the zones cache, not
+synced to Supabase -- low-stakes enough not to need it). The "missing" prompt
+line now offers "Mark bunkers/water" AND "No bunkers/water here" side by
+side. Verified live: confirming, reloading the page, and picking the hole
+again all correctly keep it dismissed. 1 new test (95 total) covering the
+downgrade and its no-op when the hazard turns out to actually be mapped.
+
 ## Files
 
 | File | Purpose |

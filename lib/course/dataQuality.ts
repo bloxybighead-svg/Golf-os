@@ -9,13 +9,35 @@ import { projectOnLine } from "./aim"
 import type { CourseFeature, CourseHole } from "./overpass"
 import type { Lie, UserZone } from "./lies"
 
-export type SurfaceStatus = "mapped" | "hand-drawn" | "estimated" | "missing"
+export type SurfaceStatus = "mapped" | "hand-drawn" | "estimated" | "missing" | "confirmed-absent"
 
 export interface HoleDataQuality {
   fairway: SurfaceStatus
   greens: SurfaceStatus
   bunkers: SurfaceStatus
   water: SurfaceStatus
+}
+
+/** Hazards a golfer can confirm are genuinely absent from a hole (every hole has
+ * SOME fairway and green, so those aren't offered -- only bunkers and water can
+ * legitimately not exist). */
+export type ConfirmableHazard = "bunkers" | "water"
+
+/**
+ * Downgrades a "missing" hazard to "confirmed-absent" wherever the golfer has
+ * said so -- most holes have no water and no bunkers at all, so flagging
+ * every one of them as unmapped/needs-marking is just noise; this lets the
+ * golfer say "there's really nothing here" once and stop being asked.
+ */
+export function applyConfirmedAbsent(
+  quality: HoleDataQuality,
+  confirmed: Partial<Record<ConfirmableHazard, boolean>>
+): HoleDataQuality {
+  const result = { ...quality }
+  for (const key of ["bunkers", "water"] as ConfirmableHazard[]) {
+    if (confirmed[key] && result[key] === "missing") result[key] = "confirmed-absent"
+  }
+  return result
 }
 
 // How close a feature/zone vertex needs to be to a hole's centerline (or, for
