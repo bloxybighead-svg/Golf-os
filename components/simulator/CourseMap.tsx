@@ -12,6 +12,20 @@ import type { CourseGeometry, FeatureKind } from "@/lib/course/overpass"
 import type { Landing } from "@/lib/course/plan"
 import { LIE_COLORS, type Placing } from "./courseColors"
 
+// Leaflet's canvas renderer can fire a queued redraw after the map has been torn
+// down (React dev double-mount, navigating away mid-draw), which throws on a
+// context that no longer exists. Make that redraw a no-op instead.
+type CanvasProto = { _redraw: () => void; _ctx?: unknown; __safe?: boolean }
+const canvasProto = L.Canvas.prototype as unknown as CanvasProto
+if (!canvasProto.__safe) {
+  const original = canvasProto._redraw
+  canvasProto._redraw = function (this: CanvasProto) {
+    if (!this._ctx) return
+    original.call(this)
+  }
+  canvasProto.__safe = true
+}
+
 const FEATURE_STYLE: Record<FeatureKind, L.PathOptions> = {
   green: { color: "#22c55e", weight: 1.5, fillColor: "#22c55e", fillOpacity: 0.3 },
   fairway: { color: "#a3e635", weight: 1, fillColor: "#a3e635", fillOpacity: 0.12 },
@@ -31,6 +45,8 @@ interface Props {
   pin: LatLng | null
   landings: Landing[]
   labels: { pos: LatLng; text: string }[]
+  cells: { sw: LatLng; ne: LatLng; color: string; opacity: number }[]
+  rings: LatLng[][]
   placing: Placing
   fitBounds: [[number, number], [number, number]] | null
   fitKey: string
@@ -61,6 +77,8 @@ export default function CourseMap(props: Props) {
     holes: L.LayerGroup
     landings: L.LayerGroup
     labels: L.LayerGroup
+    cells: L.LayerGroup
+    rings: L.LayerGroup
     ball?: L.Marker
     aim?: L.Marker
     pin?: L.Marker
@@ -73,7 +91,15 @@ export default function CourseMap(props: Props) {
   // Create the map once.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
-    const map = L.map(containerRef.current, { zoomControl: true, preferCanvas: true, maxZoom: 21 }).setView(
+    // Wheel-zoom is off so scrolling the page over the map does not hijack it; Ctrl/Cmd + wheel zooms.
+    const map = L.map(containerRef.current, {
+      zoomControl: true,
+      preferCanvas: true,
+      maxZoom: 21,
+      scrollWheelZoom: false,
+      zoomSnap: 0.5,
+      zoomDelta: 0.5,
+    }).setView(
       ll(props.center),
       16
     )
@@ -89,14 +115,24 @@ export default function CourseMap(props: Props) {
       else if (placing === "aim") onAim(p)
       else onPin(p)
     })
+    const el = map.getContainer()
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      map.setZoom(map.getZoom() + (e.deltaY < 0 ? 0.5 : -0.5))
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
     layers.current = {
       features: L.layerGroup().addTo(map),
       holes: L.layerGroup().addTo(map),
+      cells: L.layerGroup().addTo(map),
       landings: L.layerGroup().addTo(map),
+      rings: L.layerGroup().addTo(map),
       labels: L.layerGroup().addTo(map),
     }
     mapRef.current = map
     return () => {
+      el.removeEventListener("wheel", onWheel)
       map.remove()
       mapRef.current = null
       layers.current = null
@@ -190,6 +226,37 @@ export default function CourseMap(props: Props) {
       }).addTo(map)
     }
   }, [props.ball, props.aim, props.pin])
+
+  // Trouble map cells (drawn under everything else on the canvas).
+  useEffect(() => {
+    const g = layers.current?.cells
+    if (!g) return
+    g.clearLayers()
+    for (const c of props.cells) {
+      L.rectangle([ll(c.sw), ll(c.ne)], {
+        stroke: false,
+        fillColor: c.color,
+        fillOpacity: c.opacity,
+        interactive: false,
+      }).addTo(g)
+    }
+  }, [props.cells])
+
+  // Dispersion rings.
+  useEffect(() => {
+    const g = layers.current?.rings
+    if (!g) return
+    g.clearLayers()
+    props.rings.forEach((r, i) => {
+      L.polyline(r.map(ll), {
+        color: "#ffffff",
+        weight: i === 0 ? 2 : 1.5,
+        opacity: i === 0 ? 0.95 : 0.7,
+        dashArray: i === 0 ? undefined : "5 5",
+        interactive: false,
+      }).addTo(g)
+    })
+  }, [props.rings])
 
   // Yardage labels on the ball->aim and aim->pin lines.
   useEffect(() => {

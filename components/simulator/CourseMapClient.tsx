@@ -1,6 +1,27 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import {
+  ChevronDown,
+  Circle,
+  Crosshair,
+  Flag,
+  History,
+  Info,
+  Layers,
+  Loader2,
+  LocateFixed,
+  Map as MapIcon,
+  MapPin,
+  Navigation,
+  RotateCcw,
+  Search,
+  Target,
+  TreePine,
+  User,
+  type LucideIcon,
+} from "lucide-react"
+import PageHeader from "@/components/PageHeader"
 import dynamic from "next/dynamic"
 import {
   bearingDeg,
@@ -11,6 +32,8 @@ import {
   type LatLng,
 } from "@/lib/course/geo"
 import { defaultTeeAim } from "@/lib/course/aim"
+import type { StartLie } from "@/lib/course/cost"
+import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
 import { buildLieMap, type Lie } from "@/lib/course/lies"
 import { GEOMETRY_VERSION, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
@@ -127,6 +150,8 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [placing, setPlacing] = useState<Placing>("ball")
   const [clubChoice, setClubChoice] = useState<string>("auto")
   const [corridorYds, setCorridorYds] = useState(40)
+  const [showTrouble, setShowTrouble] = useState(false)
+  const [showRings, setShowRings] = useState(true)
   const [showSettings, setShowSettings] = useState(false) // phones: golfer settings are collapsed by default
   const [recent, setRecent] = useState<CourseHit[]>([])
   const [hydrated, setHydrated] = useState(false)
@@ -400,10 +425,17 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     [course, geometry, corridor]
   )
 
+  // Where the ball is lying: the tee uses the tour tee-shot baseline, anything else its mapped lie.
+  const startLie: StartLie = useMemo(() => {
+    if (!ball) return "fairway"
+    if (hole && distanceYds(ball, hole.line[0]) < 15) return "tee"
+    return lies ? lies.lieAt(ball) : "fairway"
+  }, [ball, hole, lies])
+
   const ranking = useMemo(() => {
     if (!ball || !aim || !pin || !lies) return []
-    return rankClubs(clubShots, { from: ball, aim, pin, lies })
-  }, [ball, aim, pin, lies, clubShots])
+    return rankClubs(clubShots, { from: ball, aim, pin, lies, startLie })
+  }, [ball, aim, pin, lies, clubShots, startLie])
 
   const shownLies = LIES.filter((l) => ALWAYS_SHOWN.includes(l) || ranking.some((r) => r.lieShare[l] >= 0.005))
   const chosen = ranking.find((r) => r.club === clubChoice) ?? ranking[0] ?? null
@@ -414,9 +446,26 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     return simulateLandings(seededSample(chosenShots.shots, DOTS_SHOWN, 3), ball, bearingDeg(ball, aim), lies)
   }, [chosenShots, ball, aim, lies])
 
+  // Trouble map: what each spot around the hole costs compared with a fairway lie.
+  const troubleCells = useMemo(() => {
+    if (!showTrouble || !ball || !pin || !lies) return []
+    const pts = [ball, aim ?? pin, pin, ...(hole?.line ?? [])]
+    return buildValueGrid(pts, pin, ball, startLie, lies).flatMap((c) => {
+      const { color, opacity } = deltaColor(c.delta)
+      return opacity > 0 ? [{ sw: c.sw, ne: c.ne, color, opacity }] : []
+    })
+  }, [showTrouble, ball, aim, pin, hole, lies, startLie])
+
+  // 50% and 90% dispersion rings around where the chosen club's shots land.
+  const rings = useMemo(() => {
+    if (!showRings || landings.length < 5) return []
+    const pts = landings.map((l) => l.point)
+    return [dispersionRing(pts, 1.177), dispersionRing(pts, 2.146)].filter((r) => r.length > 0)
+  }, [showRings, landings])
+
   function findBestAim() {
     if (!chosenShots || !ball || !aim || !pin || !lies) return
-    const r = bestAim(chosenShots, { from: ball, aim, pin, lies })
+    const r = bestAim(chosenShots, { from: ball, aim, pin, lies, startLie })
     const dist = distanceYds(ball, aim)
     setAimManual(landingPoint(ball, r.bearingDeg, dist, 0))
     const saved = r.baselineStrokes - r.plan.expectedStrokes
@@ -424,7 +473,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       r.offsetYds === 0
         ? `Aiming where you are now is already best for the ${chosenShots.club}.`
         : `Best aim for the ${chosenShots.club}: ${Math.abs(r.offsetYds)} yd ${r.offsetYds < 0 ? "left" : "right"} of the old aim, ` +
-            `saving about ${saved.toFixed(2)} strokes (measured on the same shots it was picked on, so a little optimistic).`
+            `saving about ${saved.toFixed(2)} strokes per shot (measured on the same shots it was picked on, so a little optimistic).`
     )
   }
 
@@ -508,156 +557,178 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     return out
   }, [ball, aim, pin, distAim, aimToPin])
   const best = ranking[0]
+  const fromLabel = startLie === "tee" ? "the tee" : startLie === "oob" ? "out of bounds" : `the ${startLie}`
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-white">Course Planner</h2>
-          <p className="mt-0.5 text-xs text-[#6b7280]">
-            Pick any course, stand anywhere, and see where each club&rsquo;s simulated shots land on the real hole.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        icon={MapIcon}
+        title="Course Planner"
+        subtitle="Pick any course, stand anywhere, and see where each club's simulated shots land — scored in strokes gained."
+      />
 
-      {/* controls */}
-      <div className="flex flex-col gap-4 rounded-xl border border-white/[0.06] bg-[#111111] p-4">
-        <div className="relative max-w-xl">
-          <label className="text-xs font-medium text-[#6b7280]">Course</label>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={course ? `${course.name} — search another…` : "Search a course, e.g. Pebble Beach"}
-            className="mt-1.5 w-full rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
-          />
-          {(hits.length > 0 || searching || (searched && query.trim().length >= 3)) && (
-            <div className="absolute z-[1200] mt-1 max-h-64 w-full overflow-auto rounded-lg border border-white/[0.1] bg-[#0a0a0a] shadow-xl">
-              {searching && hits.length === 0 && <p className="px-3 py-2 text-xs text-[#6b7280]">Searching…</p>}
-              {!searching && hits.length === 0 && <p className="px-3 py-2 text-xs text-[#6b7280]">No courses found. Try fewer words.</p>}
-              {hits.map((h) => (
+      {/* ---- setup ---- */}
+      <div className="grid gap-4 rounded-2xl border border-white/[0.07] bg-[#111111] p-4 shadow-lg shadow-black/20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] lg:p-5">
+        <div className="min-w-0 space-y-3">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#6b7280]">
+            <Search size={13} /> Course
+          </p>
+          <div className="relative">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={course ? `${course.name} — search another…` : "Search a course, e.g. Pebble Beach"}
+              aria-label="Search for a golf course"
+              className="w-full rounded-xl border border-white/[0.08] bg-[#0a0a0a] px-3.5 py-2.5 text-sm text-white placeholder:text-[#4b5563] focus:border-[#22c55e]/60 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/20"
+            />
+            {(hits.length > 0 || searching || (searched && query.trim().length >= 3)) && (
+              <div className="absolute z-[1200] mt-1 max-h-72 w-full overflow-auto rounded-xl border border-white/[0.1] bg-[#0a0a0a] shadow-2xl">
+                {searching && hits.length === 0 && <p className="px-3 py-2.5 text-xs text-[#6b7280]">Searching…</p>}
+                {!searching && hits.length === 0 && <p className="px-3 py-2.5 text-xs text-[#6b7280]">No courses found. Try fewer words.</p>}
+                {hits.map((h) => (
+                  <button
+                    key={h.id}
+                    onClick={() => {
+                      setQuery("")
+                      loadCourse(h)
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]"
+                  >
+                    <MapPin size={14} className="shrink-0 text-[#22c55e]" />
+                    <span className="min-w-0 flex-1 truncate">{h.name}</span>
+                    <span className="shrink-0 text-xs text-[#6b7280]">
+                      {[h.city, h.state].filter(Boolean).join(", ")}
+                      {h.par ? ` · par ${h.par}` : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {recent.length > 0 && (
+            <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto whitespace-nowrap">
+              <span className="flex shrink-0 items-center gap-1 text-xs text-[#6b7280]">
+                <History size={12} /> Recent
+              </span>
+              {recent.map((r) => (
                 <button
-                  key={h.id}
-                  onClick={() => {
-                    setQuery("")
-                    loadCourse(h)
-                  }}
-                  className="block w-full px-3 py-2 text-left text-sm text-white hover:bg-white/[0.06]"
+                  key={r.id}
+                  type="button"
+                  onClick={() => loadCourse(r)}
+                  className="shrink-0 rounded-full border border-white/[0.08] px-3 py-1.5 text-xs text-[#d1d5db] transition-colors hover:border-[#22c55e]/50 hover:text-white"
                 >
-                  {h.name}
-                  <span className="ml-2 text-xs text-[#6b7280]">
-                    {[h.city, h.state].filter(Boolean).join(", ")}
-                    {h.par ? ` · par ${h.par}` : ""}
-                  </span>
+                  {r.name}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {recent.length > 0 && (
-          <div className="no-scrollbar -mt-2 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap">
-            <span className="text-xs text-[#6b7280]">Recent:</span>
-            {recent.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => loadCourse(r)}
-                className="shrink-0 rounded-full border border-white/[0.08] px-3 py-1.5 text-xs text-[#d1d5db] hover:border-[#22c55e]/50"
-              >
-                {r.name}
-              </button>
-            ))}
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => setShowSettings((v) => !v)}
-          aria-expanded={showSettings}
-          className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-2 text-left text-sm text-[#d1d5db] md:hidden"
-        >
-          <span>
-            <span className="text-[#6b7280]">Golfer: </span>
-            {source === "calibrated" ? calibratedName : `Handicap ${handicap}`}
-          </span>
-          <span className="text-xs text-[#22c55e]">{showSettings ? "Hide" : "Change"}</span>
-        </button>
-        <div className={`${showSettings ? "flex" : "hidden"} flex-wrap items-end gap-3 md:flex`}>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-[#6b7280]">Golfer</span>
-            <select
-              value={source}
-              onChange={(e) => {
-                setSource(e.target.value as "calibrated" | "handicap")
-                setClubChoice("auto")
-                setAimNote(null)
-              }}
-              className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
-            >
-              {calibrated && <option value="calibrated">{calibratedName} (calibrated)</option>}
-              <option value="handicap">Handicap-based golfer</option>
-            </select>
-          </label>
-          {source === "handicap" && (
-            <>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-[#6b7280]">Handicap</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={36}
-                  step={1}
-                  value={handicap}
-                  onChange={(e) => {
-                    setHandicap(Math.min(36, Math.max(0, Number(e.target.value) || 0)))
-                    setAimNote(null)
-                  }}
-                  className="w-20 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-[#6b7280]">Driver carry (yd)</span>
-                <input
-                  type="number"
-                  placeholder="avg"
-                  inputMode="numeric"
-                  value={driverCarry}
-                  onChange={(e) => {
-                    setDriverCarry(e.target.value)
-                    setAimNote(null)
-                  }}
-                  className="w-24 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white placeholder:text-[#4b5563]"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-[#6b7280]">7-iron carry (yd)</span>
-                <input
-                  type="number"
-                  placeholder="avg"
-                  inputMode="numeric"
-                  value={sevenIronCarry}
-                  onChange={(e) => {
-                    setSevenIronCarry(e.target.value)
-                    setAimNote(null)
-                  }}
-                  className="w-24 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white placeholder:text-[#4b5563]"
-                />
-              </label>
-              <TendencyPicker
-                value={tendency}
-                onChange={(t) => {
-                  setTendency(t)
+        <div className="min-w-0 space-y-3 lg:border-l lg:border-white/[0.06] lg:pl-5">
+          <button
+            type="button"
+            onClick={() => setShowSettings((v) => !v)}
+            aria-expanded={showSettings}
+            className="flex w-full items-center justify-between gap-2 text-left lg:pointer-events-none"
+          >
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#6b7280]">
+              <User size={13} /> Golfer
+              <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium normal-case tracking-normal text-[#d1d5db]">
+                {source === "calibrated" ? calibratedName : `Handicap ${handicap}`}
+              </span>
+            </span>
+            <span className="flex items-center gap-1 text-xs text-[#22c55e] lg:hidden">
+              {showSettings ? "Hide" : "Change"}
+              <ChevronDown size={14} className={showSettings ? "rotate-180" : ""} />
+            </span>
+          </button>
+          <div className={`${showSettings ? "flex" : "hidden"} flex-wrap items-end gap-3 lg:flex`}>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[#6b7280]">Whose shots</span>
+              <select
+                value={source}
+                onChange={(e) => {
+                  setSource(e.target.value as "calibrated" | "handicap")
+                  setClubChoice("auto")
                   setAimNote(null)
                 }}
-              />
-            </>
-          )}
+                className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+              >
+                {calibrated && <option value="calibrated">{calibratedName} (calibrated)</option>}
+                <option value="handicap">Handicap-based golfer</option>
+              </select>
+            </label>
+            {source === "handicap" && (
+              <>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-[#6b7280]">Handicap</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={36}
+                    step={1}
+                    inputMode="decimal"
+                    value={handicap}
+                    onChange={(e) => {
+                      setHandicap(Math.min(36, Math.max(0, Number(e.target.value) || 0)))
+                      setAimNote(null)
+                    }}
+                    className="w-20 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-[#6b7280]">Driver carry (yd)</span>
+                  <input
+                    type="number"
+                    placeholder="avg"
+                    inputMode="numeric"
+                    value={driverCarry}
+                    onChange={(e) => {
+                      setDriverCarry(e.target.value)
+                      setAimNote(null)
+                    }}
+                    className="w-24 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white placeholder:text-[#4b5563]"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-[#6b7280]">7-iron carry (yd)</span>
+                  <input
+                    type="number"
+                    placeholder="avg"
+                    inputMode="numeric"
+                    value={sevenIronCarry}
+                    onChange={(e) => {
+                      setSevenIronCarry(e.target.value)
+                      setAimNote(null)
+                    }}
+                    className="w-24 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white placeholder:text-[#4b5563]"
+                  />
+                </label>
+                <TendencyPicker
+                  value={tendency}
+                  onChange={(t) => {
+                    setTendency(t)
+                    setAimNote(null)
+                  }}
+                />
+              </>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* ---- course status ---- */}
       {course && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-[#9ca3af]">
-          <span className="font-semibold text-white">{course.name}</span>
-          {loadState === "loading" && <span>{loadError || "Loading map data…"}</span>}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-[#9ca3af]">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
+            <Flag size={14} className="text-[#22c55e]" />
+            {course.name}
+          </span>
+          {loadState === "loading" && (
+            <span className="flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" /> {loadError || "Loading map data…"}
+            </span>
+          )}
           {loadState === "error" && (
             <>
               <span className="text-red-400">{loadError}</span>
@@ -667,30 +738,39 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             </>
           )}
           {geometry && (
-            <span>
-              {holes.length} holes · {stats.greens} greens · {stats.fairways} fairways · {stats.bunkers} bunkers ·{" "}
-              {stats.water} water · {stats.trees} tree areas{stats.range > 0 ? ` · ${stats.range} range/practice` : ""}
+            <span className="flex flex-wrap gap-1.5">
+              {[
+                [holes.length, "holes"],
+                [stats.greens, "greens"],
+                [stats.fairways, "fairways"],
+                [stats.bunkers, "bunkers"],
+                [stats.water, "water"],
+                [stats.trees, "tree areas"],
+                ...(stats.range > 0 ? [[stats.range, "range"]] : []),
+              ].map(([n, label]) => (
+                <span key={String(label)} className="rounded-full bg-white/[0.05] px-2 py-0.5">
+                  <span className="font-semibold text-[#d1d5db]">{n}</span> {label}
+                </span>
+              ))}
             </span>
           )}
         </div>
       )}
 
       {geometry && geometry.scope === "radius" && (
-        <p className="rounded-lg border border-yellow-800/60 bg-yellow-950/30 px-3 py-2 text-xs text-yellow-500">
+        <Notice>
           No course boundary is mapped for this course, so this shows everything within about a mile. Neighbouring
           courses may appear.
-        </p>
+        </Notice>
       )}
       {geometry && holes.length === 0 && (
-        <p className="rounded-lg border border-yellow-800/60 bg-yellow-950/30 px-3 py-2 text-xs text-yellow-500">
-          No hole lines are mapped for this course in OpenStreetMap. You can still place the ball and the pin by hand.
-        </p>
+        <Notice>No hole lines are mapped for this course in OpenStreetMap. You can still place the ball and the pin by hand.</Notice>
       )}
       {geometry && holes.length > 0 && stats.greens === 0 && (
-        <p className="rounded-lg border border-yellow-800/60 bg-yellow-950/30 px-3 py-2 text-xs text-yellow-500">
+        <Notice>
           Greens, fairways and hazards aren&rsquo;t traced for this course, so almost everything will count as rough and
           the club ranking is only a distance guide.
-        </p>
+        </Notice>
       )}
 
       {holes.length > 0 && (
@@ -700,62 +780,65 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               key={h.id}
               id={`hole-btn-${h.id}`}
               onClick={() => pickHole(h)}
-              title={h.par ? `Par ${h.par}` : undefined}
-              className={`min-w-[2.75rem] shrink-0 rounded-md border px-2 py-2 text-sm font-medium md:min-w-[2.25rem] md:py-1 md:text-xs ${
+              title={h.par ? `Hole ${h.ref ?? i + 1} · par ${h.par}` : undefined}
+              className={`flex min-w-[2.9rem] shrink-0 flex-col items-center rounded-lg border px-2 py-1.5 transition-colors ${
                 h.id === holeId
                   ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]"
-                  : "border-white/[0.08] text-[#9ca3af] hover:text-white"
+                  : "border-white/[0.08] text-[#9ca3af] hover:border-white/20 hover:text-white"
               }`}
             >
-              {h.ref ?? i + 1}
+              <span className="text-sm font-semibold leading-tight">{h.ref ?? i + 1}</span>
+              <span className="text-[10px] leading-tight opacity-70">{h.par ? `P${h.par}` : "–"}</span>
             </button>
           ))}
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_440px]">
-        {/* map (min-w-0 stops the scrolling toolbar from stretching the whole page on phones) */}
-        <div className="min-w-0 space-y-2">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]">
+        {/* ---- map ---- (min-w-0 stops the scrolling toolbar from stretching the page on phones) */}
+        <div className="min-w-0 space-y-2.5">
           <div className="no-scrollbar flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs md:flex-wrap md:overflow-visible">
-            <span className="shrink-0 text-[#6b7280]">Tap the map to place:</span>
-            {(["ball", "aim", "pin"] as Placing[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPlacing(p)}
-                className={`shrink-0 rounded-md border px-3 py-2 font-medium capitalize md:px-2.5 md:py-1 ${
-                  placing === p ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]" : "border-white/[0.08] text-[#9ca3af] hover:text-white"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              onClick={useMyLocation}
-              className="shrink-0 rounded-md border border-white/[0.08] px-3 py-2 font-medium text-[#9ca3af] hover:text-white md:px-2.5 md:py-1"
-            >
-              Use my location
-            </button>
-            <button
+            <div role="group" aria-label="What a tap on the map moves" className="flex shrink-0 overflow-hidden rounded-lg border border-white/[0.08]">
+              {(["ball", "aim", "pin"] as Placing[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPlacing(p)}
+                  aria-pressed={placing === p}
+                  title={`Tap the map to move the ${p}`}
+                  className={`flex items-center gap-1.5 px-3 py-2 font-medium capitalize md:py-1.5 ${
+                    placing === p ? "bg-[#22c55e] text-black" : "bg-[#141414] text-[#9ca3af] hover:text-white"
+                  }`}
+                >
+                  {p === "ball" ? <Circle size={12} /> : p === "aim" ? <Crosshair size={12} /> : <Flag size={12} />}
+                  {p}
+                </button>
+              ))}
+            </div>
+            <ToolButton onClick={useMyLocation} icon={LocateFixed} label="My location" />
+            <ToolButton
               onClick={toggleFollow}
-              aria-pressed={following}
-              className={`shrink-0 rounded-md border px-3 py-2 font-medium md:px-2.5 md:py-1 ${
-                following ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]" : "border-white/[0.08] text-[#9ca3af] hover:text-white"
-              }`}
-            >
-              {following ? `Following GPS${gpsAccuracyYds != null ? ` ±${gpsAccuracyYds} yd` : "…"}` : "Follow my GPS"}
-            </button>
+              icon={Navigation}
+              active={following}
+              label={following ? `Following${gpsAccuracyYds != null ? ` ±${gpsAccuracyYds} yd` : "…"}` : "Follow GPS"}
+            />
             {aimManual && (
-              <button
+              <ToolButton
                 onClick={() => {
                   setAimManual(null)
                   setAimNote(null)
                 }}
-                className="shrink-0 rounded-md border border-white/[0.08] px-3 py-2 font-medium text-[#9ca3af] hover:text-white md:px-2.5 md:py-1"
-              >
-                Reset aim
-              </button>
+                icon={RotateCcw}
+                label="Reset aim"
+              />
             )}
-            <label className="ml-auto flex shrink-0 items-center gap-1.5 text-[#6b7280]" title="Many courses have no trees mapped. Land farther than this from the hole line, and not mapped as anything else, counts as trees (punch-out).">
+            <span className="hidden h-5 w-px shrink-0 bg-white/[0.1] md:block" />
+            <ToolButton onClick={() => setShowTrouble((v) => !v)} icon={Layers} active={showTrouble} label="Trouble map" title="Colour every spot by strokes lost or gained versus a fairway lie at the same distance" />
+            <ToolButton onClick={() => setShowRings((v) => !v)} icon={Target} active={showRings} label="Shot rings" title="Show where 50% and 90% of this club's shots land" />
+            <label
+              className="ml-auto flex shrink-0 items-center gap-1.5 text-[#6b7280]"
+              title="Many courses have no trees mapped. Land farther than this from the hole line, and not mapped as anything else, counts as trees (recovery shot)."
+            >
+              <TreePine size={13} />
               Trees beyond
               <select
                 value={corridorYds}
@@ -771,11 +854,14 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   </option>
                 ))}
               </select>
-              of hole line
             </label>
-            {gpsError && <span className="text-red-400">{gpsError}</span>}
+            {gpsError && <span className="shrink-0 text-red-400">{gpsError}</span>}
           </div>
-          <div ref={mapWrapRef} className="relative h-[60svh] min-h-[380px] overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] md:h-[68vh] md:min-h-[420px]">
+
+          <div
+            ref={mapWrapRef}
+            className="relative h-[60svh] min-h-[380px] overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0a0a0a] shadow-lg shadow-black/30 md:h-[70vh] md:min-h-[460px]"
+          >
             {course?.lat != null && course.lng != null ? (
               <CourseMap
                 center={{ lat: course.lat, lng: course.lng }}
@@ -785,6 +871,8 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 aim={aim}
                 pin={pin}
                 landings={landings}
+                cells={troubleCells}
+                rings={rings}
                 labels={labels}
                 placing={placing}
                 fitBounds={fit.bounds}
@@ -808,8 +896,14 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 }}
               />
             ) : (
-              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[#6b7280]">
-                Search for a course above to load its satellite map.
+              <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#22c55e]/10 text-[#22c55e]">
+                  <MapIcon size={26} />
+                </span>
+                <p className="text-sm font-medium text-white">Load a course to plan your shots</p>
+                <p className="max-w-xs text-xs text-[#6b7280]">
+                  Search above, pick a hole, then drag the ball anywhere. Every club is simulated with your own dispersion.
+                </p>
               </div>
             )}
             {/* Phone HUD: the numbers you need mid-round, on the map itself */}
@@ -829,75 +923,92 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               </div>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#9ca3af]">
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-[#9ca3af]">
             {LIES.map((l) => (
               <span key={l} className="flex items-center gap-1.5">
                 <span className="inline-block h-2.5 w-2.5 rounded-full border border-black/60" style={{ background: LIE_COLORS[l] }} />
                 {LIE_LABEL[l]}
               </span>
             ))}
-            <span className="text-[#6b7280]">
-              B = ball · A = aim · P = pin (drag any of them). Dots are {DOTS_SHOWN} simulated shots.
-            </span>
+            {showTrouble && (
+              <span className="flex items-center gap-1.5 text-[#d1d5db]">
+                <span className="inline-block h-2.5 w-14 rounded-full" style={{ background: "linear-gradient(90deg,#22c55e,#ffffff33,#f59e0b,#ef4444)" }} />
+                better ← vs fairway → worse
+              </span>
+            )}
+            <span className="text-[#6b7280]">B = ball · A = aim · P = pin (drag any). Dots: {DOTS_SHOWN} simulated shots. Ctrl/⌘ + scroll zooms the map.</span>
           </div>
         </div>
 
-        {/* results */}
-        <div className="min-w-0 space-y-3">
+        {/* ---- shot plan ---- */}
+        <aside className="min-w-0 space-y-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
           {!ball || !pin ? (
-            <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-4 text-sm text-[#9ca3af]">
+            <div className="rounded-2xl border border-white/[0.07] bg-[#111111] p-5 text-sm text-[#9ca3af]">
+              <p className="mb-1 flex items-center gap-2 font-semibold text-white">
+                <Info size={15} className="text-[#22c55e]" /> How it works
+              </p>
               {holes.length > 0
                 ? "Pick a hole number (or click a hole line on the map) to stand on its tee, then drag the ball anywhere."
                 : course
                   ? "Set the ball, then the pin, using the buttons above the map."
-                  : "Search for a course to begin."}
+                  : "Search for a course, choose a hole, and the planner ranks every club by strokes gained."}
             </div>
           ) : (
             <>
-              <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-4">
-                <p className="text-xs text-[#6b7280]">
-                  {hole ? `Hole ${hole.ref ?? "?"}${hole.par ? ` · par ${hole.par}` : ""}` : "Free placement"}
-                </p>
-                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg bg-white/[0.04] px-2 py-2">
-                    <p className="text-[10px] uppercase tracking-wide text-[#6b7280]">Ball to aim</p>
-                    <p className="text-lg font-bold text-white">{distAim != null ? Math.round(distAim) : "–"}<span className="ml-0.5 text-xs font-normal text-[#6b7280]">yd</span></p>
-                  </div>
-                  <div className="rounded-lg bg-white/[0.04] px-2 py-2">
-                    <p className="text-[10px] uppercase tracking-wide text-[#6b7280]">{aimIsPin ? "Aim is the pin" : "Left after aim"}</p>
-                    <p className="text-lg font-bold text-white">{aimIsPin ? "0" : aimToPin != null ? Math.round(aimToPin) : "–"}<span className="ml-0.5 text-xs font-normal text-[#6b7280]">yd</span></p>
-                  </div>
-                  <div className="rounded-lg bg-white/[0.04] px-2 py-2">
-                    <p className="text-[10px] uppercase tracking-wide text-[#6b7280]">Ball to pin</p>
-                    <p className="text-lg font-bold text-white">{distPin != null ? Math.round(distPin) : "–"}<span className="ml-0.5 text-xs font-normal text-[#6b7280]">yd</span></p>
-                  </div>
+              <div className="rounded-2xl border border-white/[0.07] bg-[#111111] p-4 shadow-lg shadow-black/20">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-sm font-semibold text-white">
+                    {hole ? `Hole ${hole.ref ?? "?"}${hole.par ? ` · Par ${hole.par}` : ""}` : "Free placement"}
+                  </p>
+                  <p className="text-[11px] text-[#6b7280]">from {fromLabel}</p>
                 </div>
-                {best && (
-                  <p className="mt-2 text-lg font-bold text-white">
-                    Best club: <span className="text-[#22c55e]">{best.club}</span>
-                    <span className="ml-2 text-xs font-normal text-[#6b7280]">
-                      avg {Math.round(best.meanCarryYds)} yd carry · {best.expectedStrokes.toFixed(2)} expected strokes
-                    </span>
-                  </p>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <StatTile label="Ball to aim" value={distAim != null ? Math.round(distAim) : null} />
+                  <StatTile label={aimIsPin ? "Aim is pin" : "Left after aim"} value={aimIsPin ? 0 : aimToPin != null ? Math.round(aimToPin) : null} />
+                  <StatTile label="Ball to pin" value={distPin != null ? Math.round(distPin) : null} />
+                </div>
+
+                {best && chosen && (
+                  <div className="mt-4 rounded-xl border border-[#22c55e]/25 bg-[#22c55e]/[0.07] p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[#22c55e]">
+                      {clubChoice === "auto" || chosen.club === best.club ? "Best club" : "Selected club"}
+                    </p>
+                    <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3">
+                      <p className="text-2xl font-bold text-white">{chosen.club}</p>
+                      <p className={`text-sm font-semibold ${sgClass(chosen.strokesGained)}`} title="Strokes gained per shot vs a PGA Tour average shot from the same spot (Broadie baseline)">
+                        {fmtSG(chosen.strokesGained)} SG
+                      </p>
+                    </div>
+                    <p className="mt-1 text-xs text-[#9ca3af]">
+                      Averages {Math.round(chosen.meanCarryYds)} yd
+                      {avgLeft != null && (
+                        <>
+                          , leaving about <span className="font-semibold text-white">{Math.round(avgLeft)} yd</span>
+                        </>
+                      )}
+                      . Expected {chosen.expectedStrokes.toFixed(2)} strokes to hole out including this shot.
+                    </p>
+                    {clubChoice !== "auto" && chosen.club !== best.club && (
+                      <p className="mt-1 text-xs text-[#9ca3af]">
+                        The planner prefers <span className="font-semibold text-white">{best.club}</span> ({fmtSG(best.strokesGained)} SG).
+                      </p>
+                    )}
+                  </div>
                 )}
-                {chosen && avgLeft != null && (
-                  <p className="mt-1 text-xs text-[#9ca3af]">
-                    {chosen.club} averages {Math.round(chosen.meanCarryYds)} yd, leaving about{" "}
-                    <span className="font-semibold text-white">{Math.round(avgLeft)} yd</span> to the pin.
-                  </p>
-                )}
+
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     onClick={findBestAim}
                     disabled={!chosen}
-                    className="rounded-md border border-[#22c55e]/50 bg-[#22c55e]/10 px-2.5 py-1 text-xs font-medium text-[#22c55e] hover:bg-[#22c55e]/20 disabled:opacity-40"
+                    className="flex items-center gap-1.5 rounded-lg border border-[#22c55e]/50 bg-[#22c55e]/10 px-3 py-1.5 text-xs font-medium text-[#22c55e] transition-colors hover:bg-[#22c55e]/20 disabled:opacity-40"
                   >
-                    Find best aim for {chosen?.club ?? "club"}
+                    <Crosshair size={13} /> Find best aim for {chosen?.club ?? "club"}
                   </button>
                   {clubChoice !== "auto" && (
                     <button
                       onClick={() => setClubChoice("auto")}
-                      className="rounded-md border border-white/[0.08] px-2.5 py-1 text-xs text-[#9ca3af] hover:text-white"
+                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[#9ca3af] hover:text-white"
                     >
                       Back to recommended
                     </button>
@@ -906,19 +1017,19 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 {aimNote && <p className="mt-2 text-xs text-[#9ca3af]">{aimNote}</p>}
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-[#111111]">
+              <div className="overflow-x-auto rounded-2xl border border-white/[0.07] bg-[#111111] shadow-lg shadow-black/20">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-white/[0.06] text-left text-[#6b7280]">
-                      <th className="px-2 py-2 font-medium">Club</th>
-                      <th className="px-1 py-2 text-right font-medium">Carry</th>
+                      <th className="px-3 py-2.5 font-medium">Club</th>
+                      <th className="px-1 py-2.5 text-right font-medium">Carry</th>
                       {shownLies.map((l) => (
-                        <th key={l} className="px-1 py-2 text-right font-medium" title={LIE_LABEL[l]}>
+                        <th key={l} className="px-1 py-2.5 text-right font-medium" title={LIE_LABEL[l]}>
                           {LIE_SHORT[l]}
                         </th>
                       ))}
-                      <th className="px-2 py-2 text-right font-medium" title="This shot plus expected strokes remaining">
-                        Strokes
+                      <th className="px-3 py-2.5 text-right font-medium" title="Strokes gained per shot vs a PGA Tour average shot from the same spot">
+                        SG
                       </th>
                     </tr>
                   </thead>
@@ -927,39 +1038,113 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                       <tr
                         key={r.club}
                         onClick={() => setClubChoice(r.club)}
-                        className={`cursor-pointer border-b border-white/[0.04] last:border-0 hover:bg-white/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
+                        className={`cursor-pointer border-b border-white/[0.04] transition-colors last:border-0 hover:bg-white/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
                           chosen?.club === r.club ? "bg-[#22c55e]/10" : ""
                         }`}
                       >
-                        <td className="whitespace-nowrap px-2 py-1.5 text-white">
+                        <td className="whitespace-nowrap px-3 text-white">
                           {r.club}
                           {i === 0 && <span className="ml-1 text-[10px] text-[#22c55e]">★</span>}
                         </td>
-                        <td className="px-1 py-1.5 text-right text-[#9ca3af]">{Math.round(r.meanCarryYds)}</td>
+                        <td className="px-1 text-right text-[#9ca3af]">{Math.round(r.meanCarryYds)}</td>
                         {shownLies.map((l) => (
-                          <td key={l} className="px-1 py-1.5 text-right text-[#9ca3af]">
+                          <td key={l} className="px-1 text-right text-[#9ca3af]">
                             {pct(r.lieShare[l])}
                           </td>
                         ))}
-                        <td className="px-2 py-1.5 text-right text-white">{r.expectedStrokes.toFixed(2)}</td>
+                        <td className={`px-3 text-right font-semibold ${sgClass(r.strokesGained)}`}>{fmtSG(r.strokesGained)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="text-[11px] leading-relaxed text-[#6b7280]">
-                Clubs are ranked by expected strokes to hole out from where each simulated shot lands. Water,
-                trees and out of bounds (a driving range or practice area) carry penalties; trees are mapped woods
-                plus, optionally, anything farther than the chosen distance from the hole line, because many courses
-                have no trees traced. The stroke values are approximate placeholders (not yet tied to a published
-                strokes-gained table) and the course shapes come from OpenStreetMap volunteers, so treat close calls
-                as ties. Slope, wind, elevation and individual trees aren&rsquo;t modelled; anything else unmapped
-                counts as rough.
-              </p>
+
+              <details className="rounded-2xl border border-white/[0.07] bg-[#111111] px-4 py-3 text-xs leading-relaxed text-[#9ca3af]">
+                <summary className="cursor-pointer select-none font-medium text-[#d1d5db]">How this is scored</summary>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Every simulated shot is placed on the map and given a lie (green, fairway, rough, bunker, trees, water or out of bounds).
+                    Its value is the PGA TOUR average number of strokes to hole out from that lie and distance, from Mark Broadie&rsquo;s
+                    published benchmark (<em>Assessing Golfer Performance on the PGA TOUR</em>, Interfaces 2012, Table 9; putting from{" "}
+                    <em>Putts Gained</em>, 2011). Strokes gained = the value where you stand − the value where the shot ends − 1.
+                  </p>
+                  <p>
+                    Water costs one penalty stroke plus a drop; out of bounds is stroke and distance; trees use the benchmark&rsquo;s
+                    &ldquo;recovery&rdquo; column. These rules are my assumptions, since the benchmark doesn&rsquo;t cover them.
+                  </p>
+                  <p>
+                    It is a <strong className="text-[#d1d5db]">tour</strong> baseline, so a handicap golfer&rsquo;s SG is usually negative. Compare clubs and
+                    aim points against each other. Shapes come from OpenStreetMap volunteers; anything untraced counts as rough, trees can be
+                    approximated with the &ldquo;Trees beyond&rdquo; setting, and slope, wind and elevation aren&rsquo;t modelled.
+                  </p>
+                </div>
+              </details>
             </>
           )}
-        </div>
+        </aside>
       </div>
     </div>
+  )
+}
+
+// ---------- small presentational helpers ----------
+
+function fmtSG(x: number): string {
+  const v = Math.abs(x) < 0.005 ? 0 : x
+  return `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(2)}`
+}
+
+function sgClass(x: number): string {
+  if (x > 0.02) return "text-[#22c55e]"
+  if (x < -0.02) return "text-[#f87171]"
+  return "text-[#9ca3af]"
+}
+
+function StatTile({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div className="rounded-xl bg-white/[0.04] px-2 py-2.5">
+      <p className="text-[10px] uppercase tracking-wide text-[#6b7280]">{label}</p>
+      <p className="text-xl font-bold leading-tight text-white">
+        {value ?? "–"}
+        <span className="ml-0.5 text-xs font-normal text-[#6b7280]">yd</span>
+      </p>
+    </div>
+  )
+}
+
+function ToolButton({
+  onClick,
+  icon: Icon,
+  label,
+  active,
+  title,
+}: {
+  onClick: () => void
+  icon: LucideIcon
+  label: string
+  active?: boolean
+  title?: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      title={title}
+      className={`flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 font-medium transition-colors md:py-1.5 ${
+        active ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]" : "border-white/[0.08] text-[#9ca3af] hover:border-white/20 hover:text-white"
+      }`}
+    >
+      <Icon size={13} />
+      {label}
+    </button>
+  )
+}
+
+function Notice({ children }: { children: ReactNode }) {
+  return (
+    <p className="flex items-start gap-2 rounded-xl border border-yellow-800/60 bg-yellow-950/30 px-3 py-2 text-xs text-yellow-500">
+      <Info size={14} className="mt-0.5 shrink-0" />
+      <span>{children}</span>
+    </p>
   )
 }

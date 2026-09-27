@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react"
 import { OverlayCanvas, type OverlaySeries } from "./OverlayCanvas"
 import { computeDispersionStats, seededSample, type DispersionStats } from "@/lib/dispersion/stats"
+import { GitCompare } from "lucide-react"
+import PageHeader from "@/components/PageHeader"
 
 export interface GolferOption {
   key: string // `${golferName}::${sourceLabel}`
@@ -122,14 +124,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-white">Compare Golfers</h2>
-          <p className="mt-0.5 text-xs text-[#6b7280]">
-            Overlay two golfers&rsquo; simulated dispersion, plus real shots where available.
-          </p>
-        </div>
-      </div>
+      <PageHeader icon={GitCompare} title="Compare Golfers" subtitle={<>Overlay two golfers&rsquo; simulated dispersion, plus real shots where available.</>} />
 
       <div className="grid grid-cols-1 gap-4 rounded-xl border border-white/[0.06] bg-[#111111] p-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">

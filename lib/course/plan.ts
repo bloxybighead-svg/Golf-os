@@ -6,7 +6,7 @@
 // "does it reach" rule is needed.
 
 import { bearingDeg, distanceYds, landingPoint, type LatLng } from "./geo"
-import { expectedStrokesRemaining } from "./cost"
+import { expectedFromStart, expectedStrokesRemaining, type StartLie } from "./cost"
 import type { Lie, LieMap } from "./lies"
 
 export interface ShotSample {
@@ -25,6 +25,12 @@ export interface ClubPlan {
   meanCarryYds: number
   lieShare: Record<Lie, number> // fractions summing to 1
   expectedStrokes: number // this shot + expected strokes remaining afterwards
+  /**
+   * Strokes gained per shot against the PGA TOUR baseline:
+   * E(strokes from where you stand) - expectedStrokes. Positive = better than
+   * a tour player's average shot from the same spot.
+   */
+  strokesGained: number
 }
 
 export interface PlanContext {
@@ -32,6 +38,8 @@ export interface PlanContext {
   aim: LatLng
   pin: LatLng
   lies: LieMap
+  /** Where the ball is lying now (defaults to fairway); the tee uses the tour tee-shot column. */
+  startLie?: StartLie
 }
 
 export interface Landing {
@@ -46,25 +54,41 @@ export function simulateLandings(shots: ShotSample[], from: LatLng, aimBearing: 
   })
 }
 
-function scoreLandings(club: string, shots: ShotSample[], landings: Landing[], from: LatLng, pin: LatLng): ClubPlan {
+function scoreLandings(
+  club: string,
+  shots: ShotSample[],
+  landings: Landing[],
+  from: LatLng,
+  pin: LatLng,
+  startLie: StartLie
+): ClubPlan {
   const lieShare: Record<Lie, number> = { water: 0, oob: 0, bunker: 0, green: 0, fairway: 0, trees: 0, rough: 0 }
   const originDist = distanceYds(from, pin)
+  const origin = { distYds: originDist, lie: startLie }
   let strokes = 0
   let carry = 0
   landings.forEach((l, i) => {
     lieShare[l.lie] += 1
-    strokes += 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), originDist)
+    strokes += 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin)
     carry += shots[i].carryYds
   })
   const n = landings.length || 1
   for (const k of Object.keys(lieShare) as Lie[]) lieShare[k] /= n
-  return { club, n: landings.length, meanCarryYds: carry / n, lieShare, expectedStrokes: strokes / n }
+  const expectedStrokes = strokes / n
+  return {
+    club,
+    n: landings.length,
+    meanCarryYds: carry / n,
+    lieShare,
+    expectedStrokes,
+    strokesGained: expectedFromStart(startLie, originDist) - expectedStrokes,
+  }
 }
 
 export function evaluateClub(club: ClubShots, ctx: PlanContext, aimBearingOverride?: number): ClubPlan {
   const bearing = aimBearingOverride ?? bearingDeg(ctx.from, ctx.aim)
   const landings = simulateLandings(club.shots, ctx.from, bearing, ctx.lies)
-  return scoreLandings(club.club, club.shots, landings, ctx.from, ctx.pin)
+  return scoreLandings(club.club, club.shots, landings, ctx.from, ctx.pin, ctx.startLie ?? "fairway")
 }
 
 /** Every club, best (lowest expected strokes) first. */

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import type { Round } from "@/lib/supabase/types"
-import { ArrowDownRight, ArrowUpRight, ClipboardList, Flag } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, ClipboardList, Flag, Map as MapIcon, ArrowRight } from "lucide-react"
 
 function mondayOfWeekISO(offsetWeeks: number) {
   const d = new Date()
@@ -117,6 +117,23 @@ export default async function Home() {
           </Link>
         </div>
       </div>
+
+      {/* Course Planner promo */}
+      <Link
+        href="/planner"
+        className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-[#22c55e]/25 bg-gradient-to-r from-[#22c55e]/[0.12] via-[#22c55e]/[0.04] to-transparent px-5 py-4 transition-colors hover:border-[#22c55e]/50"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#22c55e] text-black">
+          <MapIcon size={22} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-white">Plan your next round on the real course</span>
+          <span className="block text-xs text-[#9ca3af]">
+            Load any course, stand on the tee or anywhere in the fairway, and see which club gains the most strokes with your own dispersion.
+          </span>
+        </span>
+        <ArrowRight size={18} className="shrink-0 text-[#22c55e] transition-transform group-hover:translate-x-1" />
+      </Link>
 
       {/* The three dashboard elements */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

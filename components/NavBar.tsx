@@ -26,15 +26,21 @@ export default function NavBar() {
       {/* Top bar: wordmark + tabs on desktop, wordmark only on phones (tabs move to the bottom, in thumb reach) */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.08] bg-[#0a0a0a]/90 backdrop-blur-md pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-12 max-w-[1280px] items-center justify-between px-4 md:h-16 md:px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="whitespace-nowrap text-xs font-bold uppercase tracking-[0.2em] text-[#22c55e]">Golf OS</span>
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#22c55e] text-black">
+              <Flag size={15} strokeWidth={2.6} />
+            </span>
+            <span className="whitespace-nowrap text-sm font-bold tracking-tight text-white">
+              Golf <span className="text-[#22c55e]">OS</span>
+            </span>
           </Link>
 
           <nav className="hidden items-center gap-0.5 md:flex" aria-label="Main">
-            {NAV_ITEMS.map(({ label, href, match }) => {
+            {NAV_ITEMS.map(({ label, href, match, Icon }) => {
               const active = isActive(pathname, href, match)
               return (
-                <Link key={href} href={href} className="group relative flex flex-col items-center px-3 py-2">
+                <Link key={href} href={href} className="group relative flex items-center gap-2 px-3.5 py-2">
+                  <Icon size={16} className={active ? "text-[#22c55e]" : "text-[#6b7280] group-hover:text-[#d1d5db]"} />
                   <span
                     className={[
                       "whitespace-nowrap text-sm transition-colors",
@@ -45,7 +51,7 @@ export default function NavBar() {
                   </span>
                   <span
                     className={[
-                      "absolute bottom-0.5 h-[3px] w-4 rounded-full transition-all",
+                      "absolute -bottom-[13px] left-3 right-3 h-[2px] rounded-full transition-all",
                       active ? "bg-[#22c55e] opacity-100" : "opacity-0",
                     ].join(" ")}
                   />

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { recommendTee, type TeeOption } from "@/lib/tbox/estimate"
+import { Flag } from "lucide-react"
+import PageHeader from "@/components/PageHeader"
 
 export interface KnownCourse {
   courseName: string
@@ -125,15 +127,8 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-white">Tee Box Estimator</h2>
-          <p className="mt-0.5 text-xs text-[#6b7280]">
-            Which tees fit your handicap and driver distance, using the USGA Course Handicap formula plus an
-            approximate distance guideline.
-          </p>
-        </div>
-      </div>
+      <PageHeader icon={Flag} title="Tee Box Estimator" subtitle={<>Which tees fit your handicap and driver distance, using the USGA Course Handicap formula plus an
+            approximate distance guideline.</>} />
 
       <div className="flex flex-wrap gap-6 rounded-xl border border-white/[0.06] bg-[#111111] p-4">
         <label className="flex flex-col gap-1.5">

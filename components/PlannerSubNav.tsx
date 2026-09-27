@@ -1,11 +1,11 @@
-import SubNav from "./SubNav"
+import SubNav, { type SubNavItem } from "./SubNav"
 
-const ITEMS = [
-  { label: "Course Planner", href: "/planner" },
-  { label: "Dispersion", href: "/planner/dispersion" },
-  { label: "Compare golfers", href: "/planner/compare" },
-  { label: "Custom golfer", href: "/planner/custom" },
-  { label: "Tee box", href: "/planner/tbox" },
+const ITEMS: SubNavItem[] = [
+  { label: "Course Planner", href: "/planner", icon: "map" },
+  { label: "Dispersion", href: "/planner/dispersion", icon: "activity" },
+  { label: "Compare golfers", href: "/planner/compare", icon: "compare" },
+  { label: "Custom golfer", href: "/planner/custom", icon: "sliders" },
+  { label: "Tee box", href: "/planner/tbox", icon: "flag" },
 ]
 
 export default function PlannerSubNav() {

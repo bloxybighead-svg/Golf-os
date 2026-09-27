@@ -1,9 +1,9 @@
-import SubNav from "./SubNav"
+import SubNav, { type SubNavItem } from "./SubNav"
 
-const ITEMS = [
-  { label: "Log", href: "/log" },
-  { label: "Drills", href: "/drills" },
-  { label: "Trends", href: "/trends" },
+const ITEMS: SubNavItem[] = [
+  { label: "Log", href: "/log", icon: "log" },
+  { label: "Drills", href: "/drills", icon: "drills" },
+  { label: "Trends", href: "/trends", icon: "trends" },
 ]
 
 export default function PracticeSubNav() {

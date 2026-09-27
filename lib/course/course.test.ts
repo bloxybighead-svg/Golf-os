@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { bearingDeg, distanceYds, fromLocal, landingPoint, lineLengthYds, pointAlongLine, pointInRing, toLocal } from "./geo"
 import { buildLieMap } from "./lies"
 import { parseOverpass, type OverpassElement } from "./overpass"
-import { expectedStrokesRemaining } from "./cost"
+import { expectedFromStart, expectedStrokesRemaining, tourExpected, tourPutting } from "./cost"
 import { bestAim, rankClubs } from "./plan"
 
 const ORIGIN = { lat: 36.5685, lng: -121.949 }
@@ -265,12 +265,14 @@ describe("trees, range and out of bounds", () => {
     expect(f2[0].kind).toBe("fairway")
   })
 
-  it("penalises trees, and out of bounds costs a replay from where you hit", () => {
-    const fw = expectedStrokesRemaining("fairway", 100)
-    expect(expectedStrokesRemaining("trees", 100)).toBeGreaterThan(expectedStrokesRemaining("rough", 100))
-    expect(expectedStrokesRemaining("trees", 100)).toBeCloseTo(fw + 1.0, 5)
-    // OB from a 250 yd tee shot: 1 penalty + replaying from 250 yd, whatever the landing spot
-    expect(expectedStrokesRemaining("oob", 30, 250)).toBeCloseTo(1 + expectedStrokesRemaining("fairway", 250), 5)
+  it("uses Broadie's published recovery column for trees, and out of bounds costs a replay from where you hit", () => {
+    // Table 9 at 100 yd: fairway 2.80, rough 3.02, sand 3.23, recovery 3.80
+    expect(expectedStrokesRemaining("trees", 100)).toBeCloseTo(3.8, 5)
+    expect(expectedStrokesRemaining("trees", 100)).toBeGreaterThan(expectedStrokesRemaining("bunker", 100))
+    // OB from a 250 yd tee shot: 1 penalty + replaying from the tee at 250 yd, whatever the landing spot
+    expect(expectedStrokesRemaining("oob", 30, { distYds: 250, lie: "tee" })).toBeCloseTo(1 + tourExpected("tee", 250), 5)
+    // default origin is the fairway at the landing distance
+    expect(expectedStrokesRemaining("oob", 250)).toBeCloseTo(1 + tourExpected("fairway", 250), 5)
   })
 
   it("a tight club beats a long, wide one when the trees start close", () => {
@@ -327,5 +329,85 @@ describe("default tee aim", () => {
     const par3pin = fromLocal(ORIGIN, { x: 0, y: 150 })
     const p3 = toLocal(ORIGIN, defaultTeeAim([ORIGIN, par3pin], par3pin, [], 264))
     expect(p3.y).toBeCloseTo(150, 0)
+  })
+})
+
+describe("Broadie baseline (published PGA TOUR tables)", () => {
+  it("reproduces the tabulated Table 9 values exactly at table distances", () => {
+    expect(tourExpected("fairway", 100)).toBeCloseTo(2.8, 5)
+    expect(tourExpected("rough", 100)).toBeCloseTo(3.02, 5)
+    expect(tourExpected("sand", 100)).toBeCloseTo(3.23, 5)
+    expect(tourExpected("recovery", 100)).toBeCloseTo(3.8, 5)
+    expect(tourExpected("tee", 300)).toBeCloseTo(3.71, 5)
+    expect(tourExpected("fairway", 600)).toBeCloseTo(4.89, 5)
+    expect(tourExpected("fairway", 10)).toBeCloseTo(2.18, 5)
+  })
+  it("interpolates between table rows", () => {
+    expect(tourExpected("fairway", 110)).toBeCloseTo((2.8 + 2.85) / 2, 5)
+    expect(tourExpected("rough", 15)).toBeCloseTo((2.34 + 2.59) / 2, 5)
+  })
+  it("the tee column starts at 100 yd; shorter tee shots use the fairway column", () => {
+    expect(tourExpected("tee", 80)).toBeCloseTo(2.75, 5)
+    expect(tourExpected("tee", 100)).toBeCloseTo(2.92, 5)
+  })
+  it("putting matches Broadie's Putts Gained figure", () => {
+    expect(tourPutting(10)).toBeCloseTo(1.61, 5)
+    expect(tourPutting(20)).toBeCloseTo(1.87, 5)
+    expect(tourPutting(90)).toBeCloseTo(2.36, 5)
+    expect(tourPutting(0)).toBeCloseTo(1, 5)
+    expect(tourPutting(150)).toBeGreaterThan(tourPutting(90))
+  })
+  it("a green landing is putting distance in feet, and water costs a stroke plus a drop", () => {
+    expect(expectedStrokesRemaining("green", 10 / 3)).toBeCloseTo(1.61, 2)
+    expect(expectedStrokesRemaining("water", 120)).toBeCloseTo(1 + 2.85, 5)
+  })
+  it("strokes gained = expected before - expected after - 1 (sanity)", () => {
+    // Holing a 100 yd shot from the fairway would be gaining 2.80 - 0 - 1 = 1.80.
+    const before = expectedFromStart("fairway", 100)
+    expect(before - 0 - 1).toBeCloseTo(1.8, 5)
+  })
+})
+
+import { buildValueGrid, deltaColor, dispersionRing } from "./heatmap"
+
+describe("trouble map and dispersion rings", () => {
+  const pin = fromLocal(ORIGIN, { x: 0, y: 150 })
+  const lies = buildLieMap(ORIGIN, [
+    { kind: "green", ring: squareAround(pin, 12) },
+    { kind: "water", ring: squareAround(fromLocal(ORIGIN, { x: 60, y: 100 }), 15) },
+  ])
+
+  it("scores water and greens relative to the fairway at the same distance", () => {
+    const cells = buildValueGrid([ORIGIN, pin], pin, ORIGIN, "fairway", lies)
+    expect(cells.length).toBeGreaterThan(100)
+    expect(cells.length).toBeLessThanOrEqual(1700)
+    const at = (x: number, y: number) => {
+      const c = cells.find((cell) => {
+        const a = toLocal(ORIGIN, cell.sw)
+        const b = toLocal(ORIGIN, cell.ne)
+        return x >= a.x && x < b.x && y >= a.y && y < b.y
+      })!
+      return c.delta
+    }
+    expect(at(0, 150)).toBeLessThan(-0.3) // on the green: far better than fairway
+    expect(at(55, 100)).toBeGreaterThan(0.9) // in the water: about a stroke worse
+    expect(at(0, 80)).toBeGreaterThan(0.1) // plain rough is a little worse
+  })
+
+  it("colours better-than-fairway green, neutral clear, trouble amber to red", () => {
+    expect(deltaColor(-0.6).color).toBe("#22c55e")
+    expect(deltaColor(0).opacity).toBe(0)
+    expect(deltaColor(0.4).color).toBe("#f59e0b")
+    expect(deltaColor(1.1).color).toBe("#ef4444")
+  })
+
+  it("50% ring is inside the 90% ring and both are centred on the shots", () => {
+    const pts = Array.from({ length: 400 }, (_, i) => fromLocal(ORIGIN, { x: ((i * 37) % 41) - 20, y: 150 + (((i * 53) % 23) - 11) }))
+    const r50 = dispersionRing(pts, 1.177)
+    const r90 = dispersionRing(pts, 2.146)
+    expect(r50.length).toBe(49)
+    const span = (r: typeof r50) => Math.max(...r.map((p) => toLocal(ORIGIN, p).x)) - Math.min(...r.map((p) => toLocal(ORIGIN, p).x))
+    expect(span(r90)).toBeGreaterThan(span(r50))
+    expect(dispersionRing(pts.slice(0, 3), 1)).toEqual([])
   })
 })

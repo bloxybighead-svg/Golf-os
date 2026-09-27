@@ -313,9 +313,21 @@ classified water / bunker / green / fairway / rough by point-in-polygon
 are ranked by expected strokes (`lib/course/plan.ts`, `cost.ts`).
 "Find best aim" shifts the aim left/right in 2 yd steps.
 
-Known limits: `lib/course/cost.ts` values are rounded approximations of the
-tour strokes-gained pattern, NOT a cited table (top item to fix before the
-paper uses any number from this page); anything not traced in OSM counts as
+Strokes gained (2026-09-26): `lib/course/cost.ts` now uses the PUBLISHED PGA
+TOUR benchmark, transcribed programmatically from the paper PDFs into
+`lib/course/broadieTables.ts` -- Broadie, "Assessing Golfer Performance on the
+PGA TOUR", Interfaces 42(2) 2012, Appendix Table 9 (tee / fairway / rough /
+sand / recovery by yard, 8M+ ShotLink shots 2003-2010) and Broadie, "Putts
+Gained" (2011, average putts by foot). Trees use the "recovery" column. Water
+(1 stroke + fairway drop) and out of bounds (stroke and distance) are MY
+conventions, since the benchmark doesn't cover them. It is a TOUR baseline:
+amateurs' SG is mostly negative, so compare clubs/aims against each other.
+Still on the placeholder costs: `shot-pattern-simulator/aim_point_optimizer.py`
+(the paper's Section 5 numbers) -- port Table 9 there before quoting both
+together. The map also has a Trouble map (strokes vs fairway per cell) and
+50/90% shot rings (`lib/course/heatmap.ts`).
+
+Known limits: anything not traced in OSM counts as
 rough; lakes mapped as multipolygon relations are skipped; no trees, slope,
 wind or elevation; best-aim reuses the shots it picks on (optimistic).
 Overpass reliability was the weak link, so geometry is now cached: memory ->

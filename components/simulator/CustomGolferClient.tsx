@@ -7,6 +7,8 @@ import { generateCustomGolferShots } from "@/lib/golfer/build"
 import { BAG_ORDER, type Club } from "@/lib/golfer/tables"
 import type { Tendency } from "@/lib/golfer/build"
 import { TendencyPicker } from "./TendencyPicker"
+import { SlidersHorizontal } from "lucide-react"
+import PageHeader from "@/components/PageHeader"
 
 interface CarryRow {
   club: Club
@@ -69,15 +71,8 @@ export function CustomGolferClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-white">Custom Golfer</h2>
-          <p className="mt-0.5 text-xs text-[#6b7280]">
-            Same model as <code>generate_shots.py --handicap N --carry CLUB=YDS</code>, running live in the
-            browser.
-          </p>
-        </div>
-      </div>
+      <PageHeader icon={SlidersHorizontal} title="Custom Golfer" subtitle={<>Same model as <code>generate_shots.py --handicap N --carry CLUB=YDS</code>, running live in the
+            browser.</>} />
 
       <div className="space-y-4 rounded-xl border border-white/[0.06] bg-[#111111] p-4">
         <div className="flex flex-wrap gap-6">
