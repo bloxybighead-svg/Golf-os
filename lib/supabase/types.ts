@@ -82,6 +82,32 @@ export interface RoundAnalysis {
   created_at: string
 }
 
+// Curated shared catalog (drill_library) -- distinct from the per-user `Drill` above.
+export type DrillDifficulty = 'beginner' | 'intermediate' | 'advanced'
+
+export interface LibraryDrill {
+  id: string
+  name: string
+  category: SgCategory
+  description: string | null
+  target_area: string | null
+  difficulty: DrillDifficulty
+  reps_suggested: number | null
+  time_estimate_mins: number | null
+  instructions: string | null
+  equipment_needed: string | null
+}
+
+export interface UserDrillRun {
+  id: string
+  drill_id: string
+  started_at: string
+  completed_at: string | null
+  reps_completed: number | null
+  notes: string | null
+  drill_library: { name: string; category: SgCategory } | null
+}
+
 export type HandicapSource = 'manual' | 'calculated'
 
 export interface HandicapEntry {

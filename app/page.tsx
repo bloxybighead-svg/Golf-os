@@ -3,9 +3,12 @@ import { createClient } from "@/lib/supabase/server"
 import { SignedOutNotice } from "@/components/auth/SignedOutNotice"
 import { HandicapCard } from "@/components/home/HandicapCard"
 import { TrendsCard } from "@/components/home/TrendsCard"
-import type { Round, HandicapEntry, RoundAnalysis } from "@/lib/supabase/types"
+import { RecommendedDrills } from "@/components/home/RecommendedDrills"
+import { DrillHistory } from "@/components/home/DrillHistory"
+import type { Round, HandicapEntry, RoundAnalysis, LibraryDrill, UserDrillRun } from "@/lib/supabase/types"
 import { estimateHandicapIndex } from "@/lib/handicap"
 import { aggregateCategoryTrends } from "@/lib/sgBenchmarks"
+import { weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
 import { ArrowDownRight, ArrowUpRight, ClipboardList, Flag, Map as MapIcon, ArrowRight } from "lucide-react"
 
 const TRENDS_WINDOW_ROUNDS = 10 // "last 10 rounds" -- more stable than a fixed date window across streaky logging habits
@@ -26,11 +29,24 @@ function avg(nums: number[]): number | null {
 export default async function Home() {
   const supabase = createClient()
 
-  const [{ data: { user } }, { data: roundsData, error }, { data: sessionsData }, { data: handicapData }] = await Promise.all([
+  const [
+    { data: { user } },
+    { data: roundsData, error },
+    { data: sessionsData },
+    { data: handicapData },
+    { data: libraryData },
+    { data: drillRunsData },
+  ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("rounds").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }),
     supabase.from("practice_sessions").select("date"),
     supabase.from("handicap_tracking").select("*").order("calculation_date", { ascending: false }).limit(1),
+    supabase.from("drill_library").select("*"),
+    supabase
+      .from("user_drills")
+      .select("id, drill_id, started_at, completed_at, reps_completed, notes, drill_library(name, category)")
+      .order("started_at", { ascending: false })
+      .limit(50),
   ])
 
   if (error) {
@@ -72,6 +88,13 @@ export default async function Home() {
     ? await supabase.from("round_analysis").select("*").in("round_id", trendsWindowRoundIds)
     : { data: [] as RoundAnalysis[] }
   const categoryTrends = aggregateCategoryTrends((analysisData ?? []) as RoundAnalysis[])
+
+  // Drill recommendations target the weakest of those same categories.
+  const drillRuns = (drillRunsData ?? []) as unknown as UserDrillRun[]
+  const focusArea = weakestCategory(categoryTrends)
+  const recommended = focusArea
+    ? recommendDrills((libraryData ?? []) as LibraryDrill[], focusArea.category, drillRuns)
+    : []
 
   // 3. GIR insight: most recent 10 rounds vs the 10 before that (needs ≥10 rounds)
   let insight = "Log more rounds to unlock insights."
@@ -207,6 +230,15 @@ export default async function Home() {
 
       {/* Strengths & weaknesses vs. this golfer's own handicap bracket */}
       <TrendsCard trends={categoryTrends} />
+
+      <RecommendedDrills
+        focus={focusArea}
+        handicapIndex={latestHandicap?.handicap_index ?? null}
+        drills={recommended}
+        signedIn={!!user}
+      />
+
+      <DrillHistory runs={drillRuns} />
     </div>
   )
 }

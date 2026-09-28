@@ -989,6 +989,107 @@ bracket arithmetic, 9-vs-18-hole scaling, missing-stat omission, up-and-down
 rate clamping, bracket lookup, trend aggregation, qualifier thresholds),
 125 total. Typecheck and `npm run build` both clean.
 
+Session 6b follow-up -- round_analysis backfill (2026-09-27): Dillon
+reported the Strengths & Weaknesses card was empty despite 45 logged
+rounds. Root cause: `round_analysis` is only computed inside
+`createRound`/`updateRound`, and every existing round predated the
+feature, so none had ever triggered it -- a missing backfill, not a logic
+bug. Fixed with a one-time script (run once from the repo root with the
+service-role key, then deleted -- not committed) that ported
+`lib/sgBenchmarks.ts`'s formulas 1:1 to plain JS (no ts-node in this
+project), self-checked them against the same values
+`lib/sgBenchmarks.test.ts` asserts before touching data, snapshotted the
+latest tracked handicap (3.5, his manual entry) onto all 45 rounds, and
+wrote 155 `round_analysis` rows. Caveat: every historical round is graded
+against that one current handicap, since no round had a historical
+snapshot -- the best available approximation for old data; new rounds
+snapshot correctly on their own. Last-10-rounds result: Putting +1.17,
+Approach -0.01, Off-Tee -0.12, Short Game -0.15 (weakest).
+
+Session 7 -- drill recommendations (2026-09-27): the spec assumed no drill
+infrastructure existed, but the app already had two pieces: a per-user
+`drills` table (Practice -> Drills, 13 drills in Dillon's account,
+categories Full Swing/Wedge/Chipping/Bunker/Putting/Mental, no
+instructions/reps/time fields) and the Practice Log, where drills are
+logged as `activities` inside `session_blocks`. Built the spec's
+`drill_library` + `user_drills` anyway because they're genuinely a
+different thing -- a curated, SHARED catalog tagged by strokes-gained
+category with instructions/reps/time/equipment, plus a start -> complete
+run log -- but kept them explicitly separate from both existing systems
+rather than silently merging (merging would mean schema changes to an
+existing per-user table and either cluttering the Practice Log with
+one-drill sessions or mapping its categories onto SG categories, where
+"Full Swing" is ambiguous between off-tee and approach). Consequence worth
+knowing: Drill History only shows drills started from a recommendation,
+not ones logged in the Practice Log, and recommendations only come from
+the curated library, not Dillon's own 13 drills. Both are easy follow-ups
+if he wants them unified.
+
+`supabase/drill_library.sql` (applied, migration `drill_library`):
+`drill_library` (public-read reference data like `sg_benchmarks`, unique
+on `name` so the seed is idempotent, check constraints on category and
+difficulty) seeded with 19 drills -- 5 off-tee, 5 approach, 5 short game,
+4 putting -- including all 7 of the spec's examples plus standard drills
+(start-line gate, wedge distance ladder, clock drill, up-and-down
+challenge, etc.), each with a concrete measurable goal. `user_drills`
+(owner-only RLS, all four policies like every other personal table;
+`completed_at` null = started but not finished; `reps_completed` checked
+non-negative).
+
+`lib/drillRecommendations.ts` (new, pure, 7 tests): `weakestCategory`
+(most negative last-10-rounds delta -- the SAME aggregate the Strengths &
+Weaknesses card shows, so the two cards can never disagree about what's
+weakest; the spec's "sort round_analysis rows" wording would have picked
+from single-round noise instead) and `recommendDrills` (drills in that
+category, never-done first, then least-recently completed, name as
+tie-break -- so recommendations rotate as drills get done instead of
+always showing the same three; started-but-unfinished runs don't count as
+done). `app/drills/library-actions.ts`: `startDrill` (inserts a run,
+returns its id) and `completeDrill` (sets `completed_at`, reps, notes;
+validates reps server-side too).
+
+UI on Home, under Strengths & Weaknesses (the spec said "trends page",
+but the weakness data lives on Home, not `/trends`): `RecommendedDrills`
+("Focus area: Short Game (-0.15 SG vs. your 3.5 HCP)", 3 drill cards with
+target/reps/time/"Why", a note when every category is already positive),
+`DrillModal` (instructions, equipment, Start -> live elapsed timer ->
+Complete -> reps + "How did it go?" -> Save; full-screen on phones at
+`z-[60]` so it covers the `z-50` nav bars; backdrop-tap only closes it
+BEFORE a drill starts, so a mis-tap mid-drill can't strand the run), and
+`DrillHistory` (last 50 fetched, 10 shown, category filter chips,
+"N completed in the last 30 days", Completed / Not finished status,
+collapsible on phones). Phones get a swipeable card row.
+
+Also fixed a latent bug from Session 6a: `HandicapCard` formatted its
+timestamp in a client component, which renders once on the server (UTC
+on Vercel) and again in the browser (Eastern) -- an evening calculation
+would show different dates and trigger a React hydration mismatch.
+`DrillHistory` had the same shape, so both now format dates only after
+mount.
+
+Verified: RLS both ways for both tables (anon select on `drill_library`
+returns all 19; anon insert on either `42501`; anon select on
+`user_drills` with the page's exact `drill_library(name, category)` embed
+returns `[]` rather than a relationship error, which proves the embed
+resolves). Since signed-out Home shows only empty states, rendered the
+three cards with realistic fixture props (Dillon's real aggregates, the
+real library rows) on a throwaway local route -- deleted afterward,
+nothing stored -- and checked by measurement rather than screenshots
+(the pane's screenshots kept timing out): 800px -- 3-column grid,
+equal-height cards, no overflow; 375px -- no page overflow, swipeable
+card row with the next card peeking in, history collapsed by default and
+expandable, filters correct (Putting -> 1, Approach -> empty state, All ->
+2), modal exactly 375x812 covering the bottom nav with its button
+on-screen. Caught and fixed one real layout bug that way: mandatory
+scroll-snap pulled the first recommendation card 20px left of the text
+above it on phones (`scrollLeft` 20); matching `scroll-px-5` fixes it
+(both now at x=37). Pressing Start while signed out returns "Sign in to
+log drills." and the modal stays pre-start; `user_drills` confirmed
+still at 0 rows afterward. Did not sign in to run the real start ->
+complete -> history loop against Dillon's account (no credentials, and
+signup/login go to the remote Supabase host, not localhost). 132 tests,
+typecheck and `npm run build` clean.
+
 ## Files
 
 | File | Purpose |

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { RefreshCw, Pencil } from "lucide-react"
 import type { HandicapEntry } from "@/lib/supabase/types"
 import { recalculateHandicap, saveManualHandicap } from "@/app/handicap/actions"
@@ -26,6 +26,10 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
   const [editingManual, setEditingManual] = useState(false)
   const [manualValue, setManualValue] = useState("")
   const [manualNotes, setManualNotes] = useState("")
+  // calculation_date is formatted in the viewer's timezone, which the server
+  // (UTC) can't know -- render it only after mount to avoid a hydration mismatch.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   function recalc() {
     setError(null)
@@ -70,7 +74,7 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
               <p className="text-3xl font-bold tracking-tight text-[#22c55e]">{fmtIndex(displayIndex)}</p>
               <p className="mt-1 text-xs text-[#6b7280]">
                 {latest
-                  ? `${latest.source === "manual" ? "Manual entry" : `Calculated from ${latest.rounds_used} rounds`} · ${formatDate(latest.calculation_date)}`
+                  ? `${latest.source === "manual" ? "Manual entry" : `Calculated from ${latest.rounds_used} rounds`}${mounted ? ` · ${formatDate(latest.calculation_date)}` : ""}`
                   : "Live estimate — Recalculate to save it"}
               </p>
             </>
