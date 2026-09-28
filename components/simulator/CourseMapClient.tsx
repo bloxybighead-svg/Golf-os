@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
-import { AlertTriangle, Check, ChevronDown, Layers, Loader2, RefreshCw, RotateCcw, Undo2, X, type LucideIcon } from "lucide-react"
+import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight, Layers, Loader2, RefreshCw, RotateCcw, Undo2, X, type LucideIcon } from "lucide-react"
 import dynamic from "next/dynamic"
 import {
   bearingDeg,
@@ -293,6 +293,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [showRings, setShowRings] = useState(true)
   const [showZones, setShowZones] = useState(true)
   const [pickerOpen, setPickerOpen] = useState(false) // the course/hole/golfer sheet behind the title line
+  const [showMarks, setShowMarks] = useState(false) // hand-drawn marks list under the map, collapsed by default
   const [showLayersMenu, setShowLayersMenu] = useState(false) // map toggles and "Mark an area", behind one button
   const [sheetOpen, setSheetOpen] = useState(false) // phones: club table bottom sheet, collapsed by default
   const layersMenuRef = useRef<HTMLDivElement>(null)
@@ -605,6 +606,12 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     setAimNote(null)
   }
 
+  // Previous/next hole from the title line, wrapping 18 -> 1 and 1 -> 18.
+  function stepHole(dir: 1 | -1) {
+    if (holes.length === 0) return
+    const i = holes.findIndex((h) => h.id === holeId)
+    pickHole(i < 0 ? holes[0] : holes[(i + dir + holes.length) % holes.length])
+  }
   function chooseCourse(c: CourseHit) {
     setQuery("")
     setPickerOpen(false)
@@ -1022,6 +1029,14 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const best = ranking[0]
   const fromLabel = startLie === "tee" ? "the tee" : startLie === "oob" ? "out of bounds" : `the ${startLie}`
   const planReady = !!ball && !!pin
+
+  // "Hole 8" for the arrows' tooltips.
+  const holeIndex = holes.findIndex((h) => h.id === holeId)
+  const holeLabel = (offset: 1 | -1) => {
+    if (holes.length === 0) return ""
+    const h = holes[holeIndex < 0 ? 0 : (holeIndex + offset + holes.length) % holes.length]
+    return `Hole ${h.ref ?? "?"}`
+  }
 
   const hasCourseProblems = !!geometry && (geometry.scope === "radius" || holes.length === 0 || (holes.length > 0 && stats.greens === 0))
 
@@ -1606,18 +1621,42 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* ---- title: one tappable line that opens the course/hole sheet ---- */}
-      <button
-        type="button"
-        onClick={() => setPickerOpen(true)}
-        aria-haspopup="dialog"
-        className="sticky top-[calc(3rem+env(safe-area-inset-top))] z-30 -mx-4 flex w-[calc(100%+2rem)] min-h-[48px] items-center gap-1.5 border-b border-fg/[0.08] bg-page/95 px-4 py-2 text-left backdrop-blur-md md:static md:mx-0 md:w-auto md:max-w-full md:border-0 md:bg-transparent md:px-0 md:backdrop-blur-none"
-      >
-        <span className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg tabular-nums">
-          {chipParts.join(" · ")}
-        </span>
-        <ChevronDown size={18} className="shrink-0 text-muted" />
-      </button>
+      {/* ---- title: one tappable line that opens the course/hole sheet, plus previous/next hole ---- */}
+      <div className="sticky top-[calc(3rem+env(safe-area-inset-top))] z-30 -mx-4 flex w-[calc(100%+2rem)] min-h-[48px] items-center gap-2 border-b border-fg/[0.08] bg-page/95 px-4 py-1 backdrop-blur-md md:static md:mx-0 md:w-full md:border-0 md:bg-transparent md:px-0 md:backdrop-blur-none">
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          aria-haspopup="dialog"
+          className="flex min-h-[44px] min-w-0 items-center gap-1.5 text-left"
+        >
+          <span className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg tabular-nums">
+            {chipParts.join(" · ")}
+          </span>
+          <ChevronDown size={18} className="shrink-0 text-muted" />
+        </button>
+        {holes.length > 1 && (
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => stepHole(-1)}
+              aria-label={`Previous hole (${holeLabel(-1)})`}
+              title={holeLabel(-1)}
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-fg/[0.08] text-fg-2 transition-colors hover:border-fg/20 hover:text-fg md:h-9 md:w-9"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => stepHole(1)}
+              aria-label={`Next hole (${holeLabel(1)})`}
+              title={holeLabel(1)}
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-fg/[0.08] text-fg-2 transition-colors hover:border-fg/20 hover:text-fg md:h-9 md:w-9"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
+      </div>
 
       {loadState === "loading" && course && (
         <p className="flex items-center gap-1.5 text-xs text-muted">
@@ -1838,50 +1877,68 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             </div>
           )}
 
-          {localOnlyZones && localOnlyZones.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2 text-xs text-fg-2">
-              <span>
-                {localOnlyZones.length} mark{localOnlyZones.length === 1 ? "" : "s"} saved on this device only.
-              </span>
+          {(zones.length > 0 || (localOnlyZones?.length ?? 0) > 0) && (
+            <div className="text-xs">
               <button
-                onClick={syncLocalZonesToAccount}
-                disabled={syncingZones}
-                className="ml-auto flex shrink-0 items-center gap-1 rounded-md bg-accent px-2.5 py-1 font-semibold text-on-accent disabled:opacity-50"
+                type="button"
+                onClick={() => setShowMarks((v) => !v)}
+                aria-expanded={showMarks}
+                className="flex min-h-[44px] items-center gap-1.5 text-fg-3 hover:text-fg md:min-h-0"
               >
-                {syncingZones ? <Loader2 size={12} className="animate-spin" /> : null}
-                {syncingZones ? "Saving…" : "Save to my account"}
+                Your marks · <span className="tabular-nums">{zones.length}</span>
+                <ChevronDown size={14} className={`transition-transform ${showMarks ? "rotate-180" : ""}`} />
               </button>
-              <button onClick={() => setLocalOnlyZones(null)} className="shrink-0 text-muted hover:text-fg">
-                Not now
-              </button>
-            </div>
-          )}
-
-          {zones.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-              <span className="text-muted">Your marks{authUser ? "" : " (this device only)"}:</span>
-              {!authUser && (
-                <Link href="/login" className="text-accent hover:underline">
-                  Sign in to sync
-                </Link>
+              {showMarks && (
+                <div className="mt-1.5 space-y-2">
+                  {localOnlyZones && localOnlyZones.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2 text-fg-2">
+                      <span>
+                        {localOnlyZones.length} mark{localOnlyZones.length === 1 ? "" : "s"} saved on this device only.
+                      </span>
+                      <button
+                        onClick={syncLocalZonesToAccount}
+                        disabled={syncingZones}
+                        className="ml-auto flex shrink-0 items-center gap-1 rounded-md bg-accent px-2.5 py-1 font-semibold text-on-accent disabled:opacity-50"
+                      >
+                        {syncingZones ? <Loader2 size={12} className="animate-spin" /> : null}
+                        {syncingZones ? "Saving…" : "Save to my account"}
+                      </button>
+                      <button onClick={() => setLocalOnlyZones(null)} className="shrink-0 text-muted hover:text-fg">
+                        Not now
+                      </button>
+                    </div>
+                  )}
+                  {zones.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      {!authUser && (
+                        <span className="text-muted">
+                          On this device only.{" "}
+                          <Link href="/login" className="text-accent hover:underline">
+                            Sign in to sync
+                          </Link>
+                        </span>
+                      )}
+                      {zones.map((z) => (
+                        <span
+                          key={z.id}
+                          className="flex items-center gap-1.5 rounded-full border px-2 py-1 text-fg-2"
+                          style={{ borderColor: lieColor(z.lie, 0.44) }}
+                        >
+                          <span className="inline-block h-2 w-2 rounded-full" style={{ background: lieColor(z.lie) }} />
+                          {LIE_LABEL[z.lie]}
+                          <button
+                            onClick={() => deleteZone(z.id)}
+                            aria-label={`Remove marked ${LIE_LABEL[z.lie]} area`}
+                            className="text-muted hover:text-danger"
+                          >
+                            <X size={11} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
-              {zones.map((z) => (
-                <span
-                  key={z.id}
-                  className="flex items-center gap-1.5 rounded-full border px-2 py-1 text-fg-2"
-                  style={{ borderColor: lieColor(z.lie, 0.44) }}
-                >
-                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: lieColor(z.lie) }} />
-                  {LIE_LABEL[z.lie]}
-                  <button
-                    onClick={() => deleteZone(z.id)}
-                    aria-label={`Remove marked ${LIE_LABEL[z.lie]} area`}
-                    className="text-muted hover:text-danger"
-                  >
-                    <X size={11} />
-                  </button>
-                </span>
-              ))}
             </div>
           )}
         </div>

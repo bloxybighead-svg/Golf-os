@@ -1359,6 +1359,14 @@ four wedges, and bags interchangeable.
   "By handicap" -> the 11-club default; adding 7-Wood -> 12 rows, saved,
   survives reload. Build clean.
 
+Hole arrows + collapsed marks (2026-09-28): previous/next hole buttons sit
+right after the title line (44px on phones, wrap 18 -> 1 and 1 -> 18,
+tooltip names the target hole); "Your marks" under the map is now one
+"Your marks · N" toggle, closed by default, holding the mark chips, the
+sign-in-to-sync note and the "saved on this device only" prompt. Verified
+at 375px (no overflow; 7 -> 8 updates the recommendation; wrap both ways)
+and with a guest-mode test mark in the preview browser only (deleted after).
+
 ## Files
 
 | File | Purpose |
