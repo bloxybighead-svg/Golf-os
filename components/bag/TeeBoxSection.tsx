@@ -3,7 +3,7 @@ import { TBoxClient, type KnownCourse } from "@/components/simulator/TBoxClient"
 
 const GOLFER_NAME = "Dillon Cady"
 
-export default async function TBoxPage() {
+export async function TeeBoxSection() {
   const supabase = createClient()
 
   const [{ data: rounds }, { data: driverProfile }] = await Promise.all([

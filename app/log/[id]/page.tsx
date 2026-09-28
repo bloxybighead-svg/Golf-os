@@ -76,11 +76,11 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
 
       {/* Back nav */}
       <Link
-        href="/log"
+        href="/"
         className="inline-flex items-center gap-1.5 text-sm text-[#6b7280] hover:text-white transition-colors"
       >
         <ArrowLeft size={14} />
-        Practice Log
+        Play
       </Link>
 
       {/* Session header */}
@@ -90,7 +90,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
             <p className="text-xl font-bold tracking-tight text-white">{session.session_type}</p>
             <p className="mt-1 text-sm text-[#6b7280]">{formatDate(session.date)}</p>
           </div>
-          <DeleteSessionButton sessionId={session.id} redirectTo="/log" />
+          <DeleteSessionButton sessionId={session.id} redirectTo="/" />
         </div>
 
         {session.primary_goal && (

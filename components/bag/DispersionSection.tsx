@@ -4,7 +4,7 @@ import { SimulatorClient, type ClubOption, type SimShot } from "@/components/sim
 const GOLFER_NAME = "Dillon Cady"
 const SOURCE_LABEL = "calibrated"
 
-export default async function SimulatorPage() {
+export async function DispersionSection() {
   const supabase = createClient()
 
   const { data: profiles, error: profilesError } = await supabase

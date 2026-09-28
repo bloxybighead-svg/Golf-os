@@ -14,7 +14,7 @@ export async function startDrill(drillId: string): Promise<string> {
     .select("id")
     .single()
   if (error) throw new Error(error.message)
-  revalidatePath("/")
+  revalidatePath("/you")
   return data.id
 }
 
@@ -30,5 +30,5 @@ export async function completeDrill(runId: string, repsCompleted: number | null,
     .update({ completed_at: new Date().toISOString(), reps_completed: repsCompleted, notes: notes?.trim() || null })
     .eq("id", runId)
   if (error) throw new Error(error.message)
-  revalidatePath("/")
+  revalidatePath("/you")
 }

@@ -1,0 +1,53 @@
+import { Suspense } from "react"
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
+import { DispersionSection } from "@/components/bag/DispersionSection"
+import { CompareSection } from "@/components/bag/CompareSection"
+import { CustomGolferSection } from "@/components/bag/CustomGolferSection"
+import { TeeBoxSection } from "@/components/bag/TeeBoxSection"
+
+const VIEWS = [
+  { key: "dispersion", label: "Dispersion" },
+  { key: "compare", label: "Compare" },
+  { key: "custom", label: "Custom" },
+  { key: "tbox", label: "Tee box" },
+] as const
+
+type View = (typeof VIEWS)[number]["key"]
+
+// One tool at a time, picked by ?view=. Stacking all four would fetch every
+// simulated shot for every golfer (tens of thousands of rows) on each visit.
+export default function BagPage({ searchParams }: { searchParams?: { view?: string } }) {
+  const view: View = VIEWS.find((v) => v.key === searchParams?.view)?.key ?? "dispersion"
+
+  return (
+    <div className="space-y-5 pt-4">
+      <Link href="/you" className="inline-flex items-center gap-1.5 text-sm text-[#6b7280] transition-colors hover:text-white">
+        <ArrowLeft size={14} />
+        You
+      </Link>
+
+      <div role="group" aria-label="Bag tools" className="grid grid-cols-4 gap-1 rounded-xl border border-white/[0.06] bg-[#111111] p-1 md:inline-grid">
+        {VIEWS.map(({ key, label }) => (
+          <Link
+            key={key}
+            href={`/you/bag?view=${key}`}
+            aria-current={key === view ? "page" : undefined}
+            className={`rounded-lg px-2 py-2 text-center text-xs font-medium transition-colors md:px-4 ${
+              key === view ? "bg-[#22c55e]/15 text-[#22c55e]" : "text-[#9ca3af] hover:bg-white/[0.05] hover:text-white"
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
+      </div>
+
+      <Suspense key={view} fallback={<p className="py-10 text-center text-sm text-[#6b7280]">Loading…</p>}>
+        {view === "dispersion" && <DispersionSection />}
+        {view === "compare" && <CompareSection />}
+        {view === "custom" && <CustomGolferSection />}
+        {view === "tbox" && <TeeBoxSection />}
+      </Suspense>
+    </div>
+  )
+}

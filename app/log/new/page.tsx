@@ -115,7 +115,7 @@ export default function NewSessionPage() {
       setSaving(false)
       return
     }
-    router.push("/log")
+    router.push("/")
   }
 
   const saveSession = async () => {
@@ -164,7 +164,7 @@ export default function NewSessionPage() {
       }
     }
 
-    router.push("/log")
+    router.push("/")
   }
 
   // Block form overlay takes over full screen
@@ -185,7 +185,7 @@ export default function NewSessionPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Quick Log</h2>
           <button
-            onClick={() => router.push("/log")}
+            onClick={() => router.push("/")}
             className="text-sm text-[#6b7280] hover:text-white transition-colors"
           >
             Cancel
@@ -276,7 +276,7 @@ export default function NewSessionPage() {
                 ⚡ Quick Log
               </button>
               <button
-                onClick={() => router.push("/log")}
+                onClick={() => router.push("/")}
                 className="text-sm text-[#6b7280] hover:text-white transition-colors"
               >
                 Cancel

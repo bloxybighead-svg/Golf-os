@@ -21,7 +21,7 @@ async function fetchAllShots(
   return all
 }
 
-export default async function ComparePage() {
+export async function CompareSection() {
   const supabase = createClient()
 
   const { data: profiles, error: profilesError } = await supabase

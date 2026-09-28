@@ -269,12 +269,13 @@ curve_yds, session_id, is_mishit`) is already shaped for step 2's
 tables, and `carry_yds`/`offline_yds` are exactly the coordinates step
 3's renderer needs.
 
-### Navigation (2026-09-26)
+### Navigation (2026-09-28, R1)
 
-Four top tabs: Home, Practice (Log / Drills / Trends sub-tabs, URLs unchanged),
-Rounds, Course Planner (`/planner` map + sub-tabs Dispersion, Compare golfers,
-Custom golfer, Tee box). The old `/simulator/*` URLs redirect (next.config.mjs).
-Sub-nav lives in `components/SubNav.tsx` + per-section layouts.
+Three tabs, one `<nav>` in `components/NavBar.tsx` (bottom bar on phones,
+right side of the top bar on desktop): Play (`/`, also lit on `/planner`),
+Rounds, You (`/you`, `/you/bag`). No sub-navs. Account/sign-out lives on
+the You page. Retired URLs (`/log`, `/drills`, `/trends`, `/planner/*`
+sub-tabs, `/simulator/*`) redirect in next.config.mjs. See "R1" below.
 
 ### Phone / app-store readiness (2026-09-26)
 
@@ -1089,6 +1090,63 @@ still at 0 rows afterward. Did not sign in to run the real start ->
 complete -> history loop against Dillon's account (no credentials, and
 signup/login go to the remote Supabase host, not localhost). 132 tests,
 typecheck and `npm run build` clean.
+
+R1 -- cut the app to three tabs (2026-09-28): the spec named the tabs
+Play, Rounds, You but not where Play points. Chose `/` (the old Home
+page, retitled Play -- it already has Log Round and the Course Planner
+promo), with the tab also lit on `/planner`, since the course planner is
+the pre-round tool. The Handicap and Strengths & Weaknesses cards stay on
+Play (the spec only moved the two drill cards).
+
+- `NavBar.tsx`: one `<nav>` element and one item list instead of a
+  duplicated desktop header nav + mobile bottom nav. It is a sibling of
+  the `<header>`, not a child, because the header's `backdrop-blur`
+  makes it the containing block for `position: fixed` children. On
+  desktop the nav is transparent, overlays the top bar, and uses
+  `pointer-events-none` on the bar with `-auto` on the links so the logo
+  stays clickable. `AccountMenu` was removed from the header ("3
+  destinations total") and became `components/auth/AccountCard.tsx` on
+  `/you`; the root layout no longer fetches the user.
+- `/you`: AccountCard, RecommendedDrills, DrillHistory (moved, with
+  DrillModal, from `components/home/` to `components/you/`), and a Your
+  Bag list linking to the four tools.
+- `/you/bag`: the four former planner sub-pages, now section components
+  in `components/bag/` (moved with `git mv`, bodies unchanged). One tool
+  renders at a time, picked by `?view=dispersion|compare|custom|tbox`
+  from a 4-button in-page switcher (default dispersion, unknown values
+  fall back to it), inside `<Suspense key={view}>`. Stacking all four was
+  ruled out: Compare alone serializes ~6.9 MB (all 50,600 simulated shots
+  for both golfers), Dispersion ~2.2 MB.
+- Weakest-category lookup moved to `lib/supabase/loadCategoryTrends.ts`
+  so Play's TrendsCard and You's drill focus use the same last-10-rounds
+  query and can't disagree.
+- Redirects (all 307, verified with curl): `/log`, `/drills`, `/trends`
+  -> `/you`; `/planner/{dispersion,compare,custom,tbox}` and the old
+  `/simulator/{compare,custom,tbox}` -> `/you/bag?view=...`; `/simulator`
+  -> dispersion; `/simulator/course` -> `/planner`.
+- Deleted: `app/log/page.tsx` (the Practice Log list with the 3-button
+  toolbar), the `/drills` and `/trends` pages, all three practice
+  layouts, `app/planner/layout.tsx`, `PracticeSubNav`, `PlannerSubNav`
+  and `SubNav` (no other users).
+- Kept working but no longer linked from a list: `/log/new` (Play's Log
+  Session button; now returns to `/` after saving) and `/log/[id]` (back
+  link and delete now go to `/`).
+
+What R1 leaves with no way in (components/actions kept, not deleted, so a
+later step can fold them into You): the practice-session list and its CSV
+exports (`components/log/ExportButtons`), the personal drills library +
+Wedge Numbers (`components/drills/`, `app/drills/actions.ts`), and the
+Trends charts + milestones (`components/trends/TrendsClient.tsx`,
+`app/trends/actions.ts`). No data was touched -- only the pages.
+
+Verified: all 12 retired URLs redirect to the right place; each bag view
+renders its tool with the matching switcher button lit. Measured at
+375px: a single Main nav, three equal 125px tabs along the bottom, You
+lit on `/you`, no horizontal overflow, every tab hit-testable. At
+1400px: tabs right-aligned to the content edge (x=1314) inside the 64px
+top bar, the underline at the bar's bottom, Play lit on `/planner`, no
+sub-nav, logo clickable through the overlay. No console errors. 132
+tests, typecheck and `npm run build` clean (15 routes, down from 20).
 
 ## Files
 
