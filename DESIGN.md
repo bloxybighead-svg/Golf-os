@@ -62,14 +62,16 @@ Weather screen than to a SaaS dashboard.
 
 Done: three-tab nav (R1), drills under You, bag tools under `/you/bag`,
 every color a token (R2), system light/dark with the Appearance toggle,
-paper palette at 7:1, one accent, decorative gradients removed.
+paper palette at 7:1, one accent, decorative gradients removed. R3: Play
+is the planner at `/` and opens on a real hole with a recommendation
+(Pebble Beach 7 for a first visit, about 0.9s); the title line
+("Pebble Beach · Hole 7 · Par 3 · 108") opens one sheet for course, hole
+and shots; ball/aim/pin are a ball, crosshair and flag; the planner's
+instructions, tagline and "How it works" card are gone; handicap and
+strengths/weaknesses moved to You.
 
 Not yet applied (candidates for the next R-steps):
 
-- **Play isn't the planner yet.** R1 pointed Play at the old Home
-  dashboard (`/`), with the planner at `/planner` under the same tab.
-  Direction: Play *is* the planner, and the handicap, strengths/weaknesses
-  and next-drill content moves to You.
 - **My bag** is "Your Bag" on `/you/bag` with four tools (Dispersion,
   Compare, Custom, Tee box). Direction: clubs + dispersion, with Compare
   inside, and no mention of Custom golfer or Tee box.
@@ -77,12 +79,10 @@ Not yet applied (candidates for the next R-steps):
   tabular figures, and 500/700 weights are used widely.
 - **Cards and decoration:** the app is card-based with `shadow-sm`, pill
   chips, and icons beside most labels.
-- **Copy:** Play's subtitle is literally "Where your game stands right
-  now", the Insight card says "Log more rounds to unlock insights", the
-  planner has a "How it works" panel, and labels say "simulated shots" and
-  "Dispersion".
-- **Markers:** ball/aim/pin are lettered circles (B/A/P), not a ball,
-  crosshair and flag.
+- **Copy:** the bag tools still say "Shot Dispersion Simulator" and
+  "simulated shots"; empty states elsewhere are longer than five words.
+- **Dispersion ellipse:** the planner still draws two rings (50% and 90%),
+  not one ellipse.
 - **Touch targets:** `globals.css` enforces 40px on coarse pointers, not 44px.
 
 ## Tokens

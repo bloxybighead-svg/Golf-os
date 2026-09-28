@@ -18,7 +18,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "Course Planner", url: "/planner" },
+      { name: "Play", url: "/" },
       { name: "Log a session", url: "/log/new" },
     ],
   }

@@ -1,36 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
-import {
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  Circle,
-  Crosshair,
-  Eye,
-  Flag,
-  History,
-  Info,
-  Layers,
-  Loader2,
-  LocateFixed,
-  Map as MapIcon,
-  MapPin,
-  Navigation,
-  Pencil,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  SquarePen,
-  Target,
-  Undo2,
-  User,
-  X,
-  type LucideIcon,
-} from "lucide-react"
-import PageHeader from "@/components/PageHeader"
+import { AlertTriangle, Check, ChevronDown, Layers, Loader2, RefreshCw, RotateCcw, Undo2, X, type LucideIcon } from "lucide-react"
 import dynamic from "next/dynamic"
 import {
   bearingDeg,
@@ -56,6 +29,7 @@ import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/cour
 import { seededSample } from "@/lib/dispersion/stats"
 import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
 import type { Club } from "@/lib/golfer/tables"
+import { CALIBRATED_DEFAULT_BAG, CLUB_CATALOG, DEFAULT_BAG, fillBag, normalizeBag } from "@/lib/golfer/bag"
 import { createClient } from "@/lib/supabase/client"
 import { TendencyPicker } from "./TendencyPicker"
 import { EditHoleModal, type HoleCorrectionSubmission } from "./EditHoleModal"
@@ -118,6 +92,18 @@ const ALWAYS_SHOWN: Lie[] = ["green", "fairway", "rough"]
 // (or gets wrong): "fairway"/"rough"/"green" let you mark a SAFE area too,
 // e.g. to correct a wrongly-guessed out-of-bounds patch.
 const DRAW_KINDS: Lie[] = ["trees", "water", "bunker", "oob", "fairway", "rough", "green"]
+// A first visit opens straight onto a real, well-mapped hole with the ball on the
+// tee, so the recommendation is the first thing anyone sees -- no instructions.
+const DEFAULT_COURSE: CourseHit = {
+  id: "40977ee8-33ee-4195-b6a2-99a4ca83c2bc",
+  name: "Pebble Beach Golf Links",
+  city: "Pebble Beach",
+  state: "CA",
+  par: 72,
+  lat: 36.5685,
+  lng: -121.949,
+}
+const DEFAULT_HOLE_REF = 7
 const SETTINGS_KEY = "golfos.planner.v1"
 const RECENT_KEY = "golfos.recentCourses.v1"
 const COURSE_CACHE_MAX_AGE_MS = 30 * 24 * 3600 * 1000
@@ -282,6 +268,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [driverCarry, setDriverCarry] = useState("") // yards; blank = handicap average
   const [sevenIronCarry, setSevenIronCarry] = useState("")
   const [tendency, setTendency] = useState<Tendency>({ side: "auto", strength: "moderate" })
+  // Which clubs are in the bag, per shot source (the calibrated golfer and a
+  // handicap-based one carry different bags). Remembered on this device.
+  const [bags, setBags] = useState<{ calibrated: Club[]; handicap: Club[] }>({
+    calibrated: CALIBRATED_DEFAULT_BAG,
+    handicap: DEFAULT_BAG,
+  })
+  const bag = source === "calibrated" ? bags.calibrated : bags.handicap
 
   // --- positions ---
   const [holeId, setHoleId] = useState<string | null>(null)
@@ -299,13 +292,10 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const [showTrouble, setShowTrouble] = useState(false)
   const [showRings, setShowRings] = useState(true)
   const [showZones, setShowZones] = useState(true)
-  const [showSettings, setShowSettings] = useState(false) // phones: golfer settings are collapsed by default
-  const [setupOpen, setSetupOpen] = useState(true) // phones: course search + golfer settings collapse once a hole is picked
-  const [showGeomInfo, setShowGeomInfo] = useState(false) // phones: tap-to-reveal for the course-wide mapped-feature counts
-  const [showLayersMenu, setShowLayersMenu] = useState(false) // phones: overflow menu for the less-used map toggles
+  const [pickerOpen, setPickerOpen] = useState(false) // the course/hole/golfer sheet behind the title line
+  const [showLayersMenu, setShowLayersMenu] = useState(false) // map toggles and "Mark an area", behind one button
   const [sheetOpen, setSheetOpen] = useState(false) // phones: club table bottom sheet, collapsed by default
   const layersMenuRef = useRef<HTMLDivElement>(null)
-  const layersBtnRef = useRef<HTMLButtonElement>(null)
   // Rendered through a portal (see below), so its position is tracked in viewport
   // coordinates rather than relying on CSS positioning relative to an ancestor.
   const [layersMenuPos, setLayersMenuPos] = useState<{ top: number; left: number } | null>(null)
@@ -327,7 +317,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   })
 
   // ---------- remembered settings and recent courses (this device only) ----------
+  // Runs once. The guard matters in development, where React runs mount effects
+  // twice: the second pass would read back the "course, no hole yet" position the
+  // first pass just saved and open hole 1 instead of the intended one.
+  const initRef = useRef(false)
   useEffect(() => {
+    if (initRef.current) return
+    initRef.current = true
     try {
       const raw = localStorage.getItem(SETTINGS_KEY)
       if (raw) {
@@ -337,12 +333,18 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         if (typeof v.driverCarry === "string") setDriverCarry(v.driverCarry.slice(0, 4))
         if (typeof v.sevenIronCarry === "string") setSevenIronCarry(v.sevenIronCarry.slice(0, 4))
         if (v.tendency && SIDES.includes(v.tendency.side) && STRENGTHS.includes(v.tendency.strength)) setTendency(v.tendency)
+        if (v.bags && typeof v.bags === "object") {
+          const cal = Array.isArray(v.bags.calibrated) ? normalizeBag(v.bags.calibrated) : []
+          const hcp = Array.isArray(v.bags.handicap) ? normalizeBag(v.bags.handicap) : []
+          setBags({ calibrated: cal.length ? cal : CALIBRATED_DEFAULT_BAG, handicap: hcp.length ? hcp : DEFAULT_BAG })
+        }
       }
       const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")
       if (Array.isArray(r)) setRecent(r.filter((c) => c && typeof c.id === "string" && typeof c.name === "string").slice(0, 5))
-      // Resume where the golfer left off instead of opening to an empty search every time.
+      // Resume where the golfer left off; a first visit opens on the default hole.
       const last = loadLastPosition()
-      if (last) void loadCourse(last.course, { autoHoleId: last.holeId ?? undefined })
+      if (last) void loadCourse(last.course, last.holeId ? { autoHoleId: last.holeId } : { autoFirstHole: true })
+      else void loadCourse(DEFAULT_COURSE, { autoHoleRef: DEFAULT_HOLE_REF })
     } catch {
       /* private mode or corrupt data: start from defaults */
     }
@@ -353,11 +355,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   useEffect(() => {
     if (!hydrated) return
     try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ source, handicap, driverCarry, sevenIronCarry, tendency }))
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ source, handicap, driverCarry, sevenIronCarry, tendency, bags }))
     } catch {
       /* storage full or blocked: settings just won't be remembered */
     }
-  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, tendency])
+  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, tendency, bags])
 
   // Save hand-marked zones for the loaded course whenever they change (guest/offline
   // fallback -- while signed in, marks are already the source of truth in Supabase,
@@ -382,11 +384,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Keep the selected hole's button visible in the scrolling strip.
+  // Escape closes the course/hole sheet.
   useEffect(() => {
-    if (!holeId) return
-    document.getElementById(`hole-btn-${holeId}`)?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" })
-  }, [holeId])
+    if (!pickerOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPickerOpen(false)
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [pickerOpen])
 
   // Stop GPS following when leaving the page.
   useEffect(() => {
@@ -395,7 +399,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     }
   }, [])
 
-  // Close the phone "Layers" menu on an outside tap. A visual backdrop element would need its
+  // Close the Layers menu on an outside tap. A visual backdrop element would need its
   // z-index compared against the map's own stacking context (the map wrapper below establishes
   // one), which turned out unreliable -- a plain listener sidesteps that entirely.
   useEffect(() => {
@@ -435,7 +439,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     }
   }, [query])
 
-  async function loadCourse(c: CourseHit, opts?: { autoHoleId?: string }) {
+  type AutoHole = { autoHoleId?: string; autoHoleRef?: number; autoFirstHole?: boolean }
+
+  async function loadCourse(c: CourseHit, opts?: AutoHole) {
     setCourse(c)
     setHits([])
     setGeometry(null)
@@ -466,7 +472,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
    * the golfer's current ball/aim/pin exactly where they are, not reset the whole page
    * the way picking a *different* course does.
    */
-  async function fetchGeometry(c: CourseHit, opts?: { force?: boolean; autoHoleId?: string }) {
+  async function fetchGeometry(c: CourseHit, opts?: { force?: boolean } & AutoHole) {
     const cacheKey = `golfos.course.${c.id}.v${GEOMETRY_VERSION}`
     const apply = (g: CourseGeometry) => {
       setGeometry(g)
@@ -474,9 +480,16 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       setFit({ bounds: boundsOf(pts.length ? pts : [{ lat: c.lat as number, lng: c.lng as number }]), key: `course-${c.id}` })
       setLoadError("")
       setLoadState("idle")
-      // Resuming a remembered position (mount-time auto-load only): pickHole does its
-      // own state resets, which is fine here since nothing golfer-specific was set yet.
-      const target = opts?.autoHoleId ? g.holes.find((h) => h.id === opts.autoHoleId) : null
+      // Stand on a hole straight away so a recommendation shows without any taps:
+      // the remembered hole, the default one, or hole 1 of a newly picked course.
+      // pickHole does its own state resets, fine since nothing golfer-specific was set yet.
+      const target = opts?.autoHoleId
+        ? g.holes.find((h) => h.id === opts.autoHoleId)
+        : opts?.autoHoleRef
+          ? g.holes.find((h) => h.ref === opts.autoHoleRef)
+          : opts?.autoFirstHole
+            ? g.holes[0]
+            : undefined
       if (target) pickHole(target)
     }
     // Saved on this device (great for a round with weak signal): use it if it is recent,
@@ -582,6 +595,22 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     }
   }
 
+  function toggleClub(c: Club) {
+    const current = source === "calibrated" ? bags.calibrated : bags.handicap
+    const has = current.includes(c)
+    if (has && current.length === 1) return // a bag needs at least one club
+    const next = normalizeBag(has ? current.filter((x) => x !== c) : [...current, c])
+    setBags((prev) => (source === "calibrated" ? { ...prev, calibrated: next } : { ...prev, handicap: next }))
+    setClubChoice("auto")
+    setAimNote(null)
+  }
+
+  function chooseCourse(c: CourseHit) {
+    setQuery("")
+    setPickerOpen(false)
+    void loadCourse(c, { autoFirstHole: true })
+  }
+
   function remember(c: CourseHit) {
     setRecent((prev) => {
       const next = [c, ...prev.filter((x) => x.id !== c.id)].slice(0, 5)
@@ -595,9 +624,21 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   }
 
   // ---------- golfer shots ----------
+  // Clubs in the bag with no measured shots are estimated from the golfer's
+  // nearest measured club (see fillBag); this remembers which, for the UI.
+  const calibratedBag = useMemo(
+    () => (source === "calibrated" && calibrated ? fillBag(calibrated, bag) : null),
+    [source, calibrated, bag]
+  )
+  const estimatedFrom = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const c of calibratedBag ?? []) if (c.estimatedFrom) m[c.club] = c.estimatedFrom
+    return m
+  }, [calibratedBag])
+
   const clubShots: ClubShots[] = useMemo(() => {
-    if (source === "calibrated" && calibrated) {
-      return calibrated.map((c) => ({ club: c.club, shots: c.shots }))
+    if (calibratedBag) {
+      return calibratedBag.map((c) => ({ club: c.club, shots: c.shots }))
     }
     // Blank or out-of-range carries are ignored, so a half-typed number doesn't warp the bag.
     const known: Partial<Record<Club, number>> = {}
@@ -607,8 +648,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     if (i7 >= 60 && i7 <= 240) known["7-Iron"] = i7
     const all = generateCustomGolferShots(
       { handicapIndex: handicap, knownCarries: known, tendency },
-      HANDICAP_SHOTS_PER_CLUB * 12,
-      42
+      HANDICAP_SHOTS_PER_CLUB * bag.length,
+      42,
+      bag
     )
     const by = new Map<string, { carryYds: number; offlineYds: number }[]>()
     for (const s of all) {
@@ -617,7 +659,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       by.set(s.club, list)
     }
     return Array.from(by, ([club, shots]) => ({ club, shots }))
-  }, [source, calibrated, handicap, driverCarry, sevenIronCarry, tendency])
+  }, [calibratedBag, handicap, driverCarry, sevenIronCarry, tendency, bag])
 
   const longestCarry = useMemo(() => {
     let best = 0
@@ -650,12 +692,6 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   }
 
   function pickHole(h: CourseHole) {
-    // On a phone, collapse the search/settings panel into the sticky header and
-    // bring the map into view -- otherwise picking a hole doesn't feel like it did anything.
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
-      setSetupOpen(false)
-      setTimeout(() => mapWrapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 60)
-    }
     setHoleId(h.id)
     setBall(h.line[0])
     setAimManual(null)
@@ -987,233 +1023,207 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   const fromLabel = startLie === "tee" ? "the tee" : startLie === "oob" ? "out of bounds" : `the ${startLie}`
   const planReady = !!ball && !!pin
 
-  // Shared between the desktop sidebar and the phone layout below it (phones move
-  // the table itself into a bottom sheet, but everything else renders the same way).
-  const howItWorksCard = (
-    <div className="rounded-2xl border border-fg/[0.07] bg-surface p-5 text-sm text-fg-3">
-      <p className="mb-1 flex items-center gap-2 font-semibold text-fg">
-        <Info size={15} className="text-accent" /> How it works
-      </p>
-      {holes.length > 0
-        ? "Pick a hole number (or click a hole line on the map) to stand on its tee, then drag the ball anywhere."
-        : course
-          ? "Set the ball, then the pin, using the buttons above the map."
-          : "Search for a course, choose a hole, and the planner ranks every club by strokes gained."}
-    </div>
-  )
+  const hasCourseProblems = !!geometry && (geometry.scope === "radius" || holes.length === 0 || (holes.length > 0 && stats.greens === 0))
 
-  const planCard = (
-    <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4 shadow-lg shadow-black/20">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-sm font-semibold text-fg">
-          {hole
-            ? `Hole ${hole.ref ?? "?"}${hole.par ? ` · Par ${hole.par}` : ""}${hole.yardageYds ? ` · ${hole.yardageYds} yd` : ""}`
-            : "Free placement"}
-          {hole && !!hole.correctedFields?.length && (
-            <span
-              className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent"
-              title={`Corrected: ${hole.correctedFields.join(", ")}`}
-            >
-              corrected
+  // The one-line title: "Pebble Beach · Hole 7 · Par 3 · 108". Tapping it opens the course/hole sheet.
+  const holeYards = hole ? hole.yardageYds ?? (pin ? Math.round(distanceYds(hole.line[0], pin)) : null) : null
+  const chipParts = course
+    ? [
+        shortCourseName(course.name),
+        ...(hole
+          ? [`Hole ${hole.ref ?? "?"}`, ...(hole.par ? [`Par ${hole.par}`] : []), ...(holeYards != null ? [String(holeYards)] : [])]
+          : holes.length > 0
+            ? ["Pick a hole"]
+            : []),
+      ]
+    : [loadState === "loading" ? "Loading course…" : "Find a course"]
+
+  const planCard =
+    best && chosen ? (
+      <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="label-xs">{clubChoice === "auto" || chosen.club === best.club ? "Best club" : "Your pick"}</p>
+          <p className="text-xs text-muted">
+            From {fromLabel}
+            {hole && !!hole.correctedFields?.length && (
+              <span title={`Corrected: ${hole.correctedFields.join(", ")}`}> · corrected</span>
+            )}
+            {hole && (
+              <>
+                {" · "}
+                <button onClick={() => setEditingHole(true)} className="hover:text-fg hover:underline">
+                  Edit hole
+                </button>
+              </>
+            )}
+          </p>
+        </div>
+
+        <div className="mt-1 flex items-end justify-between gap-4">
+          <p className="min-w-0 truncate text-5xl font-semibold leading-none tracking-tight text-fg tabular-nums">{chosen.club}</p>
+          <p className="shrink-0 text-right">
+            <span className="block text-4xl font-semibold leading-none text-accent tabular-nums">
+              {chosen.expectedStrokes.toFixed(2)}
             </span>
+            <span className="text-xs text-muted">strokes to hole out</span>
+          </p>
+        </div>
+
+        <dl className="mt-4 grid grid-cols-3 divide-x divide-fg/[0.08] border-y border-fg/[0.08] py-2 text-center">
+          <Stat label="To aim" value={distAim != null ? Math.round(distAim) : null} />
+          <Stat label={aimIsPin ? "Aim is pin" : "Left"} value={aimIsPin ? 0 : aimToPin != null ? Math.round(aimToPin) : null} />
+          <Stat label="To pin" value={distPin != null ? Math.round(distPin) : null} />
+        </dl>
+
+        <p className="mt-2 text-xs text-fg-3">
+          Averages <span className="tabular-nums">{Math.round(chosen.meanCarryYds)}</span> yd
+          {avgLeft != null && (
+            <>
+              , leaving <span className="font-semibold text-fg tabular-nums">{Math.round(avgLeft)}</span> yd
+            </>
           )}
-          {hole && (
-            <button
-              onClick={() => setEditingHole(true)}
-              title="Edit hole data"
-              className="flex items-center gap-1 text-[10px] font-medium text-muted hover:text-fg"
-            >
-              <SquarePen size={11} /> Edit
-            </button>
+          .
+          {estimatedFrom[chosen.club] && <> Estimated from your {estimatedFrom[chosen.club]}.</>}
+          {clubChoice !== "auto" && chosen.club !== best.club && (
+            <>
+              {" "}
+              {best.club} saves{" "}
+              <span className="font-semibold text-accent tabular-nums">{(chosen.expectedStrokes - best.expectedStrokes).toFixed(2)}</span>{" "}
+              strokes.
+            </>
           )}
         </p>
-        <p className="text-[11px] text-muted">from {fromLabel}</p>
-      </div>
 
-      {holeQuality && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-          {(
-            [
-              ["fairway", "Fairway", holeQuality.fairway],
-              ["greens", "Greens", holeQuality.greens],
-              ["bunkers", "Bunkers", holeQuality.bunkers],
-              ["water", "Water", holeQuality.water],
-            ] as [keyof HoleDataQuality, string, SurfaceStatus][]
-          ).map(([key, label, status]) => {
-            const icon =
-              status === "mapped" || status === "confirmed-absent" ? (
-                <Check size={12} className="text-accent" />
-              ) : status === "missing" ? (
-                <X size={12} className="text-danger" />
+        {holeQuality && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+            {(
+              [
+                ["fairway", "Fairway", holeQuality.fairway],
+                ["greens", "Greens", holeQuality.greens],
+                ["bunkers", "Bunkers", holeQuality.bunkers],
+                ["water", "Water", holeQuality.water],
+              ] as [keyof HoleDataQuality, string, SurfaceStatus][]
+            ).map(([key, label, status]) => {
+              const icon =
+                status === "mapped" || status === "confirmed-absent" ? (
+                  <Check size={12} className="text-accent" />
+                ) : status === "missing" ? (
+                  <X size={12} className="text-danger" />
+                ) : (
+                  <AlertTriangle size={12} className="text-warn" />
+                )
+              return status === "confirmed-absent" ? (
+                <button
+                  key={key}
+                  onClick={() => setHazardConfirmed(key as ConfirmableHazard, false)}
+                  className="flex items-center gap-1 hover:opacity-75"
+                  title={STATUS_TITLE[status]}
+                >
+                  {icon}
+                  <span className="text-fg-3">{label}</span>
+                </button>
               ) : (
-                <AlertTriangle size={12} className="text-warn" />
+                <span key={key} className="flex items-center gap-1" title={STATUS_TITLE[status]}>
+                  {icon}
+                  <span className="text-fg-3">{label}</span>
+                </span>
               )
-            return status === "confirmed-absent" ? (
-              <button
-                key={key}
-                onClick={() => setHazardConfirmed(key as ConfirmableHazard, false)}
-                className="flex items-center gap-1 hover:opacity-75"
-                title={STATUS_TITLE[status]}
-              >
-                {icon}
-                <span className="text-fg-3">{label}</span>
-              </button>
-            ) : (
-              <span key={key} className="flex items-center gap-1" title={STATUS_TITLE[status]}>
-                {icon}
-                <span className="text-fg-3">{label}</span>
-              </span>
-            )
-          })}
-          {geometry && (
-            // Phones don't show the course-wide counts row above the map (it's hidden
-            // there to save space) -- this info icon is where that count moved to.
+            })}
+          </div>
+        )}
+        {holeQuality &&
+          (holeQuality.fairway === "estimated" ||
+            holeQuality.bunkers === "missing" ||
+            holeQuality.water === "missing" ||
+            holeQuality.greens === "missing") && (
+            <div className="mt-1.5 space-y-1 text-[11px] text-fg-3">
+              {holeQuality.fairway === "estimated" && (
+                <p>
+                  Fairway estimated.{" "}
+                  <button onClick={() => startDraw("fairway")} className="font-semibold text-accent hover:underline">
+                    Mark fairway
+                  </button>
+                </p>
+              )}
+              {holeQuality.bunkers === "missing" && (
+                <p>
+                  Bunkers not mapped.{" "}
+                  <button onClick={() => startDraw("bunker")} className="font-semibold text-accent hover:underline">
+                    Mark bunkers
+                  </button>
+                  {" · "}
+                  <button onClick={() => setHazardConfirmed("bunkers", true)} className="hover:text-fg hover:underline">
+                    None here
+                  </button>
+                </p>
+              )}
+              {holeQuality.water === "missing" && (
+                <p>
+                  Water not mapped.{" "}
+                  <button onClick={() => startDraw("water")} className="font-semibold text-accent hover:underline">
+                    Mark water
+                  </button>
+                  {" · "}
+                  <button onClick={() => setHazardConfirmed("water", true)} className="hover:text-fg hover:underline">
+                    None here
+                  </button>
+                </p>
+              )}
+              {holeQuality.greens === "missing" && (
+                <p>
+                  Green not mapped.{" "}
+                  <button onClick={() => startDraw("green")} className="font-semibold text-accent hover:underline">
+                    Mark green
+                  </button>
+                </p>
+              )}
+            </div>
+          )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            onClick={findBestAim}
+            className="h-11 rounded-lg border border-accent/50 px-3 text-xs font-semibold text-accent transition-colors hover:bg-accent/10 md:h-9"
+          >
+            Find best aim
+          </button>
+          {clubChoice !== "auto" && (
             <button
-              type="button"
-              onClick={() => setShowGeomInfo((v) => !v)}
-              aria-label="Course geometry counts"
-              className="flex items-center gap-1 text-muted hover:text-fg md:hidden"
+              onClick={() => setClubChoice("auto")}
+              className="h-11 rounded-lg border border-fg/[0.08] px-3 text-xs text-fg-3 hover:text-fg md:h-9"
             >
-              <Info size={12} />
+              Back to best club
             </button>
           )}
         </div>
-      )}
-      {showGeomInfo && geometry && (
-        <p className="mt-1 text-[11px] text-muted md:hidden">
-          {holes.length} holes · {stats.greens} greens · {stats.fairways} fairways · {stats.bunkers} bunkers ·{" "}
-          {stats.water} water · {stats.trees} tree areas
-        </p>
-      )}
-      {holeQuality &&
-        (holeQuality.fairway === "estimated" ||
-          holeQuality.bunkers === "missing" ||
-          holeQuality.water === "missing" ||
-          holeQuality.greens === "missing") && (
-          <div className="mt-1.5 space-y-1 text-[11px] text-warn/90">
-            {holeQuality.fairway === "estimated" && (
-              <p>
-                Fairway isn&rsquo;t mapped here — using an estimated corridor.{" "}
-                <button onClick={() => startDraw("fairway")} className="font-semibold text-accent hover:underline">
-                  Mark fairway
-                </button>
-              </p>
-            )}
-            {holeQuality.bunkers === "missing" && (
-              <p>
-                Bunkers not mapped — actual SG may vary.{" "}
-                <button onClick={() => startDraw("bunker")} className="font-semibold text-accent hover:underline">
-                  Mark bunkers
-                </button>{" "}
-                ·{" "}
-                <button
-                  onClick={() => setHazardConfirmed("bunkers", true)}
-                  className="text-fg-3 hover:text-fg hover:underline"
-                >
-                  No bunkers here
-                </button>
-              </p>
-            )}
-            {holeQuality.water === "missing" && (
-              <p>
-                Water not mapped — actual SG may vary.{" "}
-                <button onClick={() => startDraw("water")} className="font-semibold text-accent hover:underline">
-                  Mark water
-                </button>{" "}
-                ·{" "}
-                <button
-                  onClick={() => setHazardConfirmed("water", true)}
-                  className="text-fg-3 hover:text-fg hover:underline"
-                >
-                  No water here
-                </button>
-              </p>
-            )}
-            {holeQuality.greens === "missing" && (
-              <p>
-                Green not mapped — actual SG may vary.{" "}
-                <button onClick={() => startDraw("green")} className="font-semibold text-accent hover:underline">
-                  Mark green
-                </button>
-              </p>
-            )}
-          </div>
-        )}
-
-      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <StatTile label="Ball to aim" value={distAim != null ? Math.round(distAim) : null} />
-        <StatTile label={aimIsPin ? "Aim is pin" : "Left after aim"} value={aimIsPin ? 0 : aimToPin != null ? Math.round(aimToPin) : null} />
-        <StatTile label="Ball to pin" value={distPin != null ? Math.round(distPin) : null} />
-      </div>
-
-      {best && chosen && (
-        <div className="mt-4 rounded-xl border border-accent/25 bg-accent/[0.07] p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-            {clubChoice === "auto" || chosen.club === best.club ? "Best club" : "Selected club"}
-          </p>
-          <p className="mt-0.5 text-2xl font-bold text-fg">{chosen.club}</p>
-          <p className="mt-1 text-sm font-semibold text-fg">
-            Expected {chosen.expectedStrokes.toFixed(2)} strokes to hole out
-          </p>
-          <p className="mt-1 text-xs text-fg-3">
-            Averages {Math.round(chosen.meanCarryYds)} yd
-            {avgLeft != null && (
-              <>
-                , leaving about <span className="font-semibold text-fg">{Math.round(avgLeft)} yd</span>
-              </>
-            )}
-            .
-          </p>
-          {clubChoice !== "auto" && chosen.club !== best.club && (
-            <p className="mt-1 text-xs text-fg-3">
-              The planner prefers <span className="font-semibold text-fg">{best.club}</span>, saving{" "}
-              <span className="font-semibold text-accent">{(chosen.expectedStrokes - best.expectedStrokes).toFixed(2)}</span>{" "}
-              strokes.
+        {/* Reserves the space a result takes so tapping "Find best aim" doesn't shift anything
+            below it and cause a mis-tap -- a real problem on a phone. */}
+        <div className="mt-2 min-h-[2.75rem] text-xs text-fg-3">
+          {aimNote && (
+            <p>
+              {aimNote.optimal ? (
+                <>Already the best aim for the {aimNote.club}.</>
+              ) : (
+                <>
+                  Moved {Math.abs(aimNote.offsetYds)} yd {aimNote.offsetYds < 0 ? "left" : "right"}, saving{" "}
+                  <span className="font-semibold text-accent tabular-nums">{aimNote.savedStrokes.toFixed(2)}</span> strokes.
+                </>
+              )}
             </p>
           )}
         </div>
-      )}
+      </div>
+    ) : null
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          onClick={findBestAim}
-          disabled={!chosen}
-          className="flex items-center gap-1.5 rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent/20 disabled:opacity-40"
-        >
-          <Crosshair size={13} /> Find best aim for {chosen?.club ?? "club"}
-        </button>
-        {clubChoice !== "auto" && (
-          <button
-            onClick={() => setClubChoice("auto")}
-            className="rounded-lg border border-fg/[0.08] px-3 py-1.5 text-xs text-fg-3 hover:text-fg"
-          >
-            Back to recommended
-          </button>
-        )}
-      </div>
-      {/* Reserves the space a result takes so tapping "Find best aim" doesn't shift anything
-          below it and cause a mis-tap -- a real problem on a phone. */}
-      <div className="mt-2 min-h-[2.75rem] text-xs text-fg-3">
-        {aimNote && (
-          <p>
-            {aimNote.optimal ? (
-              <>Current aim is already optimal for the {aimNote.club}.</>
-            ) : (
-              <>
-                Best aim for the {aimNote.club}: {Math.abs(aimNote.offsetYds)} yd {aimNote.offsetYds < 0 ? "left" : "right"} of
-                the old aim, saving about{" "}
-                <span className="font-semibold text-accent">+{aimNote.savedStrokes.toFixed(2)} strokes per shot</span>.
-              </>
-            )}
-          </p>
-        )}
-      </div>
-    </div>
-  )
+  // No hole lines to stand on: the golfer places the ball and pin by hand.
+  const placePrompt =
+    course && geometry && !planReady ? (
+      <p className="py-2 text-sm text-fg-3">{!ball ? "Tap the map to place the ball." : "Now tap to place the pin."}</p>
+    ) : null
 
   const clubTable = (
-    <div className="overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface shadow-lg shadow-black/20">
-      <table className="w-full text-xs">
+    <div className="overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface">
+      <table className="w-full text-xs tabular-nums">
         <thead>
           <tr className="border-b border-fg/[0.06] text-left text-muted">
             <th className="px-3 py-2.5 font-medium">Club</th>
@@ -1227,12 +1237,12 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               className="px-3 py-2.5 text-right font-medium"
               title={`Extra strokes to hole out vs the best club here (${best?.club ?? "—"}), on the same shots`}
             >
-              SG (vs {best?.club ?? "best"})
+              vs {best?.club ?? "best"}
             </th>
           </tr>
         </thead>
         <tbody>
-          {ranking.map((r, i) => (
+          {ranking.map((r) => (
             <tr
               key={r.club}
               onClick={() => setClubChoice(r.club)}
@@ -1240,9 +1250,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 chosen?.club === r.club ? "bg-accent/10" : ""
               }`}
             >
-              <td className="whitespace-nowrap px-3 text-fg">
+              <td className="whitespace-nowrap px-3 font-semibold text-fg">
                 {r.club}
-                {i === 0 && <span className="ml-1 text-[10px] text-accent">★</span>}
+                {estimatedFrom[r.club] && (
+                  <span className="ml-1 text-[10px] font-normal text-muted" title={`No ${r.club} shots on record: estimated from your ${estimatedFrom[r.club]}`}>
+                    est.
+                  </span>
+                )}
               </td>
               <td className="px-1 text-right text-fg-3">{Math.round(r.meanCarryYds)}</td>
               {shownLies.map((l) => (
@@ -1250,9 +1264,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   {pct(r.lieShare[l])}
                 </td>
               ))}
-              <td className="px-3 text-right font-semibold text-accent">
-                +{(r.expectedStrokes - best.expectedStrokes).toFixed(2)}
-              </td>
+              <td className="px-3 text-right font-semibold text-fg">+{(r.expectedStrokes - best.expectedStrokes).toFixed(2)}</td>
             </tr>
           ))}
         </tbody>
@@ -1265,309 +1277,367 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       <summary className="cursor-pointer select-none font-medium text-fg-2">How this is scored</summary>
       <div className="mt-2 space-y-2">
         <p>
-          Every simulated shot is placed on the map and given a lie (green, fairway, rough, bunker, trees, water or out of bounds).
+          Every shot is placed on the map and given a lie (green, fairway, rough, bunker, trees, water or out of bounds).
           Its value is the PGA TOUR average number of strokes to hole out from that lie and distance, from Mark Broadie&rsquo;s
           published benchmark (<em>Assessing Golfer Performance on the PGA TOUR</em>, Interfaces 2012, Table 9; putting from{" "}
-          <em>Putts Gained</em>, 2011). &ldquo;Expected strokes to hole out&rdquo; is that value, plus one for the shot itself.
+          <em>Putts Gained</em>, 2011). &ldquo;Strokes to hole out&rdquo; is that value, plus one for the shot itself.
         </p>
         <p>
-          The table&rsquo;s &ldquo;SG&rdquo; column compares every club against the best one HERE, not against a tour player —
-          the best club is always +0.00 and every other club shows how many extra strokes it&rsquo;s expected to cost, so the
-          numbers are always positive and about the choice in front of you, not a tour-average comparison that&rsquo;s usually
-          negative for a handicap golfer.
+          The table&rsquo;s last column compares every club against the best one here, not against a tour player: the best
+          club is always +0.00 and every other club shows how many extra strokes it&rsquo;s expected to cost.
         </p>
         <p>
           Water costs one penalty stroke plus a drop; out of bounds is stroke and distance; trees use the benchmark&rsquo;s
           &ldquo;recovery&rdquo; column. These rules are my assumptions, since the benchmark doesn&rsquo;t cover them.
         </p>
         <p>
-          Shapes come from OpenStreetMap volunteers, so anything untraced counts as rough — the badge above the stats shows what
-          is (✓), isn&rsquo;t (✗), or is only estimated (⚠) for this hole; use &ldquo;Mark area&rdquo; (or the badge&rsquo;s own
-          links) to outline trees, water, out of bounds, or a safe patch the map got wrong. Your marks beat the map, and a missing
-          fairway is estimated as a corridor down the middle until you draw the real one. Slope, wind and elevation still
-          aren&rsquo;t modelled. &ldquo;Find best aim&rdquo; re-checks its own suggestion on a held-out half of the shots it didn&rsquo;t
-          use to pick that aim, so the reported saving isn&rsquo;t just the search grading its own winner.
+          Shapes come from OpenStreetMap volunteers, so anything untraced counts as rough. The ✓ / ⚠ / ✗ line shows what is
+          mapped, estimated or missing for this hole; Layers → Mark an area outlines trees, water, out of bounds, or a safe
+          patch the map got wrong. Your marks beat the map, and a missing fairway is estimated as a corridor down the middle
+          until you draw the real one. Slope, wind and elevation aren&rsquo;t modelled. &ldquo;Find best aim&rdquo; re-checks
+          its suggestion on a held-out half of the shots it didn&rsquo;t use to pick that aim, so the reported saving
+          isn&rsquo;t the search grading its own winner.
         </p>
       </div>
     </details>
   )
 
-  return (
-    <div className="space-y-5">
-      <PageHeader
-        icon={MapIcon}
-        title="Course Planner"
-        subtitle={
-          // Explanatory copy is fine to lose on a phone -- it's fluff once you already know the app,
-          // and the map should win the space instead.
-          <span className="hidden md:inline">
-            Pick any course, stand anywhere, and see where each club's simulated shots land — scored in strokes
-            gained.
-          </span>
-        }
-      />
-
-      {/* ---- setup ---- */}
-      {course && (
-        <button
-          type="button"
-          onClick={() => setSetupOpen((v) => !v)}
-          aria-expanded={setupOpen}
-          className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 flex w-[calc(100%+2rem)] items-center justify-between gap-2 border-b border-fg/[0.08] bg-page/95 px-4 py-2.5 text-left backdrop-blur-md md:hidden"
-        >
-          <span className="flex min-w-0 items-center gap-1.5 truncate text-sm">
-            <Flag size={13} className="shrink-0 text-accent" />
-            <span className="truncate font-semibold text-fg">{course.name}</span>
-            {hole && <span className="shrink-0 text-fg-3">· Hole {hole.ref ?? "?"}</span>}
-          </span>
-          <ChevronDown size={16} className={`shrink-0 text-fg-3 transition-transform ${setupOpen ? "rotate-180" : ""}`} />
-        </button>
-      )}
+  const layersMenu =
+    showLayersMenu &&
+    layersMenuPos &&
+    createPortal(
+      // Rendered through a portal to document.body, not inline: the map sits in its own
+      // stacking context (Leaflet's CSS), which made a same-tree dropdown paint underneath it.
       <div
-        className={`${setupOpen ? "grid" : "hidden"} gap-4 rounded-2xl border border-fg/[0.07] bg-surface p-4 shadow-lg shadow-black/20 md:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] lg:p-5`}
+        style={{ top: layersMenuPos.top, left: layersMenuPos.left }}
+        className="fixed z-[1300] max-h-[70svh] w-56 space-y-0.5 overflow-y-auto rounded-lg border border-fg/[0.1] bg-page p-1.5 shadow-2xl"
       >
-        <div className="min-w-0 space-y-3">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
-            <Search size={13} /> Course
-          </p>
-          <div className="relative">
+        <LayerMenuItem
+          onClick={() => {
+            useMyLocation()
+            setShowLayersMenu(false)
+          }}
+          label="My location"
+        />
+        <LayerMenuItem
+          onClick={() => {
+            toggleFollow()
+            setShowLayersMenu(false)
+          }}
+          active={following}
+          label={following ? `Following${gpsAccuracyYds != null ? ` ±${gpsAccuracyYds} yd` : "…"}` : "Follow GPS"}
+        />
+        <LayerMenuItem
+          onClick={() => {
+            setShowTrouble((v) => !v)
+            setShowLayersMenu(false)
+          }}
+          active={showTrouble}
+          label="Trouble map"
+        />
+        <LayerMenuItem
+          onClick={() => {
+            setShowRings((v) => !v)
+            setShowLayersMenu(false)
+          }}
+          active={showRings}
+          label="Shot rings"
+        />
+        {zones.length > 0 && (
+          <LayerMenuItem
+            onClick={() => {
+              setShowZones((v) => !v)
+              setShowLayersMenu(false)
+            }}
+            active={showZones}
+            label="My marks"
+          />
+        )}
+        <p className="px-2.5 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wider text-muted">Mark an area</p>
+        {DRAW_KINDS.map((k) => (
+          <LayerMenuItem
+            key={k}
+            onClick={() => {
+              startDraw(k)
+              setShowLayersMenu(false)
+            }}
+            active={drawKind === k}
+            label={LIE_LABEL[k]}
+          />
+        ))}
+      </div>,
+      document.body
+    )
+
+  const pickerSheet =
+    pickerOpen &&
+    createPortal(
+      <div
+        className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/50 md:items-start md:p-4 md:pt-24"
+        onClick={() => setPickerOpen(false)}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Course and hole"
+          onClick={(e) => e.stopPropagation()}
+          className="flex max-h-[85svh] w-full flex-col overflow-hidden rounded-t-2xl border border-fg/[0.08] bg-page pb-[env(safe-area-inset-bottom)] md:max-w-xl md:rounded-2xl md:pb-0"
+        >
+          <div className="flex items-center gap-2 border-b border-fg/[0.08] p-3">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={course ? `${course.name} — search another…` : "Search a course, e.g. Pebble Beach"}
-              aria-label="Search for a golf course"
-              className="w-full rounded-xl border border-fg/[0.08] bg-page px-3.5 py-2.5 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20"
+              placeholder="Find a course"
+              aria-label="Find a course"
+              className="h-11 min-w-0 flex-1 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
             />
-            {(hits.length > 0 || searching || (searched && query.trim().length >= 3)) && (
-              <div className="absolute z-[1200] mt-1 max-h-72 w-full overflow-auto rounded-xl border border-fg/[0.1] bg-page shadow-2xl">
-                {searching && hits.length === 0 && <p className="px-3 py-2.5 text-xs text-muted">Searching…</p>}
-                {!searching && hits.length === 0 && <p className="px-3 py-2.5 text-xs text-muted">No courses found. Try fewer words.</p>}
-                {hits.map((h) => (
-                  <button
-                    key={h.id}
-                    onClick={() => {
-                      setQuery("")
-                      loadCourse(h)
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-fg hover:bg-fg/[0.06]"
-                  >
-                    <MapPin size={14} className="shrink-0 text-accent" />
-                    <span className="min-w-0 flex-1 truncate">{h.name}</span>
-                    <span className="shrink-0 text-xs text-muted">
-                      {[h.city, h.state].filter(Boolean).join(", ")}
-                      {h.par ? ` · par ${h.par}` : ""}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <button
+              onClick={() => setPickerOpen(false)}
+              aria-label="Close"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-fg-3 hover:bg-fg/[0.06] hover:text-fg"
+            >
+              <X size={18} />
+            </button>
           </div>
-          {recent.length > 0 && (
-            <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto whitespace-nowrap">
-              <span className="flex shrink-0 items-center gap-1 text-xs text-muted">
-                <History size={12} /> Recent
-              </span>
-              {recent.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => loadCourse(r)}
-                  className="shrink-0 rounded-full border border-fg/[0.08] px-3 py-1.5 text-xs text-fg-2 transition-colors hover:border-accent/50 hover:text-fg"
-                >
-                  {r.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
 
-        <div className="min-w-0 space-y-3 lg:border-l lg:border-fg/[0.06] lg:pl-5">
-          <button
-            type="button"
-            onClick={() => setShowSettings((v) => !v)}
-            aria-expanded={showSettings}
-            className="flex w-full items-center justify-between gap-2 text-left lg:pointer-events-none"
-          >
-            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
-              <User size={13} /> Golfer
-              <span className="rounded-full bg-fg/[0.06] px-2 py-0.5 text-[11px] font-medium normal-case tracking-normal text-fg-2">
-                {source === "calibrated" ? calibratedName : `Handicap ${handicap}`}
-              </span>
-            </span>
-            <span className="flex items-center gap-1 text-xs text-accent lg:hidden">
-              {showSettings ? "Hide" : "Change"}
-              <ChevronDown size={14} className={showSettings ? "rotate-180" : ""} />
-            </span>
-          </button>
-          <div className={`${showSettings ? "flex" : "hidden"} flex-wrap items-end gap-3 lg:flex`}>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted">Whose shots</span>
-              <select
-                value={source}
-                onChange={(e) => {
-                  setSource(e.target.value as "calibrated" | "handicap")
-                  setClubChoice("auto")
-                  setAimNote(null)
-                }}
-                className="rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
-              >
-                {calibrated && <option value="calibrated">{calibratedName} (calibrated)</option>}
-                <option value="handicap">Handicap-based golfer</option>
-              </select>
-            </label>
-            {source === "handicap" && (
+          <div className="overflow-y-auto">
+            {query.trim().length >= 3 ? (
+              <ul className="divide-y divide-fg/[0.06]">
+                {searching && hits.length === 0 && <li className="px-4 py-3 text-sm text-muted">Searching…</li>}
+                {!searching && searched && hits.length === 0 && <li className="px-4 py-3 text-sm text-muted">No courses found.</li>}
+                {hits.map((h) => (
+                  <li key={h.id}>
+                    <button
+                      onClick={() => chooseCourse(h)}
+                      className="flex min-h-[44px] w-full items-baseline gap-2 px-4 py-2.5 text-left hover:bg-fg/[0.04]"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm text-fg">{h.name}</span>
+                      <span className="shrink-0 text-xs text-muted">{[h.city, h.state].filter(Boolean).join(", ")}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
               <>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-muted">Handicap</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={36}
-                    step={1}
-                    inputMode="decimal"
-                    value={handicap}
-                    onChange={(e) => {
-                      setHandicap(Math.min(36, Math.max(0, Number(e.target.value) || 0)))
-                      setAimNote(null)
-                    }}
-                    className="w-20 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-muted">Driver carry (yd)</span>
-                  <input
-                    type="number"
-                    placeholder="avg"
-                    inputMode="numeric"
-                    value={driverCarry}
-                    onChange={(e) => {
-                      setDriverCarry(e.target.value)
-                      setAimNote(null)
-                    }}
-                    className="w-24 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg placeholder:text-faint"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-muted">7-iron carry (yd)</span>
-                  <input
-                    type="number"
-                    placeholder="avg"
-                    inputMode="numeric"
-                    value={sevenIronCarry}
-                    onChange={(e) => {
-                      setSevenIronCarry(e.target.value)
-                      setAimNote(null)
-                    }}
-                    className="w-24 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg placeholder:text-faint"
-                  />
-                </label>
-                <TendencyPicker
-                  value={tendency}
-                  onChange={(t) => {
-                    setTendency(t)
-                    setAimNote(null)
-                  }}
-                />
+                {holes.length > 0 && course && (
+                  <section className="p-4">
+                    <p className="label-xs">{shortCourseName(course.name)}</p>
+                    <div className="mt-2 grid grid-cols-6 gap-1.5">
+                      {holes.map((h, i) => (
+                        <button
+                          key={h.id}
+                          onClick={() => {
+                            pickHole(h)
+                            setPickerOpen(false)
+                          }}
+                          aria-pressed={h.id === holeId}
+                          className={`flex h-12 flex-col items-center justify-center rounded-lg tabular-nums transition-colors ${
+                            h.id === holeId ? "bg-accent text-on-accent" : "bg-surface text-fg hover:bg-fg/[0.06]"
+                          }`}
+                        >
+                          <span className="text-sm font-semibold leading-tight">{h.ref ?? i + 1}</span>
+                          {h.par != null && <span className="text-[10px] leading-tight opacity-70">Par {h.par}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {recent.filter((r) => r.id !== course?.id).length > 0 && (
+                  <section className="border-t border-fg/[0.06] py-2">
+                    <p className="label-xs px-4 pt-2">Recent</p>
+                    <ul className="mt-1 divide-y divide-fg/[0.06]">
+                      {recent
+                        .filter((r) => r.id !== course?.id)
+                        .map((r) => (
+                          <li key={r.id}>
+                            <button
+                              onClick={() => chooseCourse(r)}
+                              className="flex min-h-[44px] w-full items-center px-4 py-2.5 text-left text-sm text-fg hover:bg-fg/[0.04]"
+                            >
+                              {r.name}
+                            </button>
+                          </li>
+                        ))}
+                    </ul>
+                  </section>
+                )}
+
+                <section className="space-y-3 border-t border-fg/[0.06] p-4">
+                  <p className="label-xs">Shots</p>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-xs text-muted">Whose shots</span>
+                      <select
+                        value={source}
+                        onChange={(e) => {
+                          setSource(e.target.value as "calibrated" | "handicap")
+                          setClubChoice("auto")
+                          setAimNote(null)
+                        }}
+                        className="h-11 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg md:h-9"
+                      >
+                        {calibrated && <option value="calibrated">{calibratedName}</option>}
+                        <option value="handicap">By handicap</option>
+                      </select>
+                    </label>
+                    {source === "handicap" && (
+                      <>
+                        <label className="flex flex-col gap-1.5">
+                          <span className="text-xs text-muted">Handicap</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={36}
+                            step={1}
+                            inputMode="decimal"
+                            value={handicap}
+                            onChange={(e) => {
+                              setHandicap(Math.min(36, Math.max(0, Number(e.target.value) || 0)))
+                              setAimNote(null)
+                            }}
+                            className="h-11 w-20 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg md:h-9"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1.5">
+                          <span className="text-xs text-muted">Driver carry</span>
+                          <input
+                            type="number"
+                            placeholder="avg"
+                            inputMode="numeric"
+                            value={driverCarry}
+                            onChange={(e) => {
+                              setDriverCarry(e.target.value)
+                              setAimNote(null)
+                            }}
+                            className="h-11 w-24 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint md:h-9"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1.5">
+                          <span className="text-xs text-muted">7-iron carry</span>
+                          <input
+                            type="number"
+                            placeholder="avg"
+                            inputMode="numeric"
+                            value={sevenIronCarry}
+                            onChange={(e) => {
+                              setSevenIronCarry(e.target.value)
+                              setAimNote(null)
+                            }}
+                            className="h-11 w-24 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint md:h-9"
+                          />
+                        </label>
+                        <TendencyPicker
+                          value={tendency}
+                          onChange={(t) => {
+                            setTendency(t)
+                            setAimNote(null)
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">
+                      Bag · <span className="tabular-nums">{bag.length}</span> clubs
+                    </p>
+                    <div className="mt-1.5 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+                      {CLUB_CATALOG.map((c) => {
+                        const on = bag.includes(c)
+                        return (
+                          <button
+                            key={c}
+                            onClick={() => toggleClub(c)}
+                            aria-pressed={on}
+                            className={`h-11 rounded-lg text-xs font-medium transition-colors md:h-9 ${
+                              on ? "bg-accent text-on-accent" : "bg-surface text-fg-3 hover:text-fg"
+                            }`}
+                          >
+                            {c}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {Object.keys(estimatedFrom).length > 0 && (
+                      <p className="mt-2 text-xs text-muted">
+                        No shots on record for{" "}
+                        {Object.entries(estimatedFrom)
+                          .map(([club, from]) => `${club} (estimated from ${from})`)
+                          .join(", ")}
+                        .
+                      </p>
+                    )}
+                  </div>
+                </section>
+
+                {course && geometry && (
+                  <section className="space-y-2 border-t border-fg/[0.06] p-4 text-xs text-fg-3">
+                    <p className="label-xs">Course data</p>
+                    <p className="tabular-nums">
+                      {holes.length} holes · {stats.greens} greens · {stats.fairways} fairways · {stats.bunkers} bunkers ·{" "}
+                      {stats.water} water · {stats.trees} tree areas
+                    </p>
+                    {hasCourseProblems && (
+                      <div className="space-y-1">
+                        {geometry.scope === "radius" && <p>No course boundary is mapped, so neighbouring courses may appear.</p>}
+                        {holes.length === 0 && <p>No hole lines are mapped. Place the ball and pin by hand.</p>}
+                        {holes.length > 0 && stats.greens === 0 && (
+                          <p>Greens and hazards aren&rsquo;t traced, so the club ranking is only a distance guide.</p>
+                        )}
+                      </div>
+                    )}
+                    <button
+                      onClick={refreshCourseData}
+                      disabled={refreshing}
+                      className="flex h-11 items-center gap-1.5 rounded-lg border border-fg/[0.08] px-3 text-fg-2 hover:text-fg disabled:opacity-50 md:h-9"
+                    >
+                      <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+                      {refreshing ? "Refreshing…" : "Refresh course data"}
+                    </button>
+                  </section>
+                )}
               </>
             )}
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
+    )
 
-      {/* ---- course status ---- */}
-      {course && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-fg-3">
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-fg">
-            <Flag size={14} className="text-accent" />
-            {course.name}
-          </span>
-          {geometry && loadState !== "loading" && (
-            <button
-              onClick={refreshCourseData}
-              disabled={refreshing}
-              title="Re-fetch this course's map data instead of using the cached copy"
-              className="flex items-center gap-1 rounded-md border border-fg/[0.08] px-2 py-0.5 text-fg-3 hover:text-fg disabled:opacity-50"
-            >
-              <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
-              {refreshing ? "Refreshing…" : "Refresh course data"}
-            </button>
-          )}
-          {loadState === "loading" && (
-            <span className="flex items-center gap-1.5">
-              <Loader2 size={12} className="animate-spin" /> {loadError || "Loading map data…"}
-            </span>
-          )}
-          {loadState === "error" && (
-            <>
-              <span className="text-danger">{loadError}</span>
-              <button onClick={() => loadCourse(course)} className="rounded-md border border-fg/[0.08] px-2 py-0.5 text-fg-3 hover:text-fg">
-                Retry
-              </button>
-            </>
-          )}
-          {geometry && (
-            // Hidden on phones -- this is the same count shown compactly via the info icon
-            // next to the per-hole data-quality badge below.
-            <span className="hidden flex-wrap gap-1.5 md:flex">
-              {[
-                [holes.length, "holes"],
-                [stats.greens, "greens"],
-                [stats.fairways, "fairways"],
-                [stats.bunkers, "bunkers"],
-                [stats.water, "water"],
-                [stats.trees, "tree areas"],
-                ...(stats.range > 0 ? [[stats.range, "range"]] : []),
-              ].map(([n, label]) => (
-                <span key={String(label)} className="rounded-full bg-fg/[0.05] px-2 py-0.5">
-                  <span className="font-semibold text-fg-2">{n}</span> {label}
-                </span>
-              ))}
-            </span>
-          )}
-        </div>
-      )}
+  return (
+    <div className="space-y-3">
+      {/* ---- title: one tappable line that opens the course/hole sheet ---- */}
+      <button
+        type="button"
+        onClick={() => setPickerOpen(true)}
+        aria-haspopup="dialog"
+        className="sticky top-[calc(3rem+env(safe-area-inset-top))] z-30 -mx-4 flex w-[calc(100%+2rem)] min-h-[48px] items-center gap-1.5 border-b border-fg/[0.08] bg-page/95 px-4 py-2 text-left backdrop-blur-md md:static md:mx-0 md:w-auto md:max-w-full md:border-0 md:bg-transparent md:px-0 md:backdrop-blur-none"
+      >
+        <span className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg tabular-nums">
+          {chipParts.join(" · ")}
+        </span>
+        <ChevronDown size={18} className="shrink-0 text-muted" />
+      </button>
 
-      {geometry && geometry.scope === "radius" && (
-        <Notice>
-          No course boundary is mapped for this course, so this shows everything within about a mile. Neighbouring
-          courses may appear.
-        </Notice>
+      {loadState === "loading" && course && (
+        <p className="flex items-center gap-1.5 text-xs text-muted">
+          <Loader2 size={12} className="animate-spin" /> {loadError || "Loading course…"}
+        </p>
       )}
-      {geometry && holes.length === 0 && (
-        <Notice>No hole lines are mapped for this course in OpenStreetMap. You can still place the ball and the pin by hand.</Notice>
+      {loadState === "error" && course && (
+        <p className="text-xs text-danger">
+          {loadError}{" "}
+          <button onClick={() => loadCourse(course, { autoFirstHole: true })} className="font-semibold underline">
+            Retry
+          </button>
+        </p>
       )}
-      {geometry && holes.length > 0 && stats.greens === 0 && (
-        <Notice>
-          Greens, fairways and hazards aren&rsquo;t traced for this course, so almost everything will count as rough and
-          the club ranking is only a distance guide.
-        </Notice>
-      )}
-
-      {holes.length > 0 && (
-        <div className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
-          {holes.map((h, i) => (
-            <button
-              key={h.id}
-              id={`hole-btn-${h.id}`}
-              onClick={() => pickHole(h)}
-              title={h.par ? `Hole ${h.ref ?? i + 1} · par ${h.par}` : undefined}
-              className={`flex min-w-[2.9rem] shrink-0 flex-col items-center rounded-lg border px-2 py-1.5 transition-colors ${
-                h.id === holeId
-                  ? "border-accent bg-accent/15 text-accent"
-                  : "border-fg/[0.08] text-fg-3 hover:border-fg/20 hover:text-fg"
-              }`}
-            >
-              <span className="text-sm font-semibold leading-tight">{h.ref ?? i + 1}</span>
-              <span className="text-[10px] leading-tight opacity-70">{h.par ? `P${h.par}` : "–"}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {loadState === "idle" && loadError && <p className="text-xs text-muted">{loadError}</p>}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]">
-        {/* ---- map ---- (min-w-0 stops the scrolling toolbar from stretching the page on phones) */}
+        {/* ---- map ---- (min-w-0 stops a wide child from stretching the page on phones) */}
         <div className="min-w-0 space-y-2.5">
-          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs md:flex-wrap md:overflow-visible">
+          <div className="flex items-center gap-2 text-xs">
             <div role="group" aria-label="What a tap on the map moves" className="flex shrink-0 overflow-hidden rounded-lg border border-fg/[0.08]">
               {(["ball", "aim", "pin"] as Placing[]).map((p) => (
                 <button
@@ -1576,152 +1646,43 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   disabled={!!drawKind}
                   aria-pressed={placing === p}
                   title={`Tap the map to move the ${p}`}
-                  className={`flex items-center gap-1.5 px-3 py-2 font-medium capitalize disabled:opacity-30 md:py-1.5 ${
-                    placing === p ? "bg-accent text-on-accent" : "bg-surface-2 text-fg-3 hover:text-fg"
+                  className={`h-11 px-4 font-medium capitalize disabled:opacity-30 md:h-9 ${
+                    placing === p ? "bg-accent text-on-accent" : "bg-surface text-fg-3 hover:text-fg"
                   }`}
                 >
-                  {p === "ball" ? <Circle size={12} /> : p === "aim" ? <Crosshair size={12} /> : <Flag size={12} />}
                   {p}
                 </button>
               ))}
             </div>
-            {/* Phones: the less-used toggles live behind this menu so Ball/Aim/Pin never scroll off.
-                Rendered through a portal to document.body (below), not positioned inline here --
-                the map right below sits in its own stacking context (Leaflet's own CSS), which
-                made a same-tree dropdown paint underneath it regardless of z-index. */}
-            <div ref={layersMenuRef} className="shrink-0 md:hidden">
-              <ToolButton
-                onClick={() => {
-                  if (!showLayersMenu && layersMenuRef.current) {
-                    const r = layersMenuRef.current.getBoundingClientRect()
-                    setLayersMenuPos({ top: r.bottom + 4, left: r.left })
-                  }
-                  setShowLayersMenu((v) => !v)
-                }}
-                icon={Layers}
-                active={showLayersMenu}
-                label="Layers"
-              />
-            </div>
-            {showLayersMenu &&
-              layersMenuPos &&
-              createPortal(
-                <div
-                  style={{ top: layersMenuPos.top, left: layersMenuPos.left }}
-                  className="fixed z-[1300] w-52 space-y-0.5 rounded-lg border border-fg/[0.1] bg-page p-1.5 shadow-2xl"
-                >
-                  <LayerMenuItem
-                    onClick={() => {
-                      useMyLocation()
-                      setShowLayersMenu(false)
-                    }}
-                    icon={LocateFixed}
-                    label="My location"
-                  />
-                  <LayerMenuItem
-                    onClick={() => {
-                      toggleFollow()
-                      setShowLayersMenu(false)
-                    }}
-                    icon={Navigation}
-                    active={following}
-                    label={following ? `Following${gpsAccuracyYds != null ? ` ±${gpsAccuracyYds} yd` : "…"}` : "Follow GPS"}
-                  />
-                  <LayerMenuItem
-                    onClick={() => {
-                      setShowTrouble((v) => !v)
-                      setShowLayersMenu(false)
-                    }}
-                    icon={Layers}
-                    active={showTrouble}
-                    label="Trouble map"
-                  />
-                  <LayerMenuItem
-                    onClick={() => {
-                      setShowRings((v) => !v)
-                      setShowLayersMenu(false)
-                    }}
-                    icon={Target}
-                    active={showRings}
-                    label="Shot rings"
-                  />
-                  {zones.length > 0 && (
-                    <LayerMenuItem
-                      onClick={() => {
-                        setShowZones((v) => !v)
-                        setShowLayersMenu(false)
-                      }}
-                      icon={Eye}
-                      active={showZones}
-                      label="My marks"
-                    />
-                  )}
-                </div>,
-                document.body
+            <div className="ml-auto flex items-center gap-2">
+              {aimManual && (
+                <ToolButton
+                  onClick={() => {
+                    setAimManual(null)
+                    setAimNote(null)
+                  }}
+                  icon={RotateCcw}
+                  label="Reset aim"
+                />
               )}
-            <ToolButton onClick={useMyLocation} icon={LocateFixed} label="My location" hideOnMobile />
-            <ToolButton
-              onClick={toggleFollow}
-              icon={Navigation}
-              active={following}
-              label={following ? `Following${gpsAccuracyYds != null ? ` ±${gpsAccuracyYds} yd` : "…"}` : "Follow GPS"}
-              hideOnMobile
-            />
-            {aimManual && (
-              <ToolButton
-                onClick={() => {
-                  setAimManual(null)
-                  setAimNote(null)
-                }}
-                icon={RotateCcw}
-                label="Reset aim"
-              />
-            )}
-            <span className="hidden h-5 w-px shrink-0 bg-fg/[0.1] md:block" />
-            <ToolButton
-              onClick={() => setShowTrouble((v) => !v)}
-              icon={Layers}
-              active={showTrouble}
-              label="Trouble map"
-              title="Colour every spot by strokes lost or gained versus a fairway lie at the same distance"
-              hideOnMobile
-            />
-            <ToolButton
-              onClick={() => setShowRings((v) => !v)}
-              icon={Target}
-              active={showRings}
-              label="Shot rings"
-              title="Show where 50% and 90% of this club's shots land"
-              hideOnMobile
-            />
-            {zones.length > 0 && (
-              <ToolButton
-                onClick={() => setShowZones((v) => !v)}
-                icon={Eye}
-                active={showZones}
-                label="My marks"
-                title="Show or hide your hand-drawn marks (separate from the course map itself)"
-                hideOnMobile
-              />
-            )}
-            <label className="ml-auto flex shrink-0 items-center gap-1.5 text-muted">
-              <Pencil size={13} />
-              <select
-                value={drawKind ?? ""}
-                onChange={(e) => (e.target.value ? startDraw(e.target.value as Lie) : cancelDraw())}
-                title="Outline trees, water, out of bounds or a safe area the map doesn't show (or gets wrong) so the aim and strokes gained account for it"
-                className="rounded-md border border-fg/[0.08] bg-page px-1.5 py-1.5 text-fg-3"
-              >
-                <option value="">Mark area…</option>
-                {DRAW_KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {LIE_LABEL[k]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {gpsError && <span className="shrink-0 text-danger">{gpsError}</span>}
+              <div ref={layersMenuRef}>
+                <ToolButton
+                  onClick={() => {
+                    if (!showLayersMenu && layersMenuRef.current) {
+                      const r = layersMenuRef.current.getBoundingClientRect()
+                      setLayersMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 224) })
+                    }
+                    setShowLayersMenu((v) => !v)
+                  }}
+                  icon={Layers}
+                  active={showLayersMenu || showTrouble || following || !!drawKind}
+                  label="Layers"
+                />
+              </div>
+            </div>
           </div>
+          {layersMenu}
+          {gpsError && <p className="text-xs text-danger">{gpsError}</p>}
 
           {drawKind && (
             <div
@@ -1759,7 +1720,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
           <div
             ref={mapWrapRef}
-            className="relative h-[60svh] min-h-[380px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page shadow-lg shadow-black/30 md:h-[70vh] md:min-h-[460px]"
+            className="relative h-[60svh] min-h-[380px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
           >
             {course?.lat != null && course.lng != null ? (
               <CourseMap
@@ -1786,6 +1747,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   stopFollowing()
                   setBall(p)
                   setAimNote(null)
+                  if (!pin) setPlacing("pin") // no hole to take a pin from: the next tap places it
                 }}
                 onAim={(p) => {
                   setAimManual(p)
@@ -1803,14 +1765,17 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 onDrawClose={finishDraw}
               />
             ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-                  <MapIcon size={26} />
-                </span>
-                <p className="text-sm font-medium text-fg">Load a course to plan your shots</p>
-                <p className="max-w-xs text-xs text-muted">
-                  Search above, pick a hole, then drag the ball anywhere. Every club is simulated with your own dispersion.
-                </p>
+              <div className="flex h-full items-center justify-center">
+                {loadState === "loading" && !course ? (
+                  <Loader2 size={20} className="animate-spin text-muted" />
+                ) : (
+                  <button
+                    onClick={() => setPickerOpen(true)}
+                    className="h-11 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent"
+                  >
+                    Find a course
+                  </button>
+                )}
               </div>
             )}
             {/* Phone HUD: the numbers you need mid-round, on the map itself (hidden while drawing, replaced by the controls below) */}
@@ -1824,7 +1789,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 ].map((cell) => (
                   <div key={cell.k} className="bg-black/75 px-1 py-1.5">
                     <p className="text-[9px] uppercase tracking-wide text-gray-400">{cell.k}</p>
-                    <p className={`font-bold text-white ${cell.small ? "truncate text-sm" : "text-lg leading-tight"}`}>{cell.v}</p>
+                    <p className={`font-semibold text-white tabular-nums ${cell.small ? "truncate text-sm" : "text-lg leading-tight"}`}>{cell.v}</p>
                   </div>
                 ))}
               </div>
@@ -1835,45 +1800,48 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 <button
                   onClick={undoDrawPoint}
                   disabled={pendingPoints.length === 0}
-                  className="flex items-center gap-1 rounded-full border border-white/25 bg-black/80 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm disabled:opacity-30"
+                  className="flex h-11 items-center gap-1 rounded-full border border-white/25 bg-black/80 px-4 text-xs font-medium text-white backdrop-blur-sm disabled:opacity-30"
                 >
                   <Undo2 size={13} /> Undo
                 </button>
                 <button
                   onClick={finishDraw}
                   disabled={pendingPoints.length < 3}
-                  className="flex items-center gap-1 rounded-full bg-accent px-4 py-2 text-xs font-semibold text-on-accent shadow-lg disabled:opacity-30"
+                  className="flex h-11 items-center gap-1 rounded-full bg-accent px-5 text-xs font-semibold text-on-accent disabled:opacity-30"
                 >
                   <Check size={13} /> Finish
                 </button>
-                <button onClick={cancelDraw} className="flex items-center gap-1 rounded-full border border-white/25 bg-black/80 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm">
+                <button onClick={cancelDraw} className="flex h-11 items-center gap-1 rounded-full border border-white/25 bg-black/80 px-4 text-xs font-medium text-white backdrop-blur-sm">
                   <X size={13} /> Cancel
                 </button>
               </div>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-fg-3">
-            {LIES.map((l) => (
-              <span key={l} className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-2.5 rounded-full border border-black/60" style={{ background: lieColor(l) }} />
-                {LIE_LABEL[l]}
-              </span>
-            ))}
-            {showTrouble && (
-              <span className="flex items-center gap-1.5 text-fg-2">
-                <span className="inline-block h-2.5 w-14 rounded-full" style={{ background: `linear-gradient(90deg, ${cssColor("map-better")}, ${cssColor("map-marker", 0.2)}, ${cssColor("map-caution")}, ${cssColor("map-worse")})` }} />
-                better ← vs fairway → worse
-              </span>
-            )}
-            <span className="text-muted">B = ball · A = aim · P = pin (drag any). Dots: {DOTS_SHOWN} simulated shots. Ctrl/⌘ + scroll zooms the map.</span>
-          </div>
+          {planReady && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-fg-3">
+              {LIES.map((l) => (
+                <span key={l} className="flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border border-black/60" style={{ background: lieColor(l) }} />
+                  {LIE_LABEL[l]}
+                </span>
+              ))}
+              {showTrouble && (
+                <span className="flex items-center gap-1.5 text-fg-2">
+                  <span
+                    className="inline-block h-2.5 w-14 rounded-full"
+                    style={{ background: `linear-gradient(90deg, ${cssColor("map-better")}, ${cssColor("map-marker", 0.2)}, ${cssColor("map-caution")}, ${cssColor("map-worse")})` }}
+                  />
+                  better ← vs fairway → worse
+                </span>
+              )}
+            </div>
+          )}
 
           {localOnlyZones && localOnlyZones.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2 text-xs text-fg-2">
               <span>
-                You have {localOnlyZones.length} mark{localOnlyZones.length === 1 ? "" : "s"} saved on this device from
-                before signing in.
+                {localOnlyZones.length} mark{localOnlyZones.length === 1 ? "" : "s"} saved on this device only.
               </span>
               <button
                 onClick={syncLocalZonesToAccount}
@@ -1891,9 +1859,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
           {zones.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-              <span className="text-muted">
-                Your marks{authUser ? " (synced to your account)" : " (saved on this device only)"}:
-              </span>
+              <span className="text-muted">Your marks{authUser ? "" : " (this device only)"}:</span>
               {!authUser && (
                 <Link href="/login" className="text-accent hover:underline">
                   Sign in to sync
@@ -1922,46 +1888,45 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
         {/* ---- shot plan (tablet/desktop: everything inline, including the table) ---- */}
         <aside className="hidden min-w-0 space-y-3 md:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
-          {!planReady ? (
-            howItWorksCard
-          ) : (
-            <>
-              {planCard}
-              {clubTable}
-              {scoringDetails}
-            </>
-          )}
+          {placePrompt}
+          {planCard}
+          {planReady && ranking.length > 0 && clubTable}
+          {planReady && scoringDetails}
         </aside>
 
         {/* ---- shot plan (phone: table moves into a bottom sheet so the map stays dominant) ---- */}
-        <div className="min-w-0 space-y-3 md:hidden">{!planReady ? howItWorksCard : <>{planCard}{scoringDetails}</>}</div>
+        <div className="min-w-0 space-y-3 md:hidden">
+          {placePrompt}
+          {planCard}
+          {planReady && scoringDetails}
+        </div>
       </div>
 
       {planReady && ranking.length > 0 && (
         <div
-          className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface shadow-[0_-8px_24px_rgba(0,0,0,0.45)] transition-[max-height] duration-200 md:hidden"
+          className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface transition-[max-height] duration-200 md:hidden"
           style={{ maxHeight: sheetOpen ? "min(65vh, 26rem)" : "3.25rem" }}
         >
           <button
             type="button"
             onClick={() => setSheetOpen((v) => !v)}
             aria-expanded={sheetOpen}
-            className="flex shrink-0 items-center justify-between gap-2 px-4 py-3 text-left"
+            className="flex min-h-[3.25rem] shrink-0 items-center justify-between gap-2 px-4 text-left"
           >
-            <span className="flex min-w-0 items-center gap-1.5 truncate text-xs">
+            <span className="flex min-w-0 items-center gap-1.5 truncate text-xs tabular-nums">
               <span className="font-semibold text-fg">{chosen?.club ?? "–"}</span>
               <span className="text-muted">·</span>
-              <span className="text-fg-3">{chosen ? `${Math.round(chosen.meanCarryYds)}y` : "–"}</span>
-              <span className="text-muted">·</span>
-              <span className="text-fg-3">{distPin != null ? `${Math.round(distPin)} to pin` : "–"}</span>
-              <span className="text-muted">·</span>
               <span className="text-fg-3">{chosen ? `${chosen.expectedStrokes.toFixed(2)} strokes` : "–"}</span>
+              <span className="text-muted">·</span>
+              <span className="text-fg-3">All clubs</span>
             </span>
             <ChevronDown size={16} className={`shrink-0 text-fg-3 transition-transform ${sheetOpen ? "" : "rotate-180"}`} />
           </button>
           <div className="overflow-y-auto pb-[env(safe-area-inset-bottom)]">{clubTable}</div>
         </div>
       )}
+
+      {pickerSheet}
 
       {editingHole && hole && course?.lat != null && course.lng != null && (
         <EditHoleModal
@@ -1985,54 +1950,30 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
 // ---------- small presentational helpers ----------
 
-function StatTile({ label, value }: { label: string; value: number | null }) {
+/** "Pebble Beach Golf Links" -> "Pebble Beach": the title line has room for one short name. */
+function shortCourseName(name: string): string {
+  const short = name.replace(/\s+(golf\s+(club|links|course|resort)|country\s+club|g\.?c\.?|c\.?c\.?)$/i, "").trim()
+  return short || name
+}
+
+function Stat({ label, value }: { label: string; value: number | null }) {
   return (
-    <div className="rounded-xl bg-fg/[0.04] px-2 py-2.5">
-      <p className="text-[10px] uppercase tracking-wide text-muted">{label}</p>
-      <p className="text-xl font-bold leading-tight text-fg">
+    <div className="px-2">
+      <dt className="text-[11px] uppercase tracking-wide text-muted">{label}</dt>
+      <dd className="text-2xl font-semibold leading-tight text-fg tabular-nums">
         {value ?? "–"}
         <span className="ml-0.5 text-xs font-normal text-muted">yd</span>
-      </p>
+      </dd>
     </div>
   )
 }
 
+// Icon-only (44px) on phones, icon + label from tablet up.
 function ToolButton({
   onClick,
   icon: Icon,
   label,
   active,
-  title,
-  hideOnMobile,
-}: {
-  onClick: () => void
-  icon: LucideIcon
-  label: string
-  active?: boolean
-  title?: string
-  hideOnMobile?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      title={title}
-      className={`${hideOnMobile ? "hidden md:flex" : "flex"} shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 font-medium transition-colors md:py-1.5 ${
-        active ? "border-accent bg-accent/15 text-accent" : "border-fg/[0.08] text-fg-3 hover:border-fg/20 hover:text-fg"
-      }`}
-    >
-      <Icon size={13} />
-      {label}
-    </button>
-  )
-}
-
-// A ToolButton-alike for inside the phone-only "Layers" overflow menu: full-width, closes the menu on tap.
-function LayerMenuItem({
-  onClick,
-  icon: Icon,
-  label,
-  active,
 }: {
   onClick: () => void
   icon: LucideIcon
@@ -2043,21 +1984,30 @@ function LayerMenuItem({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs font-medium ${
-        active ? "bg-accent/15 text-accent" : "text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
+      aria-label={label}
+      title={label}
+      className={`flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border font-medium transition-colors md:h-9 md:w-auto md:px-3 ${
+        active ? "border-accent text-accent" : "border-fg/[0.08] text-fg-3 hover:border-fg/20 hover:text-fg"
       }`}
     >
-      <Icon size={14} />
-      {label}
+      <Icon size={15} />
+      <span className="hidden md:inline">{label}</span>
     </button>
   )
 }
 
-function Notice({ children }: { children: ReactNode }) {
+// A full-width row inside the Layers menu.
+function LayerMenuItem({ onClick, label, active }: { onClick: () => void; label: string; active?: boolean }) {
   return (
-    <p className="flex items-start gap-2 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
-      <Info size={14} className="mt-0.5 shrink-0" />
-      <span>{children}</span>
-    </p>
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex min-h-[40px] w-full items-center justify-between gap-2 rounded-md px-2.5 text-left text-sm ${
+        active ? "text-accent" : "text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
+      }`}
+    >
+      {label}
+      {active && <Check size={14} />}
+    </button>
   )
 }

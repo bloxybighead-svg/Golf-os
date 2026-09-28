@@ -80,14 +80,46 @@ interface Props {
 
 const ll = (p: LatLng): L.LatLngTuple => [p.lat, p.lng]
 
-function markerIcon(color: string, label: string, ring = false): L.DivIcon {
+type MarkerKind = "ball" | "aim" | "pin"
+
+// Real glyphs rather than lettered dots: a white ball with a shadow ring, a
+// crosshair for the aim, and a flag whose base sits exactly on the pin. Each
+// sits inside a larger transparent box so there's enough to grab with a finger.
+function markerIcon(kind: MarkerKind): L.DivIcon {
   const coarse = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches
-  const size = coarse ? 32 : 22 // fingers need a bigger handle than a mouse
+  const hit = coarse ? 40 : 26
+  const edge = cssColor("map-scrim", 0.6)
+
+  if (kind === "ball") {
+    const d = coarse ? 16 : 12
+    return L.divIcon({
+      className: "",
+      iconSize: [hit, hit],
+      iconAnchor: [hit / 2, hit / 2],
+      html: `<div style="width:${hit}px;height:${hit}px;display:flex;align-items:center;justify-content:center"><div style="width:${d}px;height:${d}px;border-radius:50%;background:${cssColor("map-marker")};box-shadow:0 0 0 2px ${edge},0 2px 5px ${cssColor("map-scrim", 0.5)}"></div></div>`,
+    })
+  }
+
+  if (kind === "aim") {
+    const s = coarse ? 34 : 26
+    const lines = "M12 1V7M12 17V23M1 12H7M17 12H23"
+    return L.divIcon({
+      className: "",
+      iconSize: [hit, hit],
+      iconAnchor: [hit / 2, hit / 2],
+      html: `<div style="width:${hit}px;height:${hit}px;display:flex;align-items:center;justify-content:center"><svg width="${s}" height="${s}" viewBox="0 0 24 24" style="overflow:visible"><g style="fill:none;stroke:${edge};stroke-width:4;stroke-linecap:round"><circle cx="12" cy="12" r="6.5"/><path d="${lines}"/></g><g style="fill:none;stroke:${cssColor("map-aim")};stroke-width:2;stroke-linecap:round"><circle cx="12" cy="12" r="6.5"/><path d="${lines}"/></g><circle cx="12" cy="12" r="1.6" style="fill:${cssColor("map-aim")}"/></svg></div>`,
+    })
+  }
+
+  // Pin: a flagstick whose foot (x=7, y=31 of 24x32) is the anchor, so the pin
+  // position is the hole, not the middle of the flag.
+  const w = coarse ? 30 : 22
+  const h = Math.round((w * 32) / 24)
   return L.divIcon({
     className: "",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${ring ? "transparent" : color};border:3px solid ${color};box-shadow:0 0 0 2px ${cssColor("map-scrim", 0.55)};display:flex;align-items:center;justify-content:center;font:700 10px system-ui;color:${ring ? color : cssColor("map-ink")}">${label}</div>`,
+    iconSize: [w, h],
+    iconAnchor: [Math.round((w * 7) / 24), Math.round((h * 31) / 32)],
+    html: `<svg width="${w}" height="${h}" viewBox="0 0 24 32" style="overflow:visible;display:block"><ellipse cx="7" cy="31" rx="4" ry="1.5" style="fill:${cssColor("map-scrim", 0.7)}"/><path d="M7 31V2" style="stroke:${edge};stroke-width:4;stroke-linecap:round"/><path d="M8 2.5L21 7.5L8 12.5Z" style="fill:${cssColor("lie-oob")};stroke:${edge};stroke-width:1.5;stroke-linejoin:round"/><path d="M7 31V2" style="stroke:${cssColor("map-marker")};stroke-width:2;stroke-linecap:round"/></svg>`,
   })
 }
 
@@ -245,9 +277,9 @@ export default function CourseMap(props: Props) {
       })
       l[key] = m
     }
-    upsert("ball", props.ball, markerIcon(cssColor("map-marker"), "B"), (p) => cb.current.onBall(p))
-    upsert("aim", props.aim, markerIcon(cssColor("map-aim"), "A", true), (p) => cb.current.onAim(p))
-    upsert("pin", props.pin, markerIcon(cssColor("lie-oob"), "P"), (p) => cb.current.onPin(p))
+    upsert("ball", props.ball, markerIcon("ball"), (p) => cb.current.onBall(p))
+    upsert("aim", props.aim, markerIcon("aim"), (p) => cb.current.onAim(p))
+    upsert("pin", props.pin, markerIcon("pin"), (p) => cb.current.onPin(p))
 
     l.path?.remove()
     l.path = undefined

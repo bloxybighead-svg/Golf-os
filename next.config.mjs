@@ -7,6 +7,8 @@ const nextConfig = {
       { source: "/log", destination: "/you", permanent: false },
       { source: "/drills", destination: "/you", permanent: false },
       { source: "/trends", destination: "/you", permanent: false },
+      // The planner is the Play tab itself now
+      { source: "/planner", destination: "/", permanent: false },
       // Course Planner sub-tabs -> the matching tool on /you/bag
       { source: "/planner/dispersion", destination: "/you/bag?view=dispersion", permanent: false },
       { source: "/planner/compare", destination: "/you/bag?view=compare", permanent: false },
@@ -14,7 +16,7 @@ const nextConfig = {
       { source: "/planner/tbox", destination: "/you/bag?view=tbox", permanent: false },
       // The original /simulator pages, which later became Course Planner sub-tabs
       { source: "/simulator", destination: "/you/bag?view=dispersion", permanent: false },
-      { source: "/simulator/course", destination: "/planner", permanent: false },
+      { source: "/simulator/course", destination: "/", permanent: false },
       { source: "/simulator/:view(dispersion|compare|custom|tbox)", destination: "/you/bag?view=:view", permanent: false },
     ];
   },

@@ -28,6 +28,6 @@ export async function deleteSession(sessionId: string, redirectTo?: string) {
     .eq("id", sessionId)
 
   if (error) throw new Error(error.message)
-  revalidatePath("/")
+  revalidatePath("/you")
   if (redirectTo) redirect(redirectTo)
 }

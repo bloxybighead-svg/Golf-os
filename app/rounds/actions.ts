@@ -108,7 +108,7 @@ export async function createRound(data: RoundPayload) {
 
   await saveRoundAnalysis(supabase, inserted.id, user.id, data, handicapIndex)
   revalidatePath("/rounds")
-  revalidatePath("/")
+  revalidatePath("/you")
 }
 
 export async function updateRound(id: string, data: RoundPayload) {
@@ -123,7 +123,7 @@ export async function updateRound(id: string, data: RoundPayload) {
 
   await saveRoundAnalysis(supabase, id, user.id, data, existing?.handicap_index ?? null)
   revalidatePath("/rounds")
-  revalidatePath("/")
+  revalidatePath("/you")
 }
 
 export async function deleteRound(id: string) {

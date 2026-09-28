@@ -30,7 +30,7 @@ export async function recalculateHandicap() {
     rounds_used: diffs.length,
   })
   if (insertError) throw new Error(insertError.message)
-  revalidatePath("/")
+  revalidatePath("/you")
 }
 
 export async function saveManualHandicap(index: number, notes: string | null) {
@@ -46,5 +46,5 @@ export async function saveManualHandicap(index: number, notes: string | null) {
     notes: notes?.trim() || null,
   })
   if (error) throw new Error(error.message)
-  revalidatePath("/")
+  revalidatePath("/you")
 }

@@ -26,23 +26,27 @@ export async function loadCalibratedShots(
     .order("mean_carry_yds", { ascending: false })
   if (error || !profiles || profiles.length === 0) return null
 
-  const out: CalibratedClubShots[] = []
-  for (const p of profiles) {
-    const rows: { carry_yds: number; offline_yds: number }[] = []
-    for (let from = 0; ; from += 1000) {
-      const { data: page, error: e } = await supabase
-        .from("simulated_shots")
-        .select("carry_yds, offline_yds")
-        .eq("golfer_profile_id", p.id)
-        .order("id") // stable order, or paging can skip and repeat rows
-        .range(from, from + 999)
-      if (e) return null
-      if (!page || page.length === 0) break
-      rows.push(...page)
-      if (page.length < 1000) break
-    }
-    const shots = rows.map((r) => ({ carryYds: Number(r.carry_yds), offlineYds: Number(r.offline_yds) }))
-    out.push({ club: p.club, meanCarryYds: Number(p.mean_carry_yds), shots: seededSample(shots, perClub, 17) })
-  }
-  return out
+  // Clubs load in parallel: this runs before the Play page can render, and one
+  // club after another was ~30 sequential round trips (~2s) for an 11-club bag.
+  const clubs = await Promise.all(
+    profiles.map(async (p): Promise<CalibratedClubShots | null> => {
+      const rows: { carry_yds: number; offline_yds: number }[] = []
+      for (let from = 0; ; from += 1000) {
+        const { data: page, error: e } = await supabase
+          .from("simulated_shots")
+          .select("carry_yds, offline_yds")
+          .eq("golfer_profile_id", p.id)
+          .order("id") // stable order, or paging can skip and repeat rows
+          .range(from, from + 999)
+        if (e) return null
+        if (!page || page.length === 0) break
+        rows.push(...page)
+        if (page.length < 1000) break
+      }
+      const shots = rows.map((r) => ({ carryYds: Number(r.carry_yds), offlineYds: Number(r.offline_yds) }))
+      return { club: p.club, meanCarryYds: Number(p.mean_carry_yds), shots: seededSample(shots, perClub, 17) }
+    })
+  )
+  if (clubs.some((c) => c == null)) return null
+  return clubs as CalibratedClubShots[]
 }

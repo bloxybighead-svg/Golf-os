@@ -1270,6 +1270,95 @@ Biggest divergence the list flags: the Direction says Play IS the planner
 and the dashboard content moves to You; R1 pointed Play at the old Home
 dashboard. Not changed yet -- asked Dillon.
 
+R3 -- Play is the planner, and the Play screen rebuilt (2026-09-28): Dillon
+confirmed the Design Direction's IA ("Play opens the planner, like it says").
+- Routes: `app/page.tsx` is the planner (moved from `app/planner/page.tsx`);
+  `/planner` and `/simulator/course` redirect to `/`. The old Home
+  dashboard is gone: Handicap + Strengths & Weaknesses cards moved to
+  `/you` (side by side at lg) with the live handicap estimate; the Last
+  round / Practice this week / Insight tiles were dropped (Direction bans
+  "insights"; Rounds shows the last round). Log Session became a "Log a
+  practice session" row on You. `revalidatePath("/")` in handicap, rounds
+  and log actions now targets `/you`. "Your Bag" -> "My bag" with golfer
+  wording and no per-row icons.
+- `CourseMapClient.tsx` (2063 -> ~1930 lines): logic untouched (search,
+  geometry, ranking, auto-aim, drawing, GPS); the render half rewritten.
+  Deleted: PageHeader + tagline, "How it works" card, the B/A/P + Ctrl/⌘
+  sentence, the setup panel, the course-status row, the amber notices, the
+  hole strip, the phone-only sticky header. Now one sticky title line
+  ("Pebble Beach · Hole 7 · Par 3 · 108", `shortCourseName` strips
+  "Golf Links"/"Golf Club"/...) opens a sheet (portal, bottom sheet on
+  phones, dialog on desktop, Esc/backdrop close): course search, the
+  course's holes as a 6-column grid, Recent, Shots (whose shots / handicap
+  inputs), and Course data (counts, the no-boundary / no-holes / no-greens
+  notes as plain text, Refresh). Picking a course auto-stands on hole 1.
+- Toolbar: Ball/Aim/Pin (text only) + Reset aim + Layers. Layers is the
+  same portal menu on every width (the desktop row of 5+ toggles is gone)
+  and now also holds "Mark an area" (was a separate select). Phones:
+  icon-only 44px buttons; at 375px the row is exactly 343px of 343px, no
+  overflow.
+- Plan panel: "Best club" hero at 48px semibold tabular + strokes to hole
+  out at 36px in accent, To aim / Left / To pin as a hairline row,
+  shorter data-quality copy ("Water not mapped. Mark water · None here").
+  Shadows removed on the planner's panels.
+- First visit: with no remembered position it opens Pebble Beach hole 7
+  (`DEFAULT_COURSE`, `DEFAULT_HOLE_REF`); returning users resume as
+  before. The mount effect is guarded to run once -- React dev runs mount
+  effects twice, and the second pass read back the first pass's "course,
+  no hole yet" position and opened hole 1.
+- Markers (`CourseMap.tsx`): `markerIcon(kind)` -- white ball with a
+  shadow ring, a crosshair (dark under-stroke for contrast on imagery),
+  and a flag whose foot is the anchor. No letters. 40px/26px grab boxes.
+- **Speed fix:** the page's server render waited ~2.3s on
+  `loadCalibratedShots`, which fetched 11 clubs one after another in
+  1000-row pages (~33 sequential round trips). Now `Promise.all` across
+  clubs (same order, same sampling, same result: 56 (SW) / 3.21 before and
+  after). Production build, cleared storage, 375px: recommendation on
+  screen at 0.90 / 0.88 / 0.91 s (was 2.3-2.8 s; server response 2.3 s ->
+  0.4 s).
+- Verified: new-visitor load -> Pebble 7 with best club; sheet -> hole 18
+  (Driver 4.70) closes the sheet; search Rumson -> hole 1 (Driver 4.01,
+  matches earlier verification), no boundary banner on the map; markers
+  are ball/crosshair/flag (DOM check, anchors coincide when aim = pin);
+  Layers menu opens above the map; `/planner` redirects; You shows
+  handicap, strengths/weaknesses, trends. 135 tests, build clean.
+- Known, not changed: a course with no server-cached geometry (Rumson
+  after clearing storage) took ~11 s to load on dev -- the existing
+  Overpass fetch path, not R3.
+- Tooling note: the Browser preview reads `C:/Users/Jeff/Desktop/.claude/launch.json`
+  (not the repo's); `golf-os-prod` there runs `next start` on 3001. Don't
+  run the dev server while a prod build is being used -- it overwrites `.next`.
+
+Full bags, editable (2026-09-28, after R3): Dillon asked that every club he
+carries be scored -- 4- through 9-iron, PW/GW/SW/LW, 7-wood, 3-wood,
+driver -- with new golfers defaulting to 5-9 iron, 3-wood, driver and the
+four wedges, and bags interchangeable.
+- `lib/golfer/bag.ts`: `CLUB_CATALOG` (Driver, 3W, 5W, 7W, 4i-9i, PW, GW,
+  SW, LW), `DEFAULT_BAG` (11, new golfers), `CALIBRATED_DEFAULT_BAG` (13,
+  Dillon), `canonicalClub` ("56 (SW)" -> SW), `normalizeBag`, and
+  `fillBag(measured, bag)`. His calibrated profile has no 4-iron or
+  9-iron (too few clean real shots to calibrate: 4i n=7, 9i n=5 after
+  filtering), so `fillBag` estimates a missing club from his OWN nearest
+  measured club, scaling every shot's carry and offline by the typical
+  carry ratio between the two (miss angle preserved): 9i from 8i -> 137
+  yd, 4i from 5i -> 190 yd (his 7 raw 4-iron shots average 194). Marked
+  "est." in the club table, noted in the hero, and listed in the sheet.
+  No database rows were added; the estimate is computed in the browser.
+- `lib/golfer/tables.ts`: the handicap model gained 7-Wood and LW so any
+  bag can hold them. **Their numbers are assumptions, not sourced** (7W
+  carry halfway between 5W and 4i; LW ratio 0.52 of the 7-iron, about 15 yd
+  short of SW; dispersion ratios continue the neighbouring trend), commented
+  as such. `synthetic_golfer.py` doesn't have them -- the TS port now has
+  two clubs the Python source of truth lacks.
+- Planner: per-source bags (`bags.calibrated` / `bags.handicap`) saved in
+  `golfos.planner.v1`; the sheet's Shots section has a 14-club toggle grid
+  ("Bag · N clubs", at least one club). The handicap golfer generates only
+  the bag's clubs (1000 shots each).
+- 9 new tests (`bag.test.ts`), 144 total. Verified: new visitor on
+  Dillon's shots -> 13 rows incl. 9-Iron est. 137 and 4-Iron est. 190;
+  "By handicap" -> the 11-club default; adding 7-Wood -> 12 rows, saved,
+  survives reload. Build clean.
+
 ## Files
 
 | File | Purpose |

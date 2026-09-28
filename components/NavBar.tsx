@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation"
 import { Flag, Map as MapIcon, User } from "lucide-react"
 
 // Three main tabs. "match" lists extra path prefixes that keep a tab lit:
-// Play covers the Course Planner, You covers the bag tools under /you/bag.
+// Play is the course planner itself, You covers the bag tools under /you/bag.
 const NAV_ITEMS = [
-  { label: "Play", href: "/", match: ["/planner"], Icon: MapIcon },
+  { label: "Play", href: "/", match: [], Icon: MapIcon },
   { label: "Rounds", href: "/rounds", match: ["/rounds"], Icon: Flag },
   { label: "You", href: "/you", match: ["/you"], Icon: User },
 ] as const
