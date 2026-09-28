@@ -1458,7 +1458,7 @@ R5.5 -- tee recommendation on Play (2026-09-28):
   handicap only feeds the course-handicap column.
 - Verified on Pebble at 375px and 1280px: zero taps -> Play Gold; one tap
   Shorter -> Playing White (stored); sheet lists Blue/Gold/White/Green/Red.
-  147 tests, build clean.
+  152 tests, build clean.
 
 ## Files
 
