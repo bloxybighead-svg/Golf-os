@@ -33,6 +33,7 @@ import { CALIBRATED_DEFAULT_BAG, CLUB_CATALOG, DEFAULT_BAG, fillBag, normalizeBa
 import { createClient } from "@/lib/supabase/client"
 import { TendencyPicker } from "./TendencyPicker"
 import { EditHoleModal, type HoleCorrectionSubmission } from "./EditHoleModal"
+import { TeeLine } from "./TeeLine"
 import { lieColor, type Placing } from "./courseColors"
 import { cssColor } from "@/lib/theme/tokens"
 
@@ -60,6 +61,8 @@ interface CourseHit {
 interface Props {
   calibrated: CalibratedClub[] | null
   calibratedName: string
+  /** The signed-in golfer's latest tracked handicap, for the tee recommendation. */
+  trackedHandicap: number | null
 }
 
 type AimNote = { club: string; optimal: true } | { club: string; optimal: false; offsetYds: number; savedStrokes: number }
@@ -246,7 +249,7 @@ function boundsOf(points: LatLng[]): [[number, number], [number, number]] | null
 
 const pct = (x: number) => (x < 0.005 ? "–" : `${Math.round(x * 100)}%`)
 
-export function CourseMapClient({ calibrated, calibratedName }: Props) {
+export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }: Props) {
   // --- course search / loading ---
   const [query, setQuery] = useState("")
   const [hits, setHits] = useState<CourseHit[]>([])
@@ -667,6 +670,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
     }
     return Array.from(by, ([club, shots]) => ({ club, shots }))
   }, [calibratedBag, handicap, driverCarry, sevenIronCarry, tendency, bag])
+
+  // The bag's driver carry (or its longest club, if there's no driver in the bag)
+  // sets the recommended tee length.
+  const bagDriverCarry = useMemo(() => {
+    const d = clubShots.find((c) => c.club === "Driver")
+    return d && d.shots.length ? d.shots.reduce((a, s) => a + s.carryYds, 0) / d.shots.length : null
+  }, [clubShots])
 
   const longestCarry = useMemo(() => {
     let best = 0
@@ -1672,6 +1682,15 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         </p>
       )}
       {loadState === "idle" && loadError && <p className="text-xs text-muted">{loadError}</p>}
+
+      {course && loadState !== "error" && (
+        <TeeLine
+          courseId={course.id}
+          courseName={course.name}
+          driverCarryYds={bagDriverCarry ?? (longestCarry > 0 ? longestCarry : null)}
+          handicapIndex={source === "handicap" ? handicap : trackedHandicap}
+        />
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]">
         {/* ---- map ---- (min-w-0 stops a wide child from stretching the page on phones) */}

@@ -8,17 +8,15 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Legend, ReferenceLine,
 } from "recharts"
-import type { Round, Milestone, HandicapEntry } from "@/lib/supabase/types"
-import { rollingHandicapSeries } from "@/lib/handicap"
+import type { Round, Milestone } from "@/lib/supabase/types"
 import { createMilestone, deleteMilestone } from "@/app/you/milestone-actions"
 import { cssColor, useThemeColor } from "@/lib/theme/tokens"
 import { InfoTip } from "@/components/InfoTip"
 
-type Metric = "handicap" | "scores" | "putts" | "fairways" | "greens"
+type Metric = "scores" | "putts" | "fairways" | "greens"
 
-// Handicap and scores first: they're what the panel opens on.
+// Scores first: that's what the panel opens on.
 const METRICS: { value: Metric; label: string }[] = [
-  { value: "handicap", label: "Handicap over time" },
   { value: "scores", label: "Round scores over time" },
   { value: "putts", label: "Putts" },
   { value: "fairways", label: "Fairways hit" },
@@ -37,10 +35,6 @@ function shortDate(dateStr: string) {
 function avg(nums: number[]): number | null {
   if (nums.length === 0) return null
   return nums.reduce((a, b) => a + b, 0) / nums.length
-}
-
-function fmtIndex(n: number) {
-  return n < 0 ? `+${Math.abs(n).toFixed(1)}` : n.toFixed(1)
 }
 
 // Index of the round closest in time to a date (the first one, if several share a day).
@@ -219,11 +213,10 @@ function MilestoneManager({ milestones }: { milestones: Milestone[] }) {
 
 interface Props {
   rounds: Round[] // oldest first
-  handicapEntries: HandicapEntry[]
   milestones: Milestone[]
 }
 
-export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
+export function TrendsPanel({ rounds, milestones }: Props) {
   const c = useThemeColor()
   const ACCENT = c("accent")
   const BLUE = c("viz-blue")
@@ -234,23 +227,7 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
   const CURSOR_LINE = { stroke: c("fg", 0.08) }
   const CURSOR_FILL = { fill: c("fg", 0.03) }
   const [open, setOpen] = useState(true)
-  const [metric, setMetric] = useState<Metric>("handicap")
-
-  // ── Handicap: estimate after each round, saved entries overlaid ──
-  const estimates = rollingHandicapSeries(rounds.map((r) => r.differential))
-  const handicapPoints = indexed(rounds.map((r, i) => ({
-    rawDate: r.date,
-    date: shortDate(r.date),
-    "Estimated index": estimates[i],
-    "Saved index": null as number | null,
-  })))
-  for (const e of handicapEntries) {
-    // Entries saved after the last round all land on it; the latest wins.
-    const at = nearestIndex(e.calculation_date.slice(0, 10), handicapPoints)
-    if (at >= 0) handicapPoints[at]["Saved index"] = Number(e.handicap_index)
-  }
-  const hasEstimate = estimates.some((n) => n != null)
-  const latestEstimate = [...estimates].reverse().find((n) => n != null) ?? null
+  const [metric, setMetric] = useState<Metric>("scores")
 
   // ── Scores: differential + 5-round average, strokes-vs-par fallback ──
   const diffSeq: number[] = []
@@ -302,28 +279,7 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
   let body: React.ReactNode
   let caption = ""
 
-  if (metric === "handicap") {
-    summary = latestEstimate != null ? `Estimated index now: ${fmtIndex(latestEstimate)} · lower is better` : ""
-    caption =
-      "Line = the handicap estimate as it stood after each round (best 8 of the last 20 differentials × 0.96), so it needs 8 rated rounds to start. Dots = the index recorded after each round save, or entered by hand. An estimate, not your official GHIN Index."
-    body = !hasEstimate && handicapEntries.length === 0 ? (
-      <Empty>Needs 8 rated rounds.</Empty>
-    ) : (
-      <ResponsiveContainer width="100%" height={260}>
-        <LineChart data={handicapPoints} margin={MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
-          <XAxis {...xAxisProps(handicapPoints, c)} />
-          <YAxis {...AXIS} allowDecimals={false} domain={[(min: number) => Math.floor(min - 1), (max: number) => Math.ceil(max + 1)]} />
-          <Tooltip content={<ChartTooltip />} cursor={CURSOR_LINE} />
-          <Legend wrapperStyle={LEGEND_STYLE} />
-          {milestoneLines(c, milestones, handicapPoints)}
-          <Line type="monotone" dataKey="Estimated index" stroke={ACCENT} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls />
-          <Line type="monotone" dataKey="Saved index" stroke={BLUE} strokeWidth={0} connectNulls={false}
-            dot={{ r: 5, fill: BLUE, stroke: c("surface"), strokeWidth: 2 }} activeDot={{ r: 6 }} legendType="circle" />
-        </LineChart>
-      </ResponsiveContainer>
-    )
-  } else if (metric === "scores") {
+  if (metric === "scores") {
     summary = avgDiff != null ? `Average differential: ${avgDiff.toFixed(1)} across ${diffCount} rated rounds · lower is better` : ""
     caption = `${diffCount} of ${rounds.length} rounds have rating/slope. Differentials put 9- and 18-hole rounds on one scale, since the rating and slope you enter already reflect the tees played.${hasFallback ? " Grey line = strokes vs par per hole (right axis) for rounds without rating/slope." : ""}`
     body = rounds.length < 2 ? (

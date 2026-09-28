@@ -78,7 +78,6 @@ export default async function YouPage() {
 
       <TrendsPanel
         rounds={rounds}
-        handicapEntries={handicapEntries}
         milestones={(milestonesData ?? []) as Milestone[]}
       />
 

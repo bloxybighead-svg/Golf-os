@@ -29,20 +29,6 @@ export function estimateHandicapIndex(differentials: number[]): number | null {
 }
 
 /**
- * The handicap estimate as it stood after each round, for charting over time.
- * `differentials` is oldest-first, one entry per round (null = no rating/slope).
- * Each point uses only rounds up to and including that one, so it never
- * "knows" about later rounds; null until 8 rated rounds exist.
- */
-export function rollingHandicapSeries(differentials: (number | null)[]): (number | null)[] {
-  const seen: number[] = [] // rated differentials so far, oldest-first
-  return differentials.map((d) => {
-    if (d != null) seen.push(d)
-    return estimateHandicapIndex(seen.slice(-20).reverse())
-  })
-}
-
-/**
  * Whether a freshly calculated index should be written to handicap_tracking.
  * Rounds recalculate on every save, so this keeps the history to real changes:
  * skip when there's no index yet (fewer than 8 rated rounds) or when the latest

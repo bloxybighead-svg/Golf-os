@@ -1429,6 +1429,37 @@ line + `"name"` in package.json. The wordmark is now plain ink (was
   71-359 px, on top, close on Escape/outside tap; bag pages render the new
   titles. 149 tests, build clean.
 
+Trends: handicap chart removed (2026-09-28, Dillon: "looks poor"). The
+Trends card now opens on Round scores over time (then Putts, Fairways,
+Greens). `rollingHandicapSeries` and its tests deleted (no other users).
+Strengths & Weaknesses is collapsible at every width now (was phone-only).
+
+R5.5 -- tee recommendation on Play (2026-09-28):
+- `components/simulator/TeeLine.tsx` under the title: fetches
+  `/api/courses/[id]/tees` when a course loads and runs `recommendTee()`
+  (lib/tbox/estimate.ts, unchanged) with the bag's Driver mean carry (or
+  its longest club) and the handicap (tracked index from handicap_tracking,
+  now loaded server-side in app/page.tsx; or the planner's handicap setting
+  for a handicap golfer). Shows "Play Gold · 6,472 yd" with zero taps plus
+  "Longer: Blue" / "Shorter: White" buttons -- one tap switches (saved per
+  course in localStorage `golfos.tee.<courseId>.v1`); the line opens a
+  sheet listing every tee (yardage, rating/slope, course handicap when a
+  handicap is known, "Best fit" marker). No tee data -> "No tee data for
+  this course. Enter tees" linking to the manual tool.
+- `lib/tbox/tees.ts`: `teeOptionsFrom` (OpenGolfAPI rows -> TeeOptions,
+  one per tee, **men's ratings when present** -- the app has no gender
+  setting; assumption flagged), `neighbourTees`. 6 tests incl. a real
+  Pebble Beach fixture (264-yd driver -> Gold).
+- Decision asked for in the spec: **the "Which tees" tool is kept** as the
+  manual fallback (hand-entered tees for courses OpenGolfAPI doesn't
+  cover), reached from the tee line's empty state, not retired.
+- The pick is by length only (recommendTee's own rule; its 25 yd-per-yard
+  ratio is still the unsourced approximation flagged in estimate.ts);
+  handicap only feeds the course-handicap column.
+- Verified on Pebble at 375px and 1280px: zero taps -> Play Gold; one tap
+  Shorter -> Playing White (stored); sheet lists Blue/Gold/White/Green/Red.
+  147 tests, build clean.
+
 ## Files
 
 | File | Purpose |
