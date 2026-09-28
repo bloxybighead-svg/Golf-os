@@ -16,9 +16,9 @@ export async function DispersionSection() {
 
   if (profilesError || !profiles || profiles.length === 0) {
     return (
-      <div className="rounded-xl border border-yellow-800/60 bg-yellow-950/30 px-5 py-4 text-sm text-yellow-400">
+      <div className="rounded-xl border border-warn/40 bg-warn/10 px-5 py-4 text-sm text-warn">
         <p className="font-semibold">No golfer profile found</p>
-        <p className="mt-1 text-xs text-yellow-600">
+        <p className="mt-1 text-xs text-warn">
           Expected a &ldquo;{GOLFER_NAME}&rdquo; / &ldquo;{SOURCE_LABEL}&rdquo; profile in golfer_profiles.
         </p>
       </div>
@@ -50,9 +50,9 @@ export async function DispersionSection() {
 
   if (shotsError) {
     return (
-      <div className="rounded-xl border border-yellow-800/60 bg-yellow-950/30 px-5 py-4 text-sm text-yellow-400">
+      <div className="rounded-xl border border-warn/40 bg-warn/10 px-5 py-4 text-sm text-warn">
         <p className="font-semibold">Could not load simulated shots</p>
-        <p className="mt-1 text-xs text-yellow-600">{shotsError.message}</p>
+        <p className="mt-1 text-xs text-warn">{shotsError.message}</p>
       </div>
     )
   }

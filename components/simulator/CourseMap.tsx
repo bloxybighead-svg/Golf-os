@@ -11,7 +11,8 @@ import type { LatLng } from "@/lib/course/geo"
 import type { Lie, UserZone } from "@/lib/course/lies"
 import type { CourseGeometry, FeatureKind } from "@/lib/course/overpass"
 import type { Landing } from "@/lib/course/plan"
-import { LIE_COLORS, type Placing } from "./courseColors"
+import { LIE_TOKEN, type Placing } from "./courseColors"
+import { cssColor, readColor } from "@/lib/theme/tokens"
 
 // Leaflet's canvas renderer can fire a queued redraw after the map has been torn
 // down (React dev double-mount, navigating away mid-draw), which throws on a
@@ -27,14 +28,22 @@ if (!canvasProto.__safe) {
   canvasProto.__safe = true
 }
 
-const FEATURE_STYLE: Record<FeatureKind, L.PathOptions> = {
-  green: { color: "#22c55e", weight: 1.5, fillColor: "#22c55e", fillOpacity: 0.3 },
-  fairway: { color: "#a3e635", weight: 1, fillColor: "#a3e635", fillOpacity: 0.12 },
-  bunker: { color: "#fde68a", weight: 1, fillColor: "#fde68a", fillOpacity: 0.45 },
-  water: { color: "#38bdf8", weight: 1, fillColor: "#38bdf8", fillOpacity: 0.35 },
-  tee: { color: "#d4d4d4", weight: 1, fillColor: "#d4d4d4", fillOpacity: 0.25 },
-  trees: { color: "#c084fc", weight: 1, fillColor: "#c084fc", fillOpacity: 0.12, dashArray: "3 4" },
-  range: { color: "#ef4444", weight: 1.5, fillColor: "#ef4444", fillOpacity: 0.18, dashArray: "6 4" },
+// Map layers are drawn on a canvas, which can't resolve CSS variables, so
+// colors are read from the tokens when a layer is drawn (readColor).
+const FEATURE_STYLE: Record<FeatureKind, { token: string; weight: number; fillOpacity: number; dashArray?: string }> = {
+  green: { token: "map-green", weight: 1.5, fillOpacity: 0.3 },
+  fairway: { token: "map-fairway", weight: 1, fillOpacity: 0.12 },
+  bunker: { token: "map-bunker", weight: 1, fillOpacity: 0.45 },
+  water: { token: "lie-water", weight: 1, fillOpacity: 0.35 },
+  tee: { token: "map-tee", weight: 1, fillOpacity: 0.25 },
+  trees: { token: "lie-trees", weight: 1, fillOpacity: 0.12, dashArray: "3 4" },
+  range: { token: "lie-oob", weight: 1.5, fillOpacity: 0.18, dashArray: "6 4" },
+}
+
+function featureStyle(kind: FeatureKind): L.PathOptions {
+  const { token, ...rest } = FEATURE_STYLE[kind]
+  const color = readColor(token)
+  return { ...rest, color, fillColor: color }
 }
 
 interface Props {
@@ -78,7 +87,7 @@ function markerIcon(color: string, label: string, ring = false): L.DivIcon {
     className: "",
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${ring ? "transparent" : color};border:3px solid ${color};box-shadow:0 0 0 2px rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font:700 10px system-ui;color:${ring ? color : "#111"}">${label}</div>`,
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${ring ? "transparent" : color};border:3px solid ${color};box-shadow:0 0 0 2px ${cssColor("map-scrim", 0.55)};display:flex;align-items:center;justify-content:center;font:700 10px system-ui;color:${ring ? color : cssColor("map-ink")}">${label}</div>`,
   })
 }
 
@@ -183,7 +192,7 @@ export default function CourseMap(props: Props) {
     if (!g) return
     g.clearLayers()
     for (const f of props.geometry?.features ?? []) {
-      L.polygon(f.ring.map(ll), { ...FEATURE_STYLE[f.kind], interactive: false }).addTo(g)
+      L.polygon(f.ring.map(ll), { ...featureStyle(f.kind), interactive: false }).addTo(g)
     }
   }, [props.geometry])
 
@@ -195,7 +204,7 @@ export default function CourseMap(props: Props) {
     for (const h of props.geometry?.holes ?? []) {
       const selected = h.id === props.selectedHoleId
       const line = L.polyline(h.line.map(ll), {
-        color: selected ? "#facc15" : "#ffffff",
+        color: selected ? readColor("map-aim") : readColor("map-marker"),
         weight: selected ? 3 : 2,
         opacity: selected ? 0.95 : 0.55,
         dashArray: selected ? undefined : "4 6",
@@ -236,9 +245,9 @@ export default function CourseMap(props: Props) {
       })
       l[key] = m
     }
-    upsert("ball", props.ball, markerIcon("#ffffff", "B"), (p) => cb.current.onBall(p))
-    upsert("aim", props.aim, markerIcon("#facc15", "A", true), (p) => cb.current.onAim(p))
-    upsert("pin", props.pin, markerIcon("#ef4444", "P"), (p) => cb.current.onPin(p))
+    upsert("ball", props.ball, markerIcon(cssColor("map-marker"), "B"), (p) => cb.current.onBall(p))
+    upsert("aim", props.aim, markerIcon(cssColor("map-aim"), "A", true), (p) => cb.current.onAim(p))
+    upsert("pin", props.pin, markerIcon(cssColor("lie-oob"), "P"), (p) => cb.current.onPin(p))
 
     l.path?.remove()
     l.path = undefined
@@ -247,7 +256,7 @@ export default function CourseMap(props: Props) {
     // aim -> pin: what is left after a shot that lands on the aim point
     if (props.aim && props.pin) {
       l.pinPath = L.polyline([ll(props.aim), ll(props.pin)], {
-        color: "#ffffff",
+        color: readColor("map-marker"),
         weight: 2,
         opacity: 0.8,
         dashArray: "2 6",
@@ -256,7 +265,7 @@ export default function CourseMap(props: Props) {
     }
     if (props.ball && props.aim) {
       l.path = L.polyline([ll(props.ball), ll(props.aim)], {
-        color: "#facc15",
+        color: readColor("map-aim"),
         weight: 2,
         dashArray: "6 6",
         interactive: false,
@@ -272,7 +281,7 @@ export default function CourseMap(props: Props) {
     for (const c of props.cells) {
       L.rectangle([ll(c.sw), ll(c.ne)], {
         stroke: false,
-        fillColor: c.color,
+        fillColor: readColor(c.color),
         fillOpacity: c.opacity,
         interactive: false,
       }).addTo(g)
@@ -287,10 +296,10 @@ export default function CourseMap(props: Props) {
     g.clearLayers()
     for (const z of props.zones) {
       L.polygon(z.ring.map(ll), {
-        color: LIE_COLORS[z.lie],
+        color: readColor(LIE_TOKEN[z.lie]),
         weight: 2,
         opacity: 0.9,
-        fillColor: LIE_COLORS[z.lie],
+        fillColor: readColor(LIE_TOKEN[z.lie]),
         fillOpacity: 0.28,
         dashArray: "6 4",
         interactive: false,
@@ -305,7 +314,7 @@ export default function CourseMap(props: Props) {
     if (!g) return
     g.clearLayers()
     const pts = props.pendingPoints
-    const color = props.drawKind ? LIE_COLORS[props.drawKind] : "#facc15"
+    const color = readColor(props.drawKind ? LIE_TOKEN[props.drawKind] : "map-aim")
     if (pts.length > 0) {
       L.polyline(pts.map(ll), { color, weight: 2, interactive: false }).addTo(g)
       if (pts.length >= 3) {
@@ -315,7 +324,7 @@ export default function CourseMap(props: Props) {
         // The first vertex is drawn bigger: tapping it (or near it, on a touchscreen) closes the shape.
         L.circleMarker(ll(p), {
           radius: i === 0 && pts.length >= 3 ? 9 : 5,
-          color: "#111",
+          color: readColor("map-ink"),
           weight: i === 0 ? 2 : 1.5,
           fillColor: color,
           fillOpacity: 1,
@@ -332,7 +341,7 @@ export default function CourseMap(props: Props) {
     g.clearLayers()
     props.rings.forEach((r, i) => {
       L.polyline(r.map(ll), {
-        color: "#ffffff",
+        color: readColor("map-marker"),
         weight: i === 0 ? 2 : 1.5,
         opacity: i === 0 ? 0.95 : 0.7,
         dashArray: i === 0 ? undefined : "5 5",
@@ -353,7 +362,7 @@ export default function CourseMap(props: Props) {
         icon: L.divIcon({
           className: "",
           iconSize: [0, 0],
-          html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;padding:2px 7px;border-radius:9999px;background:rgba(10,10,10,.82);border:1px solid rgba(255,255,255,.35);font:600 11px system-ui;color:#fff">${lab.text}</div>`,
+          html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;padding:2px 7px;border-radius:9999px;background:${cssColor("map-scrim", 0.82)};border:1px solid ${cssColor("map-marker", 0.35)};font:600 11px system-ui;color:${cssColor("map-marker")}">${lab.text}</div>`,
         }),
       }).addTo(g)
     }
@@ -367,9 +376,9 @@ export default function CourseMap(props: Props) {
     for (const s of props.landings) {
       L.circleMarker(ll(s.point), {
         radius: 3,
-        color: "#111",
+        color: readColor("map-ink"),
         weight: 0.5,
-        fillColor: LIE_COLORS[s.lie],
+        fillColor: readColor(LIE_TOKEN[s.lie]),
         fillOpacity: 0.9,
         interactive: false,
       }).addTo(g)
@@ -402,11 +411,11 @@ function CompassOverlay({ bearingDeg }: { bearingDeg: number }) {
       className="pointer-events-none absolute right-2 top-2 z-[1050] flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/60 backdrop-blur-sm"
       title={`Hole plays ${Math.round(bearingDeg)}° from north`}
     >
-      <span className="absolute top-0.5 text-[8px] font-bold text-[#9ca3af]">N</span>
+      <span className="absolute top-0.5 text-[8px] font-bold text-gray-400">N</span>
       <div className="relative h-7 w-7" style={{ transform: `rotate(${bearingDeg}deg)` }}>
         <svg viewBox="0 0 24 24" className="h-full w-full">
-          <path d="M12 1 L17 15 L12 11.5 L7 15 Z" fill="#facc15" />
-          <path d="M12 23 L9 13 L12 15.5 L15 13 Z" fill="#6b7280" />
+          <path d="M12 1 L17 15 L12 11.5 L7 15 Z" style={{ fill: cssColor("map-aim") }} />
+          <path d="M12 23 L9 13 L12 15.5 L15 13 Z" style={{ fill: cssColor("map-dim") }} />
         </svg>
       </div>
     </div>

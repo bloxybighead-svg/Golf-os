@@ -43,19 +43,19 @@ export function DrillForm({ drill, onDone }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0f0f0f]">
-      <div className="flex shrink-0 items-center justify-between border-b border-[#2a2a2a] px-4 py-3">
-        <button type="button" onClick={onDone} className="text-sm text-[#6b7280] hover:text-white transition-colors">
+    <div className="fixed inset-0 z-50 flex flex-col bg-page">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3">
+        <button type="button" onClick={onDone} className="text-sm text-muted hover:text-fg transition-colors">
           Cancel
         </button>
-        <span className="text-sm font-semibold text-white">
+        <span className="text-sm font-semibold text-fg">
           {drill ? "Edit Drill" : "New Drill"}
         </span>
         <button
           type="button"
           onClick={submit}
           disabled={!name.trim() || isPending}
-          className="text-sm font-semibold text-[#4ade80] hover:opacity-80 disabled:opacity-30 transition-opacity"
+          className="text-sm font-semibold text-accent-hi hover:opacity-80 disabled:opacity-30 transition-opacity"
         >
           {isPending ? "Saving…" : "Save"}
         </button>
@@ -64,7 +64,7 @@ export function DrillForm({ drill, onDone }: Props) {
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
         {/* Name */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
             Drill Name
           </label>
           <input
@@ -72,13 +72,13 @@ export function DrillForm({ drill, onDone }: Props) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Stockton Clock Drill"
-            className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+            className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
           />
         </div>
 
         {/* Category */}
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">Category</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Category</p>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map((c) => (
               <button
@@ -88,8 +88,8 @@ export function DrillForm({ drill, onDone }: Props) {
                 className={[
                   "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
                   category === c
-                    ? "border-[#4ade80] bg-[#4ade80] text-black"
-                    : "border-[#2a2a2a] text-[#6b7280] hover:border-white hover:text-white",
+                    ? "border-accent bg-accent text-on-accent"
+                    : "border-line text-muted hover:border-fg hover:text-fg",
                 ].join(" ")}
               >
                 {c}
@@ -100,7 +100,7 @@ export function DrillForm({ drill, onDone }: Props) {
 
         {/* Description */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
             Description
           </label>
           <textarea
@@ -108,13 +108,13 @@ export function DrillForm({ drill, onDone }: Props) {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What do you do in this drill?"
             rows={3}
-            className="w-full resize-none rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+            className="w-full resize-none rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
           />
         </div>
 
         {/* Target metric */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
             Success Looks Like
           </label>
           <input
@@ -122,12 +122,12 @@ export function DrillForm({ drill, onDone }: Props) {
             value={targetMetric}
             onChange={(e) => setTargetMetric(e.target.value)}
             placeholder="e.g. All 12 in a row, within 3 feet"
-            className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+            className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
           />
         </div>
 
         {error && (
-          <p className="rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400">
+          <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
             {error}
           </p>
         )}

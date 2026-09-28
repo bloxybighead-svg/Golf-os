@@ -8,7 +8,7 @@ interface Props {
 }
 
 const numInput =
-  "w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-2.5 py-2 text-sm text-white placeholder:text-[#4b5563] focus:border-[#4ade80] focus:outline-none transition-colors"
+  "w-full rounded-md border border-line bg-surface-4 px-2.5 py-2 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none transition-colors"
 
 function emptyEntry(): ClubWorkEntry {
   return { club: CLUB_WORK_CLUBS[0], feel: null, shots: null, avg_carry: null, dispersion: null, offline_var: null, spin_var: null, notes: null }
@@ -27,13 +27,13 @@ export function ClubWork({ entries, onChange }: Props) {
   return (
     <div className="space-y-3">
       {entries.map((e, i) => (
-        <div key={i} className="rounded-lg border border-[#2a2a2a] bg-[#161616] p-3">
+        <div key={i} className="rounded-lg border border-line bg-surface-2 p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <select
                 value={e.club}
                 onChange={(ev) => update(i, { club: ev.target.value })}
-                className="rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-2.5 py-2 text-sm font-medium text-white focus:border-[#4ade80] focus:outline-none"
+                className="rounded-md border border-line bg-surface-4 px-2.5 py-2 text-sm font-medium text-fg focus:border-accent focus:outline-none"
               >
                 {CLUB_WORK_CLUBS.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -43,8 +43,8 @@ export function ClubWork({ entries, onChange }: Props) {
                 value={e.feel ?? ""}
                 onChange={(ev) => update(i, { feel: ev.target.value || null })}
                 className={[
-                  "rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-2.5 py-2 text-sm focus:border-[#4ade80] focus:outline-none",
-                  e.feel ? "font-medium text-white" : "text-[#6b7280]",
+                  "rounded-md border border-line bg-surface-4 px-2.5 py-2 text-sm focus:border-accent focus:outline-none",
+                  e.feel ? "font-medium text-fg" : "text-muted",
                 ].join(" ")}
               >
                 <option value="">Feel (optional)</option>
@@ -55,7 +55,7 @@ export function ClubWork({ entries, onChange }: Props) {
             </div>
             <button
               onClick={() => remove(i)}
-              className="text-xs text-[#6b7280] hover:text-red-400 transition-colors"
+              className="text-xs text-muted hover:text-danger transition-colors"
             >
               remove
             </button>
@@ -63,27 +63,27 @@ export function ClubWork({ entries, onChange }: Props) {
 
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
             <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wider text-[#6b7280]">Shots</span>
+              <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Shots</span>
               <input type="number" inputMode="numeric" min={0} placeholder="e.g. 20"
                 value={e.shots ?? ""} onChange={(ev) => update(i, { shots: numVal(ev.target.value) })} className={numInput} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wider text-[#6b7280]">Avg Carry</span>
+              <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Avg Carry</span>
               <input type="number" inputMode="numeric" min={0} placeholder="yds"
                 value={e.avg_carry ?? ""} onChange={(ev) => update(i, { avg_carry: numVal(ev.target.value) })} className={numInput} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wider text-[#6b7280]">Carry ±</span>
+              <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Carry ±</span>
               <input type="number" inputMode="numeric" min={0} placeholder="yds"
                 value={e.dispersion ?? ""} onChange={(ev) => update(i, { dispersion: numVal(ev.target.value) })} className={numInput} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wider text-[#6b7280]">Offline ±</span>
+              <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Offline ±</span>
               <input type="number" inputMode="numeric" min={0} placeholder="yds"
                 value={e.offline_var ?? ""} onChange={(ev) => update(i, { offline_var: numVal(ev.target.value) })} className={numInput} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wider text-[#6b7280]">Spin ±</span>
+              <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Spin ±</span>
               <input type="number" inputMode="numeric" placeholder="rpm"
                 value={e.spin_var ?? ""} onChange={(ev) => update(i, { spin_var: numVal(ev.target.value) })} className={numInput} />
             </label>
@@ -94,18 +94,18 @@ export function ClubWork({ entries, onChange }: Props) {
             placeholder="Notes (e.g. into the wind, off tight lies)"
             value={e.notes ?? ""}
             onChange={(ev) => update(i, { notes: ev.target.value || null })}
-            className="mt-2 w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-2.5 py-2 text-sm text-white placeholder:text-[#4b5563] focus:border-[#4ade80] focus:outline-none transition-colors"
+            className="mt-2 w-full rounded-md border border-line bg-surface-4 px-2.5 py-2 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none transition-colors"
           />
         </div>
       ))}
 
       <button
         onClick={add}
-        className="w-full rounded-md border border-dashed border-[#2a2a2a] py-2.5 text-sm text-[#6b7280] transition-colors hover:border-white hover:text-white"
+        className="w-full rounded-md border border-dashed border-line py-2.5 text-sm text-muted transition-colors hover:border-fg hover:text-fg"
       >
         + Add Entry
       </button>
-      <p className="text-xs text-[#4b5563]">
+      <p className="text-xs text-faint">
         Hit multiple feels with the same club? Add a separate entry per feel — that keeps the
         Wedge Numbers averages clean.
       </p>

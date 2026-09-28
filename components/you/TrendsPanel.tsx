@@ -10,6 +10,7 @@ import {
 import type { Round, Milestone, HandicapEntry } from "@/lib/supabase/types"
 import { rollingHandicapSeries } from "@/lib/handicap"
 import { createMilestone, deleteMilestone } from "@/app/you/milestone-actions"
+import { cssColor, useThemeColor } from "@/lib/theme/tokens"
 
 type Metric = "handicap" | "scores" | "putts" | "fairways" | "greens"
 
@@ -22,10 +23,6 @@ const METRICS: { value: Metric; label: string }[] = [
   { value: "greens", label: "Greens in regulation" },
 ]
 
-const ACCENT = "#22c55e"
-const BLUE = "#60a5fa"
-const ORANGE = "#fb923c"
-const FALLBACK = "#9ca3af"
 const RECENT = 5 // "last 5 rounds" in the summary line
 
 const r1 = (n: number) => Math.round(n * 10) / 10
@@ -60,8 +57,8 @@ function nearestIndex(dateISO: string, points: { rawDate: string }[]): number {
 function ChartTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-lg border border-white/[0.1] bg-[#1a1a1a] px-3 py-2 shadow-lg">
-      <p className="mb-1 text-xs font-medium text-white">{payload[0]?.payload?.date}</p>
+    <div className="rounded-lg border border-fg/[0.1] bg-surface-3 px-3 py-2 shadow-lg">
+      <p className="mb-1 text-xs font-medium text-fg">{payload[0]?.payload?.date}</p>
       {payload.filter((p: any) => p.value != null).map((p: any) => (
         <p key={p.name} className="text-xs" style={{ color: p.color }}>
           {p.name}: <span className="font-semibold">{p.value}</span>
@@ -71,20 +68,26 @@ function ChartTooltip({ active, payload }: any) {
   )
 }
 
-const AXIS_PROPS = {
-  stroke: "#4b5563",
-  tick: { fill: "#6b7280", fontSize: 11 },
-  tickLine: false,
-  axisLine: { stroke: "#ffffff14" },
+type Color = ReturnType<typeof useThemeColor>
+
+function axisProps(c: Color) {
+  return {
+    stroke: c("faint"),
+    tick: { fill: c("muted"), fontSize: 11 },
+    tickLine: false,
+    axisLine: { stroke: c("fg", 0.08) },
+  }
 }
+
+const LEGEND_STYLE = { fontSize: 11, color: cssColor("muted") }
 
 const MARGIN = { top: 12, right: 8, left: -20, bottom: 0 }
 
 // Each round is its own x position (its index), labelled with its date. Dates
 // alone can't be the x value: same-day rounds repeat a label, which makes
 // recharts drop reference lines and stack the points on top of each other.
-function xAxisProps(points: { date: string }[]) {
-  return { dataKey: "i", tickFormatter: (i: number) => points[i]?.date ?? "", minTickGap: 24, ...AXIS_PROPS }
+function xAxisProps(points: { date: string }[], c: Color) {
+  return { dataKey: "i", tickFormatter: (i: number) => points[i]?.date ?? "", minTickGap: 24, ...axisProps(c) }
 }
 const indexed = <T,>(points: T[]) => points.map((p, i) => ({ ...p, i }))
 
@@ -92,6 +95,7 @@ const indexed = <T,>(points: T[]) => points.map((p, i) => ({ ...p, i }))
 // plain elements (called as a function, not rendered as <MilestoneLines />):
 // recharts 3 only picks up ReferenceLines that are direct children of the chart.
 function milestoneLines(
+  c: Color,
   milestones: Milestone[],
   points: { rawDate: string }[],
   yAxisId?: string
@@ -104,16 +108,16 @@ function milestoneLines(
         key={ms.id}
         x={at}
         {...(yAxisId ? { yAxisId } : {})}
-        stroke="#6b7280"
+        stroke={c("muted")}
         strokeDasharray="4 4"
-        label={{ value: ms.label, position: "insideTopRight", fill: "#9ca3af", fontSize: 10 }}
+        label={{ value: ms.label, position: "insideTopRight", fill: c("fg-3"), fontSize: 10 }}
       />,
     ]
   })
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-10 text-center text-sm text-[#4b5563]">{children}</p>
+  return <p className="py-10 text-center text-sm text-faint">{children}</p>
 }
 
 // ── milestone manager ────────────────────────────────────────────
@@ -138,59 +142,59 @@ function MilestoneManager({ milestones }: { milestones: Milestone[] }) {
   }
 
   return (
-    <div className="mt-4 border-t border-white/[0.04] pt-3">
+    <div className="mt-4 border-t border-fg/[0.04] pt-3">
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
-        <span className="text-xs text-[#6b7280]">
+        <span className="text-xs text-muted">
           {milestones.length === 0
             ? "Milestone markers — tag swing or equipment changes"
             : `${milestones.length} milestone marker${milestones.length !== 1 ? "s" : ""} on charts`}
         </span>
-        <span className="text-xs text-[#6b7280]">{open ? "Hide" : "Manage"}</span>
+        <span className="text-xs text-muted">{open ? "Hide" : "Manage"}</span>
       </button>
 
       {open && (
         <div className="mt-3 space-y-3">
           <div className="flex flex-wrap items-end gap-2">
             <div>
-              <label className="mb-1 block text-xs text-[#6b7280]">Date</label>
+              <label className="mb-1 block text-xs text-muted">Date</label>
               <input
                 type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:border-[#22c55e] focus:outline-none"
+                className="rounded-lg border border-fg/[0.08] bg-surface-3 px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none"
               />
             </div>
             <div className="min-w-[160px] flex-1">
-              <label className="mb-1 block text-xs text-[#6b7280]">Label</label>
+              <label className="mb-1 block text-xs text-muted">Label</label>
               <input
                 type="text" value={label} onChange={(e) => setLabel(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && add()}
                 placeholder="e.g. Grip Fix"
-                className="w-full rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-2 text-sm text-white placeholder:text-[#4b5563] focus:border-[#22c55e] focus:outline-none"
+                className="w-full rounded-lg border border-fg/[0.08] bg-surface-3 px-3 py-2 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none"
               />
             </div>
             <button
               onClick={add}
               disabled={!label.trim() || isPending}
-              className="flex items-center gap-1.5 rounded-lg bg-[#22c55e] px-4 py-2 text-sm font-semibold text-black transition-all hover:brightness-110 disabled:opacity-30"
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-all hover:brightness-110 disabled:opacity-30"
             >
               <Plus size={14} /> Add
             </button>
           </div>
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
           {milestones.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {milestones.map((ms) => (
                 <span
                   key={ms.id}
-                  className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-[#1a1a1a] px-3 py-1 text-xs text-[#9ca3af]"
+                  className="flex items-center gap-2 rounded-full border border-fg/[0.08] bg-surface-3 px-3 py-1 text-xs text-fg-3"
                 >
-                  <span className="text-[#6b7280]">{shortDate(ms.date)}</span>
-                  <span className="font-medium text-white">{ms.label}</span>
+                  <span className="text-muted">{shortDate(ms.date)}</span>
+                  <span className="font-medium text-fg">{ms.label}</span>
                   <button
                     onClick={() => startTransition(async () => {
                       try { await deleteMilestone(ms.id) } catch (e) { setError(e instanceof Error ? e.message : "Couldn't delete that marker.") }
                     })}
                     aria-label={`Delete ${ms.label}`}
-                    className="text-[#6b7280] hover:text-red-400"
+                    className="text-muted hover:text-danger"
                   >
                     <X size={12} />
                   </button>
@@ -211,6 +215,15 @@ interface Props {
 }
 
 export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
+  const c = useThemeColor()
+  const ACCENT = c("accent")
+  const BLUE = c("viz-blue")
+  const ORANGE = c("viz-orange")
+  const FALLBACK = c("fg-3")
+  const AXIS = axisProps(c)
+  const GRID = c("fg", 0.03)
+  const CURSOR_LINE = { stroke: c("fg", 0.08) }
+  const CURSOR_FILL = { fill: c("fg", 0.03) }
   const [open, setOpen] = useState(true)
   const [metric, setMetric] = useState<Metric>("handicap")
 
@@ -289,15 +302,15 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={handicapPoints} margin={MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-          <XAxis {...xAxisProps(handicapPoints)} />
-          <YAxis {...AXIS_PROPS} allowDecimals={false} domain={[(min: number) => Math.floor(min - 1), (max: number) => Math.ceil(max + 1)]} />
-          <Tooltip content={<ChartTooltip />} cursor={{ stroke: "#ffffff14" }} />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#6b7280" }} />
-          {milestoneLines(milestones, handicapPoints)}
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+          <XAxis {...xAxisProps(handicapPoints, c)} />
+          <YAxis {...AXIS} allowDecimals={false} domain={[(min: number) => Math.floor(min - 1), (max: number) => Math.ceil(max + 1)]} />
+          <Tooltip content={<ChartTooltip />} cursor={CURSOR_LINE} />
+          <Legend wrapperStyle={LEGEND_STYLE} />
+          {milestoneLines(c, milestones, handicapPoints)}
           <Line type="monotone" dataKey="Estimated index" stroke={ACCENT} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls />
           <Line type="monotone" dataKey="Saved index" stroke={BLUE} strokeWidth={0} connectNulls={false}
-            dot={{ r: 5, fill: BLUE, stroke: "#111111", strokeWidth: 2 }} activeDot={{ r: 6 }} legendType="circle" />
+            dot={{ r: 5, fill: BLUE, stroke: c("surface"), strokeWidth: 2 }} activeDot={{ r: 6 }} legendType="circle" />
         </LineChart>
       </ResponsiveContainer>
     )
@@ -309,13 +322,13 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={scorePoints} margin={MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-          <XAxis {...xAxisProps(scorePoints)} />
-          <YAxis yAxisId="diff" {...AXIS_PROPS} />
-          {hasFallback && <YAxis yAxisId="svp" orientation="right" {...AXIS_PROPS} />}
-          <Tooltip content={<ChartTooltip />} cursor={{ stroke: "#ffffff14" }} />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#6b7280" }} />
-          {milestoneLines(milestones, scorePoints, "diff")}
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+          <XAxis {...xAxisProps(scorePoints, c)} />
+          <YAxis yAxisId="diff" {...AXIS} />
+          {hasFallback && <YAxis yAxisId="svp" orientation="right" {...AXIS} />}
+          <Tooltip content={<ChartTooltip />} cursor={CURSOR_LINE} />
+          <Legend wrapperStyle={LEGEND_STYLE} />
+          {milestoneLines(c, milestones, scorePoints, "diff")}
           <Line yAxisId="diff" type="monotone" dataKey="Differential" stroke={ACCENT} strokeWidth={1}
             strokeOpacity={0.5} dot={{ r: 2, fill: ACCENT }} activeDot={{ r: 4 }} connectNulls />
           <Line yAxisId="diff" type="monotone" dataKey="5-round avg" stroke={ACCENT} strokeWidth={2.5}
@@ -335,13 +348,13 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart data={puttsPoints} margin={MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-          <XAxis {...xAxisProps(puttsPoints)} />
-          <YAxis yAxisId="pph" {...AXIS_PROPS} />
-          <YAxis yAxisId="rate" orientation="right" {...AXIS_PROPS} unit="%" />
-          <Tooltip content={<ChartTooltip />} cursor={{ fill: "#ffffff08" }} />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#6b7280" }} />
-          {milestoneLines(milestones, puttsPoints, "pph")}
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+          <XAxis {...xAxisProps(puttsPoints, c)} />
+          <YAxis yAxisId="pph" {...AXIS} />
+          <YAxis yAxisId="rate" orientation="right" {...AXIS} unit="%" />
+          <Tooltip content={<ChartTooltip />} cursor={CURSOR_FILL} />
+          <Legend wrapperStyle={LEGEND_STYLE} />
+          {milestoneLines(c, milestones, puttsPoints, "pph")}
           <Bar yAxisId="pph" dataKey="Putts / hole" fill={ACCENT} fillOpacity={0.7} radius={[3, 3, 0, 0]} maxBarSize={28} />
           <Line yAxisId="rate" type="monotone" dataKey="3-Putt %" stroke={ORANGE} strokeWidth={2} connectNulls
             dot={{ r: 3, fill: ORANGE }} activeDot={{ r: 5 }} />
@@ -362,11 +375,11 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={points} margin={MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-          <XAxis {...xAxisProps(points)} />
-          <YAxis {...AXIS_PROPS} domain={[0, 100]} unit="%" />
-          <Tooltip content={<ChartTooltip />} cursor={{ stroke: "#ffffff14" }} />
-          {milestoneLines(milestones, points)}
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+          <XAxis {...xAxisProps(points, c)} />
+          <YAxis {...AXIS} domain={[0, 100]} unit="%" />
+          <Tooltip content={<ChartTooltip />} cursor={CURSOR_LINE} />
+          {milestoneLines(c, milestones, points)}
           <Line type="monotone" dataKey={key} stroke={color} strokeWidth={2} connectNulls
             dot={{ r: 2.5, fill: color }} activeDot={{ r: 5 }} />
         </LineChart>
@@ -375,17 +388,17 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-3 text-left"
       >
         <span className="flex items-center gap-2">
-          <TrendingUp size={15} className="text-[#22c55e]" />
+          <TrendingUp size={15} className="text-accent" />
           <span className="label-xs">Trends</span>
         </span>
-        <span className="flex items-center gap-1 text-xs text-[#6b7280]">
+        <span className="flex items-center gap-1 text-xs text-muted">
           {rounds.length} round{rounds.length !== 1 ? "s" : ""}
           <ChevronDown size={13} className={["transition-transform", open ? "rotate-180" : ""].join(" ")} />
         </span>
@@ -398,18 +411,18 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
               value={metric}
               onChange={(e) => setMetric(e.target.value as Metric)}
               aria-label="Trend to show"
-              className="w-full appearance-none rounded-lg border border-white/[0.08] bg-[#1a1a1a] py-2.5 pl-3 pr-9 text-sm font-medium text-white focus:border-[#22c55e] focus:outline-none"
+              className="w-full appearance-none rounded-lg border border-fg/[0.08] bg-surface-3 py-2.5 pl-3 pr-9 text-sm font-medium text-fg focus:border-accent focus:outline-none"
             >
               {METRICS.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7280]" />
+            <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           </div>
 
-          <p className="mt-3 min-h-[1rem] text-xs text-[#9ca3af]">{summary}</p>
+          <p className="mt-3 min-h-[1rem] text-xs text-fg-3">{summary}</p>
           <div className="mt-2">{body}</div>
-          <p className="mt-2 text-xs text-[#4b5563]">{caption}</p>
+          <p className="mt-2 text-xs text-faint">{caption}</p>
 
           <MilestoneManager milestones={milestones} />
         </div>

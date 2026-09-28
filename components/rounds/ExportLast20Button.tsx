@@ -15,7 +15,7 @@ export function ExportLast20Button({ rounds }: { rounds: Round[] }) {
         downloadCSV(`golf-os-last-20-rounds-${stamp}.csv`, toCSV(last20 as unknown as Record<string, unknown>[]))
       }}
       disabled={last20.length === 0}
-      className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-4 py-2 text-xs font-medium text-[#9ca3af] transition-colors hover:text-white hover:border-white/20 disabled:opacity-30"
+      className="flex items-center gap-1.5 rounded-lg border border-fg/[0.08] bg-surface-3 px-4 py-2 text-xs font-medium text-fg-3 transition-colors hover:text-fg hover:border-fg/20 disabled:opacity-30"
     >
       <Download size={13} />
       Export Last 20

@@ -64,21 +64,21 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
   const availableClubs = CLUBS_BY_TYPE[form.block_type]
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0f0f0f]">
+    <div className="fixed inset-0 z-50 flex flex-col bg-page">
       {/* Top bar */}
-      <div className="flex shrink-0 items-center justify-between border-b border-[#2a2a2a] px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3">
         <button
           type="button"
           onClick={onCancel}
-          className="text-sm text-[#6b7280] hover:text-white transition-colors"
+          className="text-sm text-muted hover:text-fg transition-colors"
         >
           Cancel
         </button>
-        <span className="text-sm font-semibold text-white">Add Block</span>
+        <span className="text-sm font-semibold text-fg">Add Block</span>
         <button
           type="button"
           onClick={() => onSave(form)}
-          className="text-sm font-semibold text-[#4ade80] hover:opacity-80 transition-opacity"
+          className="text-sm font-semibold text-accent-hi hover:opacity-80 transition-opacity"
         >
           Save
         </button>
@@ -89,7 +89,7 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
 
         {/* Block type */}
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">Block Type</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Block Type</p>
           <div className="flex flex-wrap gap-2">
             {BLOCK_TYPES.map((t) => (
               <button
@@ -99,8 +99,8 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
                 className={[
                   "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
                   form.block_type === t
-                    ? "border-[#4ade80] bg-[#4ade80] text-black"
-                    : "border-[#2a2a2a] text-[#6b7280] hover:border-white hover:text-white",
+                    ? "border-accent bg-accent text-on-accent"
+                    : "border-line text-muted hover:border-fg hover:text-fg",
                 ].join(" ")}
               >
                 {t}
@@ -111,7 +111,7 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
 
         {/* Duration */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
             Duration (min)
           </label>
           <input
@@ -121,13 +121,13 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
             value={form.duration_minutes ?? ""}
             onChange={(e) => set("duration_minutes", e.target.value ? parseInt(e.target.value) : null)}
             placeholder="e.g. 45"
-            className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+            className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
           />
         </div>
 
         {/* Activities */}
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">Activities</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Activities</p>
           <ActivityList
             activities={form.activities}
             drills={drills}
@@ -138,12 +138,12 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
         {/* Clubs — filtered by block type, hidden label if only one option */}
         <div>
           {availableClubs.length === 1 ? (
-            <p className="text-xs text-[#6b7280]">
-              Club: <span className="text-white">{availableClubs[0]}</span>
+            <p className="text-xs text-muted">
+              Club: <span className="text-fg">{availableClubs[0]}</span>
             </p>
           ) : (
             <>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">Clubs Used</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Clubs Used</p>
               <ClubPicker
                 value={form.clubs_used}
                 onChange={(v) => set("clubs_used", v)}
@@ -156,7 +156,7 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
         {/* Shot count + Distance range (distance hidden for short game) */}
         <div className={showDistance ? "grid grid-cols-2 gap-3" : ""}>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
               Shot Count
             </label>
             <input
@@ -166,12 +166,12 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
               value={form.shot_count ?? ""}
               onChange={(e) => set("shot_count", e.target.value ? parseInt(e.target.value) : null)}
               placeholder="e.g. 80"
-              className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+              className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
             />
           </div>
           {showDistance && (
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
                 Distance Range
               </label>
               <input
@@ -179,7 +179,7 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
                 value={form.distance_range ?? ""}
                 onChange={(e) => set("distance_range", e.target.value || null)}
                 placeholder="e.g. 30–100y"
-                className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+                className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
               />
             </div>
           )}
@@ -190,16 +190,16 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
           <button
             type="button"
             onClick={() => set("launch_pro", !form.launch_pro)}
-            className="flex w-full items-center justify-between rounded-md border border-[#2a2a2a] bg-[#161616] px-4 py-3"
+            className="flex w-full items-center justify-between rounded-md border border-line bg-surface-2 px-4 py-3"
           >
             <div className="text-left">
-              <p className="text-sm font-medium text-white">Launch Pro</p>
-              <p className="text-xs text-[#6b7280]">TrackMan / FlightScope data collected</p>
+              <p className="text-sm font-medium text-fg">Launch Pro</p>
+              <p className="text-xs text-muted">TrackMan / FlightScope data collected</p>
             </div>
             <div
               className={[
                 "relative h-6 w-11 rounded-full transition-colors",
-                form.launch_pro ? "bg-[#4ade80]" : "bg-[#2a2a2a]",
+                form.launch_pro ? "bg-accent" : "bg-surface-4",
               ].join(" ")}
             >
               <span
@@ -214,13 +214,13 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
 
         {/* Quality rating */}
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">Block Quality</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Block Quality</p>
           <RatingDots value={form.quality_rating} onChange={(v) => set("quality_rating", v)} />
         </div>
 
         {/* Notes */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
             Notes
           </label>
           <textarea
@@ -228,7 +228,7 @@ export function BlockForm({ drills, onSave, onCancel }: Props) {
             onChange={(e) => set("notes", e.target.value || null)}
             placeholder="What worked, what broke down, swing thought that clicked…"
             rows={3}
-            className="w-full resize-none rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+            className="w-full resize-none rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
           />
         </div>
 

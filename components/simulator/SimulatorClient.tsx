@@ -60,13 +60,13 @@ export function SimulatorClient({ clubs, shots, golferName }: Props) {
     <div className="space-y-6">
       <PageHeader icon={Activity} title="Shot Dispersion Simulator" subtitle={<>{golferName}&rsquo;s calibrated profile &middot; {shots.length.toLocaleString()} simulated shots</>} />
 
-      <div className="flex flex-wrap items-end gap-6 rounded-xl border border-white/[0.06] bg-[#111111] p-4">
+      <div className="flex flex-wrap items-end gap-6 rounded-xl border border-fg/[0.06] bg-surface p-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-[#6b7280]">Club</span>
+          <span className="text-xs font-medium text-muted">Club</span>
           <select
             value={selectedClub}
             onChange={(e) => setSelectedClub(e.target.value)}
-            className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+            className="rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
           >
             {clubs.map((c) => (
               <option key={c.club} value={c.club}>
@@ -77,7 +77,7 @@ export function SimulatorClient({ clubs, shots, golferName }: Props) {
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-[#6b7280]">
+          <span className="text-xs font-medium text-muted">
             Target width at tee: {fairwayWidthYds}y
           </span>
           <input
@@ -101,7 +101,7 @@ export function SimulatorClient({ clubs, shots, golferName }: Props) {
           widthYds={widthYds}
         />
       ) : (
-        <p className="text-sm text-[#6b7280]">No shots for this club.</p>
+        <p className="text-sm text-muted">No shots for this club.</p>
       )}
     </div>
   )

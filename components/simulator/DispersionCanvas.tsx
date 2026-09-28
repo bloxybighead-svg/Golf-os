@@ -1,6 +1,7 @@
 "use client"
 
 import { yardsToPixels, type TransformConfig } from "@/lib/dispersion/transform"
+import { cssColor, useThemeColor } from "@/lib/theme/tokens"
 import { pointInPolygon, type YardPolygonPoint } from "@/lib/dispersion/polygon"
 
 export interface DispersionShot {
@@ -64,6 +65,7 @@ export function DispersionCanvas({
   maxCarryYds,
   widthYds,
 }: Props) {
+  const c = useThemeColor()
   const { heightPx, cfg } = layout(widthPx, maxHeightPx, minCarryYds, maxCarryYds, widthYds)
   const fairwayPx = fairway.map((p) => yardsToPixels({ carryYds: p.carryYds, offlineYds: p.offlineYds }, cfg))
   const fairwayPath = fairwayPx.map((p) => `${p.x},${p.y}`).join(" ")
@@ -86,15 +88,15 @@ export function DispersionCanvas({
       <svg
         viewBox={`0 0 ${widthPx} ${heightPx}`}
         width="100%"
-        style={{ maxWidth: widthPx, background: "#0a0a0a", borderRadius: 12 }}
+        style={{ maxWidth: widthPx, background: cssColor("page"), borderRadius: 12 }}
       >
         {/* yardage gridlines */}
         {gridlines.map((yds) => {
           const p = yardsToPixels({ carryYds: yds, offlineYds: 0 }, cfg)
           return (
             <g key={yds}>
-              <line x1={0} y1={p.y} x2={widthPx} y2={p.y} stroke="#ffffff14" strokeWidth={1} />
-              <text x={8} y={p.y - 4} fill="#6b7280" fontSize={11}>
+              <line x1={0} y1={p.y} x2={widthPx} y2={p.y} stroke={c("fg", 0.08)} strokeWidth={1} />
+              <text x={8} y={p.y - 4} fill={c("muted")} fontSize={11}>
                 {yds}y
               </text>
             </g>
@@ -107,13 +109,13 @@ export function DispersionCanvas({
           y1={0}
           x2={tee.x}
           y2={heightPx}
-          stroke="#ffffff1f"
+          stroke={c("fg", 0.12)}
           strokeDasharray="4 4"
           strokeWidth={1}
         />
 
         {/* fairway/target polygon */}
-        <polygon points={fairwayPath} fill="#22c55e1a" stroke="#22c55e88" strokeWidth={2} />
+        <polygon points={fairwayPath} fill={c("accent", 0.1)} stroke={c("accent", 0.53)} strokeWidth={2} />
 
         {/* shots */}
         {shots.map((s, i) => {
@@ -124,17 +126,17 @@ export function DispersionCanvas({
               cx={p.x}
               cy={p.y}
               r={s.isMishit ? 3.5 : 2.5}
-              fill={s.isMishit ? "#f97316" : "#38bdf8"}
+              fill={s.isMishit ? c("viz-orange") : c("viz-blue")}
               fillOpacity={0.75}
             />
           )
         })}
 
         {/* tee marker */}
-        <rect x={tee.x - 5} y={tee.y - 5} width={10} height={10} fill="#ffffff" />
+        <rect x={tee.x - 5} y={tee.y - 5} width={10} height={10} fill={c("fg")} />
       </svg>
 
-      <p className="mt-2 text-xs text-[#6b7280]">
+      <p className="mt-2 text-xs text-muted">
         {insideCount} / {shots.length} shots landed inside the shaded area (
         {shots.length > 0 ? Math.round((insideCount / shots.length) * 100) : 0}%)
       </p>

@@ -32,12 +32,12 @@ export function DrillsClient({ drills, usageCounts }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-white">Drills</h2>
-          <p className="mt-0.5 text-xs text-[#6b7280]">{drills.length} in library</p>
+          <h2 className="text-xl font-bold tracking-tight text-fg">Drills</h2>
+          <p className="mt-0.5 text-xs text-muted">{drills.length} in library</p>
         </div>
         <button
           onClick={() => setAdding(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-[#22c55e] px-4 py-2 text-sm font-semibold text-black shadow-md shadow-[#22c55e]/20 transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.97]"
+          className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent shadow-md shadow-accent/20 transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.97]"
         >
           <span className="text-base leading-none">+</span>
           <span>New Drill</span>
@@ -58,13 +58,13 @@ export function DrillsClient({ drills, usageCounts }: Props) {
               className={[
                 "shrink-0 rounded-lg border px-3 py-1.5 text-sm transition-all",
                 active
-                  ? "border-[#22c55e] bg-[#22c55e] font-semibold text-black"
-                  : "border-white/[0.06] bg-[#111111] text-[#6b7280] hover:text-white hover:border-white/20",
+                  ? "border-accent bg-accent font-semibold text-on-accent"
+                  : "border-fg/[0.06] bg-surface text-muted hover:text-fg hover:border-fg/20",
               ].join(" ")}
             >
               {cat}
               {count > 0 && (
-                <span className={["ml-1.5 text-xs", active ? "text-black/60" : "text-[#4b5563]"].join(" ")}>
+                <span className={["ml-1.5 text-xs", active ? "text-on-accent/60" : "text-faint"].join(" ")}>
                   {count}
                 </span>
               )}
@@ -75,12 +75,12 @@ export function DrillsClient({ drills, usageCounts }: Props) {
 
       {/* Empty state */}
       {visible.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] py-14 text-center shadow-sm">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#1a1a1a]">
-            <BookOpen size={18} className="text-[#22c55e]" />
+        <div className="rounded-xl border border-fg/[0.06] bg-surface py-14 text-center shadow-sm">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface-3">
+            <BookOpen size={18} className="text-accent" />
           </div>
-          <p className="text-sm font-medium text-white">No drills in this category</p>
-          <p className="mt-1 text-xs text-[#6b7280]">Add one with the button above.</p>
+          <p className="text-sm font-medium text-fg">No drills in this category</p>
+          <p className="mt-1 text-xs text-muted">Add one with the button above.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

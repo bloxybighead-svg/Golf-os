@@ -26,8 +26,8 @@ export function ClubPicker({ value, onChange, allowedClubs }: Props) {
           className={[
             "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
             value.includes(club)
-              ? "border-[#4ade80] bg-[#4ade80] text-black"
-              : "border-[#2a2a2a] text-[#6b7280] hover:border-white hover:text-white",
+              ? "border-accent bg-accent text-on-accent"
+              : "border-line text-muted hover:border-fg hover:text-fg",
           ].join(" ")}
         >
           {club}

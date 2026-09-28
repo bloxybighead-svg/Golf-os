@@ -130,36 +130,36 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
       <PageHeader icon={Flag} title="Tee Box Estimator" subtitle={<>Which tees fit your handicap and driver distance, using the USGA Course Handicap formula plus an
             approximate distance guideline.</>} />
 
-      <div className="flex flex-wrap gap-6 rounded-xl border border-white/[0.06] bg-[#111111] p-4">
+      <div className="flex flex-wrap gap-6 rounded-xl border border-fg/[0.06] bg-surface p-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-[#6b7280]">Handicap Index</span>
+          <span className="text-xs font-medium text-muted">Handicap Index</span>
           <input
             type="number"
             step={0.1}
             value={handicapIndex}
             onChange={(e) => setHandicapIndex(Number(e.target.value))}
-            className="w-28 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+            className="w-28 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-[#6b7280]">Driver carry (yds)</span>
+          <span className="text-xs font-medium text-muted">Driver carry (yds)</span>
           <input
             type="number"
             value={driverCarryYds}
             onChange={(e) => setDriverCarryYds(Number(e.target.value))}
-            className="w-28 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+            className="w-28 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
           />
         </label>
         {result && (
           <div className="flex flex-col justify-center">
-            <span className="text-xs font-medium text-[#6b7280]">Recommended course length</span>
-            <span className="text-sm text-white">~{result.recommendedYardage.toLocaleString()} yds</span>
+            <span className="text-xs font-medium text-muted">Recommended course length</span>
+            <span className="text-sm text-fg">~{result.recommendedYardage.toLocaleString()} yds</span>
           </div>
         )}
       </div>
 
-      <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-4">
-        <p className="mb-2 text-xs font-medium text-[#6b7280]">
+      <div className="rounded-xl border border-fg/[0.06] bg-surface p-4">
+        <p className="mb-2 text-xs font-medium text-muted">
           Search a real course &mdash; pulls every tee&rsquo;s actual rating, slope, par, and yardage automatically
           (via{" "}
           <a href="https://opengolfapi.org" target="_blank" rel="noreferrer" className="underline">
@@ -173,18 +173,18 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && searchCourses()}
             placeholder="e.g. Pebble Beach"
-            className="flex-1 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+            className="flex-1 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
           />
           <button
             onClick={searchCourses}
             disabled={searching}
-            className="rounded-lg bg-[#22c55e] px-4 py-1.5 text-sm font-semibold text-black disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-1.5 text-sm font-semibold text-on-accent disabled:opacity-50"
           >
             {searching ? "Searching..." : "Search"}
           </button>
         </div>
 
-        {searchError && <p className="mt-2 text-xs text-yellow-500">{searchError}</p>}
+        {searchError && <p className="mt-2 text-xs text-warn">{searchError}</p>}
 
         {searchResults.length > 0 && (
           <div className="mt-3 space-y-1">
@@ -193,24 +193,24 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
                 key={c.id}
                 onClick={() => loadRealCourse(c)}
                 disabled={loadingTees}
-                className="block w-full rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-2 text-left text-sm text-[#d1d5db] hover:border-[#22c55e]/50 hover:text-white disabled:opacity-50"
+                className="block w-full rounded-lg border border-fg/[0.08] bg-page px-3 py-2 text-left text-sm text-fg-2 hover:border-accent/50 hover:text-fg disabled:opacity-50"
               >
                 {c.name}
-                {c.city && <span className="text-[#6b7280]"> &middot; {c.city}, {c.state}</span>}
+                {c.city && <span className="text-muted"> &middot; {c.city}, {c.state}</span>}
               </button>
             ))}
           </div>
         )}
 
         {activeCourseName && (
-          <p className="mt-3 text-xs text-[#22c55e]">
+          <p className="mt-3 text-xs text-accent">
             Showing real tees for <strong>{activeCourseName}</strong>
           </p>
         )}
 
         {knownCourses.length > 0 && (
           <>
-            <p className="mb-2 mt-4 text-xs font-medium text-[#6b7280]">
+            <p className="mb-2 mt-4 text-xs font-medium text-muted">
               Or load rating/slope/par from a course you&rsquo;ve already logged (yardage still needs manual entry
               — logged rounds don&rsquo;t track it):
             </p>
@@ -219,7 +219,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
                 <button
                   key={c.courseName}
                   onClick={() => loadCourse(c)}
-                  className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-xs text-[#d1d5db] hover:border-[#22c55e]/50 hover:text-white"
+                  className="rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-xs text-fg-2 hover:border-accent/50 hover:text-fg"
                 >
                   {c.courseName} ({c.courseRating}/{c.slopeRating})
                 </button>
@@ -229,10 +229,10 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-[#111111]">
+      <div className="overflow-x-auto rounded-xl border border-fg/[0.06] bg-surface">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-white/[0.06] text-xs text-[#6b7280]">
+            <tr className="border-b border-fg/[0.06] text-xs text-muted">
               <th className="px-3 py-2">Tee</th>
               <th className="px-3 py-2">Yardage</th>
               <th className="px-3 py-2">Rating</th>
@@ -249,13 +249,13 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
               return (
                 <tr
                   key={i}
-                  className={["border-b border-white/[0.04]", isRecommended ? "bg-[#22c55e]/10" : ""].join(" ")}
+                  className={["border-b border-fg/[0.04]", isRecommended ? "bg-accent/10" : ""].join(" ")}
                 >
                   <td className="px-3 py-1.5">
                     <input
                       value={tee.name}
                       onChange={(e) => updateTee(i, { name: e.target.value })}
-                      className="w-24 rounded bg-transparent text-white"
+                      className="w-24 rounded bg-transparent text-fg"
                     />
                   </td>
                   <td className="px-3 py-1.5">
@@ -263,7 +263,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
                       type="number"
                       value={tee.totalYardage}
                       onChange={(e) => updateTee(i, { totalYardage: Number(e.target.value) })}
-                      className="w-20 rounded bg-transparent text-white"
+                      className="w-20 rounded bg-transparent text-fg"
                     />
                   </td>
                   <td className="px-3 py-1.5">
@@ -272,7 +272,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
                       step={0.1}
                       value={tee.courseRating}
                       onChange={(e) => updateTee(i, { courseRating: Number(e.target.value) })}
-                      className="w-16 rounded bg-transparent text-white"
+                      className="w-16 rounded bg-transparent text-fg"
                     />
                   </td>
                   <td className="px-3 py-1.5">
@@ -280,7 +280,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
                       type="number"
                       value={tee.slopeRating}
                       onChange={(e) => updateTee(i, { slopeRating: Number(e.target.value) })}
-                      className="w-16 rounded bg-transparent text-white"
+                      className="w-16 rounded bg-transparent text-fg"
                     />
                   </td>
                   <td className="px-3 py-1.5">
@@ -288,12 +288,12 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
                       type="number"
                       value={tee.par}
                       onChange={(e) => updateTee(i, { par: Number(e.target.value) })}
-                      className="w-14 rounded bg-transparent text-white"
+                      className="w-14 rounded bg-transparent text-fg"
                     />
                   </td>
-                  <td className="px-3 py-1.5 font-semibold text-white">{rec?.courseHandicap ?? "-"}</td>
+                  <td className="px-3 py-1.5 font-semibold text-fg">{rec?.courseHandicap ?? "-"}</td>
                   <td className="px-3 py-1.5">
-                    <button onClick={() => removeTee(i)} className="text-xs text-[#6b7280] hover:text-red-400">
+                    <button onClick={() => removeTee(i)} className="text-xs text-muted hover:text-danger">
                       remove
                     </button>
                   </td>
@@ -306,17 +306,17 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
 
       <button
         onClick={addTee}
-        className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-4 py-2 text-sm text-[#d1d5db] hover:border-[#22c55e]/50"
+        className="rounded-lg border border-fg/[0.08] bg-page px-4 py-2 text-sm text-fg-2 hover:border-accent/50"
       >
         + Add tee
       </button>
 
       {result && (
-        <div className="rounded-xl border border-[#22c55e]/40 bg-[#22c55e]/10 px-5 py-4">
-          <p className="text-sm font-semibold text-white">
+        <div className="rounded-xl border border-accent/40 bg-accent/10 px-5 py-4">
+          <p className="text-sm font-semibold text-fg">
             Recommended: {result.recommended.tee.name} ({result.recommended.tee.totalYardage.toLocaleString()} yds)
           </p>
-          <p className="mt-1 text-xs text-[#9ca3af]">
+          <p className="mt-1 text-xs text-fg-3">
             Course Handicap at this tee: {result.recommended.courseHandicap}. Longest tee that doesn&rsquo;t exceed
             your ~{result.recommendedYardage.toLocaleString()}-yard comfortable range based on driver carry.
           </p>

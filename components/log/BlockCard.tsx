@@ -8,21 +8,21 @@ interface Props {
 
 export function BlockCard({ block, index, onRemove }: Props) {
   return (
-    <div className="rounded-md border border-[#2a2a2a] bg-[#161616] px-4 py-3">
+    <div className="rounded-md border border-line bg-surface-2 px-4 py-3">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="shrink-0 font-mono text-xs text-[#6b7280]">#{index + 1}</span>
-          <span className="truncate text-sm font-medium text-white">{block.block_type}</span>
+          <span className="shrink-0 font-mono text-xs text-muted">#{index + 1}</span>
+          <span className="truncate text-sm font-medium text-fg">{block.block_type}</span>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {block.quality_rating != null && (
-            <span className="text-xs font-semibold text-[#4ade80]">{block.quality_rating}/5</span>
+            <span className="text-xs font-semibold text-accent-hi">{block.quality_rating}/5</span>
           )}
           <button
             type="button"
             onClick={onRemove}
-            className="text-xs text-[#6b7280] transition-colors hover:text-red-400"
+            className="text-xs text-muted transition-colors hover:text-danger"
           >
             remove
           </button>
@@ -30,26 +30,26 @@ export function BlockCard({ block, index, onRemove }: Props) {
       </div>
 
       {/* Meta row */}
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[#6b7280]">
+      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
         {block.duration_minutes != null && <span>{block.duration_minutes} min</span>}
         {block.clubs_used.length > 0 && <span>{block.clubs_used.join(", ")}</span>}
         {block.shot_count != null && <span>{block.shot_count} shots</span>}
         {block.distance_range && <span>{block.distance_range}</span>}
-        {block.launch_pro && <span className="text-[#4ade80]">Launch Pro</span>}
+        {block.launch_pro && <span className="text-accent-hi">Launch Pro</span>}
       </div>
 
       {/* Activities */}
       {block.activities.length > 0 && (
-        <ul className="mt-2 space-y-1 border-t border-[#2a2a2a] pt-2">
+        <ul className="mt-2 space-y-1 border-t border-line pt-2">
           {block.activities.map((act, i) => (
             <li key={i} className="flex items-baseline gap-2 text-xs">
-              <span className="shrink-0 text-[#6b7280]">·</span>
-              <span className="text-white">{act.drill_name}</span>
+              <span className="shrink-0 text-muted">·</span>
+              <span className="text-fg">{act.drill_name}</span>
               {act.rep_count != null && (
-                <span className="text-[#6b7280]">{act.rep_count} reps</span>
+                <span className="text-muted">{act.rep_count} reps</span>
               )}
               {act.note && (
-                <span className="italic text-[#6b7280]">{act.note}</span>
+                <span className="italic text-muted">{act.note}</span>
               )}
             </li>
           ))}
@@ -57,7 +57,7 @@ export function BlockCard({ block, index, onRemove }: Props) {
       )}
 
       {block.notes && (
-        <p className="mt-1.5 text-xs italic text-[#6b7280]">{block.notes}</p>
+        <p className="mt-1.5 text-xs italic text-muted">{block.notes}</p>
       )}
     </div>
   )

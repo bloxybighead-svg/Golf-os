@@ -74,20 +74,20 @@ export function CustomGolferClient() {
       <PageHeader icon={SlidersHorizontal} title="Custom Golfer" subtitle={<>Same model as <code>generate_shots.py --handicap N --carry CLUB=YDS</code>, running live in the
             browser.</>} />
 
-      <div className="space-y-4 rounded-xl border border-white/[0.06] bg-[#111111] p-4">
+      <div className="space-y-4 rounded-xl border border-fg/[0.06] bg-surface p-4">
         <div className="flex flex-wrap gap-6">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-[#6b7280]">Handicap Index</span>
+            <span className="text-xs font-medium text-muted">Handicap Index</span>
             <input
               type="number"
               step={0.1}
               value={handicapIndex}
               onChange={(e) => setHandicapIndex(Number(e.target.value))}
-              className="w-28 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+              className="w-28 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-[#6b7280]">Shots to generate</span>
+            <span className="text-xs font-medium text-muted">Shots to generate</span>
             <input
               type="number"
               min={100}
@@ -95,23 +95,23 @@ export function CustomGolferClient() {
               step={100}
               value={nShots}
               onChange={(e) => setNShots(Number(e.target.value))}
-              className="w-28 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+              className="w-28 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
             />
           </label>
           <TendencyPicker value={tendency} onChange={setTendency} />
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-[#6b7280]">Seed (optional)</span>
+            <span className="text-xs font-medium text-muted">Seed (optional)</span>
             <input
               type="number"
               value={seed}
               onChange={(e) => setSeed(Number(e.target.value))}
-              className="w-28 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+              className="w-28 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
             />
           </label>
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium text-[#6b7280]">
+          <p className="mb-2 text-xs font-medium text-muted">
             Known carries (optional) &mdash; rescales the whole bag to your real numbers. Leave empty to use
             tier-average distances for this handicap.
           </p>
@@ -121,7 +121,7 @@ export function CustomGolferClient() {
                 <select
                   value={row.club}
                   onChange={(e) => updateRow(i, { club: e.target.value as Club })}
-                  className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+                  className="rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
                 >
                   {BAG_ORDER.map((c) => (
                     <option key={c} value={c}>
@@ -129,15 +129,15 @@ export function CustomGolferClient() {
                     </option>
                   ))}
                 </select>
-                <span className="text-sm text-[#6b7280]">=</span>
+                <span className="text-sm text-muted">=</span>
                 <input
                   type="number"
                   value={row.yards}
                   onChange={(e) => updateRow(i, { yards: Number(e.target.value) })}
-                  className="w-24 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+                  className="w-24 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
                 />
-                <span className="text-sm text-[#6b7280]">yds</span>
-                <button onClick={() => removeRow(i)} className="text-xs text-[#6b7280] hover:text-red-400">
+                <span className="text-sm text-muted">yds</span>
+                <button onClick={() => removeRow(i)} className="text-xs text-muted hover:text-danger">
                   remove
                 </button>
               </div>
@@ -145,7 +145,7 @@ export function CustomGolferClient() {
           </div>
           <button
             onClick={addRow}
-            className="mt-2 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-xs text-[#d1d5db] hover:border-[#22c55e]/50"
+            className="mt-2 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-xs text-fg-2 hover:border-accent/50"
           >
             + Add club
           </button>
@@ -153,7 +153,7 @@ export function CustomGolferClient() {
 
         <button
           onClick={() => setGeneration((g) => g + 1)}
-          className="rounded-lg bg-[#22c55e] px-4 py-2 text-sm font-semibold text-black shadow-md shadow-[#22c55e]/20 transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.97]"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent shadow-md shadow-accent/20 transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.97]"
         >
           Generate
         </button>
@@ -161,13 +161,13 @@ export function CustomGolferClient() {
 
       {shots.length > 0 && (
         <>
-          <div className="flex flex-wrap items-end gap-6 rounded-xl border border-white/[0.06] bg-[#111111] p-4">
+          <div className="flex flex-wrap items-end gap-6 rounded-xl border border-fg/[0.06] bg-surface p-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-[#6b7280]">Club to view</span>
+              <span className="text-xs font-medium text-muted">Club to view</span>
               <select
                 value={selectedClub}
                 onChange={(e) => setSelectedClub(e.target.value as Club)}
-                className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+                className="rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
               >
                 {clubsInBag.map((c) => (
                   <option key={c} value={c}>
@@ -177,7 +177,7 @@ export function CustomGolferClient() {
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-[#6b7280]">Target width at tee: {fairwayWidthYds}y</span>
+              <span className="text-xs font-medium text-muted">Target width at tee: {fairwayWidthYds}y</span>
               <input
                 type="range"
                 min={10}
@@ -199,7 +199,7 @@ export function CustomGolferClient() {
               widthYds={widthYds}
             />
           ) : (
-            <p className="text-sm text-[#6b7280]">No shots for this club.</p>
+            <p className="text-sm text-muted">No shots for this club.</p>
           )}
         </>
       )}

@@ -15,7 +15,7 @@ export function DeleteSessionButton({ sessionId, redirectTo }: Props) {
   if (confirm) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-xs text-[#6b7280]">Delete?</span>
+        <span className="text-xs text-muted">Delete?</span>
         <button
           onClick={() =>
             startTransition(async () => {
@@ -23,13 +23,13 @@ export function DeleteSessionButton({ sessionId, redirectTo }: Props) {
             })
           }
           disabled={isPending}
-          className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-50"
+          className="text-xs font-medium text-danger hover:text-danger disabled:opacity-50"
         >
           {isPending ? "…" : "Yes"}
         </button>
         <button
           onClick={() => setConfirm(false)}
-          className="text-xs text-[#6b7280] hover:text-white"
+          className="text-xs text-muted hover:text-fg"
         >
           No
         </button>
@@ -40,7 +40,7 @@ export function DeleteSessionButton({ sessionId, redirectTo }: Props) {
   return (
     <button
       onClick={() => setConfirm(true)}
-      className="text-xs text-[#6b7280] hover:text-red-400 transition-colors"
+      className="text-xs text-muted hover:text-danger transition-colors"
     >
       delete
     </button>

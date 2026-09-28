@@ -20,25 +20,25 @@ export function DrillCard({ drill, usageCount }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-4 py-3.5 shadow-sm transition-colors hover:bg-[#161616]">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-4 py-3.5 shadow-sm transition-colors hover:bg-surface-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-white">{drill.name}</p>
+          <p className="text-sm font-medium text-fg">{drill.name}</p>
           {drill.description && (
-            <p className="mt-0.5 text-xs text-[#6b7280] line-clamp-2">{drill.description}</p>
+            <p className="mt-0.5 text-xs text-muted line-clamp-2">{drill.description}</p>
           )}
         </div>
         {/* Usage badge */}
         {usageCount > 0 && (
-          <span className="shrink-0 rounded-full bg-[#1a1a1a] px-2 py-0.5 text-xs font-semibold text-[#22c55e]">
+          <span className="shrink-0 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-semibold text-accent">
             ×{usageCount}
           </span>
         )}
       </div>
 
       {drill.target_metric && (
-        <p className="mt-2 rounded-lg bg-[#1a1a1a] px-3 py-1.5 text-xs text-[#6b7280]">
-          <span className="text-[#e5e5e5]">Goal: </span>{drill.target_metric}
+        <p className="mt-2 rounded-lg bg-surface-3 px-3 py-1.5 text-xs text-muted">
+          <span className="text-fg-2">Goal: </span>{drill.target_metric}
         </p>
       )}
 
@@ -46,23 +46,23 @@ export function DrillCard({ drill, usageCount }: Props) {
       <div className="mt-2.5 flex items-center gap-4">
         <button
           onClick={() => setEditing(true)}
-          className="text-xs text-[#6b7280] hover:text-white transition-colors"
+          className="text-xs text-muted hover:text-fg transition-colors"
         >
           edit
         </button>
         {confirmDelete ? (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[#6b7280]">Delete?</span>
+            <span className="text-xs text-muted">Delete?</span>
             <button
               onClick={() => startTransition(async () => { await deleteDrill(drill.id) })}
               disabled={isPending}
-              className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-50"
+              className="text-xs font-medium text-danger hover:text-danger disabled:opacity-50"
             >
               {isPending ? "…" : "Yes"}
             </button>
             <button
               onClick={() => setConfirmDelete(false)}
-              className="text-xs text-[#6b7280] hover:text-white"
+              className="text-xs text-muted hover:text-fg"
             >
               No
             </button>
@@ -70,7 +70,7 @@ export function DrillCard({ drill, usageCount }: Props) {
         ) : (
           <button
             onClick={() => setConfirmDelete(true)}
-            className="text-xs text-[#6b7280] hover:text-red-400 transition-colors"
+            className="text-xs text-muted hover:text-danger transition-colors"
           >
             delete
           </button>

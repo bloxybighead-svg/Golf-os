@@ -57,16 +57,19 @@ export function buildValueGrid(
   return out
 }
 
-/** Diverging colour for a value cell: green (better than fairway) through clear to red (much worse). */
+/**
+ * Diverging colour for a value cell: green (better than fairway) through clear
+ * to red (much worse). `color` is a token name from app/globals.css.
+ */
 export function deltaColor(delta: number): { color: string; opacity: number } {
   if (delta < -0.05) {
     const t = Math.min(1, -delta / 0.8)
-    return { color: "#22c55e", opacity: 0.12 + 0.3 * t }
+    return { color: "map-better", opacity: 0.12 + 0.3 * t }
   }
-  if (delta < 0.1) return { color: "#ffffff", opacity: 0 }
+  if (delta < 0.1) return { color: "map-marker", opacity: 0 }
   const t = Math.min(1, delta / 1.2)
   // amber -> red as trouble gets costlier
-  return { color: t < 0.5 ? "#f59e0b" : "#ef4444", opacity: 0.14 + 0.3 * t }
+  return { color: t < 0.5 ? "map-caution" : "map-worse", opacity: 0.14 + 0.3 * t }
 }
 
 /**

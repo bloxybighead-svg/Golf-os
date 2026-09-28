@@ -27,18 +27,18 @@ function Bar({ trend }: { trend: CategoryTrend }) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-sm font-medium text-white">{LABEL[trend.category]}</span>
-        <span className={["text-xs font-semibold", positive ? "text-[#22c55e]" : "text-[#f87171]"].join(" ")}>
+        <span className="text-sm font-medium text-fg">{LABEL[trend.category]}</span>
+        <span className={["text-xs font-semibold", positive ? "text-accent" : "text-danger"].join(" ")}>
           {fmtDelta(trend.avgDeltaSg)}
         </span>
       </div>
-      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[#1a1a1a]">
+      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface-3">
         <div
-          className={["h-full rounded-full", positive ? "bg-[#22c55e]" : "bg-[#f87171]"].join(" ")}
+          className={["h-full rounded-full", positive ? "bg-accent" : "bg-danger"].join(" ")}
           style={{ width: `${Math.max(widthPct, 3)}%` }}
         />
       </div>
-      <p className="mt-1 text-xs text-[#6b7280]">
+      <p className="mt-1 text-xs text-muted">
         {qualifierFor(trend.avgDeltaSg)} · {trend.roundsCounted} round{trend.roundsCounted !== 1 ? "s" : ""}
       </p>
     </div>
@@ -50,9 +50,9 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
 
   if (trends.length === 0) {
     return (
-      <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+      <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
         <p className="label-xs mb-2">Strengths & Weaknesses</p>
-        <p className="text-sm text-[#4b5563]">
+        <p className="text-sm text-faint">
           Log rounds with fairways%/GIR%/putts and calculate your handicap to see how each part of your
           game compares to golfers at your level.
         </p>
@@ -63,32 +63,32 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
   const weakest = [...trends].sort((a, b) => a.avgDeltaSg - b.avgDeltaSg).slice(0, 2)
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <p className="label-xs">Strengths & Weaknesses</p>
-        <p className="text-xs text-[#4b5563]">last {trends[0].roundsCounted} rounds</p>
+        <p className="text-xs text-faint">last {trends[0].roundsCounted} rounds</p>
       </div>
 
       {/* Compact summary — always visible, so nothing shifts when expanding on mobile */}
-      <p className="mt-2 text-sm text-[#9ca3af] md:hidden">
+      <p className="mt-2 text-sm text-fg-3 md:hidden">
         Your weakest: {weakest.map((t) => `${LABEL[t.category]} (${fmtDelta(t.avgDeltaSg)})`).join(", ")}
       </p>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="mt-2 flex items-center gap-1 text-xs font-medium text-[#6b7280] hover:text-white md:hidden"
+        className="mt-2 flex items-center gap-1 text-xs font-medium text-muted hover:text-fg md:hidden"
       >
         <ChevronDown size={13} className={expanded ? "rotate-180 transition-transform" : "transition-transform"} />
         {expanded ? "Hide full breakdown" : "Show full breakdown"}
       </button>
 
       {/* Full breakdown — always shown on desktop; toggled on mobile */}
-      <div className={["mt-4 space-y-4 border-t border-white/[0.04] pt-4", expanded ? "block" : "hidden md:block"].join(" ")}>
+      <div className={["mt-4 space-y-4 border-t border-fg/[0.04] pt-4", expanded ? "block" : "hidden md:block"].join(" ")}>
         {trends.map((t) => (
           <Bar key={t.category} trend={t} />
         ))}
       </div>
 
-      <p className="mt-4 text-xs text-[#4b5563]">
+      <p className="mt-4 text-xs text-faint">
         Estimated from fairways%/GIR%/putts/up-and-downs, not shot-tracked strokes gained — a proxy
         compared against typical stats for your handicap bracket, not a precise measurement.
       </p>

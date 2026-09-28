@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next"
+import { BRAND } from "@/lib/brand"
 
 // Makes the site installable ("Add to Home Screen") and full-screen on phones.
 export default function manifest(): MetadataRoute.Manifest {
@@ -9,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#0a0a0a",
-    theme_color: "#0a0a0a",
+    background_color: BRAND.dark,
+    theme_color: BRAND.dark,
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },

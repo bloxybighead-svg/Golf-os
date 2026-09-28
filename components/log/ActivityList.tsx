@@ -33,11 +33,11 @@ export function ActivityList({ activities, drills, onChange }: Props) {
       {activities.map((act, i) => (
         <div
           key={i}
-          className="flex items-start justify-between gap-3 rounded-md border border-[#2a2a2a] bg-[#161616] px-3 py-2.5"
+          className="flex items-start justify-between gap-3 rounded-md border border-line bg-surface-2 px-3 py-2.5"
         >
           <div className="min-w-0">
-            <p className="text-sm text-white">{act.drill_name}</p>
-            <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-[#6b7280]">
+            <p className="text-sm text-fg">{act.drill_name}</p>
+            <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted">
               {act.rep_count != null && <span>{act.rep_count} reps</span>}
               {act.note && <span className="italic">{act.note}</span>}
             </div>
@@ -45,7 +45,7 @@ export function ActivityList({ activities, drills, onChange }: Props) {
           <button
             type="button"
             onClick={() => remove(i)}
-            className="shrink-0 text-xs text-[#6b7280] transition-colors hover:text-red-400"
+            className="shrink-0 text-xs text-muted transition-colors hover:text-danger"
           >
             ✕
           </button>
@@ -54,7 +54,7 @@ export function ActivityList({ activities, drills, onChange }: Props) {
 
       {/* Inline add form */}
       {adding ? (
-        <div className="rounded-md border border-[#4ade80]/30 bg-[#161616] p-3 space-y-3">
+        <div className="rounded-md border border-accent/30 bg-surface-2 p-3 space-y-3">
           <DrillCombobox
             drills={drills}
             drillId={form.drill_id}
@@ -75,14 +75,14 @@ export function ActivityList({ activities, drills, onChange }: Props) {
                 setForm((f) => ({ ...f, rep_count: e.target.value ? parseInt(e.target.value) : null }))
               }
               placeholder="Reps / putts"
-              className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+              className="w-full rounded-md border border-line bg-surface-4 px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
             />
             <input
               type="text"
               value={form.note ?? ""}
               onChange={(e) => setForm((f) => ({ ...f, note: e.target.value || null }))}
               placeholder="Quick note"
-              className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+              className="w-full rounded-md border border-line bg-surface-4 px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
             />
           </div>
 
@@ -91,14 +91,14 @@ export function ActivityList({ activities, drills, onChange }: Props) {
               type="button"
               onClick={commit}
               disabled={!form.drill_name.trim()}
-              className="flex-1 rounded-md bg-[#4ade80] py-2 text-sm font-semibold text-black disabled:opacity-30"
+              className="flex-1 rounded-md bg-accent py-2 text-sm font-semibold text-on-accent disabled:opacity-30"
             >
               Add
             </button>
             <button
               type="button"
               onClick={() => { setAdding(false); setForm(EMPTY) }}
-              className="rounded-md border border-[#2a2a2a] px-4 py-2 text-sm text-[#6b7280] hover:text-white"
+              className="rounded-md border border-line px-4 py-2 text-sm text-muted hover:text-fg"
             >
               Cancel
             </button>
@@ -108,7 +108,7 @@ export function ActivityList({ activities, drills, onChange }: Props) {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="w-full rounded-md border border-dashed border-[#2a2a2a] py-2 text-sm text-[#6b7280] transition-colors hover:border-white hover:text-white"
+          className="w-full rounded-md border border-dashed border-line py-2 text-sm text-muted transition-colors hover:border-fg hover:text-fg"
         >
           + Add Activity
         </button>

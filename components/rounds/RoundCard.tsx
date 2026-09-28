@@ -13,9 +13,9 @@ function formatDate(dateStr: string) {
 
 function relToPar(score: number, par: number) {
   const diff = score - par
-  if (diff === 0) return { label: "E",        color: "text-[#d1d5db]" }
-  if (diff > 0)  return { label: `+${diff}`,  color: "text-[#f87171]" }
-  return           { label: `${diff}`,         color: "text-[#22c55e]" }
+  if (diff === 0) return { label: "E",        color: "text-fg-2" }
+  if (diff > 0)  return { label: `+${diff}`,  color: "text-danger" }
+  return           { label: `${diff}`,         color: "text-accent" }
 }
 
 interface Props { round: Round; casualGirAvg?: number | null }
@@ -46,31 +46,31 @@ export function RoundCard({ round, casualGirAvg }: Props) {
     <div className={[
       "rounded-xl border px-5 py-4 shadow-sm transition-colors",
       compCollapse
-        ? "border-red-500/40 bg-red-950/20 hover:bg-red-950/30"
-        : "border-white/[0.06] bg-[#111111] hover:bg-[#161616]",
+        ? "border-danger/40 bg-danger/10 hover:bg-danger/10"
+        : "border-fg/[0.06] bg-surface hover:bg-surface-2",
     ].join(" ")}>
       {/* Top row */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-white">{round.course_name}</p>
+            <p className="text-sm font-semibold text-fg">{round.course_name}</p>
             {round.is_competitive && (
-              <span className="rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 px-2 py-0.5 text-xs font-medium text-[#22c55e]">
+              <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
                 Competitive
               </span>
             )}
             {holes !== 18 && (
-              <span className="rounded-full border border-white/[0.08] bg-[#1a1a1a] px-2 py-0.5 text-xs text-[#6b7280]">
+              <span className="rounded-full border border-fg/[0.08] bg-surface-3 px-2 py-0.5 text-xs text-muted">
                 {holes} holes
               </span>
             )}
             {compCollapse && (
-              <span className="rounded-full border border-red-500/40 bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-400">
+              <span className="rounded-full border border-danger/40 bg-danger/15 px-2 py-0.5 text-xs font-semibold text-danger">
                 Tournament collapse
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-[#6b7280]">{formatDate(round.date)}</p>
+          <p className="mt-0.5 text-xs text-muted">{formatDate(round.date)}</p>
           {round.is_competitive && (round.breakdown_tags?.length ?? 0) > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {round.breakdown_tags!.map((tag) => (
@@ -79,8 +79,8 @@ export function RoundCard({ round, casualGirAvg }: Props) {
                   className={[
                     "rounded-full border px-2 py-0.5 text-xs font-medium",
                     tag === "None"
-                      ? "border-white/[0.08] bg-[#1a1a1a] text-[#6b7280]"
-                      : "border-amber-500/30 bg-amber-500/10 text-amber-400",
+                      ? "border-fg/[0.08] bg-surface-3 text-muted"
+                      : "border-warn/30 bg-warn/10 text-warn",
                   ].join(" ")}
                 >
                   {tag}
@@ -90,10 +90,10 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           )}
         </div>
         <div className="flex shrink-0 items-baseline gap-2">
-          <span className="text-2xl font-bold tracking-tight text-white">{round.score}</span>
+          <span className="text-2xl font-bold tracking-tight text-fg">{round.score}</span>
           <span className={["text-sm font-semibold", rel.color].join(" ")}>{rel.label}</span>
           {round.differential != null && (
-            <span className={["text-xs", compCollapse ? "font-semibold text-red-400" : "text-[#6b7280]"].join(" ")}>
+            <span className={["text-xs", compCollapse ? "font-semibold text-danger" : "text-muted"].join(" ")}>
               · Diff {round.differential.toFixed(1)}
             </span>
           )}
@@ -105,18 +105,18 @@ export function RoundCard({ round, casualGirAvg }: Props) {
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5">
           {round.fairways_pct != null && (
             <div className="flex items-baseline gap-1">
-              <span className="text-xs text-[#4b5563]">FIR</span>
-              <span className="text-sm font-semibold text-white">{round.fairways_pct}%</span>
+              <span className="text-xs text-faint">FIR</span>
+              <span className="text-sm font-semibold text-fg">{round.fairways_pct}%</span>
             </div>
           )}
           {round.gir_pct != null && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-[#4b5563]">GIR</span>
-              <span className={["text-sm font-semibold", girCollapse ? "text-red-400" : "text-white"].join(" ")}>
+              <span className="text-xs text-faint">GIR</span>
+              <span className={["text-sm font-semibold", girCollapse ? "text-danger" : "text-fg"].join(" ")}>
                 {round.gir_pct}%
               </span>
               {girCollapse && (
-                <span className="rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
+                <span className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
                   ⚠ GIR pressure collapse
                 </span>
               )}
@@ -124,10 +124,10 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           )}
           {round.total_putts != null && (
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xs text-[#4b5563]">Putts</span>
-              <span className="text-sm font-semibold text-white">{round.total_putts}</span>
+              <span className="text-xs text-faint">Putts</span>
+              <span className="text-sm font-semibold text-fg">{round.total_putts}</span>
               {round.three_putts != null && round.three_putts > 0 && (
-                <span className="text-xs text-[#f87171]">
+                <span className="text-xs text-danger">
                   {round.three_putts} 3-putt{round.three_putts !== 1 ? "s" : ""}
                 </span>
               )}
@@ -135,13 +135,13 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           )}
           {round.up_and_downs != null && (
             <div className="flex items-baseline gap-1">
-              <span className="text-xs text-[#4b5563]">U&D</span>
-              <span className="text-sm font-semibold text-white">{round.up_and_downs}</span>
+              <span className="text-xs text-faint">U&D</span>
+              <span className="text-sm font-semibold text-fg">{round.up_and_downs}</span>
             </div>
           )}
           {round.penalties != null && round.penalties > 0 && (
             <div className="flex items-baseline gap-1">
-              <span className="text-xs text-[#f87171]">
+              <span className="text-xs text-danger">
                 {round.penalties} {round.penalties === 1 ? "penalty" : "penalties"}
               </span>
             </div>
@@ -149,10 +149,10 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           {hasMiss && (
             <div className="flex items-center gap-1.5">
               {round.miss_left_pct != null && (
-                <span className="text-xs text-[#6b7280]">← {round.miss_left_pct}%</span>
+                <span className="text-xs text-muted">← {round.miss_left_pct}%</span>
               )}
               {round.miss_right_pct != null && (
-                <span className="text-xs text-[#6b7280]">{round.miss_right_pct}% →</span>
+                <span className="text-xs text-muted">{round.miss_right_pct}% →</span>
               )}
             </div>
           )}
@@ -160,32 +160,32 @@ export function RoundCard({ round, casualGirAvg }: Props) {
       )}
 
       {round.notes && (
-        <p className="mt-3 border-t border-white/[0.04] pt-2.5 text-xs italic text-[#6b7280]">
+        <p className="mt-3 border-t border-fg/[0.04] pt-2.5 text-xs italic text-muted">
           {round.notes}
         </p>
       )}
 
       {/* Actions */}
       <div className="mt-3 flex items-center gap-4">
-        <button onClick={() => setEditing(true)} className="text-xs text-[#6b7280] hover:text-white transition-colors">
+        <button onClick={() => setEditing(true)} className="text-xs text-muted hover:text-fg transition-colors">
           edit
         </button>
         {confirmDelete ? (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[#6b7280]">Delete?</span>
+            <span className="text-xs text-muted">Delete?</span>
             <button
               onClick={() => startTransition(async () => { await deleteRound(round.id) })}
               disabled={isPending}
-              className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-50"
+              className="text-xs font-medium text-danger hover:text-danger disabled:opacity-50"
             >
               {isPending ? "…" : "Yes"}
             </button>
-            <button onClick={() => setConfirmDelete(false)} className="text-xs text-[#6b7280] hover:text-white">
+            <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted hover:text-fg">
               No
             </button>
           </div>
         ) : (
-          <button onClick={() => setConfirmDelete(true)} className="text-xs text-[#6b7280] hover:text-red-400 transition-colors">
+          <button onClick={() => setConfirmDelete(true)} className="text-xs text-muted hover:text-danger transition-colors">
             delete
           </button>
         )}

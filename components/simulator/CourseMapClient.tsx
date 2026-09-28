@@ -59,11 +59,12 @@ import type { Club } from "@/lib/golfer/tables"
 import { createClient } from "@/lib/supabase/client"
 import { TendencyPicker } from "./TendencyPicker"
 import { EditHoleModal, type HoleCorrectionSubmission } from "./EditHoleModal"
-import { LIE_COLORS, type Placing } from "./courseColors"
+import { lieColor, type Placing } from "./courseColors"
+import { cssColor } from "@/lib/theme/tokens"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
-  loading: () => <div className="flex h-full items-center justify-center text-xs text-[#6b7280]">Loading map…</div>,
+  loading: () => <div className="flex h-full items-center justify-center text-xs text-muted">Loading map…</div>,
 })
 
 export interface CalibratedClub {
@@ -989,9 +990,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   // Shared between the desktop sidebar and the phone layout below it (phones move
   // the table itself into a bottom sheet, but everything else renders the same way).
   const howItWorksCard = (
-    <div className="rounded-2xl border border-white/[0.07] bg-[#111111] p-5 text-sm text-[#9ca3af]">
-      <p className="mb-1 flex items-center gap-2 font-semibold text-white">
-        <Info size={15} className="text-[#22c55e]" /> How it works
+    <div className="rounded-2xl border border-fg/[0.07] bg-surface p-5 text-sm text-fg-3">
+      <p className="mb-1 flex items-center gap-2 font-semibold text-fg">
+        <Info size={15} className="text-accent" /> How it works
       </p>
       {holes.length > 0
         ? "Pick a hole number (or click a hole line on the map) to stand on its tee, then drag the ball anywhere."
@@ -1002,15 +1003,15 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   )
 
   const planCard = (
-    <div className="rounded-2xl border border-white/[0.07] bg-[#111111] p-4 shadow-lg shadow-black/20">
+    <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4 shadow-lg shadow-black/20">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-sm font-semibold text-white">
+        <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-sm font-semibold text-fg">
           {hole
             ? `Hole ${hole.ref ?? "?"}${hole.par ? ` · Par ${hole.par}` : ""}${hole.yardageYds ? ` · ${hole.yardageYds} yd` : ""}`
             : "Free placement"}
           {hole && !!hole.correctedFields?.length && (
             <span
-              className="rounded-full bg-[#22c55e]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#22c55e]"
+              className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent"
               title={`Corrected: ${hole.correctedFields.join(", ")}`}
             >
               corrected
@@ -1020,13 +1021,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             <button
               onClick={() => setEditingHole(true)}
               title="Edit hole data"
-              className="flex items-center gap-1 text-[10px] font-medium text-[#6b7280] hover:text-white"
+              className="flex items-center gap-1 text-[10px] font-medium text-muted hover:text-fg"
             >
               <SquarePen size={11} /> Edit
             </button>
           )}
         </p>
-        <p className="text-[11px] text-[#6b7280]">from {fromLabel}</p>
+        <p className="text-[11px] text-muted">from {fromLabel}</p>
       </div>
 
       {holeQuality && (
@@ -1041,11 +1042,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           ).map(([key, label, status]) => {
             const icon =
               status === "mapped" || status === "confirmed-absent" ? (
-                <Check size={12} className="text-[#22c55e]" />
+                <Check size={12} className="text-accent" />
               ) : status === "missing" ? (
-                <X size={12} className="text-[#f87171]" />
+                <X size={12} className="text-danger" />
               ) : (
-                <AlertTriangle size={12} className="text-yellow-500" />
+                <AlertTriangle size={12} className="text-warn" />
               )
             return status === "confirmed-absent" ? (
               <button
@@ -1055,12 +1056,12 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 title={STATUS_TITLE[status]}
               >
                 {icon}
-                <span className="text-[#9ca3af]">{label}</span>
+                <span className="text-fg-3">{label}</span>
               </button>
             ) : (
               <span key={key} className="flex items-center gap-1" title={STATUS_TITLE[status]}>
                 {icon}
-                <span className="text-[#9ca3af]">{label}</span>
+                <span className="text-fg-3">{label}</span>
               </span>
             )
           })}
@@ -1071,7 +1072,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               type="button"
               onClick={() => setShowGeomInfo((v) => !v)}
               aria-label="Course geometry counts"
-              className="flex items-center gap-1 text-[#6b7280] hover:text-white md:hidden"
+              className="flex items-center gap-1 text-muted hover:text-fg md:hidden"
             >
               <Info size={12} />
             </button>
@@ -1079,7 +1080,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         </div>
       )}
       {showGeomInfo && geometry && (
-        <p className="mt-1 text-[11px] text-[#6b7280] md:hidden">
+        <p className="mt-1 text-[11px] text-muted md:hidden">
           {holes.length} holes · {stats.greens} greens · {stats.fairways} fairways · {stats.bunkers} bunkers ·{" "}
           {stats.water} water · {stats.trees} tree areas
         </p>
@@ -1089,11 +1090,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           holeQuality.bunkers === "missing" ||
           holeQuality.water === "missing" ||
           holeQuality.greens === "missing") && (
-          <div className="mt-1.5 space-y-1 text-[11px] text-yellow-500/90">
+          <div className="mt-1.5 space-y-1 text-[11px] text-warn/90">
             {holeQuality.fairway === "estimated" && (
               <p>
                 Fairway isn&rsquo;t mapped here — using an estimated corridor.{" "}
-                <button onClick={() => startDraw("fairway")} className="font-semibold text-[#22c55e] hover:underline">
+                <button onClick={() => startDraw("fairway")} className="font-semibold text-accent hover:underline">
                   Mark fairway
                 </button>
               </p>
@@ -1101,13 +1102,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             {holeQuality.bunkers === "missing" && (
               <p>
                 Bunkers not mapped — actual SG may vary.{" "}
-                <button onClick={() => startDraw("bunker")} className="font-semibold text-[#22c55e] hover:underline">
+                <button onClick={() => startDraw("bunker")} className="font-semibold text-accent hover:underline">
                   Mark bunkers
                 </button>{" "}
                 ·{" "}
                 <button
                   onClick={() => setHazardConfirmed("bunkers", true)}
-                  className="text-[#9ca3af] hover:text-white hover:underline"
+                  className="text-fg-3 hover:text-fg hover:underline"
                 >
                   No bunkers here
                 </button>
@@ -1116,13 +1117,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             {holeQuality.water === "missing" && (
               <p>
                 Water not mapped — actual SG may vary.{" "}
-                <button onClick={() => startDraw("water")} className="font-semibold text-[#22c55e] hover:underline">
+                <button onClick={() => startDraw("water")} className="font-semibold text-accent hover:underline">
                   Mark water
                 </button>{" "}
                 ·{" "}
                 <button
                   onClick={() => setHazardConfirmed("water", true)}
-                  className="text-[#9ca3af] hover:text-white hover:underline"
+                  className="text-fg-3 hover:text-fg hover:underline"
                 >
                   No water here
                 </button>
@@ -1131,7 +1132,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             {holeQuality.greens === "missing" && (
               <p>
                 Green not mapped — actual SG may vary.{" "}
-                <button onClick={() => startDraw("green")} className="font-semibold text-[#22c55e] hover:underline">
+                <button onClick={() => startDraw("green")} className="font-semibold text-accent hover:underline">
                   Mark green
                 </button>
               </p>
@@ -1146,27 +1147,27 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       </div>
 
       {best && chosen && (
-        <div className="mt-4 rounded-xl border border-[#22c55e]/25 bg-[#22c55e]/[0.07] p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#22c55e]">
+        <div className="mt-4 rounded-xl border border-accent/25 bg-accent/[0.07] p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">
             {clubChoice === "auto" || chosen.club === best.club ? "Best club" : "Selected club"}
           </p>
-          <p className="mt-0.5 text-2xl font-bold text-white">{chosen.club}</p>
-          <p className="mt-1 text-sm font-semibold text-white">
+          <p className="mt-0.5 text-2xl font-bold text-fg">{chosen.club}</p>
+          <p className="mt-1 text-sm font-semibold text-fg">
             Expected {chosen.expectedStrokes.toFixed(2)} strokes to hole out
           </p>
-          <p className="mt-1 text-xs text-[#9ca3af]">
+          <p className="mt-1 text-xs text-fg-3">
             Averages {Math.round(chosen.meanCarryYds)} yd
             {avgLeft != null && (
               <>
-                , leaving about <span className="font-semibold text-white">{Math.round(avgLeft)} yd</span>
+                , leaving about <span className="font-semibold text-fg">{Math.round(avgLeft)} yd</span>
               </>
             )}
             .
           </p>
           {clubChoice !== "auto" && chosen.club !== best.club && (
-            <p className="mt-1 text-xs text-[#9ca3af]">
-              The planner prefers <span className="font-semibold text-white">{best.club}</span>, saving{" "}
-              <span className="font-semibold text-[#22c55e]">{(chosen.expectedStrokes - best.expectedStrokes).toFixed(2)}</span>{" "}
+            <p className="mt-1 text-xs text-fg-3">
+              The planner prefers <span className="font-semibold text-fg">{best.club}</span>, saving{" "}
+              <span className="font-semibold text-accent">{(chosen.expectedStrokes - best.expectedStrokes).toFixed(2)}</span>{" "}
               strokes.
             </p>
           )}
@@ -1177,14 +1178,14 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         <button
           onClick={findBestAim}
           disabled={!chosen}
-          className="flex items-center gap-1.5 rounded-lg border border-[#22c55e]/50 bg-[#22c55e]/10 px-3 py-1.5 text-xs font-medium text-[#22c55e] transition-colors hover:bg-[#22c55e]/20 disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent/20 disabled:opacity-40"
         >
           <Crosshair size={13} /> Find best aim for {chosen?.club ?? "club"}
         </button>
         {clubChoice !== "auto" && (
           <button
             onClick={() => setClubChoice("auto")}
-            className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[#9ca3af] hover:text-white"
+            className="rounded-lg border border-fg/[0.08] px-3 py-1.5 text-xs text-fg-3 hover:text-fg"
           >
             Back to recommended
           </button>
@@ -1192,7 +1193,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
       </div>
       {/* Reserves the space a result takes so tapping "Find best aim" doesn't shift anything
           below it and cause a mis-tap -- a real problem on a phone. */}
-      <div className="mt-2 min-h-[2.75rem] text-xs text-[#9ca3af]">
+      <div className="mt-2 min-h-[2.75rem] text-xs text-fg-3">
         {aimNote && (
           <p>
             {aimNote.optimal ? (
@@ -1201,7 +1202,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               <>
                 Best aim for the {aimNote.club}: {Math.abs(aimNote.offsetYds)} yd {aimNote.offsetYds < 0 ? "left" : "right"} of
                 the old aim, saving about{" "}
-                <span className="font-semibold text-[#22c55e]">+{aimNote.savedStrokes.toFixed(2)} strokes per shot</span>.
+                <span className="font-semibold text-accent">+{aimNote.savedStrokes.toFixed(2)} strokes per shot</span>.
               </>
             )}
           </p>
@@ -1211,10 +1212,10 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   )
 
   const clubTable = (
-    <div className="overflow-x-auto rounded-2xl border border-white/[0.07] bg-[#111111] shadow-lg shadow-black/20">
+    <div className="overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface shadow-lg shadow-black/20">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-white/[0.06] text-left text-[#6b7280]">
+          <tr className="border-b border-fg/[0.06] text-left text-muted">
             <th className="px-3 py-2.5 font-medium">Club</th>
             <th className="px-1 py-2.5 text-right font-medium">Carry</th>
             {shownLies.map((l) => (
@@ -1235,21 +1236,21 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             <tr
               key={r.club}
               onClick={() => setClubChoice(r.club)}
-              className={`cursor-pointer border-b border-white/[0.04] transition-colors last:border-0 hover:bg-white/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
-                chosen?.club === r.club ? "bg-[#22c55e]/10" : ""
+              className={`cursor-pointer border-b border-fg/[0.04] transition-colors last:border-0 hover:bg-fg/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
+                chosen?.club === r.club ? "bg-accent/10" : ""
               }`}
             >
-              <td className="whitespace-nowrap px-3 text-white">
+              <td className="whitespace-nowrap px-3 text-fg">
                 {r.club}
-                {i === 0 && <span className="ml-1 text-[10px] text-[#22c55e]">★</span>}
+                {i === 0 && <span className="ml-1 text-[10px] text-accent">★</span>}
               </td>
-              <td className="px-1 text-right text-[#9ca3af]">{Math.round(r.meanCarryYds)}</td>
+              <td className="px-1 text-right text-fg-3">{Math.round(r.meanCarryYds)}</td>
               {shownLies.map((l) => (
-                <td key={l} className="px-1 text-right text-[#9ca3af]">
+                <td key={l} className="px-1 text-right text-fg-3">
                   {pct(r.lieShare[l])}
                 </td>
               ))}
-              <td className="px-3 text-right font-semibold text-[#22c55e]">
+              <td className="px-3 text-right font-semibold text-accent">
                 +{(r.expectedStrokes - best.expectedStrokes).toFixed(2)}
               </td>
             </tr>
@@ -1260,8 +1261,8 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
   )
 
   const scoringDetails = (
-    <details className="rounded-2xl border border-white/[0.07] bg-[#111111] px-4 py-3 text-xs leading-relaxed text-[#9ca3af]">
-      <summary className="cursor-pointer select-none font-medium text-[#d1d5db]">How this is scored</summary>
+    <details className="rounded-2xl border border-fg/[0.07] bg-surface px-4 py-3 text-xs leading-relaxed text-fg-3">
+      <summary className="cursor-pointer select-none font-medium text-fg-2">How this is scored</summary>
       <div className="mt-2 space-y-2">
         <p>
           Every simulated shot is placed on the map and given a lie (green, fairway, rough, bunker, trees, water or out of bounds).
@@ -1312,21 +1313,21 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           type="button"
           onClick={() => setSetupOpen((v) => !v)}
           aria-expanded={setupOpen}
-          className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 flex w-[calc(100%+2rem)] items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0a0a0a]/95 px-4 py-2.5 text-left backdrop-blur-md md:hidden"
+          className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 flex w-[calc(100%+2rem)] items-center justify-between gap-2 border-b border-fg/[0.08] bg-page/95 px-4 py-2.5 text-left backdrop-blur-md md:hidden"
         >
           <span className="flex min-w-0 items-center gap-1.5 truncate text-sm">
-            <Flag size={13} className="shrink-0 text-[#22c55e]" />
-            <span className="truncate font-semibold text-white">{course.name}</span>
-            {hole && <span className="shrink-0 text-[#9ca3af]">· Hole {hole.ref ?? "?"}</span>}
+            <Flag size={13} className="shrink-0 text-accent" />
+            <span className="truncate font-semibold text-fg">{course.name}</span>
+            {hole && <span className="shrink-0 text-fg-3">· Hole {hole.ref ?? "?"}</span>}
           </span>
-          <ChevronDown size={16} className={`shrink-0 text-[#9ca3af] transition-transform ${setupOpen ? "rotate-180" : ""}`} />
+          <ChevronDown size={16} className={`shrink-0 text-fg-3 transition-transform ${setupOpen ? "rotate-180" : ""}`} />
         </button>
       )}
       <div
-        className={`${setupOpen ? "grid" : "hidden"} gap-4 rounded-2xl border border-white/[0.07] bg-[#111111] p-4 shadow-lg shadow-black/20 md:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] lg:p-5`}
+        className={`${setupOpen ? "grid" : "hidden"} gap-4 rounded-2xl border border-fg/[0.07] bg-surface p-4 shadow-lg shadow-black/20 md:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] lg:p-5`}
       >
         <div className="min-w-0 space-y-3">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#6b7280]">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
             <Search size={13} /> Course
           </p>
           <div className="relative">
@@ -1335,12 +1336,12 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder={course ? `${course.name} — search another…` : "Search a course, e.g. Pebble Beach"}
               aria-label="Search for a golf course"
-              className="w-full rounded-xl border border-white/[0.08] bg-[#0a0a0a] px-3.5 py-2.5 text-sm text-white placeholder:text-[#4b5563] focus:border-[#22c55e]/60 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/20"
+              className="w-full rounded-xl border border-fg/[0.08] bg-page px-3.5 py-2.5 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
             {(hits.length > 0 || searching || (searched && query.trim().length >= 3)) && (
-              <div className="absolute z-[1200] mt-1 max-h-72 w-full overflow-auto rounded-xl border border-white/[0.1] bg-[#0a0a0a] shadow-2xl">
-                {searching && hits.length === 0 && <p className="px-3 py-2.5 text-xs text-[#6b7280]">Searching…</p>}
-                {!searching && hits.length === 0 && <p className="px-3 py-2.5 text-xs text-[#6b7280]">No courses found. Try fewer words.</p>}
+              <div className="absolute z-[1200] mt-1 max-h-72 w-full overflow-auto rounded-xl border border-fg/[0.1] bg-page shadow-2xl">
+                {searching && hits.length === 0 && <p className="px-3 py-2.5 text-xs text-muted">Searching…</p>}
+                {!searching && hits.length === 0 && <p className="px-3 py-2.5 text-xs text-muted">No courses found. Try fewer words.</p>}
                 {hits.map((h) => (
                   <button
                     key={h.id}
@@ -1348,11 +1349,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                       setQuery("")
                       loadCourse(h)
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]"
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-fg hover:bg-fg/[0.06]"
                   >
-                    <MapPin size={14} className="shrink-0 text-[#22c55e]" />
+                    <MapPin size={14} className="shrink-0 text-accent" />
                     <span className="min-w-0 flex-1 truncate">{h.name}</span>
-                    <span className="shrink-0 text-xs text-[#6b7280]">
+                    <span className="shrink-0 text-xs text-muted">
                       {[h.city, h.state].filter(Boolean).join(", ")}
                       {h.par ? ` · par ${h.par}` : ""}
                     </span>
@@ -1363,7 +1364,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           </div>
           {recent.length > 0 && (
             <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto whitespace-nowrap">
-              <span className="flex shrink-0 items-center gap-1 text-xs text-[#6b7280]">
+              <span className="flex shrink-0 items-center gap-1 text-xs text-muted">
                 <History size={12} /> Recent
               </span>
               {recent.map((r) => (
@@ -1371,7 +1372,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   key={r.id}
                   type="button"
                   onClick={() => loadCourse(r)}
-                  className="shrink-0 rounded-full border border-white/[0.08] px-3 py-1.5 text-xs text-[#d1d5db] transition-colors hover:border-[#22c55e]/50 hover:text-white"
+                  className="shrink-0 rounded-full border border-fg/[0.08] px-3 py-1.5 text-xs text-fg-2 transition-colors hover:border-accent/50 hover:text-fg"
                 >
                   {r.name}
                 </button>
@@ -1380,27 +1381,27 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           )}
         </div>
 
-        <div className="min-w-0 space-y-3 lg:border-l lg:border-white/[0.06] lg:pl-5">
+        <div className="min-w-0 space-y-3 lg:border-l lg:border-fg/[0.06] lg:pl-5">
           <button
             type="button"
             onClick={() => setShowSettings((v) => !v)}
             aria-expanded={showSettings}
             className="flex w-full items-center justify-between gap-2 text-left lg:pointer-events-none"
           >
-            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#6b7280]">
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
               <User size={13} /> Golfer
-              <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium normal-case tracking-normal text-[#d1d5db]">
+              <span className="rounded-full bg-fg/[0.06] px-2 py-0.5 text-[11px] font-medium normal-case tracking-normal text-fg-2">
                 {source === "calibrated" ? calibratedName : `Handicap ${handicap}`}
               </span>
             </span>
-            <span className="flex items-center gap-1 text-xs text-[#22c55e] lg:hidden">
+            <span className="flex items-center gap-1 text-xs text-accent lg:hidden">
               {showSettings ? "Hide" : "Change"}
               <ChevronDown size={14} className={showSettings ? "rotate-180" : ""} />
             </span>
           </button>
           <div className={`${showSettings ? "flex" : "hidden"} flex-wrap items-end gap-3 lg:flex`}>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-[#6b7280]">Whose shots</span>
+              <span className="text-xs font-medium text-muted">Whose shots</span>
               <select
                 value={source}
                 onChange={(e) => {
@@ -1408,7 +1409,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   setClubChoice("auto")
                   setAimNote(null)
                 }}
-                className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+                className="rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
               >
                 {calibrated && <option value="calibrated">{calibratedName} (calibrated)</option>}
                 <option value="handicap">Handicap-based golfer</option>
@@ -1417,7 +1418,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             {source === "handicap" && (
               <>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-[#6b7280]">Handicap</span>
+                  <span className="text-xs font-medium text-muted">Handicap</span>
                   <input
                     type="number"
                     min={0}
@@ -1429,11 +1430,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                       setHandicap(Math.min(36, Math.max(0, Number(e.target.value) || 0)))
                       setAimNote(null)
                     }}
-                    className="w-20 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+                    className="w-20 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
                   />
                 </label>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-[#6b7280]">Driver carry (yd)</span>
+                  <span className="text-xs font-medium text-muted">Driver carry (yd)</span>
                   <input
                     type="number"
                     placeholder="avg"
@@ -1443,11 +1444,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                       setDriverCarry(e.target.value)
                       setAimNote(null)
                     }}
-                    className="w-24 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white placeholder:text-[#4b5563]"
+                    className="w-24 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg placeholder:text-faint"
                   />
                 </label>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-[#6b7280]">7-iron carry (yd)</span>
+                  <span className="text-xs font-medium text-muted">7-iron carry (yd)</span>
                   <input
                     type="number"
                     placeholder="avg"
@@ -1457,7 +1458,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                       setSevenIronCarry(e.target.value)
                       setAimNote(null)
                     }}
-                    className="w-24 rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white placeholder:text-[#4b5563]"
+                    className="w-24 rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg placeholder:text-faint"
                   />
                 </label>
                 <TendencyPicker
@@ -1475,9 +1476,9 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
       {/* ---- course status ---- */}
       {course && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-[#9ca3af]">
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
-            <Flag size={14} className="text-[#22c55e]" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-fg-3">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-fg">
+            <Flag size={14} className="text-accent" />
             {course.name}
           </span>
           {geometry && loadState !== "loading" && (
@@ -1485,7 +1486,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               onClick={refreshCourseData}
               disabled={refreshing}
               title="Re-fetch this course's map data instead of using the cached copy"
-              className="flex items-center gap-1 rounded-md border border-white/[0.08] px-2 py-0.5 text-[#9ca3af] hover:text-white disabled:opacity-50"
+              className="flex items-center gap-1 rounded-md border border-fg/[0.08] px-2 py-0.5 text-fg-3 hover:text-fg disabled:opacity-50"
             >
               <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
               {refreshing ? "Refreshing…" : "Refresh course data"}
@@ -1498,8 +1499,8 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           )}
           {loadState === "error" && (
             <>
-              <span className="text-red-400">{loadError}</span>
-              <button onClick={() => loadCourse(course)} className="rounded-md border border-white/[0.08] px-2 py-0.5 text-[#9ca3af] hover:text-white">
+              <span className="text-danger">{loadError}</span>
+              <button onClick={() => loadCourse(course)} className="rounded-md border border-fg/[0.08] px-2 py-0.5 text-fg-3 hover:text-fg">
                 Retry
               </button>
             </>
@@ -1517,8 +1518,8 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 [stats.trees, "tree areas"],
                 ...(stats.range > 0 ? [[stats.range, "range"]] : []),
               ].map(([n, label]) => (
-                <span key={String(label)} className="rounded-full bg-white/[0.05] px-2 py-0.5">
-                  <span className="font-semibold text-[#d1d5db]">{n}</span> {label}
+                <span key={String(label)} className="rounded-full bg-fg/[0.05] px-2 py-0.5">
+                  <span className="font-semibold text-fg-2">{n}</span> {label}
                 </span>
               ))}
             </span>
@@ -1552,8 +1553,8 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               title={h.par ? `Hole ${h.ref ?? i + 1} · par ${h.par}` : undefined}
               className={`flex min-w-[2.9rem] shrink-0 flex-col items-center rounded-lg border px-2 py-1.5 transition-colors ${
                 h.id === holeId
-                  ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]"
-                  : "border-white/[0.08] text-[#9ca3af] hover:border-white/20 hover:text-white"
+                  ? "border-accent bg-accent/15 text-accent"
+                  : "border-fg/[0.08] text-fg-3 hover:border-fg/20 hover:text-fg"
               }`}
             >
               <span className="text-sm font-semibold leading-tight">{h.ref ?? i + 1}</span>
@@ -1567,7 +1568,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         {/* ---- map ---- (min-w-0 stops the scrolling toolbar from stretching the page on phones) */}
         <div className="min-w-0 space-y-2.5">
           <div className="no-scrollbar flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs md:flex-wrap md:overflow-visible">
-            <div role="group" aria-label="What a tap on the map moves" className="flex shrink-0 overflow-hidden rounded-lg border border-white/[0.08]">
+            <div role="group" aria-label="What a tap on the map moves" className="flex shrink-0 overflow-hidden rounded-lg border border-fg/[0.08]">
               {(["ball", "aim", "pin"] as Placing[]).map((p) => (
                 <button
                   key={p}
@@ -1576,7 +1577,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   aria-pressed={placing === p}
                   title={`Tap the map to move the ${p}`}
                   className={`flex items-center gap-1.5 px-3 py-2 font-medium capitalize disabled:opacity-30 md:py-1.5 ${
-                    placing === p ? "bg-[#22c55e] text-black" : "bg-[#141414] text-[#9ca3af] hover:text-white"
+                    placing === p ? "bg-accent text-on-accent" : "bg-surface-2 text-fg-3 hover:text-fg"
                   }`}
                 >
                   {p === "ball" ? <Circle size={12} /> : p === "aim" ? <Crosshair size={12} /> : <Flag size={12} />}
@@ -1607,7 +1608,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               createPortal(
                 <div
                   style={{ top: layersMenuPos.top, left: layersMenuPos.left }}
-                  className="fixed z-[1300] w-52 space-y-0.5 rounded-lg border border-white/[0.1] bg-[#0a0a0a] p-1.5 shadow-2xl"
+                  className="fixed z-[1300] w-52 space-y-0.5 rounded-lg border border-fg/[0.1] bg-page p-1.5 shadow-2xl"
                 >
                   <LayerMenuItem
                     onClick={() => {
@@ -1676,7 +1677,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 label="Reset aim"
               />
             )}
-            <span className="hidden h-5 w-px shrink-0 bg-white/[0.1] md:block" />
+            <span className="hidden h-5 w-px shrink-0 bg-fg/[0.1] md:block" />
             <ToolButton
               onClick={() => setShowTrouble((v) => !v)}
               icon={Layers}
@@ -1703,13 +1704,13 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 hideOnMobile
               />
             )}
-            <label className="ml-auto flex shrink-0 items-center gap-1.5 text-[#6b7280]">
+            <label className="ml-auto flex shrink-0 items-center gap-1.5 text-muted">
               <Pencil size={13} />
               <select
                 value={drawKind ?? ""}
                 onChange={(e) => (e.target.value ? startDraw(e.target.value as Lie) : cancelDraw())}
                 title="Outline trees, water, out of bounds or a safe area the map doesn't show (or gets wrong) so the aim and strokes gained account for it"
-                className="rounded-md border border-white/[0.08] bg-[#0a0a0a] px-1.5 py-1.5 text-[#9ca3af]"
+                className="rounded-md border border-fg/[0.08] bg-page px-1.5 py-1.5 text-fg-3"
               >
                 <option value="">Mark area…</option>
                 {DRAW_KINDS.map((k) => (
@@ -1719,16 +1720,16 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 ))}
               </select>
             </label>
-            {gpsError && <span className="shrink-0 text-red-400">{gpsError}</span>}
+            {gpsError && <span className="shrink-0 text-danger">{gpsError}</span>}
           </div>
 
           {drawKind && (
             <div
               className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs"
-              style={{ borderColor: `${LIE_COLORS[drawKind]}55`, backgroundColor: `${LIE_COLORS[drawKind]}14` }}
+              style={{ borderColor: lieColor(drawKind, 0.33), backgroundColor: lieColor(drawKind, 0.08) }}
             >
-              <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: LIE_COLORS[drawKind] }} />
-              <span className="text-[#d1d5db]">
+              <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: lieColor(drawKind) }} />
+              <span className="text-fg-2">
                 Tap the map to outline the <strong>{LIE_LABEL[drawKind].toLowerCase()}</strong> area
                 {pendingPoints.length > 0 ? ` — ${pendingPoints.length} point${pendingPoints.length === 1 ? "" : "s"}` : ""}.
                 {pendingPoints.length >= 3 && " Tap the first (bigger) point again to close it."}
@@ -1738,18 +1739,18 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 <button
                   onClick={undoDrawPoint}
                   disabled={pendingPoints.length === 0}
-                  className="flex items-center gap-1 rounded-md border border-white/[0.15] px-2 py-1 font-medium text-[#d1d5db] hover:text-white disabled:opacity-30"
+                  className="flex items-center gap-1 rounded-md border border-fg/[0.15] px-2 py-1 font-medium text-fg-2 hover:text-fg disabled:opacity-30"
                 >
                   <Undo2 size={12} /> Undo
                 </button>
                 <button
                   onClick={finishDraw}
                   disabled={pendingPoints.length < 3}
-                  className="flex items-center gap-1 rounded-md bg-[#22c55e] px-2 py-1 font-semibold text-black disabled:opacity-30"
+                  className="flex items-center gap-1 rounded-md bg-accent px-2 py-1 font-semibold text-on-accent disabled:opacity-30"
                 >
                   <Check size={12} /> Finish
                 </button>
-                <button onClick={cancelDraw} className="flex items-center gap-1 rounded-md border border-white/[0.15] px-2 py-1 font-medium text-[#d1d5db] hover:text-white">
+                <button onClick={cancelDraw} className="flex items-center gap-1 rounded-md border border-fg/[0.15] px-2 py-1 font-medium text-fg-2 hover:text-fg">
                   <X size={12} /> Cancel
                 </button>
               </div>
@@ -1758,7 +1759,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
           <div
             ref={mapWrapRef}
-            className="relative h-[60svh] min-h-[380px] overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0a0a0a] shadow-lg shadow-black/30 md:h-[70vh] md:min-h-[460px]"
+            className="relative h-[60svh] min-h-[380px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page shadow-lg shadow-black/30 md:h-[70vh] md:min-h-[460px]"
           >
             {course?.lat != null && course.lng != null ? (
               <CourseMap
@@ -1803,11 +1804,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#22c55e]/10 text-[#22c55e]">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
                   <MapIcon size={26} />
                 </span>
-                <p className="text-sm font-medium text-white">Load a course to plan your shots</p>
-                <p className="max-w-xs text-xs text-[#6b7280]">
+                <p className="text-sm font-medium text-fg">Load a course to plan your shots</p>
+                <p className="max-w-xs text-xs text-muted">
                   Search above, pick a hole, then drag the ball anywhere. Every club is simulated with your own dispersion.
                 </p>
               </div>
@@ -1822,7 +1823,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                   { k: "To pin", v: `${Math.round(distPin)}` },
                 ].map((cell) => (
                   <div key={cell.k} className="bg-black/75 px-1 py-1.5">
-                    <p className="text-[9px] uppercase tracking-wide text-[#9ca3af]">{cell.k}</p>
+                    <p className="text-[9px] uppercase tracking-wide text-gray-400">{cell.k}</p>
                     <p className={`font-bold text-white ${cell.small ? "truncate text-sm" : "text-lg leading-tight"}`}>{cell.v}</p>
                   </div>
                 ))}
@@ -1841,7 +1842,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
                 <button
                   onClick={finishDraw}
                   disabled={pendingPoints.length < 3}
-                  className="flex items-center gap-1 rounded-full bg-[#22c55e] px-4 py-2 text-xs font-semibold text-black shadow-lg disabled:opacity-30"
+                  className="flex items-center gap-1 rounded-full bg-accent px-4 py-2 text-xs font-semibold text-on-accent shadow-lg disabled:opacity-30"
                 >
                   <Check size={13} /> Finish
                 </button>
@@ -1852,24 +1853,24 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-[#9ca3af]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-fg-3">
             {LIES.map((l) => (
               <span key={l} className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-2.5 rounded-full border border-black/60" style={{ background: LIE_COLORS[l] }} />
+                <span className="inline-block h-2.5 w-2.5 rounded-full border border-black/60" style={{ background: lieColor(l) }} />
                 {LIE_LABEL[l]}
               </span>
             ))}
             {showTrouble && (
-              <span className="flex items-center gap-1.5 text-[#d1d5db]">
-                <span className="inline-block h-2.5 w-14 rounded-full" style={{ background: "linear-gradient(90deg,#22c55e,#ffffff33,#f59e0b,#ef4444)" }} />
+              <span className="flex items-center gap-1.5 text-fg-2">
+                <span className="inline-block h-2.5 w-14 rounded-full" style={{ background: `linear-gradient(90deg, ${cssColor("map-better")}, ${cssColor("map-marker", 0.2)}, ${cssColor("map-caution")}, ${cssColor("map-worse")})` }} />
                 better ← vs fairway → worse
               </span>
             )}
-            <span className="text-[#6b7280]">B = ball · A = aim · P = pin (drag any). Dots: {DOTS_SHOWN} simulated shots. Ctrl/⌘ + scroll zooms the map.</span>
+            <span className="text-muted">B = ball · A = aim · P = pin (drag any). Dots: {DOTS_SHOWN} simulated shots. Ctrl/⌘ + scroll zooms the map.</span>
           </div>
 
           {localOnlyZones && localOnlyZones.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#22c55e]/25 bg-[#22c55e]/[0.07] px-3 py-2 text-xs text-[#d1d5db]">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2 text-xs text-fg-2">
               <span>
                 You have {localOnlyZones.length} mark{localOnlyZones.length === 1 ? "" : "s"} saved on this device from
                 before signing in.
@@ -1877,12 +1878,12 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               <button
                 onClick={syncLocalZonesToAccount}
                 disabled={syncingZones}
-                className="ml-auto flex shrink-0 items-center gap-1 rounded-md bg-[#22c55e] px-2.5 py-1 font-semibold text-black disabled:opacity-50"
+                className="ml-auto flex shrink-0 items-center gap-1 rounded-md bg-accent px-2.5 py-1 font-semibold text-on-accent disabled:opacity-50"
               >
                 {syncingZones ? <Loader2 size={12} className="animate-spin" /> : null}
                 {syncingZones ? "Saving…" : "Save to my account"}
               </button>
-              <button onClick={() => setLocalOnlyZones(null)} className="shrink-0 text-[#6b7280] hover:text-white">
+              <button onClick={() => setLocalOnlyZones(null)} className="shrink-0 text-muted hover:text-fg">
                 Not now
               </button>
             </div>
@@ -1890,26 +1891,26 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
           {zones.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-              <span className="text-[#6b7280]">
+              <span className="text-muted">
                 Your marks{authUser ? " (synced to your account)" : " (saved on this device only)"}:
               </span>
               {!authUser && (
-                <Link href="/login" className="text-[#22c55e] hover:underline">
+                <Link href="/login" className="text-accent hover:underline">
                   Sign in to sync
                 </Link>
               )}
               {zones.map((z) => (
                 <span
                   key={z.id}
-                  className="flex items-center gap-1.5 rounded-full border px-2 py-1 text-[#d1d5db]"
-                  style={{ borderColor: `${LIE_COLORS[z.lie]}70` }}
+                  className="flex items-center gap-1.5 rounded-full border px-2 py-1 text-fg-2"
+                  style={{ borderColor: lieColor(z.lie, 0.44) }}
                 >
-                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: LIE_COLORS[z.lie] }} />
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: lieColor(z.lie) }} />
                   {LIE_LABEL[z.lie]}
                   <button
                     onClick={() => deleteZone(z.id)}
                     aria-label={`Remove marked ${LIE_LABEL[z.lie]} area`}
-                    className="text-[#6b7280] hover:text-red-400"
+                    className="text-muted hover:text-danger"
                   >
                     <X size={11} />
                   </button>
@@ -1938,7 +1939,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
       {planReady && ranking.length > 0 && (
         <div
-          className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-white/[0.1] bg-[#111111] shadow-[0_-8px_24px_rgba(0,0,0,0.45)] transition-[max-height] duration-200 md:hidden"
+          className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface shadow-[0_-8px_24px_rgba(0,0,0,0.45)] transition-[max-height] duration-200 md:hidden"
           style={{ maxHeight: sheetOpen ? "min(65vh, 26rem)" : "3.25rem" }}
         >
           <button
@@ -1948,15 +1949,15 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
             className="flex shrink-0 items-center justify-between gap-2 px-4 py-3 text-left"
           >
             <span className="flex min-w-0 items-center gap-1.5 truncate text-xs">
-              <span className="font-semibold text-white">{chosen?.club ?? "–"}</span>
-              <span className="text-[#4b5563]">·</span>
-              <span className="text-[#9ca3af]">{chosen ? `${Math.round(chosen.meanCarryYds)}y` : "–"}</span>
-              <span className="text-[#4b5563]">·</span>
-              <span className="text-[#9ca3af]">{distPin != null ? `${Math.round(distPin)} to pin` : "–"}</span>
-              <span className="text-[#4b5563]">·</span>
-              <span className="text-[#9ca3af]">{chosen ? `${chosen.expectedStrokes.toFixed(2)} strokes` : "–"}</span>
+              <span className="font-semibold text-fg">{chosen?.club ?? "–"}</span>
+              <span className="text-faint">·</span>
+              <span className="text-fg-3">{chosen ? `${Math.round(chosen.meanCarryYds)}y` : "–"}</span>
+              <span className="text-faint">·</span>
+              <span className="text-fg-3">{distPin != null ? `${Math.round(distPin)} to pin` : "–"}</span>
+              <span className="text-faint">·</span>
+              <span className="text-fg-3">{chosen ? `${chosen.expectedStrokes.toFixed(2)} strokes` : "–"}</span>
             </span>
-            <ChevronDown size={16} className={`shrink-0 text-[#9ca3af] transition-transform ${sheetOpen ? "" : "rotate-180"}`} />
+            <ChevronDown size={16} className={`shrink-0 text-fg-3 transition-transform ${sheetOpen ? "" : "rotate-180"}`} />
           </button>
           <div className="overflow-y-auto pb-[env(safe-area-inset-bottom)]">{clubTable}</div>
         </div>
@@ -1974,7 +1975,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
         />
       )}
       {correctionNote && (
-        <div className="fixed bottom-20 left-1/2 z-[1400] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl border border-[#22c55e]/30 bg-[#111111] px-4 py-3 text-center text-sm text-white shadow-2xl md:bottom-6">
+        <div className="fixed bottom-20 left-1/2 z-[1400] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl border border-accent/30 bg-surface px-4 py-3 text-center text-sm text-fg shadow-2xl md:bottom-6">
           {correctionNote}
         </div>
       )}
@@ -1986,11 +1987,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
 
 function StatTile({ label, value }: { label: string; value: number | null }) {
   return (
-    <div className="rounded-xl bg-white/[0.04] px-2 py-2.5">
-      <p className="text-[10px] uppercase tracking-wide text-[#6b7280]">{label}</p>
-      <p className="text-xl font-bold leading-tight text-white">
+    <div className="rounded-xl bg-fg/[0.04] px-2 py-2.5">
+      <p className="text-[10px] uppercase tracking-wide text-muted">{label}</p>
+      <p className="text-xl font-bold leading-tight text-fg">
         {value ?? "–"}
-        <span className="ml-0.5 text-xs font-normal text-[#6b7280]">yd</span>
+        <span className="ml-0.5 text-xs font-normal text-muted">yd</span>
       </p>
     </div>
   )
@@ -2017,7 +2018,7 @@ function ToolButton({
       aria-pressed={active}
       title={title}
       className={`${hideOnMobile ? "hidden md:flex" : "flex"} shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 font-medium transition-colors md:py-1.5 ${
-        active ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]" : "border-white/[0.08] text-[#9ca3af] hover:border-white/20 hover:text-white"
+        active ? "border-accent bg-accent/15 text-accent" : "border-fg/[0.08] text-fg-3 hover:border-fg/20 hover:text-fg"
       }`}
     >
       <Icon size={13} />
@@ -2043,7 +2044,7 @@ function LayerMenuItem({
       onClick={onClick}
       aria-pressed={active}
       className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs font-medium ${
-        active ? "bg-[#22c55e]/15 text-[#22c55e]" : "text-[#d1d5db] hover:bg-white/[0.06] hover:text-white"
+        active ? "bg-accent/15 text-accent" : "text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
       }`}
     >
       <Icon size={14} />
@@ -2054,7 +2055,7 @@ function LayerMenuItem({
 
 function Notice({ children }: { children: ReactNode }) {
   return (
-    <p className="flex items-start gap-2 rounded-xl border border-yellow-800/60 bg-yellow-950/30 px-3 py-2 text-xs text-yellow-500">
+    <p className="flex items-start gap-2 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
       <Info size={14} className="mt-0.5 shrink-0" />
       <span>{children}</span>
     </p>

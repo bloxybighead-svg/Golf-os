@@ -31,7 +31,7 @@ export async function CompareSection() {
 
   if (profilesError || !profiles || profiles.length === 0) {
     return (
-      <div className="rounded-xl border border-yellow-800/60 bg-yellow-950/30 px-5 py-4 text-sm text-yellow-400">
+      <div className="rounded-xl border border-warn/40 bg-warn/10 px-5 py-4 text-sm text-warn">
         <p className="font-semibold">No golfer profiles found</p>
       </div>
     )

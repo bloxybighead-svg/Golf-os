@@ -1,6 +1,7 @@
 "use client"
 
 import { yardsToPixels, type TransformConfig } from "@/lib/dispersion/transform"
+import { cssColor, useThemeColor } from "@/lib/theme/tokens"
 
 export interface OverlayShot {
   carryYds: number
@@ -52,6 +53,7 @@ function layout(widthPx: number, maxHeightPx: number, minCarryYds: number, maxCa
 }
 
 export function OverlayCanvas({ series, widthPx = 640, maxHeightPx = 640, minCarryYds = 0, maxCarryYds, widthYds }: Props) {
+  const c = useThemeColor()
   const { heightPx, cfg } = layout(widthPx, maxHeightPx, minCarryYds, maxCarryYds, widthYds)
   const tee = yardsToPixels({ carryYds: 0, offlineYds: 0 }, cfg)
 
@@ -67,21 +69,21 @@ export function OverlayCanvas({ series, widthPx = 640, maxHeightPx = 640, minCar
       <svg
         viewBox={`0 0 ${widthPx} ${heightPx}`}
         width="100%"
-        style={{ maxWidth: widthPx, background: "#0a0a0a", borderRadius: 12 }}
+        style={{ maxWidth: widthPx, background: cssColor("page"), borderRadius: 12 }}
       >
         {gridlines.map((yds) => {
           const p = yardsToPixels({ carryYds: yds, offlineYds: 0 }, cfg)
           return (
             <g key={yds}>
-              <line x1={0} y1={p.y} x2={widthPx} y2={p.y} stroke="#ffffff14" strokeWidth={1} />
-              <text x={8} y={p.y - 4} fill="#6b7280" fontSize={11}>
+              <line x1={0} y1={p.y} x2={widthPx} y2={p.y} stroke={c("fg", 0.08)} strokeWidth={1} />
+              <text x={8} y={p.y - 4} fill={c("muted")} fontSize={11}>
                 {yds}y
               </text>
             </g>
           )
         })}
 
-        <line x1={tee.x} y1={0} x2={tee.x} y2={heightPx} stroke="#ffffff1f" strokeDasharray="4 4" strokeWidth={1} />
+        <line x1={tee.x} y1={0} x2={tee.x} y2={heightPx} stroke={c("fg", 0.12)} strokeDasharray="4 4" strokeWidth={1} />
 
         {series.map((s) => (
           <g key={s.key}>
@@ -101,12 +103,12 @@ export function OverlayCanvas({ series, widthPx = 640, maxHeightPx = 640, minCar
           </g>
         ))}
 
-        <rect x={tee.x - 5} y={tee.y - 5} width={10} height={10} fill="#ffffff" />
+        <rect x={tee.x - 5} y={tee.y - 5} width={10} height={10} fill={c("fg")} />
       </svg>
 
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
         {series.map((s) => (
-          <span key={s.key} className="flex items-center gap-1.5 text-xs text-[#9ca3af]">
+          <span key={s.key} className="flex items-center gap-1.5 text-xs text-fg-3">
             <span
               className="inline-block h-2 w-2 rounded-full"
               style={{ background: s.color, borderRadius: s.markerShape === "cross" ? 2 : 999 }}

@@ -431,10 +431,10 @@ describe("trouble map and dispersion rings", () => {
   })
 
   it("colours better-than-fairway green, neutral clear, trouble amber to red", () => {
-    expect(deltaColor(-0.6).color).toBe("#22c55e")
+    expect(deltaColor(-0.6).color).toBe("map-better")
     expect(deltaColor(0).opacity).toBe(0)
-    expect(deltaColor(0.4).color).toBe("#f59e0b")
-    expect(deltaColor(1.1).color).toBe("#ef4444")
+    expect(deltaColor(0.4).color).toBe("map-caution")
+    expect(deltaColor(1.1).color).toBe("map-worse")
   })
 
   it("50% ring is inside the 90% ring and both are centred on the shots", () => {

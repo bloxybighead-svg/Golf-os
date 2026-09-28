@@ -20,7 +20,7 @@ function FeelDots({ value }: { value: number }) {
           key={n}
           className={[
             "h-2 w-2 rounded-full",
-            n <= value ? "bg-[#22c55e]" : "bg-[#2a2a2a]",
+            n <= value ? "bg-accent" : "bg-surface-4",
           ].join(" ")}
         />
       ))}
@@ -29,19 +29,19 @@ function FeelDots({ value }: { value: number }) {
 }
 
 const BLOCK_TYPE_COLORS: Record<string, string> = {
-  "Full Swing":        "border-blue-500/30 bg-blue-500/5",
-  "Wedge/Scoring Zone":"border-yellow-500/30 bg-yellow-500/5",
-  "Chipping":          "border-orange-500/30 bg-orange-500/5",
-  "Bunker":            "border-amber-500/30 bg-amber-500/5",
-  "Putting":           "border-green-500/30 bg-green-500/5",
+  "Full Swing":        "border-info/30 bg-info/5",
+  "Wedge/Scoring Zone":"border-warn/30 bg-warn/5",
+  "Chipping":          "border-viz-orange/30 bg-viz-orange/5",
+  "Bunker":            "border-warn/30 bg-warn/5",
+  "Putting":           "border-accent/30 bg-accent/5",
 }
 
 const BLOCK_TYPE_LABEL_COLORS: Record<string, string> = {
-  "Full Swing":        "text-blue-400",
-  "Wedge/Scoring Zone":"text-yellow-400",
-  "Chipping":          "text-orange-400",
-  "Bunker":            "text-amber-400",
-  "Putting":           "text-green-400",
+  "Full Swing":        "text-info",
+  "Wedge/Scoring Zone":"text-warn",
+  "Chipping":          "text-viz-orange",
+  "Bunker":            "text-warn",
+  "Putting":           "text-accent-hi",
 }
 
 export default async function SessionDetailPage({ params }: { params: { id: string } }) {
@@ -77,43 +77,43 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
       {/* Back nav */}
       <Link
         href="/"
-        className="inline-flex items-center gap-1.5 text-sm text-[#6b7280] hover:text-white transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg transition-colors"
       >
         <ArrowLeft size={14} />
         Play
       </Link>
 
       {/* Session header */}
-      <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-6 py-5 shadow-sm">
+      <div className="rounded-xl border border-fg/[0.06] bg-surface px-6 py-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xl font-bold tracking-tight text-white">{session.session_type}</p>
-            <p className="mt-1 text-sm text-[#6b7280]">{formatDate(session.date)}</p>
+            <p className="text-xl font-bold tracking-tight text-fg">{session.session_type}</p>
+            <p className="mt-1 text-sm text-muted">{formatDate(session.date)}</p>
           </div>
           <DeleteSessionButton sessionId={session.id} redirectTo="/" />
         </div>
 
         {session.primary_goal && (
-          <p className="mt-3 text-sm italic text-[#6b7280]">"{session.primary_goal}"</p>
+          <p className="mt-3 text-sm italic text-muted">"{session.primary_goal}"</p>
         )}
 
         {/* Meta chips */}
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {session.duration_minutes && (
-            <div className="flex items-center gap-1.5 text-xs text-[#6b7280]">
+            <div className="flex items-center gap-1.5 text-xs text-muted">
               <Clock size={12} />
               <span>{session.duration_minutes} min</span>
             </div>
           )}
           {session.overall_feel != null && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-[#6b7280]">Feel</span>
+              <span className="text-xs text-muted">Feel</span>
               <FeelDots value={session.overall_feel} />
             </div>
           )}
           {session.energy_level != null && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-[#6b7280]">Energy</span>
+              <span className="text-xs text-muted">Energy</span>
               <FeelDots value={session.energy_level} />
             </div>
           )}
@@ -125,7 +125,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
             {session.location.map((loc: string) => (
               <span
                 key={loc}
-                className="rounded-full border border-white/[0.06] bg-[#1a1a1a] px-2.5 py-0.5 text-xs text-[#6b7280]"
+                className="rounded-full border border-fg/[0.06] bg-surface-3 px-2.5 py-0.5 text-xs text-muted"
               >
                 {loc}
               </span>
@@ -135,28 +135,28 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
 
         {/* Quick stats */}
         {(totalShots > 0 || totalActivities > 0 || sessionBlocks.length > 0) && (
-          <div className="mt-4 flex gap-6 border-t border-white/[0.04] pt-4">
+          <div className="mt-4 flex gap-6 border-t border-fg/[0.04] pt-4">
             <div>
-              <p className="text-lg font-bold text-white">{sessionBlocks.length}</p>
-              <p className="text-xs text-[#6b7280]">{sessionBlocks.length === 1 ? "block" : "blocks"}</p>
+              <p className="text-lg font-bold text-fg">{sessionBlocks.length}</p>
+              <p className="text-xs text-muted">{sessionBlocks.length === 1 ? "block" : "blocks"}</p>
             </div>
             {totalActivities > 0 && (
               <div>
-                <p className="text-lg font-bold text-white">{totalActivities}</p>
-                <p className="text-xs text-[#6b7280]">{totalActivities === 1 ? "activity" : "activities"}</p>
+                <p className="text-lg font-bold text-fg">{totalActivities}</p>
+                <p className="text-xs text-muted">{totalActivities === 1 ? "activity" : "activities"}</p>
               </div>
             )}
             {totalShots > 0 && (
               <div>
-                <p className="text-lg font-bold text-white">{totalShots}</p>
-                <p className="text-xs text-[#6b7280]">shots</p>
+                <p className="text-lg font-bold text-fg">{totalShots}</p>
+                <p className="text-xs text-muted">shots</p>
               </div>
             )}
           </div>
         )}
 
         {session.notes && (
-          <p className="mt-4 border-t border-white/[0.04] pt-4 text-sm text-[#9ca3af]">
+          <p className="mt-4 border-t border-fg/[0.04] pt-4 text-sm text-fg-3">
             {session.notes}
           </p>
         )}
@@ -164,13 +164,13 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
 
       {/* Blocks */}
       {sessionBlocks.length === 0 ? (
-        <p className="text-sm text-[#4b5563]">No blocks recorded for this session.</p>
+        <p className="text-sm text-faint">No blocks recorded for this session.</p>
       ) : (
         <div className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-[#6b7280]">Blocks</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted">Blocks</h2>
           {sessionBlocks.map((block, idx) => {
-            const colorBorder = BLOCK_TYPE_COLORS[block.block_type] ?? "border-white/[0.06] bg-transparent"
-            const labelColor = BLOCK_TYPE_LABEL_COLORS[block.block_type] ?? "text-white"
+            const colorBorder = BLOCK_TYPE_COLORS[block.block_type] ?? "border-fg/[0.06] bg-transparent"
+            const labelColor = BLOCK_TYPE_LABEL_COLORS[block.block_type] ?? "text-fg"
             const activities: BlockActivity[] = block.activities ?? []
 
             return (
@@ -185,21 +185,21 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
                       {block.block_type}
                     </span>
                     {block.duration_minutes && (
-                      <span className="text-xs text-[#4b5563]">{block.duration_minutes} min</span>
+                      <span className="text-xs text-faint">{block.duration_minutes} min</span>
                     )}
                   </div>
                   <div className="flex items-center gap-4">
                     {block.quality_rating != null && (
                       <div className="flex items-center gap-1">
-                        <Star size={11} className="text-[#22c55e]" fill="#22c55e" />
-                        <span className="text-xs font-semibold text-[#22c55e]">{block.quality_rating}/5</span>
+                        <Star size={11} className="text-accent" fill="currentColor" />
+                        <span className="text-xs font-semibold text-accent">{block.quality_rating}/5</span>
                       </div>
                     )}
                     {block.shot_count != null && (
-                      <span className="text-xs text-[#6b7280]">{block.shot_count} shots</span>
+                      <span className="text-xs text-muted">{block.shot_count} shots</span>
                     )}
                     {block.launch_pro && (
-                      <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400">
+                      <span className="rounded-full border border-info/30 bg-info/10 px-2 py-0.5 text-xs text-info">
                         LaunchPro
                       </span>
                     )}
@@ -212,7 +212,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
                     {block.clubs_used.map((club) => (
                       <span
                         key={club}
-                        className="rounded-md border border-white/[0.06] bg-[#1a1a1a] px-2 py-0.5 text-xs text-[#9ca3af]"
+                        className="rounded-md border border-fg/[0.06] bg-surface-3 px-2 py-0.5 text-xs text-fg-3"
                       >
                         {club}
                       </span>
@@ -222,7 +222,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
 
                 {/* Distance range */}
                 {block.distance_range && (
-                  <p className="mt-2 text-xs text-[#6b7280]">
+                  <p className="mt-2 text-xs text-muted">
                     <Target size={11} className="mr-1 inline" />
                     {block.distance_range}
                   </p>
@@ -230,17 +230,17 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
 
                 {/* Activities */}
                 {activities.length > 0 && (
-                  <div className="mt-3 space-y-2 border-t border-white/[0.04] pt-3">
+                  <div className="mt-3 space-y-2 border-t border-fg/[0.04] pt-3">
                     {activities.map((act, aIdx) => (
                       <div key={aIdx} className="flex items-start gap-3">
-                        <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#374151]" />
+                        <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-faint" />
                         <div className="min-w-0">
-                          <span className="text-sm text-white">{act.drill_name}</span>
+                          <span className="text-sm text-fg">{act.drill_name}</span>
                           {act.rep_count != null && (
-                            <span className="ml-2 text-xs text-[#4b5563]">× {act.rep_count}</span>
+                            <span className="ml-2 text-xs text-faint">× {act.rep_count}</span>
                           )}
                           {act.note && (
-                            <p className="mt-0.5 text-xs italic text-[#6b7280]">{act.note}</p>
+                            <p className="mt-0.5 text-xs italic text-muted">{act.note}</p>
                           )}
                         </div>
                       </div>
@@ -250,7 +250,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
 
                 {/* Block notes */}
                 {block.notes && (
-                  <p className="mt-3 border-t border-white/[0.04] pt-2.5 text-xs italic text-[#6b7280]">
+                  <p className="mt-3 border-t border-fg/[0.04] pt-2.5 text-xs italic text-muted">
                     {block.notes}
                   </p>
                 )}

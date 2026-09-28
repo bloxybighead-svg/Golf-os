@@ -183,10 +183,10 @@ export default function NewSessionPage() {
     return (
       <div className="mx-auto max-w-xl space-y-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Quick Log</h2>
+          <h2 className="text-lg font-semibold text-fg">Quick Log</h2>
           <button
             onClick={() => router.push("/")}
-            className="text-sm text-[#6b7280] hover:text-white transition-colors"
+            className="text-sm text-muted hover:text-fg transition-colors"
           >
             Cancel
           </button>
@@ -194,18 +194,18 @@ export default function NewSessionPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
               Date
             </label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white focus:border-[#4ade80] focus:outline-none"
+              className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg focus:border-accent focus:outline-none"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
               Duration (min)
             </label>
             <input
@@ -215,26 +215,26 @@ export default function NewSessionPage() {
               value={quickDuration}
               onChange={(e) => setQuickDuration(e.target.value)}
               placeholder="e.g. 45"
-              className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+              className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
-            Note <span className="normal-case tracking-normal text-[#4b5563]">optional</span>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
+            Note <span className="normal-case tracking-normal text-faint">optional</span>
           </label>
           <textarea
             value={finalNotes}
             onChange={(e) => setFinalNotes(e.target.value)}
             placeholder="What did you work on?"
             rows={3}
-            className="w-full resize-none rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+            className="w-full resize-none rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
           />
         </div>
 
         {saveError && (
-          <p className="rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400">
+          <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
             {saveError}
           </p>
         )}
@@ -242,18 +242,18 @@ export default function NewSessionPage() {
         <button
           onClick={saveQuickSession}
           disabled={saving || !date}
-          className="w-full rounded-md bg-[#4ade80] py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="w-full rounded-md bg-accent py-3 text-sm font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save Quick Session"}
         </button>
 
         <button
           onClick={() => setQuickMode(false)}
-          className="w-full rounded-md border border-dashed border-[#2a2a2a] py-3 text-sm text-[#6b7280] transition-colors hover:border-white hover:text-white"
+          className="w-full rounded-md border border-dashed border-line py-3 text-sm text-muted transition-colors hover:border-fg hover:text-fg"
         >
           Add full details →
         </button>
-        <p className="text-center text-xs text-[#4b5563]">
+        <p className="text-center text-xs text-faint">
           Date, duration and note carry over into the full form.
         </p>
       </div>
@@ -267,17 +267,17 @@ export default function NewSessionPage() {
       {step === "header" && (
         <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">New Session</h2>
+            <h2 className="text-lg font-semibold text-fg">New Session</h2>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setQuickMode(true)}
-                className="rounded-md border border-[#2a2a2a] px-3 py-1.5 text-xs font-medium text-[#6b7280] transition-colors hover:border-[#4ade80] hover:text-[#4ade80]"
+                className="rounded-md border border-line px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-accent-hi hover:text-accent-hi"
               >
                 ⚡ Quick Log
               </button>
               <button
                 onClick={() => router.push("/")}
-                className="text-sm text-[#6b7280] hover:text-white transition-colors"
+                className="text-sm text-muted hover:text-fg transition-colors"
               >
                 Cancel
               </button>
@@ -287,32 +287,32 @@ export default function NewSessionPage() {
           {/* Date + Time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
                 Date
               </label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white focus:border-[#4ade80] focus:outline-none"
+                className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg focus:border-accent focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
                 Start Time
               </label>
               <input
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white focus:border-[#4ade80] focus:outline-none"
+                className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg focus:border-accent focus:outline-none"
               />
             </div>
           </div>
 
           {/* Location */}
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">Location</p>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Location</p>
             <div className="flex flex-wrap gap-2">
               {LOCATIONS.map((loc) => (
                 <button
@@ -322,8 +322,8 @@ export default function NewSessionPage() {
                   className={[
                     "rounded-md border px-3 py-1.5 text-sm transition-colors",
                     locations.includes(loc)
-                      ? "border-[#4ade80] bg-[#4ade80] font-medium text-black"
-                      : "border-[#2a2a2a] text-[#6b7280] hover:border-white hover:text-white",
+                      ? "border-accent bg-accent font-medium text-on-accent"
+                      : "border-line text-muted hover:border-fg hover:text-fg",
                   ].join(" ")}
                 >
                   {loc}
@@ -334,7 +334,7 @@ export default function NewSessionPage() {
 
           {/* Session type */}
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">Session Type</p>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Session Type</p>
             <div className="flex flex-wrap gap-2">
               {SESSION_TYPES.map((t) => (
                 <button
@@ -344,8 +344,8 @@ export default function NewSessionPage() {
                   className={[
                     "rounded-md border px-3 py-1.5 text-sm transition-colors",
                     sessionType === t
-                      ? "border-[#4ade80] bg-[#4ade80] font-medium text-black"
-                      : "border-[#2a2a2a] text-[#6b7280] hover:border-white hover:text-white",
+                      ? "border-accent bg-accent font-medium text-on-accent"
+                      : "border-line text-muted hover:border-fg hover:text-fg",
                   ].join(" ")}
                 >
                   {t}
@@ -356,7 +356,7 @@ export default function NewSessionPage() {
 
           {/* Primary goal */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
               Primary Goal
             </label>
             <input
@@ -364,14 +364,14 @@ export default function NewSessionPage() {
               value={primaryGoal}
               onChange={(e) => setPrimaryGoal(e.target.value)}
               placeholder="What are you working on today?"
-              className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+              className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
             />
           </div>
 
           <button
             onClick={() => setStep("building")}
             disabled={locations.length === 0}
-            className="w-full rounded-md bg-[#4ade80] py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-30"
+            className="w-full rounded-md bg-accent py-3 text-sm font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-30"
           >
             Start Session →
           </button>
@@ -382,29 +382,29 @@ export default function NewSessionPage() {
       {step === "building" && (
         <div className="space-y-4">
           {/* Session summary bar */}
-          <div className="rounded-md border border-[#2a2a2a] bg-[#161616] px-4 py-3">
+          <div className="rounded-md border border-line bg-surface-2 px-4 py-3">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="text-sm font-medium text-white">{sessionType}</p>
-                <p className="text-xs text-[#6b7280]">
+                <p className="text-sm font-medium text-fg">{sessionType}</p>
+                <p className="text-xs text-muted">
                   {locations.join(" + ")} · {date}
                 </p>
               </div>
               <button
                 onClick={() => setStep("header")}
-                className="shrink-0 text-xs text-[#6b7280] hover:text-white transition-colors"
+                className="shrink-0 text-xs text-muted hover:text-fg transition-colors"
               >
                 edit
               </button>
             </div>
             {primaryGoal && (
-              <p className="mt-1.5 text-xs text-[#4ade80]">"{primaryGoal}"</p>
+              <p className="mt-1.5 text-xs text-accent-hi">"{primaryGoal}"</p>
             )}
           </div>
 
           {/* Block list */}
           {blocks.length === 0 ? (
-            <p className="py-10 text-center text-sm text-[#6b7280]">
+            <p className="py-10 text-center text-sm text-muted">
               No blocks yet. Tap below to add your first one.
             </p>
           ) : (
@@ -417,7 +417,7 @@ export default function NewSessionPage() {
                   onRemove={() => setBlocks((prev) => prev.filter((_, idx) => idx !== i))}
                 />
               ))}
-              <p className="pt-1 text-xs text-[#6b7280]">
+              <p className="pt-1 text-xs text-muted">
                 {blocks.length} block{blocks.length !== 1 ? "s" : ""} · {totalDuration} min total
               </p>
             </div>
@@ -425,23 +425,23 @@ export default function NewSessionPage() {
 
           <button
             onClick={() => setShowBlockForm(true)}
-            className="w-full rounded-md border border-dashed border-[#2a2a2a] py-3 text-sm text-[#6b7280] transition-colors hover:border-white hover:text-white"
+            className="w-full rounded-md border border-dashed border-line py-3 text-sm text-muted transition-colors hover:border-fg hover:text-fg"
           >
             + Add Block
           </button>
 
           {/* Club Work (optional) */}
-          <div className="rounded-md border border-[#2a2a2a] bg-[#161616] px-4 py-3.5">
+          <div className="rounded-md border border-line bg-surface-2 px-4 py-3.5">
             <div className="mb-3">
-              <p className="text-sm font-medium text-white">Club Work</p>
-              <p className="text-xs text-[#6b7280]">Optional — log shot numbers per club + feel (one entry per feel)</p>
+              <p className="text-sm font-medium text-fg">Club Work</p>
+              <p className="text-xs text-muted">Optional — log shot numbers per club + feel (one entry per feel)</p>
             </div>
             <ClubWork entries={clubWork} onChange={setClubWork} />
           </div>
 
           <button
             onClick={() => setStep("finish")}
-            className="w-full rounded-md bg-[#4ade80] py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90"
+            className="w-full rounded-md bg-accent py-3 text-sm font-semibold text-on-accent transition-opacity hover:opacity-90"
           >
             Finish Session →
           </button>
@@ -452,31 +452,31 @@ export default function NewSessionPage() {
       {step === "finish" && (
         <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Wrap Up</h2>
+            <h2 className="text-lg font-semibold text-fg">Wrap Up</h2>
             <button
               onClick={() => setStep("building")}
-              className="text-sm text-[#6b7280] hover:text-white transition-colors"
+              className="text-sm text-muted hover:text-fg transition-colors"
             >
               ← Back
             </button>
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">
               Overall Feel
             </p>
             <RatingDots value={overallFeel} onChange={setOverallFeel} />
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">
               Energy Level
             </p>
             <RatingDots value={energyLevel} onChange={setEnergyLevel} />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#6b7280]">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
               Final Notes
             </label>
             <textarea
@@ -484,19 +484,19 @@ export default function NewSessionPage() {
               onChange={(e) => setFinalNotes(e.target.value)}
               placeholder="Anything to carry forward into the next session…"
               rows={4}
-              className="w-full resize-none rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+              className="w-full resize-none rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
             />
           </div>
 
           {/* Session summary */}
-          <div className="rounded-md border border-[#2a2a2a] bg-[#161616] px-4 py-3 space-y-1 text-xs text-[#6b7280]">
+          <div className="rounded-md border border-line bg-surface-2 px-4 py-3 space-y-1 text-xs text-muted">
             <p>{date} · {sessionType}</p>
             <p>{blocks.length} block{blocks.length !== 1 ? "s" : ""} · {totalDuration} min</p>
-            {primaryGoal && <p className="text-[#4ade80]">"{primaryGoal}"</p>}
+            {primaryGoal && <p className="text-accent-hi">"{primaryGoal}"</p>}
           </div>
 
           {saveError && (
-            <p className="rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400">
+            <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
               {saveError}
             </p>
           )}
@@ -504,7 +504,7 @@ export default function NewSessionPage() {
           <button
             onClick={saveSession}
             disabled={saving}
-            className="w-full rounded-md bg-[#4ade80] py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-md bg-accent py-3 text-sm font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save Session"}
           </button>

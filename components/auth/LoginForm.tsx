@@ -52,16 +52,16 @@ export default function LoginForm() {
   return (
     <div className="mx-auto flex max-w-sm flex-col items-center gap-6 pt-10">
       <Link href="/" className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#22c55e] text-black">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-on-accent">
           <Flag size={16} strokeWidth={2.6} />
         </span>
-        <span className="text-base font-bold tracking-tight text-white">
-          Golf <span className="text-[#22c55e]">OS</span>
+        <span className="text-base font-bold tracking-tight text-fg">
+          Golf <span className="text-accent">OS</span>
         </span>
       </Link>
 
-      <div className="w-full rounded-2xl border border-white/[0.07] bg-[#111111] p-5 shadow-lg shadow-black/20">
-        <div className="mb-4 flex rounded-lg border border-white/[0.08] bg-[#0a0a0a] p-1 text-sm">
+      <div className="w-full rounded-2xl border border-fg/[0.07] bg-surface p-5 shadow-lg shadow-black/20">
+        <div className="mb-4 flex rounded-lg border border-fg/[0.08] bg-page p-1 text-sm">
           {(["signin", "signup"] as Mode[]).map((m) => (
             <button
               key={m}
@@ -72,7 +72,7 @@ export default function LoginForm() {
                 setCheckEmail(false)
               }}
               className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${
-                mode === m ? "bg-[#22c55e] text-black" : "text-[#9ca3af] hover:text-white"
+                mode === m ? "bg-accent text-on-accent" : "text-fg-3 hover:text-fg"
               }`}
             >
               {m === "signin" ? "Sign in" : "Create account"}
@@ -81,25 +81,25 @@ export default function LoginForm() {
         </div>
 
         {checkEmail ? (
-          <p className="rounded-lg border border-[#22c55e]/25 bg-[#22c55e]/[0.07] p-3 text-sm text-[#d1d5db]">
-            Check <span className="font-semibold text-white">{email}</span> for a confirmation link, then come back and
+          <p className="rounded-lg border border-accent/25 bg-accent/[0.07] p-3 text-sm text-fg-2">
+            Check <span className="font-semibold text-fg">{email}</span> for a confirmation link, then come back and
             sign in.
           </p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-[#6b7280]">Email</span>
+              <span className="text-xs font-medium text-muted">Email</span>
               <input
                 type="email"
                 required
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-2 text-sm text-white focus:border-[#22c55e]/60 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/20"
+                className="rounded-lg border border-fg/[0.08] bg-page px-3 py-2 text-sm text-fg focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-[#6b7280]">Password</span>
+              <span className="text-xs font-medium text-muted">Password</span>
               <input
                 type="password"
                 required
@@ -107,14 +107,14 @@ export default function LoginForm() {
                 autoComplete={mode === "signin" ? "current-password" : "new-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-2 text-sm text-white focus:border-[#22c55e]/60 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/20"
+                className="rounded-lg border border-fg/[0.08] bg-page px-3 py-2 text-sm text-fg focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </label>
-            {error && <p className="text-xs text-red-400">{error}</p>}
+            {error && <p className="text-xs text-danger">{error}</p>}
             <button
               type="submit"
               disabled={busy}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#22c55e] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:brightness-110 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-on-accent transition-all hover:brightness-110 disabled:opacity-50"
             >
               {busy ? <Loader2 size={15} className="animate-spin" /> : mode === "signin" ? <LogIn size={15} /> : <UserPlus size={15} />}
               {mode === "signin" ? "Sign in" : "Create account"}
@@ -123,7 +123,7 @@ export default function LoginForm() {
         )}
       </div>
 
-      <p className="max-w-xs text-center text-xs text-[#6b7280]">
+      <p className="max-w-xs text-center text-xs text-muted">
         An account lets your hand-marked course areas (trees, water, out of bounds) follow you between devices. Log,
         Drills, Rounds and Trends don&rsquo;t need an account yet.
       </p>

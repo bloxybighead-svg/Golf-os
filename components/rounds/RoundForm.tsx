@@ -16,14 +16,14 @@ function todayISO() {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-2.5 text-sm text-white placeholder:text-[#4b5563] focus:border-[#22c55e] focus:outline-none transition-colors"
+  "w-full rounded-lg border border-fg/[0.08] bg-surface-3 px-3 py-2.5 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none transition-colors"
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1.5 flex items-baseline gap-2 text-xs font-medium uppercase tracking-widest text-[#6b7280]">
+      <label className="mb-1.5 flex items-baseline gap-2 text-xs font-medium uppercase tracking-widest text-muted">
         {label}
-        {hint && <span className="normal-case tracking-normal text-[#4b5563]">{hint}</span>}
+        {hint && <span className="normal-case tracking-normal text-faint">{hint}</span>}
       </label>
       {children}
     </div>
@@ -39,7 +39,7 @@ function PctInput({ value, onChange, placeholder }: { value: string; onChange: (
         placeholder={placeholder}
         className={inputCls + " pr-7"}
       />
-      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#4b5563]">%</span>
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-faint">%</span>
     </div>
   )
 }
@@ -122,17 +122,17 @@ export function RoundForm({ round, onDone }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0a0a]">
+    <div className="fixed inset-0 z-50 flex flex-col bg-page">
       {/* Top bar */}
-      <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
-        <button onClick={onDone} className="text-sm text-[#6b7280] hover:text-white transition-colors">
+      <div className="flex shrink-0 items-center justify-between border-b border-fg/[0.06] px-5 py-3.5">
+        <button onClick={onDone} className="text-sm text-muted hover:text-fg transition-colors">
           Cancel
         </button>
-        <span className="text-sm font-semibold text-white">{round ? "Edit Round" : "Add Round"}</span>
+        <span className="text-sm font-semibold text-fg">{round ? "Edit Round" : "Add Round"}</span>
         <button
           onClick={submit}
           disabled={!course.trim() || !score || isPending}
-          className="text-sm font-semibold text-[#22c55e] hover:opacity-80 disabled:opacity-30 transition-opacity"
+          className="text-sm font-semibold text-accent hover:opacity-80 disabled:opacity-30 transition-opacity"
         >
           {isPending ? "Saving…" : "Save"}
         </button>
@@ -171,14 +171,14 @@ export function RoundForm({ round, onDone }: Props) {
           className={[
             "flex w-full items-center justify-between rounded-lg border px-4 py-3 text-sm transition-colors",
             isCompetitive
-              ? "border-[#22c55e]/40 bg-[#22c55e]/10 text-white"
-              : "border-white/[0.08] bg-[#1a1a1a] text-[#6b7280] hover:text-white hover:border-white/20",
+              ? "border-accent/40 bg-accent/10 text-fg"
+              : "border-fg/[0.08] bg-surface-3 text-muted hover:text-fg hover:border-fg/20",
           ].join(" ")}
         >
           <div className="flex items-center gap-3">
             <div className={[
               "flex h-4 w-4 items-center justify-center rounded border transition-colors",
-              isCompetitive ? "border-[#22c55e] bg-[#22c55e]" : "border-white/20 bg-transparent",
+              isCompetitive ? "border-accent bg-accent" : "border-fg/20 bg-transparent",
             ].join(" ")}>
               {isCompetitive && (
                 <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
@@ -189,7 +189,7 @@ export function RoundForm({ round, onDone }: Props) {
             <span className="font-medium">Competitive Round</span>
           </div>
           {isCompetitive && (
-            <span className="text-xs font-semibold text-[#22c55e]">✓ Marked competitive</span>
+            <span className="text-xs font-semibold text-accent">✓ Marked competitive</span>
           )}
         </button>
 
@@ -207,8 +207,8 @@ export function RoundForm({ round, onDone }: Props) {
                     className={[
                       "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                       selected
-                        ? "border-amber-500/50 bg-amber-500/15 text-amber-400"
-                        : "border-white/[0.08] bg-[#1a1a1a] text-[#6b7280] hover:text-white hover:border-white/20",
+                        ? "border-warn/50 bg-warn/15 text-warn"
+                        : "border-fg/[0.08] bg-surface-3 text-muted hover:text-fg hover:border-fg/20",
                     ].join(" ")}
                   >
                     {tag}
@@ -262,7 +262,7 @@ export function RoundForm({ round, onDone }: Props) {
           </Field>
         </div>
         {parseInt(holes) < 18 && (
-          <p className="rounded-lg border border-yellow-800/40 bg-yellow-950/20 px-3 py-2 text-xs text-yellow-500">
+          <p className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
             For 9-hole rounds, enter the <span className="font-semibold">9-hole rating and slope</span> for your tees — not half of the 18-hole numbers. Find them on the scorecard or the USGA Course Rating Lookup.
           </p>
         )}
@@ -274,17 +274,17 @@ export function RoundForm({ round, onDone }: Props) {
             {relToPar !== null && (
               <div className={[
                 "rounded-lg px-4 py-2.5 text-sm font-semibold text-center",
-                relToPar === 0  ? "bg-[#1a1a1a] text-white"
-                : relToPar < 0 ? "bg-[#052e16] text-[#22c55e]"
-                               : "bg-[#1c0a09] text-[#f87171]",
+                relToPar === 0  ? "bg-surface-3 text-fg"
+                : relToPar < 0 ? "bg-accent/15 text-accent"
+                               : "bg-danger/10 text-danger",
               ].join(" ")}>
                 {relToPar === 0 ? "Even par" : relToPar > 0 ? `+${relToPar} over par` : `${relToPar} under par`}
               </div>
             )}
             {differential !== null && (
-              <div className="rounded-lg bg-[#1a1a1a] px-4 py-2.5 text-center">
-                <span className="text-xs text-[#6b7280]">Differential </span>
-                <span className="text-sm font-semibold text-white">{differential.toFixed(1)}</span>
+              <div className="rounded-lg bg-surface-3 px-4 py-2.5 text-center">
+                <span className="text-xs text-muted">Differential </span>
+                <span className="text-sm font-semibold text-fg">{differential.toFixed(1)}</span>
               </div>
             )}
           </div>
@@ -341,12 +341,12 @@ export function RoundForm({ round, onDone }: Props) {
             value={notes} onChange={(e) => setNotes(e.target.value)}
             placeholder="How'd it go? Anything notable…"
             rows={3}
-            className="w-full resize-none rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-2.5 text-sm text-white placeholder:text-[#4b5563] focus:border-[#22c55e] focus:outline-none transition-colors"
+            className="w-full resize-none rounded-lg border border-fg/[0.08] bg-surface-3 px-3 py-2.5 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none transition-colors"
           />
         </Field>
 
         {error && (
-          <p className="rounded-lg border border-red-800/60 bg-red-950/40 px-3 py-2 text-xs text-red-400">
+          <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
             {error}
           </p>
         )}

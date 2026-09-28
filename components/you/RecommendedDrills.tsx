@@ -28,9 +28,9 @@ export function RecommendedDrills({
 
   if (!focus || drills.length === 0) {
     return (
-      <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+      <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
         <p className="label-xs mb-2">Recommended Drills</p>
-        <p className="text-sm text-[#4b5563]">
+        <p className="text-sm text-faint">
           Drill recommendations appear once Strengths &amp; Weaknesses has data to find your weakest area.
         </p>
       </div>
@@ -40,19 +40,19 @@ export function RecommendedDrills({
   const label = CATEGORY_LABEL[focus.category]
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <Target size={15} className="text-[#22c55e]" />
+        <Target size={15} className="text-accent" />
         <p className="label-xs">Recommended Drills</p>
       </div>
-      <p className="mt-2 text-sm text-white">
+      <p className="mt-2 text-sm text-fg">
         Focus area: <span className="font-semibold">{label}</span>{" "}
-        <span className={focus.avgDeltaSg < 0 ? "text-[#f87171]" : "text-[#22c55e]"}>
+        <span className={focus.avgDeltaSg < 0 ? "text-danger" : "text-accent"}>
           ({fmtDelta(focus.avgDeltaSg)} vs. {handicapIndex != null ? `your ${handicapIndex.toFixed(1)} HCP` : "your handicap"})
         </span>
       </p>
       {focus.avgDeltaSg >= 0 && (
-        <p className="mt-0.5 text-xs text-[#6b7280]">Every area is at or above your level — this is the one with the least margin.</p>
+        <p className="mt-0.5 text-xs text-muted">Every area is at or above your level — this is the one with the least margin.</p>
       )}
 
       {/* Phones: horizontal swipe row of compact cards. Desktop: grid. */}
@@ -60,23 +60,23 @@ export function RecommendedDrills({
         {drills.map((d, i) => (
           <div
             key={d.id}
-            className="flex w-[78%] shrink-0 snap-start flex-col rounded-lg border border-white/[0.06] bg-[#161616] p-3.5 md:w-auto"
+            className="flex w-[78%] shrink-0 snap-start flex-col rounded-lg border border-fg/[0.06] bg-surface-2 p-3.5 md:w-auto"
           >
-            <p className="text-xs text-[#4b5563]">{i + 1}.</p>
-            <p className="text-sm font-semibold text-white">{d.name}</p>
-            {d.target_area && <p className="mt-0.5 text-xs text-[#9ca3af]">Target: {d.target_area}</p>}
-            {d.description && <p className="mt-1.5 text-xs text-[#6b7280]">{d.description}</p>}
-            <div className="mt-2 flex flex-wrap gap-x-3 text-xs text-[#6b7280]">
+            <p className="text-xs text-faint">{i + 1}.</p>
+            <p className="text-sm font-semibold text-fg">{d.name}</p>
+            {d.target_area && <p className="mt-0.5 text-xs text-fg-3">Target: {d.target_area}</p>}
+            {d.description && <p className="mt-1.5 text-xs text-muted">{d.description}</p>}
+            <div className="mt-2 flex flex-wrap gap-x-3 text-xs text-muted">
               {d.reps_suggested != null && <span className="flex items-center gap-1"><Repeat size={11} /> {d.reps_suggested} reps</span>}
               {d.time_estimate_mins != null && <span className="flex items-center gap-1"><Clock size={11} /> {d.time_estimate_mins} min</span>}
             </div>
-            <p className="mt-2 text-xs text-[#6b7280]">
+            <p className="mt-2 text-xs text-muted">
               Why: your {label.toLowerCase()} is {fmtDelta(focus.avgDeltaSg)} vs. your handicap
             </p>
             <div className="flex-1" />
             <button
               onClick={() => setOpen(d)}
-              className="mt-3 w-full rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 py-2 text-xs font-semibold text-[#22c55e] transition-colors hover:bg-[#22c55e]/20"
+              className="mt-3 w-full rounded-lg border border-accent/40 bg-accent/10 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
             >
               Start Drill
             </button>
@@ -84,7 +84,7 @@ export function RecommendedDrills({
         ))}
       </div>
 
-      {savedNote && <p className="mt-3 text-xs text-[#22c55e]">{savedNote}</p>}
+      {savedNote && <p className="mt-3 text-xs text-accent">{savedNote}</p>}
 
       {open && (
         <DrillModal

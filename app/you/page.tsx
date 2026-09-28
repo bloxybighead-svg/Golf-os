@@ -5,6 +5,7 @@ import { AccountCard } from "@/components/auth/AccountCard"
 import { TrendsPanel } from "@/components/you/TrendsPanel"
 import { RecommendedDrills } from "@/components/you/RecommendedDrills"
 import { DrillHistory } from "@/components/you/DrillHistory"
+import { AppearanceSetting } from "@/components/you/AppearanceSetting"
 import type { HandicapEntry, LibraryDrill, Milestone, Round, UserDrillRun } from "@/lib/supabase/types"
 import { weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
 import { Activity, ChevronRight, Flag, GitCompare, SlidersHorizontal, type LucideIcon } from "lucide-react"
@@ -55,8 +56,8 @@ export default async function YouPage() {
   return (
     <div className="space-y-6 pt-4">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">You</h2>
-        <p className="mt-1 text-sm text-[#6b7280]">Your account, your bag and what to practice next</p>
+        <h2 className="text-2xl font-bold tracking-tight text-fg">You</h2>
+        <p className="mt-1 text-sm text-muted">Your account, your bag and what to practice next</p>
       </div>
 
       <AccountCard email={user?.email ?? null} />
@@ -76,26 +77,28 @@ export default async function YouPage() {
 
       <DrillHistory runs={drillRuns} />
 
-      <div className="rounded-xl border border-white/[0.06] bg-[#111111] shadow-sm">
+      <div className="rounded-xl border border-fg/[0.06] bg-surface shadow-sm">
         <p className="label-xs px-5 pt-4">Your Bag</p>
-        <ul className="mt-2 divide-y divide-white/[0.04]">
+        <ul className="mt-2 divide-y divide-fg/[0.04]">
           {BAG_TOOLS.map(({ view, label, blurb, Icon }) => (
             <li key={view}>
               <Link
                 href={`/you/bag?view=${view}`}
-                className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-white/[0.03]"
+                className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-fg/[0.03]"
               >
-                <Icon size={16} className="shrink-0 text-[#22c55e]" />
+                <Icon size={16} className="shrink-0 text-accent" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-white">{label}</span>
-                  <span className="block text-xs text-[#6b7280]">{blurb}</span>
+                  <span className="block text-sm font-medium text-fg">{label}</span>
+                  <span className="block text-xs text-muted">{blurb}</span>
                 </span>
-                <ChevronRight size={16} className="shrink-0 text-[#4b5563] transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight size={16} className="shrink-0 text-faint transition-transform group-hover:translate-x-0.5" />
               </Link>
             </li>
           ))}
         </ul>
       </div>
+
+      <AppearanceSetting />
     </div>
   )
 }

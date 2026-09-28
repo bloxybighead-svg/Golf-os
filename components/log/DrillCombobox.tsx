@@ -50,19 +50,19 @@ export function DrillCombobox({ drills, drillId, freeText, onChange }: Props) {
         onChange={handleChange}
         onFocus={() => setOpen(true)}
         placeholder="Search drills or type your own…"
-        className="w-full rounded-md border border-[#2a2a2a] bg-[#1e1e1e] px-3 py-2.5 text-sm text-white placeholder:text-[#6b7280] focus:border-[#4ade80] focus:outline-none"
+        className="w-full rounded-md border border-line bg-surface-4 px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
       />
       {open && filtered.length > 0 && (
-        <div className="absolute top-full z-50 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-[#2a2a2a] bg-[#1e1e1e] shadow-xl">
+        <div className="absolute top-full z-50 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-line bg-surface-4 shadow-xl">
           {filtered.map((drill) => (
             <button
               key={drill.id}
               type="button"
               onMouseDown={() => select(drill)}
-              className="flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-[#262626]"
+              className="flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-surface-4"
             >
-              <span className="text-sm text-white">{drill.name}</span>
-              <span className="ml-3 shrink-0 text-xs text-[#6b7280]">{drill.category}</span>
+              <span className="text-sm text-fg">{drill.name}</span>
+              <span className="ml-3 shrink-0 text-xs text-muted">{drill.category}</span>
             </button>
           ))}
         </div>

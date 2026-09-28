@@ -65,14 +65,14 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
   const isEstimate = latest ? latest.source === "calculated" : liveEstimate != null
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="label-xs mb-2">Handicap Index</p>
           {displayIndex != null ? (
             <>
-              <p className="text-3xl font-bold tracking-tight text-[#22c55e]">{fmtIndex(displayIndex)}</p>
-              <p className="mt-1 text-xs text-[#6b7280]">
+              <p className="text-3xl font-bold tracking-tight text-accent">{fmtIndex(displayIndex)}</p>
+              <p className="mt-1 text-xs text-muted">
                 {latest
                   ? `${latest.source === "manual" ? "Manual entry" : `Calculated from ${latest.rounds_used} rounds`}${mounted ? ` · ${formatDate(latest.calculation_date)}` : ""}`
                   : "Live estimate — Recalculate to save it"}
@@ -80,8 +80,8 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-[#4b5563]">—</p>
-              <p className="mt-1 text-xs text-[#4b5563]">Log at least 8 rated rounds to calculate</p>
+              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
+              <p className="mt-1 text-xs text-faint">Log at least 8 rated rounds to calculate</p>
             </>
           )}
         </div>
@@ -90,7 +90,7 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
             onClick={recalc}
             disabled={isPending || !signedIn || liveEstimate == null}
             title={!signedIn ? "Sign in to calculate" : undefined}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5 text-xs font-medium text-[#9ca3af] transition-colors hover:text-white hover:border-white/20 disabled:opacity-30"
+            className="flex items-center gap-1.5 rounded-lg border border-fg/[0.08] bg-surface-3 px-3 py-1.5 text-xs font-medium text-fg-3 transition-colors hover:text-fg hover:border-fg/20 disabled:opacity-30"
           >
             <RefreshCw size={12} className={isPending ? "animate-spin" : ""} />
             Recalculate
@@ -98,7 +98,7 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
           <button
             onClick={() => setEditingManual((v) => !v)}
             disabled={!signedIn}
-            className="flex items-center gap-1.5 text-xs text-[#6b7280] hover:text-white transition-colors disabled:opacity-30"
+            className="flex items-center gap-1.5 text-xs text-muted hover:text-fg transition-colors disabled:opacity-30"
           >
             <Pencil size={11} />
             Enter manually
@@ -107,28 +107,28 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
       </div>
 
       {editingManual && (
-        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-white/[0.04] pt-4">
+        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-fg/[0.04] pt-4">
           <div>
-            <label className="mb-1 block text-xs text-[#6b7280]">Handicap Index</label>
+            <label className="mb-1 block text-xs text-muted">Handicap Index</label>
             <input
               type="number" inputMode="decimal" step="0.1"
               value={manualValue} onChange={(e) => setManualValue(e.target.value)}
               placeholder="e.g. 2.4"
-              className="w-28 rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:border-[#22c55e] focus:outline-none"
+              className="w-28 rounded-lg border border-fg/[0.08] bg-surface-3 px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none"
             />
           </div>
           <div className="min-w-[160px] flex-1">
-            <label className="mb-1 block text-xs text-[#6b7280]">Notes (optional)</label>
+            <label className="mb-1 block text-xs text-muted">Notes (optional)</label>
             <input
               type="text" value={manualNotes} onChange={(e) => setManualNotes(e.target.value)}
               placeholder="e.g. Official GHIN"
-              className="w-full rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-2 text-sm text-white placeholder:text-[#4b5563] focus:border-[#22c55e] focus:outline-none"
+              className="w-full rounded-lg border border-fg/[0.08] bg-surface-3 px-3 py-2 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none"
             />
           </div>
           <button
             onClick={saveManual}
             disabled={isPending || !manualValue}
-            className="rounded-lg bg-[#22c55e] px-4 py-2 text-sm font-semibold text-black transition-all hover:brightness-110 disabled:opacity-30"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-all hover:brightness-110 disabled:opacity-30"
           >
             Save
           </button>
@@ -136,13 +136,13 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
       )}
 
       {error && (
-        <p className="mt-3 rounded-lg border border-red-800/60 bg-red-950/40 px-3 py-2 text-xs text-red-400">
+        <p className="mt-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
           {error}
         </p>
       )}
 
       {isEstimate && displayIndex != null && (
-        <p className="mt-3 text-xs text-[#4b5563]">
+        <p className="mt-3 text-xs text-faint">
           Best 8 of your last 20 differentials × 0.96 · Estimated — simplified calculation,
           excludes official safeguards and caps, not your real GHIN Index.
         </p>

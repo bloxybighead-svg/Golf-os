@@ -31,9 +31,9 @@ export default async function RoundsPage({
 
   if (error) {
     return (
-      <div className="rounded-xl border border-yellow-800/60 bg-yellow-950/30 px-5 py-4 text-sm text-yellow-400">
+      <div className="rounded-xl border border-warn/40 bg-warn/10 px-5 py-4 text-sm text-warn">
         <p className="font-semibold">Supabase not connected</p>
-        <p className="mt-1 text-xs text-yellow-600">
+        <p className="mt-1 text-xs text-warn">
           Run supabase/rounds_schema.sql and check your .env.local keys.
         </p>
       </div>
@@ -82,48 +82,48 @@ export default async function RoundsPage({
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+        <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
           <p className="label-xs mb-2">This Month</p>
-          <p className="text-3xl font-bold tracking-tight text-white">{roundsThisMonth}</p>
-          <p className="mt-1 text-xs text-[#6b7280]">{roundsThisMonth === 1 ? "round" : "rounds"}</p>
+          <p className="text-3xl font-bold tracking-tight text-fg">{roundsThisMonth}</p>
+          <p className="mt-1 text-xs text-muted">{roundsThisMonth === 1 ? "round" : "rounds"}</p>
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+        <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
           <p className="label-xs mb-2">Avg Score</p>
           {avgScoreRel != null ? (
             <>
               <p className={[
                 "text-3xl font-bold tracking-tight",
-                avgScoreRel < 0 ? "text-[#22c55e]" : avgScoreRel > 0 ? "text-[#f87171]" : "text-white",
+                avgScoreRel < 0 ? "text-accent" : avgScoreRel > 0 ? "text-danger" : "text-fg",
               ].join(" ")}>
                 {scoreLabel(avgScoreRel)}
               </p>
-              <p className="mt-1 text-xs text-[#6b7280]">to par</p>
+              <p className="mt-1 text-xs text-muted">to par</p>
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-[#4b5563]">—</p>
-              <p className="mt-1 text-xs text-[#4b5563]">no rounds yet</p>
+              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
+              <p className="mt-1 text-xs text-faint">no rounds yet</p>
             </>
           )}
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+        <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
           <p className="label-xs mb-2">Avg Differential</p>
           {avgDiff != null ? (
             <>
-              <p className="text-3xl font-bold tracking-tight text-white">{avgDiff.toFixed(1)}</p>
-              <div className="mt-2 flex items-center gap-3 border-t border-white/[0.04] pt-2">
+              <p className="text-3xl font-bold tracking-tight text-fg">{avgDiff.toFixed(1)}</p>
+              <div className="mt-2 flex items-center gap-3 border-t border-fg/[0.04] pt-2">
                 <div>
-                  <p className="text-xs text-[#6b7280]">Comp</p>
-                  <p className="text-sm font-semibold text-[#22c55e]">
+                  <p className="text-xs text-muted">Comp</p>
+                  <p className="text-sm font-semibold text-accent">
                     {avgCompDiff != null ? avgCompDiff.toFixed(1) : "—"}
                   </p>
                 </div>
-                <div className="h-6 w-px bg-white/[0.06]" />
+                <div className="h-6 w-px bg-fg/[0.06]" />
                 <div>
-                  <p className="text-xs text-[#6b7280]">Practice</p>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-xs text-muted">Practice</p>
+                  <p className="text-sm font-semibold text-fg">
                     {avgPracDiff != null ? avgPracDiff.toFixed(1) : "—"}
                   </p>
                 </div>
@@ -131,58 +131,58 @@ export default async function RoundsPage({
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-[#4b5563]">—</p>
-              <p className="mt-1 text-xs text-[#4b5563]">add rating/slope</p>
+              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
+              <p className="mt-1 text-xs text-faint">add rating/slope</p>
             </>
           )}
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+        <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
           <p className="label-xs mb-2">Avg Fairways</p>
           {avgFairways != null ? (
             <>
-              <p className="text-3xl font-bold tracking-tight text-white">{avgFairways.toFixed(0)}%</p>
-              <p className="mt-1 text-xs text-[#6b7280]">FIR</p>
+              <p className="text-3xl font-bold tracking-tight text-fg">{avgFairways.toFixed(0)}%</p>
+              <p className="mt-1 text-xs text-muted">FIR</p>
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-[#4b5563]">—</p>
-              <p className="mt-1 text-xs text-[#4b5563]">no data yet</p>
+              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
+              <p className="mt-1 text-xs text-faint">no data yet</p>
             </>
           )}
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+        <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
           <p className="label-xs mb-2">Avg GIR</p>
           {avgGir != null ? (
             <>
-              <p className="text-3xl font-bold tracking-tight text-white">{avgGir.toFixed(0)}%</p>
-              <p className="mt-1 text-xs text-[#6b7280]">greens in regulation</p>
+              <p className="text-3xl font-bold tracking-tight text-fg">{avgGir.toFixed(0)}%</p>
+              <p className="mt-1 text-xs text-muted">greens in regulation</p>
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-[#4b5563]">—</p>
-              <p className="mt-1 text-xs text-[#4b5563]">no data yet</p>
+              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
+              <p className="mt-1 text-xs text-faint">no data yet</p>
             </>
           )}
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] px-5 py-4 shadow-sm">
+        <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
           <p className="label-xs mb-2">Penalties / Hole</p>
           {avgPenPerHole != null ? (
             <>
               <p className={[
                 "text-3xl font-bold tracking-tight",
-                avgPenPerHole > 0.11 ? "text-[#f87171]" : "text-white",
+                avgPenPerHole > 0.11 ? "text-danger" : "text-fg",
               ].join(" ")}>
                 {avgPenPerHole.toFixed(2)}
               </p>
-              <p className="mt-1 text-xs text-[#6b7280]">per hole</p>
+              <p className="mt-1 text-xs text-muted">per hole</p>
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-[#4b5563]">—</p>
-              <p className="mt-1 text-xs text-[#4b5563]">no data yet</p>
+              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
+              <p className="mt-1 text-xs text-faint">no data yet</p>
             </>
           )}
         </div>

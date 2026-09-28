@@ -1192,6 +1192,67 @@ build` clean. Not verified: the signed-in `/you` page against the live
 database (no credentials) -- the queries are the same RLS-scoped ones the
 old Trends page used.
 
+R2 -- design tokens, light/dark, DESIGN.md (2026-09-28): the spec says to
+write DESIGN.md from the planning doc's "Design Direction" section, but that
+section wasn't in what was pasted and isn't in the repo. DESIGN.md is a
+draft describing the system as built, marked as such, to be merged with
+that section later.
+
+- Tokens: `app/globals.css` holds every color as RGB-channel CSS variables
+  (light in `:root`; dark under `prefers-color-scheme: dark` and under
+  `html[data-theme="dark"]` -- two blocks to keep in sync).
+  `tailwind.config.ts` maps them to utilities (`bg-surface`, `text-muted`,
+  `border-fg/[0.06]`, ...) with opacity support. The old, unused
+  `surface/border/accent/muted` config tokens were replaced.
+- Codemod (script in scratchpad, not committed) rewrote 47 files: every
+  `-[#hex]` class, plus `text-white`/`white/...` borders (they'd be
+  invisible in light mode -> `fg` at the same alpha), `text-black` on
+  accent buttons -> `on-accent`, and Tailwind palette status colors
+  (red/yellow/amber/blue/orange/green) -> `danger/warn/info/viz-orange/accent`.
+  Dark values equal the old hex, so dark mode is visually unchanged except:
+  the practice-log forms' `#4ade80` button/chip fills and focus borders now
+  use the app's standard `#22c55e` (they read as dark green with black
+  text in light mode, and the rest of the app already used #22c55e).
+- Glass controls over the satellite map keep fixed white/black
+  (`text-white`, `text-gray-400`, `bg-black/75`) -- they sit on the photo.
+- Non-class colors: `lib/theme/tokens.ts` -- `cssColor` (var() string for
+  styles/HTML), `useThemeColor` (concrete values for SVG/recharts
+  attributes, re-renders on theme change; older Safari doesn't resolve
+  var() in SVG presentation attributes -- unverified on a real iPhone, so
+  concrete values were the safe choice), `readColor` (Leaflet layers draw
+  on canvas, which can't use var()). Course-map colors are tokens too
+  (`--lie-*`, `--map-*`), not themed. `lib/course/heatmap.ts` now returns
+  token names (tests updated).
+- `lib/brand.ts`: literal hex for manifest, theme-color meta, and the icon,
+  which can't read CSS. `app/icon.svg` moved to `public/icon.svg` +
+  `metadata.icons`.
+- Theme: `<html className="dark">` removed. Follows the system by default;
+  You -> Appearance (System/Light/Dark, `components/you/AppearanceSetting.tsx`)
+  pins it per device in localStorage `golf-os-theme`; an inline `<head>`
+  script applies it before first paint (`suppressHydrationWarning` on html).
+- Gradients: body glow and the Play page's Course Planner promo gradient
+  removed. Kept the course map's better-to-worse legend (a color-scale key).
+  `SubNav.tsx`'s scroll-fade mask no longer exists (deleted in R1). No emoji
+  anywhere (spec already confirmed).
+- Desktop: Play's Handicap + Strengths & Weaknesses cards sit side by side
+  at `lg` (the spec's suggested pass). Also fixed an R1 slip: on `/you/bag`
+  the back link and tool switcher shared a line on desktop.
+
+Verified: `grep -rE "#[0-9a-fA-F]{3,6}" app components` returns 0 (was
+885). Screenshots in light at 1280px: Play, `/you/bag` dispersion and
+compare, Course Planner with Pebble Beach hole 7 loaded (feature layers,
+B/P markers, yardage chip, lie-colored shot dots, compass, trouble-map
+heat cells, legend), `/log/new`; dark Play matches the old look. Phone
+375px light: You page incl. Appearance, no overflow. Toggle: Light while
+the system is dark -> page goes light, stored, survives reload (script in
+<head> ahead of <body>), Dark pins dark, System clears storage and the
+attribute. 135 tests, typecheck, `npm run build` clean.
+
+Known limitation: the iPhone home-screen app keeps
+`statusBarStyle: "black-translucent"` (white status-bar text). In light
+mode that text sits over the light top bar. iOS can't switch it with the
+theme; worth checking on a real device.
+
 ## Files
 
 | File | Purpose |

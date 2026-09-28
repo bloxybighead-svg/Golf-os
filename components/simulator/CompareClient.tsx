@@ -5,6 +5,7 @@ import { OverlayCanvas, type OverlaySeries } from "./OverlayCanvas"
 import { computeDispersionStats, seededSample, type DispersionStats } from "@/lib/dispersion/stats"
 import { GitCompare } from "lucide-react"
 import PageHeader from "@/components/PageHeader"
+import { useThemeColor } from "@/lib/theme/tokens"
 
 export interface GolferOption {
   key: string // `${golferName}::${sourceLabel}`
@@ -35,31 +36,32 @@ interface Props {
 }
 
 const SAMPLE_SIZES = [500, 1000, 2000] as const
-const COLOR_A = "#38bdf8"
-const COLOR_B = "#f97316"
-const COLOR_REAL = "#facc15"
 
 function StatsRow({ label, color, stats }: { label: string; color: string; stats: DispersionStats | null }) {
   if (!stats) return null
   return (
-    <tr className="border-b border-white/[0.04]">
+    <tr className="border-b border-fg/[0.04]">
       <td className="px-3 py-1.5">
-        <span className="inline-flex items-center gap-1.5 text-white">
+        <span className="inline-flex items-center gap-1.5 text-fg">
           <span className="inline-block h-2 w-2 rounded-full" style={{ background: color }} />
           {label}
         </span>
       </td>
-      <td className="px-3 py-1.5 text-[#d1d5db]">{stats.n}</td>
-      <td className="px-3 py-1.5 text-[#d1d5db]">{stats.carryMean.toFixed(1)}</td>
-      <td className="px-3 py-1.5 text-[#d1d5db]">{stats.carrySd.toFixed(1)}</td>
-      <td className="px-3 py-1.5 text-[#d1d5db]">{stats.carryP10.toFixed(1)}</td>
-      <td className="px-3 py-1.5 text-[#d1d5db]">{stats.carryP90.toFixed(1)}</td>
-      <td className="px-3 py-1.5 text-[#d1d5db]">{stats.offlineSd.toFixed(1)}</td>
+      <td className="px-3 py-1.5 text-fg-2">{stats.n}</td>
+      <td className="px-3 py-1.5 text-fg-2">{stats.carryMean.toFixed(1)}</td>
+      <td className="px-3 py-1.5 text-fg-2">{stats.carrySd.toFixed(1)}</td>
+      <td className="px-3 py-1.5 text-fg-2">{stats.carryP10.toFixed(1)}</td>
+      <td className="px-3 py-1.5 text-fg-2">{stats.carryP90.toFixed(1)}</td>
+      <td className="px-3 py-1.5 text-fg-2">{stats.offlineSd.toFixed(1)}</td>
     </tr>
   )
 }
 
 export function CompareClient({ golfers, shots, realShots }: Props) {
+  const c = useThemeColor()
+  const COLOR_A = c("viz-blue")
+  const COLOR_B = c("viz-orange")
+  const COLOR_REAL = c("viz-yellow")
   const defaultA = golfers.find((g) => g.golferName === "Dillon Cady") ?? golfers[0]
   const defaultB = golfers.find((g) => g.key !== defaultA?.key) ?? golfers[0]
 
@@ -126,13 +128,13 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
     <div className="space-y-6">
       <PageHeader icon={GitCompare} title="Compare Golfers" subtitle={<>Overlay two golfers&rsquo; simulated dispersion, plus real shots where available.</>} />
 
-      <div className="grid grid-cols-1 gap-4 rounded-xl border border-white/[0.06] bg-[#111111] p-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 rounded-xl border border-fg/[0.06] bg-surface p-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-[#6b7280]">Golfer A</span>
+          <span className="text-xs font-medium text-muted">Golfer A</span>
           <select
             value={golferAKey}
             onChange={(e) => setGolferAKey(e.target.value)}
-            className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+            className="rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
           >
             {golfers.map((g) => (
               <option key={g.key} value={g.key}>
@@ -142,11 +144,11 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
           </select>
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-[#6b7280]">Golfer B</span>
+          <span className="text-xs font-medium text-muted">Golfer B</span>
           <select
             value={golferBKey}
             onChange={(e) => setGolferBKey(e.target.value)}
-            className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+            className="rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
           >
             {golfers.map((g) => (
               <option key={g.key} value={g.key}>
@@ -157,11 +159,11 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-[#6b7280]">Club (clubs both golfers share)</span>
+          <span className="text-xs font-medium text-muted">Club (clubs both golfers share)</span>
           <select
             value={club}
             onChange={(e) => setSelectedClub(e.target.value)}
-            className="rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-1.5 text-sm text-white"
+            className="rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg"
           >
             {commonClubs.map((c) => (
               <option key={c.club} value={c.club}>
@@ -172,10 +174,10 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
         </label>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-[#6b7280]">Simulated shots to show</span>
+          <span className="text-xs font-medium text-muted">Simulated shots to show</span>
           <div className="flex gap-3">
             {SAMPLE_SIZES.map((n) => (
-              <label key={n} className="flex items-center gap-1.5 text-sm text-[#d1d5db]">
+              <label key={n} className="flex items-center gap-1.5 text-sm text-fg-2">
                 <input type="radio" checked={sampleSize === n} onChange={() => setSampleSize(n)} />
                 {n}
               </label>
@@ -183,7 +185,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-[#d1d5db] sm:col-span-2">
+        <label className="flex items-center gap-2 text-sm text-fg-2 sm:col-span-2">
           <input
             type="checkbox"
             checked={showRealShots}
@@ -191,20 +193,20 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
             disabled={!dillonHasReal}
           />
           Show Dillon&rsquo;s real shots for this club
-          {!dillonHasReal && <span className="text-[#6b7280]">(no real data for this club/golfer combo)</span>}
+          {!dillonHasReal && <span className="text-muted">(no real data for this club/golfer combo)</span>}
         </label>
       </div>
 
       {commonClubs.length === 0 ? (
-        <p className="text-sm text-[#6b7280]">These two golfers have no clubs in common (naming mismatch or no overlap).</p>
+        <p className="text-sm text-muted">These two golfers have no clubs in common (naming mismatch or no overlap).</p>
       ) : (
         <>
           <OverlayCanvas series={series} minCarryYds={minCarryYds} maxCarryYds={maxCarryYds} widthYds={widthYds} />
 
-          <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-[#111111]">
+          <div className="overflow-x-auto rounded-xl border border-fg/[0.06] bg-surface">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06] text-xs text-[#6b7280]">
+                <tr className="border-b border-fg/[0.06] text-xs text-muted">
                   <th className="px-3 py-2">Golfer</th>
                   <th className="px-3 py-2">n</th>
                   <th className="px-3 py-2">Carry mean</th>
@@ -223,13 +225,13 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-medium text-[#6b7280]">
+            <p className="mb-2 text-xs font-medium text-muted">
               How {golferA?.golferName ?? "Golfer A"}&rsquo;s {club} stats stabilize as sample size grows:
             </p>
-            <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-[#111111]">
+            <div className="overflow-x-auto rounded-xl border border-fg/[0.06] bg-surface">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-white/[0.06] text-xs text-[#6b7280]">
+                  <tr className="border-b border-fg/[0.06] text-xs text-muted">
                     <th className="px-3 py-2">n shots</th>
                     <th className="px-3 py-2">Carry mean</th>
                     <th className="px-3 py-2">Carry SD</th>
@@ -238,17 +240,17 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
                 </thead>
                 <tbody>
                   {convergenceRows.map(({ n, stats }) => (
-                    <tr key={n} className="border-b border-white/[0.04]">
-                      <td className="px-3 py-1.5 text-white">{n}</td>
-                      <td className="px-3 py-1.5 text-[#d1d5db]">{stats.carryMean.toFixed(2)}</td>
-                      <td className="px-3 py-1.5 text-[#d1d5db]">{stats.carrySd.toFixed(2)}</td>
-                      <td className="px-3 py-1.5 text-[#d1d5db]">{stats.offlineSd.toFixed(2)}</td>
+                    <tr key={n} className="border-b border-fg/[0.04]">
+                      <td className="px-3 py-1.5 text-fg">{n}</td>
+                      <td className="px-3 py-1.5 text-fg-2">{stats.carryMean.toFixed(2)}</td>
+                      <td className="px-3 py-1.5 text-fg-2">{stats.carrySd.toFixed(2)}</td>
+                      <td className="px-3 py-1.5 text-fg-2">{stats.offlineSd.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-[#6b7280]">
+            <p className="mt-2 text-xs text-muted">
               Each row resamples from the same underlying pool, so the drift you see is pure sampling noise —
               expect it to shrink as n grows, not to represent a real change in the golfer over time.
             </p>
