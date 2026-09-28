@@ -1460,6 +1460,47 @@ R5.5 -- tee recommendation on Play (2026-09-28):
   Shorter -> Playing White (stored); sheet lists Blue/Gold/White/Green/Red.
   152 tests, build clean.
 
+R6 -- onboarding (2026-09-28). Spec facts re-checked: no onboarding
+existed; no Capacitor/React Native config (true); icons: `app/icon.svg`
+was moved to `public/icon.svg` in R2 and `app/apple-icon.png` +
+`public/icons/*` exist -- their artwork waits on the rename (R5, pending).
+- **Setup works without an account**, because sign-up can require an
+  email confirmation before there's a session -- a friend couldn't reach a
+  recommendation in 60 s if setup needed an account first. First visit on
+  a device (no `golfos.onboarded.v1`, no account baseline): Play shows one
+  line, "Plan with your own clubs. Set up ×".
+- `/welcome` (`app/welcome/page.tsx`, `components/welcome/WelcomeClient.tsx`):
+  handicap ("Best guess is fine"), Driver + 7-iron carry, "Add more
+  clubs" (any catalog club), home course search; Save; then "Got past
+  rounds?" -> Add rounds (signed in) / Sign in to add rounds (signed
+  out) / Go play. Prefills from the account baseline, else this device's
+  setup, else the tracked handicap.
+- Storage: `golfer_baseline` table (supabase/golfer_baseline.sql, applied:
+  user_id PK, handicap_index, carries jsonb, home_course jsonb; owner-only
+  RLS, verified anon select -> [], insert -> 42501). `saveBaseline` server
+  action upserts it and records the handicap as a manual handicap_tracking
+  entry when it differs from the latest (so You shows it before any rounds).
+  `lib/golfer/baseline.ts`: `cleanCarries` (40-400 yd, catalog clubs),
+  `cleanHandicap` (-10..54), `bagFor` (default bag + clubs with carries),
+  `applyBaselineToDevice` (writes the planner's localStorage: source =
+  your clubs, handicap, carries, bag, home course as last position). 6 tests.
+- Planner: reads extra carries (`carries` in golfos.planner.v1) into the
+  handicap golfer's known carries; the "By handicap" source is now labelled
+  "Your clubs", with an "Edit setup" link. A signed-in golfer's account
+  baseline is applied the first time Play opens on a new device.
+- Login: after sign-in / sign-up with a session, an account without a
+  baseline goes to /welcome, otherwise to its redirect. Login's hardcoded
+  "Golf OS" wordmark (split across a span, missed by R5's grep) now uses
+  APP_NAME. You has a "Your clubs and home course" row -> /welcome.
+- Verified (dev, 375px, fresh device, signed out): Set up -> handicap 14,
+  driver 240, 7-iron 150, Rumson -> Save -> Go play -> "Rumson · Hole 1 ·
+  Par 4 · 400", Driver 4.21 (Dillon's shots give 4.01 there, so it's the
+  friend's clubs), tee line "Play White · 6,302 yd", source "Your clubs",
+  setup prompt gone. App time 2.8 s end to end; the rest of the 60 s budget
+  is a person typing five things. **Not verified: the signed-in path**
+  (saveBaseline, the login redirect, cross-device apply) -- no test
+  credentials; the table's RLS was verified.
+
 ## Files
 
 | File | Purpose |

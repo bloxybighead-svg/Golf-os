@@ -91,6 +91,14 @@ export default async function YouPage() {
       <DrillHistory runs={drillRuns} />
 
       <Link
+        href="/welcome"
+        className="group flex items-center justify-between rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 transition-colors hover:bg-fg/[0.03]"
+      >
+        <span className="text-sm font-medium text-fg">Your clubs and home course</span>
+        <ChevronRight size={16} className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
+      </Link>
+
+      <Link
         href="/log/new"
         className="group flex items-center justify-between rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 transition-colors hover:bg-fg/[0.03]"
       >

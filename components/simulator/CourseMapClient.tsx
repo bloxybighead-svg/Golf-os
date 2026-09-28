@@ -30,6 +30,14 @@ import { seededSample } from "@/lib/dispersion/stats"
 import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
 import type { Club } from "@/lib/golfer/tables"
 import { CALIBRATED_DEFAULT_BAG, CLUB_CATALOG, DEFAULT_BAG, fillBag, normalizeBag } from "@/lib/golfer/bag"
+import {
+  LAST_POSITION_KEY,
+  ONBOARDED_KEY,
+  SETTINGS_KEY,
+  applyBaselineToDevice,
+  cleanCarries,
+  type Baseline,
+} from "@/lib/golfer/baseline"
 import { createClient } from "@/lib/supabase/client"
 import { TendencyPicker } from "./TendencyPicker"
 import { EditHoleModal, type HoleCorrectionSubmission } from "./EditHoleModal"
@@ -63,6 +71,8 @@ interface Props {
   calibratedName: string
   /** The signed-in golfer's latest tracked handicap, for the tee recommendation. */
   trackedHandicap: number | null
+  /** The signed-in golfer's setup numbers, applied the first time Play opens on a device. */
+  baseline: Baseline | null
 }
 
 type AimNote = { club: string; optimal: true } | { club: string; optimal: false; offsetYds: number; savedStrokes: number }
@@ -107,7 +117,6 @@ const DEFAULT_COURSE: CourseHit = {
   lng: -121.949,
 }
 const DEFAULT_HOLE_REF = 7
-const SETTINGS_KEY = "golfos.planner.v1"
 const RECENT_KEY = "golfos.recentCourses.v1"
 const COURSE_CACHE_MAX_AGE_MS = 30 * 24 * 3600 * 1000
 const YD_PER_M = 1.09361
@@ -168,7 +177,6 @@ function saveNoHazard(courseId: string, map: NoHazardMap) {
   }
 }
 
-const LAST_POSITION_KEY = "golfos.lastPosition.v1"
 interface LastPosition {
   course: CourseHit
   holeId: string | null
@@ -249,7 +257,7 @@ function boundsOf(points: LatLng[]): [[number, number], [number, number]] | null
 
 const pct = (x: number) => (x < 0.005 ? "–" : `${Math.round(x * 100)}%`)
 
-export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }: Props) {
+export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, baseline }: Props) {
   // --- course search / loading ---
   const [query, setQuery] = useState("")
   const [hits, setHits] = useState<CourseHit[]>([])
@@ -271,6 +279,10 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }:
   const [driverCarry, setDriverCarry] = useState("") // yards; blank = handicap average
   const [sevenIronCarry, setSevenIronCarry] = useState("")
   const [tendency, setTendency] = useState<Tendency>({ side: "auto", strength: "moderate" })
+  // Carries for clubs beyond driver and 7-iron, from setup (/welcome).
+  const [extraCarries, setExtraCarries] = useState<Partial<Record<Club, number>>>({})
+  // First visit on this device with no setup yet: offer it, once.
+  const [showSetupPrompt, setShowSetupPrompt] = useState(false)
   // Which clubs are in the bag, per shot source (the calibrated golfer and a
   // handicap-based one carry different bags). Remembered on this device.
   const [bags, setBags] = useState<{ calibrated: Club[]; handicap: Club[] }>({
@@ -329,12 +341,18 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }:
     if (initRef.current) return
     initRef.current = true
     try {
+      // A signed-in golfer's setup numbers become this device's settings the
+      // first time Play opens here (their home course, their clubs).
+      const onboarded = localStorage.getItem(ONBOARDED_KEY)
+      if (baseline && onboarded !== "1") applyBaselineToDevice(baseline)
+      else if (!baseline && onboarded == null) setShowSetupPrompt(true)
       const raw = localStorage.getItem(SETTINGS_KEY)
       if (raw) {
         const v = JSON.parse(raw)
         if (v.source === "handicap" || (v.source === "calibrated" && calibrated)) setSource(v.source)
         if (typeof v.handicap === "number") setHandicap(Math.min(36, Math.max(0, v.handicap)))
         if (typeof v.driverCarry === "string") setDriverCarry(v.driverCarry.slice(0, 4))
+        if (v.carries && typeof v.carries === "object") setExtraCarries(cleanCarries(v.carries))
         if (typeof v.sevenIronCarry === "string") setSevenIronCarry(v.sevenIronCarry.slice(0, 4))
         if (v.tendency && SIDES.includes(v.tendency.side) && STRENGTHS.includes(v.tendency.strength)) setTendency(v.tendency)
         if (v.bags && typeof v.bags === "object") {
@@ -359,11 +377,14 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }:
   useEffect(() => {
     if (!hydrated) return
     try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ source, handicap, driverCarry, sevenIronCarry, tendency, bags }))
+      localStorage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify({ source, handicap, driverCarry, sevenIronCarry, carries: extraCarries, tendency, bags })
+      )
     } catch {
       /* storage full or blocked: settings just won't be remembered */
     }
-  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, tendency, bags])
+  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, extraCarries, tendency, bags])
 
   // Save hand-marked zones for the loaded course whenever they change (guest/offline
   // fallback -- while signed in, marks are already the source of truth in Supabase,
@@ -651,7 +672,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }:
       return calibratedBag.map((c) => ({ club: c.club, shots: c.shots }))
     }
     // Blank or out-of-range carries are ignored, so a half-typed number doesn't warp the bag.
-    const known: Partial<Record<Club, number>> = {}
+    const known: Partial<Record<Club, number>> = { ...extraCarries }
     const d = Number(driverCarry)
     const i7 = Number(sevenIronCarry)
     if (d >= 120 && d <= 380) known.Driver = d
@@ -669,7 +690,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }:
       by.set(s.club, list)
     }
     return Array.from(by, ([club, shots]) => ({ club, shots }))
-  }, [calibratedBag, handicap, driverCarry, sevenIronCarry, tendency, bag])
+  }, [calibratedBag, handicap, driverCarry, sevenIronCarry, extraCarries, tendency, bag])
 
   // The bag's driver carry (or its longest club, if there's no driver in the bag)
   // sets the recommended tee length.
@@ -1503,7 +1524,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }:
                         className="h-11 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg md:h-9"
                       >
                         {calibrated && <option value="calibrated">{calibratedName}</option>}
-                        <option value="handicap">By handicap</option>
+                        <option value="handicap">Your clubs</option>
                       </select>
                     </label>
                     {source === "handicap" && (
@@ -1562,6 +1583,15 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }:
                       </>
                     )}
                   </div>
+                  {source === "handicap" && (
+                    <p className="text-xs text-muted">
+                      {Object.keys(extraCarries).length > 0 &&
+                        `Plus ${Object.keys(extraCarries).length} more carr${Object.keys(extraCarries).length === 1 ? "y" : "ies"} from setup. `}
+                      <Link href="/welcome" className="font-semibold text-accent hover:underline">
+                        Edit setup
+                      </Link>
+                    </p>
+                  )}
                   <div>
                     <p className="text-xs text-muted">
                       Bag · <span className="tabular-nums">{bag.length}</span> clubs
@@ -1631,6 +1661,31 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap }:
 
   return (
     <div className="space-y-3">
+      {showSetupPrompt && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-fg/[0.08] bg-surface py-1 pl-3 pr-1 text-sm">
+          <span className="text-fg-2">Plan with your own clubs.</span>
+          <span className="flex shrink-0 items-center">
+            <Link href="/welcome" className="flex h-11 items-center px-3 font-semibold text-accent hover:underline">
+              Set up
+            </Link>
+            <button
+              onClick={() => {
+                setShowSetupPrompt(false)
+                try {
+                  localStorage.setItem(ONBOARDED_KEY, "dismissed")
+                } catch {
+                  /* it just comes back next visit */
+                }
+              }}
+              aria-label="Dismiss"
+              className="flex h-11 w-11 items-center justify-center text-muted hover:text-fg"
+            >
+              <X size={16} />
+            </button>
+          </span>
+        </div>
+      )}
+
       {/* ---- title: one tappable line that opens the course/hole sheet, plus previous/next hole ---- */}
       <div className="sticky top-[calc(3rem+env(safe-area-inset-top))] z-30 -mx-4 flex w-[calc(100%+2rem)] min-h-[48px] items-center gap-2 border-b border-fg/[0.08] bg-page/95 px-4 py-1 backdrop-blur-md md:static md:mx-0 md:w-full md:border-0 md:bg-transparent md:px-0 md:backdrop-blur-none">
         <button

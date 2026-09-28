@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Flag, Loader2, LogIn, UserPlus } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { APP_NAME } from "@/lib/brand"
 
 type Mode = "signin" | "signup"
 
@@ -20,6 +21,14 @@ export default function LoginForm() {
   const [error, setError] = useState("")
   const [checkEmail, setCheckEmail] = useState(false)
 
+  // Straight to setup the first time an account signs in (no baseline saved yet),
+  // otherwise wherever they were headed.
+  async function afterSignIn(supabase: ReturnType<typeof createClient>) {
+    const { data } = await supabase.from("golfer_baseline").select("user_id").maybeSingle()
+    router.replace(data ? redirectTo : "/welcome")
+    router.refresh()
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError("")
@@ -29,8 +38,7 @@ export default function LoginForm() {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        router.replace(redirectTo)
-        router.refresh()
+        await afterSignIn(supabase)
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
@@ -38,8 +46,7 @@ export default function LoginForm() {
         if (!data.session) {
           setCheckEmail(true)
         } else {
-          router.replace(redirectTo)
-          router.refresh()
+          await afterSignIn(supabase)
         }
       }
     } catch (err) {
@@ -55,9 +62,7 @@ export default function LoginForm() {
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-on-accent">
           <Flag size={16} strokeWidth={2.6} />
         </span>
-        <span className="text-base font-bold tracking-tight text-fg">
-          Golf <span className="text-accent">OS</span>
-        </span>
+        <span className="text-base font-bold tracking-tight text-fg">{APP_NAME}</span>
       </Link>
 
       <div className="w-full rounded-2xl border border-fg/[0.07] bg-surface p-5">
