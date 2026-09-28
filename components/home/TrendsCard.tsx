@@ -79,24 +79,26 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
         <p className="text-xs text-muted">last {trends[0].roundsCounted} rounds</p>
       </div>
 
-      {/* Compact summary — always visible, so nothing shifts when expanding on mobile */}
-      <p className="mt-2 text-sm text-fg-3 md:hidden">
+      {/* Compact summary, always visible; the full breakdown opens below it on every screen size */}
+      <p className="mt-2 text-sm text-fg-3">
         Your weakest: {weakest.map((t) => `${LABEL[t.category]} (${fmtDelta(t.avgDeltaSg)})`).join(", ")}
       </p>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="mt-2 flex items-center gap-1 text-xs font-medium text-muted hover:text-fg md:hidden"
+        aria-expanded={expanded}
+        className="mt-1 flex min-h-[44px] items-center gap-1 text-xs font-medium text-muted hover:text-fg md:min-h-[32px]"
       >
         <ChevronDown size={13} className={expanded ? "rotate-180 transition-transform" : "transition-transform"} />
         {expanded ? "Hide full breakdown" : "Show full breakdown"}
       </button>
 
-      {/* Full breakdown — always shown on desktop; toggled on mobile */}
-      <div className={["mt-4 space-y-4 border-t border-fg/[0.04] pt-4", expanded ? "block" : "hidden md:block"].join(" ")}>
-        {trends.map((t) => (
-          <Bar key={t.category} trend={t} />
-        ))}
-      </div>
+      {expanded && (
+        <div className="mt-3 space-y-4 border-t border-fg/[0.04] pt-4">
+          {trends.map((t) => (
+            <Bar key={t.category} trend={t} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
