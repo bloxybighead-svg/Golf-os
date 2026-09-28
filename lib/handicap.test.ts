@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { calcDifferential, estimateHandicapIndex, rollingHandicapSeries } from "./handicap"
+import { calcDifferential, estimateHandicapIndex, needsNewCalculatedEntry, rollingHandicapSeries } from "./handicap"
 
 describe("calcDifferential", () => {
   it("matches a hand-worked 18-hole example", () => {
@@ -66,5 +66,23 @@ describe("rollingHandicapSeries", () => {
   it("only looks at the most recent 20 rated rounds", () => {
     const diffs = [...Array(10).fill(0), ...Array(20).fill(20)] // great old rounds age out
     expect(rollingHandicapSeries(diffs)[29]).toBe(19.2)
+  })
+})
+
+describe("needsNewCalculatedEntry", () => {
+  it("records nothing until there is an index", () => {
+    expect(needsNewCalculatedEntry(null, null)).toBe(false)
+  })
+  it("records the first index", () => {
+    expect(needsNewCalculatedEntry(null, 4.2)).toBe(true)
+  })
+  it("skips a save that doesn't change the calculated index (numeric column comes back as a string)", () => {
+    expect(needsNewCalculatedEntry({ source: "calculated", handicap_index: "4.2" }, 4.2)).toBe(false)
+  })
+  it("records a changed index", () => {
+    expect(needsNewCalculatedEntry({ source: "calculated", handicap_index: 4.2 }, 3.9)).toBe(true)
+  })
+  it("a new calculation supersedes a manual entry, even at the same value", () => {
+    expect(needsNewCalculatedEntry({ source: "manual", handicap_index: 3.5 }, 3.5)).toBe(true)
   })
 })

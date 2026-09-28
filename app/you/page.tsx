@@ -93,13 +93,13 @@ export default async function YouPage() {
 
       <Link
         href="/log/new"
-        className="group flex items-center justify-between rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm transition-colors hover:bg-fg/[0.03]"
+        className="group flex items-center justify-between rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 transition-colors hover:bg-fg/[0.03]"
       >
         <span className="text-sm font-medium text-fg">Log a practice session</span>
         <ChevronRight size={16} className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
       </Link>
 
-      <div className="rounded-xl border border-fg/[0.06] bg-surface shadow-sm">
+      <div className="rounded-xl border border-fg/[0.06] bg-surface">
         <p className="label-xs px-5 pt-4">My bag</p>
         <ul className="mt-2 divide-y divide-fg/[0.04]">
           {BAG_TOOLS.map(({ view, label, blurb }) => (

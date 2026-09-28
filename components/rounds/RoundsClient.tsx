@@ -1,72 +1,100 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
+import { MoreHorizontal } from "lucide-react"
 import type { Round } from "@/lib/supabase/types"
+import { toCSV, downloadCSV } from "@/lib/csv"
 import { RoundCard } from "./RoundCard"
 import { RoundForm } from "./RoundForm"
-import { ExportLast20Button } from "./ExportLast20Button"
 
 interface Props {
   rounds: Round[]
   casualGirAvg: number | null
+  /** The hero number and supporting stats, built on the server. */
+  summary: ReactNode
   initialAdding?: boolean
 }
 
-export function RoundsClient({ rounds, casualGirAvg, initialAdding = false }: Props) {
+export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = false }: Props) {
   const [adding, setAdding] = useState(initialAdding)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close the overflow menu on an outside tap.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener("mousedown", onDown)
+    return () => document.removeEventListener("mousedown", onDown)
+  }, [menuOpen])
 
   if (adding) {
     return <RoundForm onDone={() => setAdding(false)} />
   }
 
-  return (
-    <div className="space-y-8">
+  // The most recent 20 rounds (the list arrives date-descending from the page).
+  function exportLast20() {
+    const stamp = new Date().toISOString().split("T")[0]
+    downloadCSV(`golf-os-last-20-rounds-${stamp}.csv`, toCSV(rounds.slice(0, 20) as unknown as Record<string, unknown>[]))
+    setMenuOpen(false)
+  }
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-fg">Rounds</h2>
-          <p className="mt-1 text-sm text-muted">
-            {rounds.length === 0
-              ? "No rounds logged yet"
-              : `${rounds.length} round${rounds.length !== 1 ? "s" : ""} logged`}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <ExportLast20Button rounds={rounds} />
-          <button
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent shadow-md shadow-accent/20 transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.97]"
-          >
-            <span className="text-base leading-none">+</span>
-            <span>Add Round</span>
-          </button>
-        </div>
+  const addButton = (
+    <button
+      onClick={() => setAdding(true)}
+      className="h-11 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent transition-all hover:brightness-110 md:h-10"
+    >
+      Add round
+    </button>
+  )
+
+  return (
+    <div className="space-y-6 pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-2xl font-bold tracking-tight text-fg">Rounds</h2>
+        {rounds.length > 0 && (
+          <div className="flex items-center gap-2">
+            {addButton}
+            <div ref={menuRef} className="relative">
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="More"
+                aria-expanded={menuOpen}
+                className="flex h-11 w-11 items-center justify-center rounded-lg border border-fg/[0.08] text-fg-3 transition-colors hover:text-fg md:h-10 md:w-10"
+              >
+                <MoreHorizontal size={18} />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-fg/[0.1] bg-page p-1.5 shadow-2xl">
+                  <button
+                    onClick={exportLast20}
+                    className="flex min-h-[40px] w-full items-center rounded-md px-2.5 text-left text-sm text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
+                  >
+                    Export last 20 (CSV)
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Empty state */}
-      {rounds.length === 0 && (
-        <div className="rounded-xl border border-fg/[0.06] bg-surface py-20 text-center shadow-sm">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-3 shadow-lg shadow-accent/20 ring-1 ring-accent/20">
-            {/* Golf hole flag SVG */}
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-accent" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="19" r="2"/>
-              <path d="M12 17V5"/>
-              <path d="M12 5l6 3-6 3"/>
-            </svg>
+      {rounds.length === 0 ? (
+        <div className="rounded-xl border border-fg/[0.06] bg-surface py-16 text-center">
+          <p className="text-base font-semibold text-fg">No rounds yet.</p>
+          <div className="mt-4">{addButton}</div>
+        </div>
+      ) : (
+        <>
+          {summary}
+          <div className="space-y-2.5">
+            {rounds.map((round) => (
+              <RoundCard key={round.id} round={round} casualGirAvg={casualGirAvg} />
+            ))}
           </div>
-          <p className="text-base font-semibold text-fg">No rounds logged yet</p>
-          <p className="mt-1.5 text-sm text-muted">Add a past or upcoming round above.</p>
-        </div>
-      )}
-
-      {/* Rounds list */}
-      {rounds.length > 0 && (
-        <div className="space-y-2.5">
-          {rounds.map((round) => (
-            <RoundCard key={round.id} round={round} casualGirAvg={casualGirAvg} />
-          ))}
-        </div>
+        </>
       )}
     </div>
   )

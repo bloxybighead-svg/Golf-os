@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { syncCalculatedHandicap } from "@/lib/supabase/syncHandicap"
 import { createClient } from "@/lib/supabase/server"
 import { calcDifferential } from "@/lib/handicap"
 import { computeUserSg, handicapBracketRange } from "@/lib/sgBenchmarks"
@@ -107,6 +108,7 @@ export async function createRound(data: RoundPayload) {
   if (error) throw new Error(error.message)
 
   await saveRoundAnalysis(supabase, inserted.id, user.id, data, handicapIndex)
+  await syncCalculatedHandicap(supabase, user.id)
   revalidatePath("/rounds")
   revalidatePath("/you")
 }
@@ -122,6 +124,7 @@ export async function updateRound(id: string, data: RoundPayload) {
   if (error) throw new Error(error.message)
 
   await saveRoundAnalysis(supabase, id, user.id, data, existing?.handicap_index ?? null)
+  await syncCalculatedHandicap(supabase, user.id)
   revalidatePath("/rounds")
   revalidatePath("/you")
 }
@@ -132,5 +135,7 @@ export async function deleteRound(id: string) {
   if (!user) throw new Error("Sign in to delete rounds.")
   const { error } = await supabase.from("rounds").delete().eq("id", id)
   if (error) throw new Error(error.message)
+  await syncCalculatedHandicap(supabase, user.id)
   revalidatePath("/rounds")
+  revalidatePath("/you")
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { ChevronDown } from "lucide-react"
 import type { CategoryTrend } from "@/lib/sgBenchmarks"
 import { qualifierFor } from "@/lib/sgBenchmarks"
@@ -50,11 +51,13 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
 
   if (trends.length === 0) {
     return (
-      <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
+      <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
         <p className="label-xs mb-2">Strengths & Weaknesses</p>
-        <p className="text-sm text-muted">
-          Log rounds with fairways%/GIR%/putts and calculate your handicap to see how each part of your
-          game compares to golfers at your level.
+        <p className="text-sm text-fg-3">
+          Needs rounds with stats.{" "}
+          <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
+            Add round
+          </Link>
         </p>
       </div>
     )
@@ -63,7 +66,7 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
   const weakest = [...trends].sort((a, b) => a.avgDeltaSg - b.avgDeltaSg).slice(0, 2)
 
   return (
-    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <div className="flex items-center justify-between gap-3">
         <p className="label-xs">Strengths & Weaknesses</p>
         <p className="text-xs text-muted">last {trends[0].roundsCounted} rounds</p>

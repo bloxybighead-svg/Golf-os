@@ -1367,6 +1367,44 @@ sign-in-to-sync note and the "saved on this device only" prompt. Verified
 at 375px (no overflow; 7 -> 8 updates the recommendation; wrap both ways)
 and with a guest-mode test mark in the preview browser only (deleted after).
 
+R4 -- You and Rounds (2026-09-28): the spec was written against the old
+Home dashboard; R3 had already removed the 3-up stat grid, the duplicate
+Log Session / Log Round buttons, "unlock insights" and "no rounds logged
+yet", and four of the five SignedOutNotice call sites. Done here:
+- **Recalculate button deleted.** `lib/supabase/syncHandicap.ts`
+  (`syncCalculatedHandicap`) runs after createRound / updateRound /
+  deleteRound: best 8 of last 20 x 0.96, written to handicap_tracking only
+  when it changed (`needsNewCalculatedEntry` in lib/handicap.ts, 5 tests),
+  never throws (a failed sync can't fail a round save). A new calculation
+  supersedes a manual entry as the current index; "Enter manually" stays
+  for an official GHIN number. `recalculateHandicap` server action removed.
+  Not run against Dillon's account -- his index updates the next time he
+  saves a round.
+- You: the handicap is the hero (48px semibold, tabular); empty state
+  "Needs 8 rated rounds. Add round". Card shadows removed on You/Rounds.
+- Rounds: `components/rounds/RoundsSummary.tsx` -- one hero (average
+  differential with its rated-round count and competitive/practice split,
+  or average score to par when nothing is rated) plus one supporting row
+  that only lists stats with data (this month, avg score, fairways,
+  greens, penalties/hole). No rounds -> "No rounds yet." + Add round, no
+  stats at all. Red/green colouring of scores removed (one accent).
+  Export moved into a "⋯" menu beside Add round; ExportLast20Button.tsx
+  deleted (logic inlined in RoundsClient).
+- Sign-in gated once: `components/auth/SignInBanner.tsx` in the root
+  layout, shown signed-out on /rounds and /log only (Play works without an
+  account; You has its own sign-in card). The layout reads the session
+  from the cookie (getSession, no network). SignedOutNotice.tsx deleted.
+- Empty states to the copy rule: "Needs 8 rated rounds." / "Needs rounds
+  with stats." / "Needs 2 rounds." / "No putts logged yet." each with an
+  Add round link; "No drills yet. Start one above."; em-dashes removed
+  from You's copy.
+- Verified: RoundsSummary rendered with real rounds on a throwaway route
+  (deleted): hero 7.1 = hand-checked mean of 3.6/13/4.8/-1.4/15.5,
+  split 15.5 / 5.0, supporting row correct, unrated set falls back to
+  "Average score +3.0" with only "This month", 0 dashes. Signed out:
+  /rounds has 1 banner + "No rounds yet." and 0 dashes; /you exactly one
+  "—" (the handicap hero) and no banner; / no banner. 149 tests, build clean.
+
 ## Files
 
 | File | Purpose |

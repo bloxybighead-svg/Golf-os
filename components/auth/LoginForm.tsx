@@ -60,7 +60,7 @@ export default function LoginForm() {
         </span>
       </Link>
 
-      <div className="w-full rounded-2xl border border-fg/[0.07] bg-surface p-5 shadow-lg shadow-black/20">
+      <div className="w-full rounded-2xl border border-fg/[0.07] bg-surface p-5">
         <div className="mb-4 flex rounded-lg border border-fg/[0.08] bg-page p-1 text-sm">
           {(["signin", "signup"] as Mode[]).map((m) => (
             <button

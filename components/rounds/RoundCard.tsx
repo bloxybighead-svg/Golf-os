@@ -44,7 +44,7 @@ export function RoundCard({ round, casualGirAvg }: Props) {
 
   return (
     <div className={[
-      "rounded-xl border px-5 py-4 shadow-sm transition-colors",
+      "rounded-xl border px-5 py-4 transition-colors",
       compCollapse
         ? "border-danger/40 bg-danger/10 hover:bg-danger/10"
         : "border-fg/[0.06] bg-surface hover:bg-surface-2",

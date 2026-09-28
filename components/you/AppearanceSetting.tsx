@@ -22,7 +22,7 @@ export function AppearanceSetting() {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <div>
         <p className="label-xs">Appearance</p>
         <p className="mt-1 text-xs text-muted">System matches your device&rsquo;s light or dark mode</p>
@@ -37,7 +37,7 @@ export function AppearanceSetting() {
               aria-checked={active}
               onClick={() => choose(value)}
               className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                active ? "bg-surface text-fg shadow-sm" : "text-muted hover:text-fg"
+                active ? "bg-surface text-fg" : "text-muted hover:text-fg"
               }`}
             >
               <Icon size={13} />

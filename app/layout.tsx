@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import NavBar from "@/components/NavBar";
+import { SignInBanner } from "@/components/auth/SignInBanner";
+import { createClient } from "@/lib/supabase/server";
 import { BRAND } from "@/lib/brand";
 import { THEME_STORAGE_KEY } from "@/lib/theme/preference";
 import "./globals.css";
@@ -24,11 +26,17 @@ export const viewport: Viewport = {
   viewportFit: "cover", // draw under the notch; content uses safe-area padding
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Only decides whether to show the sign-in banner, so the cookie's session is
+  // enough -- no network round trip to verify it (pages that read data do that).
+  const {
+    data: { session },
+  } = await createClient().auth.getSession();
+
   return (
     // data-theme is set before first paint by the script below when the golfer
     // pinned Light or Dark on the You page; without it the CSS follows the system.
@@ -43,6 +51,7 @@ export default function RootLayout({
       <body>
         <NavBar />
         <main className="mx-auto max-w-[1280px] px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-6 md:pt-20 md:pb-16">
+          <SignInBanner signedIn={!!session} />
           {children}
         </main>
       </body>

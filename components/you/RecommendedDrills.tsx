@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Target, Clock, Repeat } from "lucide-react"
 import type { LibraryDrill } from "@/lib/supabase/types"
 import type { CategoryTrend } from "@/lib/sgBenchmarks"
@@ -28,10 +29,13 @@ export function RecommendedDrills({
 
   if (!focus || drills.length === 0) {
     return (
-      <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
+      <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
         <p className="label-xs mb-2">Recommended Drills</p>
-        <p className="text-sm text-muted">
-          Drill recommendations appear once Strengths &amp; Weaknesses has data to find your weakest area.
+        <p className="text-sm text-fg-3">
+          Needs rounds with stats.{" "}
+          <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
+            Add round
+          </Link>
         </p>
       </div>
     )
@@ -40,7 +44,7 @@ export function RecommendedDrills({
   const label = CATEGORY_LABEL[focus.category]
 
   return (
-    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <div className="flex items-center gap-2">
         <Target size={15} className="text-accent" />
         <p className="label-xs">Recommended Drills</p>

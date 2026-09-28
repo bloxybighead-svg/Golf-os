@@ -24,7 +24,7 @@ export function AccountCard({ email }: { email: string | null }) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fg/[0.08] text-sm font-semibold text-fg">
           {email ? email[0]?.toUpperCase() : <User size={16} />}

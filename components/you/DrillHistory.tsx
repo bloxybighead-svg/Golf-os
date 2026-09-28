@@ -24,7 +24,7 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
     : null
 
   return (
-    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <button
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center justify-between gap-3 text-left md:pointer-events-none"
@@ -41,7 +41,7 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
 
       <div className={[expanded ? "block" : "hidden", "md:block"].join(" ")}>
         {runs.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">Start a recommended drill above and it will show up here.</p>
+          <p className="mt-3 text-sm text-fg-3">No drills yet. Start one above.</p>
         ) : (
           <>
             <div className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0">

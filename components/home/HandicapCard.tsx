@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState, useTransition } from "react"
-import { RefreshCw, Pencil } from "lucide-react"
+import Link from "next/link"
 import type { HandicapEntry } from "@/lib/supabase/types"
-import { recalculateHandicap, saveManualHandicap } from "@/app/handicap/actions"
+import { saveManualHandicap } from "@/app/handicap/actions"
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -15,7 +15,7 @@ function fmtIndex(n: number) {
 
 interface Props {
   latest: HandicapEntry | null
-  /** Best-8-of-20 estimate computed live from currently loaded rounds, used as a preview before the first Recalculate. */
+  /** Best-8-of-20 estimate computed from the loaded rounds, shown until a round save records one. */
   liveEstimate: number | null
   signedIn: boolean
 }
@@ -30,17 +30,6 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
   // (UTC) can't know -- render it only after mount to avoid a hydration mismatch.
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
-
-  function recalc() {
-    setError(null)
-    startTransition(async () => {
-      try {
-        await recalculateHandicap()
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Couldn't calculate a handicap yet.")
-      }
-    })
-  }
 
   function saveManual() {
     const v = parseFloat(manualValue)
@@ -65,45 +54,38 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
   const isEstimate = latest ? latest.source === "calculated" : liveEstimate != null
 
   return (
-    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="label-xs mb-2">Handicap Index</p>
+          <p className="label-xs mb-1">Handicap</p>
           {displayIndex != null ? (
             <>
-              <p className="text-3xl font-bold tracking-tight text-accent">{fmtIndex(displayIndex)}</p>
+              <p className="text-5xl font-semibold leading-tight tracking-tight text-fg tabular-nums">{fmtIndex(displayIndex)}</p>
               <p className="mt-1 text-xs text-muted">
                 {latest
-                  ? `${latest.source === "manual" ? "Manual entry" : `Calculated from ${latest.rounds_used} rounds`}${mounted ? ` · ${formatDate(latest.calculation_date)}` : ""}`
-                  : "Live estimate — Recalculate to save it"}
+                  ? `${latest.source === "manual" ? "Entered by hand" : `From your last ${latest.rounds_used} rounds`}${mounted ? ` · ${formatDate(latest.calculation_date)}` : ""}`
+                  : "From your recent rounds"}
               </p>
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-muted">—</p>
-              <p className="mt-1 text-xs text-muted">Log at least 8 rated rounds to calculate</p>
+              <p className="text-5xl font-semibold leading-tight tracking-tight text-muted">—</p>
+              <p className="mt-1 text-sm text-fg-3">
+                Needs 8 rated rounds.{" "}
+                <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
+                  Add round
+                </Link>
+              </p>
             </>
           )}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <button
-            onClick={recalc}
-            disabled={isPending || !signedIn || liveEstimate == null}
-            title={!signedIn ? "Sign in to calculate" : undefined}
-            className="flex items-center gap-1.5 rounded-lg border border-fg/[0.08] bg-surface-3 px-3 py-1.5 text-xs font-medium text-fg-3 transition-colors hover:text-fg hover:border-fg/20 disabled:opacity-30"
-          >
-            <RefreshCw size={12} className={isPending ? "animate-spin" : ""} />
-            Recalculate
-          </button>
-          <button
-            onClick={() => setEditingManual((v) => !v)}
-            disabled={!signedIn}
-            className="flex items-center gap-1.5 text-xs text-muted hover:text-fg transition-colors disabled:opacity-30"
-          >
-            <Pencil size={11} />
-            Enter manually
-          </button>
-        </div>
+        <button
+          onClick={() => setEditingManual((v) => !v)}
+          disabled={!signedIn}
+          className="min-h-[44px] shrink-0 text-xs text-muted transition-colors hover:text-fg disabled:opacity-30 md:min-h-0"
+        >
+          Enter manually
+        </button>
       </div>
 
       {editingManual && (
@@ -143,8 +125,8 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
 
       {isEstimate && displayIndex != null && (
         <p className="mt-3 text-xs text-muted">
-          Best 8 of your last 20 differentials × 0.96 · Estimated — simplified calculation,
-          excludes official safeguards and caps, not your real GHIN Index.
+          Best 8 of your last 20 differentials × 0.96, updated each time you save a round. A simplified
+          estimate without the official safeguards and caps, so not your GHIN Index.
         </p>
       )}
     </div>

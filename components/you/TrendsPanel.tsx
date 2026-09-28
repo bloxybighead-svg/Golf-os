@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import Link from "next/link"
 import { ChevronDown, Plus, TrendingUp, X } from "lucide-react"
 import {
   LineChart, Line, ComposedChart, Bar,
@@ -57,7 +58,7 @@ function nearestIndex(dateISO: string, points: { rawDate: string }[]): number {
 function ChartTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-lg border border-fg/[0.1] bg-surface-3 px-3 py-2 shadow-lg">
+    <div className="rounded-lg border border-fg/[0.1] bg-surface-3 px-3 py-2">
       <p className="mb-1 text-xs font-medium text-fg">{payload[0]?.payload?.date}</p>
       {payload.filter((p: any) => p.value != null).map((p: any) => (
         <p key={p.name} className="text-xs" style={{ color: p.color }}>
@@ -117,7 +118,14 @@ function milestoneLines(
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-10 text-center text-sm text-muted">{children}</p>
+  return (
+    <p className="py-10 text-center text-sm text-fg-3">
+      {children}{" "}
+      <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
+        Add round
+      </Link>
+    </p>
+  )
 }
 
 // ── milestone manager ────────────────────────────────────────────
@@ -146,7 +154,7 @@ function MilestoneManager({ milestones }: { milestones: Milestone[] }) {
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
         <span className="text-xs text-muted">
           {milestones.length === 0
-            ? "Milestone markers — tag swing or equipment changes"
+            ? "Milestone markers"
             : `${milestones.length} milestone marker${milestones.length !== 1 ? "s" : ""} on charts`}
         </span>
         <span className="text-xs text-muted">{open ? "Hide" : "Manage"}</span>
@@ -296,9 +304,9 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
   if (metric === "handicap") {
     summary = latestEstimate != null ? `Estimated index now: ${fmtIndex(latestEstimate)} · lower is better` : ""
     caption =
-      "Line = the handicap estimate as it stood after each round (best 8 of the last 20 differentials × 0.96), so it needs 8 rated rounds to start. Dots = indexes you saved on Play (Recalculate or manual entry). Estimated — not your official GHIN Index."
+      "Line = the handicap estimate as it stood after each round (best 8 of the last 20 differentials × 0.96), so it needs 8 rated rounds to start. Dots = the index recorded after each round save, or entered by hand. An estimate, not your official GHIN Index."
     body = !hasEstimate && handicapEntries.length === 0 ? (
-      <Empty>Log at least 8 rounds with a course rating and slope to see your handicap over time.</Empty>
+      <Empty>Needs 8 rated rounds.</Empty>
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={handicapPoints} margin={MARGIN}>
@@ -318,7 +326,7 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
     summary = avgDiff != null ? `Average differential: ${avgDiff.toFixed(1)} across ${diffCount} rated rounds · lower is better` : ""
     caption = `${diffCount} of ${rounds.length} rounds have rating/slope. Differentials put 9- and 18-hole rounds on one scale — the same formula for both, since the rating/slope entered already reflect the tees played.${hasFallback ? " Grey line = strokes vs par per hole (right axis) for rounds without rating/slope." : ""}`
     body = rounds.length < 2 ? (
-      <Empty>Log at least 2 rounds to see your scores over time.</Empty>
+      <Empty>Needs 2 rounds.</Empty>
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={scorePoints} margin={MARGIN}>
@@ -344,7 +352,7 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
     summary = puttsAvg != null ? `Average ${puttsAvg.toFixed(2)} putts per hole · last ${Math.min(RECENT, puttsPoints.length)} rounds ${puttsRecent!.toFixed(2)}` : ""
     caption = `Based on ${puttsPoints.length} of ${rounds.length} rounds with putts logged. Per-hole rates so 9- and 18-hole rounds compare directly.`
     body = puttsPoints.length === 0 ? (
-      <Empty>No putting data logged yet.</Empty>
+      <Empty>No putts logged yet.</Empty>
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart data={puttsPoints} margin={MARGIN}>
@@ -371,7 +379,7 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
     summary = a != null ? `Average ${pct(a)} · last ${Math.min(RECENT, points.length)} rounds ${pct(recent)}` : ""
     caption = `Based on ${points.length} of ${rounds.length} rounds with this data logged.`
     body = points.length === 0 ? (
-      <Empty>No {isFw ? "fairway" : "greens-in-regulation"} data logged yet.</Empty>
+      <Empty>No {isFw ? "fairways" : "greens"} logged yet.</Empty>
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={points} margin={MARGIN}>
@@ -388,7 +396,7 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}

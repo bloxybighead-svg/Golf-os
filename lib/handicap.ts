@@ -41,3 +41,19 @@ export function rollingHandicapSeries(differentials: (number | null)[]): (number
     return estimateHandicapIndex(seen.slice(-20).reverse())
   })
 }
+
+/**
+ * Whether a freshly calculated index should be written to handicap_tracking.
+ * Rounds recalculate on every save, so this keeps the history to real changes:
+ * skip when there's no index yet (fewer than 8 rated rounds) or when the latest
+ * entry is already a calculated one with the same value. A newer calculation
+ * does replace a manual entry as the current index.
+ */
+export function needsNewCalculatedEntry(
+  latest: { source: string; handicap_index: number | string } | null,
+  index: number | null
+): boolean {
+  if (index == null) return false
+  if (!latest) return true
+  return !(latest.source === "calculated" && Number(latest.handicap_index) === index)
+}
