@@ -2,9 +2,10 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { loadCategoryTrends } from "@/lib/supabase/loadCategoryTrends"
 import { AccountCard } from "@/components/auth/AccountCard"
+import { TrendsPanel } from "@/components/you/TrendsPanel"
 import { RecommendedDrills } from "@/components/you/RecommendedDrills"
 import { DrillHistory } from "@/components/you/DrillHistory"
-import type { HandicapEntry, LibraryDrill, UserDrillRun } from "@/lib/supabase/types"
+import type { HandicapEntry, LibraryDrill, Milestone, Round, UserDrillRun } from "@/lib/supabase/types"
 import { weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
 import { Activity, ChevronRight, Flag, GitCompare, SlidersHorizontal, type LucideIcon } from "lucide-react"
 
@@ -22,12 +23,16 @@ export default async function YouPage() {
   const [
     { data: { user } },
     { data: handicapData },
+    { data: roundsData },
+    { data: milestonesData },
     { data: libraryData },
     { data: drillRunsData },
     categoryTrends,
   ] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.from("handicap_tracking").select("*").order("calculation_date", { ascending: false }).limit(1),
+    supabase.from("handicap_tracking").select("*").order("calculation_date", { ascending: true }),
+    supabase.from("rounds").select("*").order("date", { ascending: true }).order("created_at", { ascending: true }),
+    supabase.from("milestones").select("*").order("date", { ascending: true }),
     supabase.from("drill_library").select("*"),
     supabase
       .from("user_drills")
@@ -37,7 +42,8 @@ export default async function YouPage() {
     loadCategoryTrends(supabase),
   ])
 
-  const latestHandicap = ((handicapData ?? [])[0] ?? null) as HandicapEntry | null
+  const handicapEntries = (handicapData ?? []) as HandicapEntry[] // oldest first
+  const latestHandicap = handicapEntries[handicapEntries.length - 1] ?? null
 
   // Drill recommendations target the weakest category on the Play page's Strengths & Weaknesses card.
   const drillRuns = (drillRunsData ?? []) as unknown as UserDrillRun[]
@@ -54,6 +60,12 @@ export default async function YouPage() {
       </div>
 
       <AccountCard email={user?.email ?? null} />
+
+      <TrendsPanel
+        rounds={(roundsData ?? []) as Round[]}
+        handicapEntries={handicapEntries}
+        milestones={(milestonesData ?? []) as Milestone[]}
+      />
 
       <RecommendedDrills
         focus={focusArea}

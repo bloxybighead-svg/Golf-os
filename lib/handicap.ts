@@ -27,3 +27,17 @@ export function estimateHandicapIndex(differentials: number[]): number | null {
   const raw = (best8.reduce((a, b) => a + b, 0) / 8) * 0.96
   return Math.trunc(raw * 10) / 10
 }
+
+/**
+ * The handicap estimate as it stood after each round, for charting over time.
+ * `differentials` is oldest-first, one entry per round (null = no rating/slope).
+ * Each point uses only rounds up to and including that one, so it never
+ * "knows" about later rounds; null until 8 rated rounds exist.
+ */
+export function rollingHandicapSeries(differentials: (number | null)[]): (number | null)[] {
+  const seen: number[] = [] // rated differentials so far, oldest-first
+  return differentials.map((d) => {
+    if (d != null) seen.push(d)
+    return estimateHandicapIndex(seen.slice(-20).reverse())
+  })
+}

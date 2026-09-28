@@ -9,7 +9,7 @@ export async function createMilestone(date: string, label: string) {
   if (!user) throw new Error("Sign in to save milestones.")
   const { error } = await supabase.from("milestones").insert({ date, label: label.trim(), user_id: user.id })
   if (error) throw new Error(error.message)
-  revalidatePath("/trends")
+  revalidatePath("/you")
 }
 
 export async function deleteMilestone(id: string) {
@@ -18,5 +18,5 @@ export async function deleteMilestone(id: string) {
   if (!user) throw new Error("Sign in to delete milestones.")
   const { error } = await supabase.from("milestones").delete().eq("id", id)
   if (error) throw new Error(error.message)
-  revalidatePath("/trends")
+  revalidatePath("/you")
 }

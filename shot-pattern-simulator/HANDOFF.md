@@ -1148,6 +1148,50 @@ top bar, the underline at the bar's bottom, Play lit on `/planner`, no
 sub-nav, logo clickable through the overlay. No console errors. 132
 tests, typecheck and `npm run build` clean (15 routes, down from 20).
 
+Trends on the You page (2026-09-28, follow-up to R1): the Trends page
+went away in R1, so it now lives on `/you` as a collapsible card
+(`components/you/TrendsPanel.tsx`) above Recommended Drills. Open by
+default; a dropdown picks the chart: Handicap over time (default), Round
+scores over time, Putts, Fairways hit, Greens in regulation. Each view has
+a one-line summary (averages and last-5) and a caption.
+
+- Handicap over time plots `rollingHandicapSeries` (new in
+  `lib/handicap.ts`, 3 tests): the estimate as it stood after each round,
+  using only rounds up to that point (needs 8 rated rounds). Saved
+  `handicap_tracking` entries are overlaid as blue dots. Chosen because
+  Dillon has only 2 saved entries, both from 2026-09-27 -- a saved-only line
+  would be empty. Both land on his last round, so only the later one (the
+  manual 3.5) shows as a dot. The estimate line is the app's simplified
+  calculation, not GHIN, and currently reads ~1.0 against his manual 3.5.
+- Round scores = the old differential + 5-round average chart, with the
+  strokes-vs-par fallback for unrated rounds. Putts = putts/hole bars +
+  3-putt % line. Fairways and Greens are single-line % charts.
+- Removed as asked: Sessions This Month, the practice-frequency chart, and
+  the competitive-breakdown chart. Also dropped, not asked: the
+  All/Competitive/Practice filter (competitive-only concept), the four
+  stat cards (replaced by the summary line) and the Export Data button
+  (Rounds has its own export). Milestone markers are kept: shown on every
+  chart, with the add/delete manager at the bottom of the card. Milestone
+  actions moved to `app/you/milestone-actions.ts` (revalidates `/you`).
+- **Pre-existing bug fixed:** milestone markers never drew, on any chart.
+  recharts 3.9 silently drops a `ReferenceLine` on a category axis whose
+  labels repeat, and Dillon has same-day rounds (two on 4/22, two on
+  4/28). Each round is now its own x position (its index) with the date as
+  the tick label; tooltips read the date from the point. Side benefit:
+  same-day rounds no longer stack on one x.
+- `/you` First Load JS went 167 kB -> 284 kB because recharts now loads
+  there. Lazy-loading the panel is the fix if that matters.
+
+Verified by rendering the panel with Dillon's real rounds/handicap/milestone
+rows (pulled read-only from Supabase) on a throwaway route, deleted
+afterward: all five views draw at 1000px and 375px, the milestone marker
+draws on every one, dropdown switching / collapse / reopen produce no
+console errors, tooltip shows the date and values, no horizontal overflow,
+and the empty state (no rounds) reads correctly. 135 tests, `npm run
+build` clean. Not verified: the signed-in `/you` page against the live
+database (no credentials) -- the queries are the same RLS-scoped ones the
+old Trends page used.
+
 ## Files
 
 | File | Purpose |
