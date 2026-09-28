@@ -117,7 +117,7 @@ function milestoneLines(
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-10 text-center text-sm text-faint">{children}</p>
+  return <p className="py-10 text-center text-sm text-muted">{children}</p>
 }
 
 // ── milestone manager ────────────────────────────────────────────
@@ -422,7 +422,7 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
 
           <p className="mt-3 min-h-[1rem] text-xs text-fg-3">{summary}</p>
           <div className="mt-2">{body}</div>
-          <p className="mt-2 text-xs text-faint">{caption}</p>
+          <p className="mt-2 text-xs text-muted">{caption}</p>
 
           <MilestoneManager milestones={milestones} />
         </div>

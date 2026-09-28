@@ -41,7 +41,7 @@ export function ClubWorkSection({ sessionId, initial }: Props) {
           </button>
         )}
         {!dirty && saved.length > 0 && (
-          <span className="text-xs text-faint">Saved</span>
+          <span className="text-xs text-muted">Saved</span>
         )}
       </div>
       <ClubWork entries={entries} onChange={setEntries} />

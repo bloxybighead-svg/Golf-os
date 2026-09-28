@@ -1950,11 +1950,11 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
           >
             <span className="flex min-w-0 items-center gap-1.5 truncate text-xs">
               <span className="font-semibold text-fg">{chosen?.club ?? "–"}</span>
-              <span className="text-faint">·</span>
+              <span className="text-muted">·</span>
               <span className="text-fg-3">{chosen ? `${Math.round(chosen.meanCarryYds)}y` : "–"}</span>
-              <span className="text-faint">·</span>
+              <span className="text-muted">·</span>
               <span className="text-fg-3">{distPin != null ? `${Math.round(distPin)} to pin` : "–"}</span>
-              <span className="text-faint">·</span>
+              <span className="text-muted">·</span>
               <span className="text-fg-3">{chosen ? `${chosen.expectedStrokes.toFixed(2)} strokes` : "–"}</span>
             </span>
             <ChevronDown size={16} className={`shrink-0 text-fg-3 transition-transform ${sheetOpen ? "" : "rotate-180"}`} />

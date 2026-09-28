@@ -80,8 +80,8 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
-              <p className="mt-1 text-xs text-faint">Log at least 8 rated rounds to calculate</p>
+              <p className="text-3xl font-bold tracking-tight text-muted">—</p>
+              <p className="mt-1 text-xs text-muted">Log at least 8 rated rounds to calculate</p>
             </>
           )}
         </div>
@@ -142,7 +142,7 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
       )}
 
       {isEstimate && displayIndex != null && (
-        <p className="mt-3 text-xs text-faint">
+        <p className="mt-3 text-xs text-muted">
           Best 8 of your last 20 differentials × 0.96 · Estimated — simplified calculation,
           excludes official safeguards and caps, not your real GHIN Index.
         </p>

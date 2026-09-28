@@ -52,7 +52,7 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
     return (
       <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
         <p className="label-xs mb-2">Strengths & Weaknesses</p>
-        <p className="text-sm text-faint">
+        <p className="text-sm text-muted">
           Log rounds with fairways%/GIR%/putts and calculate your handicap to see how each part of your
           game compares to golfers at your level.
         </p>
@@ -66,7 +66,7 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
     <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <p className="label-xs">Strengths & Weaknesses</p>
-        <p className="text-xs text-faint">last {trends[0].roundsCounted} rounds</p>
+        <p className="text-xs text-muted">last {trends[0].roundsCounted} rounds</p>
       </div>
 
       {/* Compact summary — always visible, so nothing shifts when expanding on mobile */}
@@ -88,7 +88,7 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
         ))}
       </div>
 
-      <p className="mt-4 text-xs text-faint">
+      <p className="mt-4 text-xs text-muted">
         Estimated from fairways%/GIR%/putts/up-and-downs, not shot-tracked strokes gained — a proxy
         compared against typical stats for your handicap bracket, not a precise measurement.
       </p>

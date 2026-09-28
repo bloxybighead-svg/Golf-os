@@ -1253,6 +1253,23 @@ Known limitation: the iPhone home-screen app keeps
 mode that text sits over the light top bar. iOS can't switch it with the
 theme; worth checking on a real device.
 
+R2 follow-up -- Design Direction received (2026-09-28): Dillon pasted the
+planning doc's Design Direction section. DESIGN.md now leads with it
+verbatim (IA table, visual rules, copy rules), then a "where the app
+stands" list of what isn't applied yet, then the token reference.
+Tokens changed to match it:
+- Light palette is now "paper": page #F7F6F2, near-black ink #1A1A17,
+  warm grays, one deep green accent #15602F with white text on it (was
+  #16a34a with black). Measured on the page: labels/captions 8.3:1,
+  subtitle 7.7:1, primary button 7.65:1, accent link 7.07:1.
+- Dark: muted #9CA3AF (was #6B7280, 3.9:1) and fg-3 #B0B6C0, so dark
+  labels also clear 7:1 -- labels look brighter in dark than before.
+- `faint` is now placeholders/disabled only; its 48 readable uses (old
+  #4b5563 captions) became `muted`.
+Biggest divergence the list flags: the Direction says Play IS the planner
+and the dashboard content moves to You; R1 pointed Play at the old Home
+dashboard. Not changed yet -- asked Dillon.
+
 ## Files
 
 | File | Purpose |

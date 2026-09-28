@@ -30,7 +30,7 @@ export function RecommendedDrills({
     return (
       <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
         <p className="label-xs mb-2">Recommended Drills</p>
-        <p className="text-sm text-faint">
+        <p className="text-sm text-muted">
           Drill recommendations appear once Strengths &amp; Weaknesses has data to find your weakest area.
         </p>
       </div>
@@ -62,7 +62,7 @@ export function RecommendedDrills({
             key={d.id}
             className="flex w-[78%] shrink-0 snap-start flex-col rounded-lg border border-fg/[0.06] bg-surface-2 p-3.5 md:w-auto"
           >
-            <p className="text-xs text-faint">{i + 1}.</p>
+            <p className="text-xs text-muted">{i + 1}.</p>
             <p className="text-sm font-semibold text-fg">{d.name}</p>
             {d.target_area && <p className="mt-0.5 text-xs text-fg-3">Target: {d.target_area}</p>}
             {d.description && <p className="mt-1.5 text-xs text-muted">{d.description}</p>}

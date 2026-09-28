@@ -49,7 +49,7 @@ export function WedgeNumbers({ stats }: { stats: WedgeStat[] }) {
     <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4 shadow-sm">
       <div className="flex items-baseline justify-between">
         <p className="label-xs">Wedge Numbers</p>
-        <p className="text-xs text-faint">auto-derived from Club Work · read-only</p>
+        <p className="text-xs text-muted">auto-derived from Club Work · read-only</p>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map(({ club, feels }) => (
@@ -62,7 +62,7 @@ export function WedgeNumbers({ stats }: { stats: WedgeStat[] }) {
                     <span className="text-xs text-fg-3">{feel}</span>
                     <span className="text-sm font-bold tracking-tight text-fg">
                       {Math.round(avgCarry)}
-                      <span className="ml-1 text-[10px] font-normal text-faint">
+                      <span className="ml-1 text-[10px] font-normal text-muted">
                         yds · {sessionCount} sess
                       </span>
                     </span>
@@ -70,12 +70,12 @@ export function WedgeNumbers({ stats }: { stats: WedgeStat[] }) {
                 ))}
               </div>
             ) : (
-              <p className="mt-1 text-sm text-faint">No data yet</p>
+              <p className="mt-1 text-sm text-muted">No data yet</p>
             )}
           </div>
         ))}
       </div>
-      <p className="mt-3 text-xs text-faint">
+      <p className="mt-3 text-xs text-muted">
         Grouped by club + feel. Club Work entries without a feel selected aren&apos;t counted here.
       </p>
     </div>

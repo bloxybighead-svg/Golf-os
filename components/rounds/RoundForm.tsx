@@ -23,7 +23,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     <div>
       <label className="mb-1.5 flex items-baseline gap-2 text-xs font-medium uppercase tracking-widest text-muted">
         {label}
-        {hint && <span className="normal-case tracking-normal text-faint">{hint}</span>}
+        {hint && <span className="normal-case tracking-normal text-muted">{hint}</span>}
       </label>
       {children}
     </div>
@@ -39,7 +39,7 @@ function PctInput({ value, onChange, placeholder }: { value: string; onChange: (
         placeholder={placeholder}
         className={inputCls + " pr-7"}
       />
-      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-faint">%</span>
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted">%</span>
     </div>
   )
 }

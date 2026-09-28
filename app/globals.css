@@ -8,6 +8,10 @@
  * channels so Tailwind can apply opacity (`bg-accent/10`), and is exposed as
  * a utility in tailwind.config.ts (`bg-surface`, `text-muted`, ...).
  *
+ * Every color read on course clears 7:1 against page and surface in both
+ * themes (DESIGN.md), except faint, which is only for placeholders and
+ * disabled states.
+ *
  * Theme: light by default, dark when the system prefers it, unless the You
  * page's Appearance setting pinned one (html[data-theme]). The dark values are
  * listed twice -- once for the system preference, once for the explicit
@@ -20,28 +24,28 @@
   color-scheme: light;
 
   /* Neutrals, back to front */
-  --page: 244 244 245;      /* app background, nav bars */
+  --page: 247 246 242;      /* paper: app background, nav bars */
   --surface: 255 255 255;   /* cards */
-  --surface-2: 250 250 250; /* a card inside a card */
-  --surface-3: 244 244 245; /* inputs, buttons, chips */
-  --surface-4: 228 228 231; /* hover on surface-3, tracks */
-  --line: 228 228 231;      /* solid dividers and outlines */
+  --surface-2: 251 250 247; /* a card inside a card */
+  --surface-3: 239 238 233; /* inputs, buttons, chips */
+  --surface-4: 230 228 221; /* hover on surface-3, tracks */
+  --line: 226 224 217;      /* solid dividers and outlines */
 
   /* Text, strongest to weakest. fg at low opacity is also the hairline
      border / hover-wash color (border-fg/[0.06]), so those flip with the theme. */
-  --fg: 9 9 11;
-  --fg-2: 63 63 70;
-  --fg-3: 82 82 91;
-  --muted: 113 113 122;
-  --faint: 161 161 170;
+  --fg: 26 26 23;
+  --fg-2: 54 53 47;
+  --fg-3: 70 68 63;
+  --muted: 80 78 72;
+  --faint: 138 135 127;
 
   /* Brand and status */
-  --accent: 22 163 74;
-  --accent-hi: 21 128 61;   /* hover / emphasis */
-  --on-accent: 0 0 0;       /* text on an accent fill */
-  --danger: 220 38 38;
-  --warn: 180 83 9;
-  --info: 37 99 235;
+  --accent: 21 96 47;
+  --accent-hi: 15 74 36;   /* hover / emphasis */
+  --on-accent: 255 255 255;       /* text on an accent fill */
+  --danger: 161 26 26;
+  --warn: 127 58 10;
+  --info: 30 64 175;
 
   /* Extra data-viz series (accent is series 1) */
   --viz-blue: 2 132 199;
@@ -81,9 +85,9 @@
     --line: 42 42 42;
     --fg: 255 255 255;
     --fg-2: 209 213 219;
-    --fg-3: 156 163 175;
-    --muted: 107 114 128;
-    --faint: 75 85 99;
+    --fg-3: 176 182 192;
+    --muted: 156 163 175;
+    --faint: 107 114 128;
     --accent: 34 197 94;
     --accent-hi: 74 222 128;
     --on-accent: 0 0 0;
@@ -106,9 +110,9 @@
   --line: 42 42 42;
   --fg: 255 255 255;
   --fg-2: 209 213 219;
-  --fg-3: 156 163 175;
-  --muted: 107 114 128;
-  --faint: 75 85 99;
+  --fg-3: 176 182 192;
+  --muted: 156 163 175;
+  --faint: 107 114 128;
   --accent: 34 197 94;
   --accent-hi: 74 222 128;
   --on-accent: 0 0 0;

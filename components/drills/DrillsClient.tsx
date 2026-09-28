@@ -64,7 +64,7 @@ export function DrillsClient({ drills, usageCounts }: Props) {
             >
               {cat}
               {count > 0 && (
-                <span className={["ml-1.5 text-xs", active ? "text-on-accent/60" : "text-faint"].join(" ")}>
+                <span className={["ml-1.5 text-xs", active ? "text-on-accent/60" : "text-muted"].join(" ")}>
                   {count}
                 </span>
               )}

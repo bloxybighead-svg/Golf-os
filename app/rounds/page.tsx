@@ -102,8 +102,8 @@ export default async function RoundsPage({
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
-              <p className="mt-1 text-xs text-faint">no rounds yet</p>
+              <p className="text-3xl font-bold tracking-tight text-muted">—</p>
+              <p className="mt-1 text-xs text-muted">no rounds yet</p>
             </>
           )}
         </div>
@@ -131,8 +131,8 @@ export default async function RoundsPage({
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
-              <p className="mt-1 text-xs text-faint">add rating/slope</p>
+              <p className="text-3xl font-bold tracking-tight text-muted">—</p>
+              <p className="mt-1 text-xs text-muted">add rating/slope</p>
             </>
           )}
         </div>
@@ -146,8 +146,8 @@ export default async function RoundsPage({
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
-              <p className="mt-1 text-xs text-faint">no data yet</p>
+              <p className="text-3xl font-bold tracking-tight text-muted">—</p>
+              <p className="mt-1 text-xs text-muted">no data yet</p>
             </>
           )}
         </div>
@@ -161,8 +161,8 @@ export default async function RoundsPage({
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
-              <p className="mt-1 text-xs text-faint">no data yet</p>
+              <p className="text-3xl font-bold tracking-tight text-muted">—</p>
+              <p className="mt-1 text-xs text-muted">no data yet</p>
             </>
           )}
         </div>
@@ -181,8 +181,8 @@ export default async function RoundsPage({
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
-              <p className="mt-1 text-xs text-faint">no data yet</p>
+              <p className="text-3xl font-bold tracking-tight text-muted">—</p>
+              <p className="mt-1 text-xs text-muted">no data yet</p>
             </>
           )}
         </div>

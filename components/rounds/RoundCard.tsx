@@ -105,13 +105,13 @@ export function RoundCard({ round, casualGirAvg }: Props) {
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5">
           {round.fairways_pct != null && (
             <div className="flex items-baseline gap-1">
-              <span className="text-xs text-faint">FIR</span>
+              <span className="text-xs text-muted">FIR</span>
               <span className="text-sm font-semibold text-fg">{round.fairways_pct}%</span>
             </div>
           )}
           {round.gir_pct != null && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-faint">GIR</span>
+              <span className="text-xs text-muted">GIR</span>
               <span className={["text-sm font-semibold", girCollapse ? "text-danger" : "text-fg"].join(" ")}>
                 {round.gir_pct}%
               </span>
@@ -124,7 +124,7 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           )}
           {round.total_putts != null && (
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xs text-faint">Putts</span>
+              <span className="text-xs text-muted">Putts</span>
               <span className="text-sm font-semibold text-fg">{round.total_putts}</span>
               {round.three_putts != null && round.three_putts > 0 && (
                 <span className="text-xs text-danger">
@@ -135,7 +135,7 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           )}
           {round.up_and_downs != null && (
             <div className="flex items-baseline gap-1">
-              <span className="text-xs text-faint">U&D</span>
+              <span className="text-xs text-muted">U&D</span>
               <span className="text-sm font-semibold text-fg">{round.up_and_downs}</span>
             </div>
           )}

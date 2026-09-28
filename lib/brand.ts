@@ -4,6 +4,6 @@
 // themes) and --accent there.
 export const BRAND = {
   dark: "#0a0a0a",
-  light: "#f4f4f5",
+  light: "#f7f6f2",
   accent: "#22c55e",
 } as const

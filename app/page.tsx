@@ -162,8 +162,8 @@ export default async function Home() {
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tracking-tight text-faint">—</p>
-              <p className="mt-1 text-xs text-faint">
+              <p className="text-3xl font-bold tracking-tight text-muted">—</p>
+              <p className="mt-1 text-xs text-muted">
                 {lastRound ? "last round has no rating/slope" : "no rounds logged yet"}
               </p>
             </>
@@ -195,7 +195,7 @@ export default async function Home() {
             {insight}
           </p>
           {rounds.length >= 10 && (
-            <p className="mt-1 text-xs text-faint">last 10 rounds vs the 10 before</p>
+            <p className="mt-1 text-xs text-muted">last 10 rounds vs the 10 before</p>
           )}
         </div>
       </div>

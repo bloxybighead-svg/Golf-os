@@ -91,7 +91,7 @@ export default async function YouPage() {
                   <span className="block text-sm font-medium text-fg">{label}</span>
                   <span className="block text-xs text-muted">{blurb}</span>
                 </span>
-                <ChevronRight size={16} className="shrink-0 text-faint transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight size={16} className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
               </Link>
             </li>
           ))}

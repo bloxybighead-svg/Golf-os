@@ -164,7 +164,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
 
       {/* Blocks */}
       {sessionBlocks.length === 0 ? (
-        <p className="text-sm text-faint">No blocks recorded for this session.</p>
+        <p className="text-sm text-muted">No blocks recorded for this session.</p>
       ) : (
         <div className="space-y-4">
           <h2 className="text-sm font-semibold uppercase tracking-widest text-muted">Blocks</h2>
@@ -185,7 +185,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
                       {block.block_type}
                     </span>
                     {block.duration_minutes && (
-                      <span className="text-xs text-faint">{block.duration_minutes} min</span>
+                      <span className="text-xs text-muted">{block.duration_minutes} min</span>
                     )}
                   </div>
                   <div className="flex items-center gap-4">
@@ -237,7 +237,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
                         <div className="min-w-0">
                           <span className="text-sm text-fg">{act.drill_name}</span>
                           {act.rep_count != null && (
-                            <span className="ml-2 text-xs text-faint">× {act.rep_count}</span>
+                            <span className="ml-2 text-xs text-muted">× {act.rep_count}</span>
                           )}
                           {act.note && (
                             <p className="mt-0.5 text-xs italic text-muted">{act.note}</p>

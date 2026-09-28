@@ -41,7 +41,7 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
 
       <div className={[expanded ? "block" : "hidden", "md:block"].join(" ")}>
         {runs.length === 0 ? (
-          <p className="mt-3 text-sm text-faint">Start a recommended drill above and it will show up here.</p>
+          <p className="mt-3 text-sm text-muted">Start a recommended drill above and it will show up here.</p>
         ) : (
           <>
             <div className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0">
@@ -66,7 +66,7 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
             </p>
 
             {filtered.length === 0 ? (
-              <p className="mt-2 text-sm text-faint">No drills in this category yet.</p>
+              <p className="mt-2 text-sm text-muted">No drills in this category yet.</p>
             ) : (
               <ul className="mt-2 divide-y divide-fg/[0.04]">
                 {filtered.slice(0, SHOW).map((r) => (
@@ -81,7 +81,7 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
                       </span>
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs">
-                      {r.drill_library && <span className="text-faint">{CATEGORY_LABEL[r.drill_library.category]}</span>}
+                      {r.drill_library && <span className="text-muted">{CATEGORY_LABEL[r.drill_library.category]}</span>}
                       {r.completed_at ? (
                         <span className="text-accent">Completed</span>
                       ) : (

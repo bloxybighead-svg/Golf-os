@@ -222,7 +222,7 @@ export default function NewSessionPage() {
 
         <div>
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
-            Note <span className="normal-case tracking-normal text-faint">optional</span>
+            Note <span className="normal-case tracking-normal text-muted">optional</span>
           </label>
           <textarea
             value={finalNotes}
@@ -253,7 +253,7 @@ export default function NewSessionPage() {
         >
           Add full details →
         </button>
-        <p className="text-center text-xs text-faint">
+        <p className="text-center text-xs text-muted">
           Date, duration and note carry over into the full form.
         </p>
       </div>
