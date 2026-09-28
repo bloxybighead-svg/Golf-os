@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Flag, Map as MapIcon, User } from "lucide-react"
+import { APP_NAME } from "@/lib/brand"
 
 // Three main tabs. "match" lists extra path prefixes that keep a tab lit:
 // Play is the course planner itself, You covers the bag tools under /you/bag.
@@ -28,9 +29,7 @@ export default function NavBar() {
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-on-accent">
               <Flag size={15} strokeWidth={2.6} />
             </span>
-            <span className="whitespace-nowrap text-sm font-bold tracking-tight text-fg">
-              Golf <span className="text-accent">OS</span>
-            </span>
+            <span className="whitespace-nowrap text-sm font-bold tracking-tight text-fg">{APP_NAME}</span>
           </Link>
         </div>
       </header>

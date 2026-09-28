@@ -263,7 +263,7 @@ export function RoundForm({ round, onDone }: Props) {
         </div>
         {parseInt(holes) < 18 && (
           <p className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
-            For 9-hole rounds, enter the <span className="font-semibold">9-hole rating and slope</span> for your tees — not half of the 18-hole numbers. Find them on the scorecard or the USGA Course Rating Lookup.
+            For 9-hole rounds, enter the <span className="font-semibold">9-hole rating and slope</span> for your tees, not half of the 18-hole numbers. Find them on the scorecard or the USGA Course Rating Lookup.
           </p>
         )}
 

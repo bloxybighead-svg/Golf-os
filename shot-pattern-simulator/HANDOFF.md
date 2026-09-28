@@ -1405,6 +1405,30 @@ yet", and four of the five SignedOutNotice call sites. Done here:
   /rounds has 1 banner + "No rounds yet." and 0 dashes; /you exactly one
   "—" (the handicap hero) and no banner; / no banner. 149 tests, build clean.
 
+R5 -- copy pass (2026-09-28). **Rename on hold:** Dillon is still choosing
+a name (thinking along the lines of "lowcap" / "locap", for lowering a
+handicap). The name now lives in one constant, `APP_NAME` in
+`lib/brand.ts`, read by the NavBar wordmark, layout metadata (title,
+applicationName, appleWebApp title) and the manifest; renaming = that
+line + `"name"` in package.json. The wordmark is now plain ink (was
+"Golf" + green "OS").
+- Methodology text moved behind a tap: `components/InfoTip.tsx` (an (i)
+  button, 44px target, popover measured on open and shifted to stay inside
+  the 16px gutters, closes on outside tap / Escape) on the handicap card,
+  Strengths & Weaknesses, and every Trends chart caption.
+- Cut the `generate_shots.py --handicap N ...` subtitle. Bag tools renamed
+  to golfer words: Your misses / Compare / What if / Which tees (switcher:
+  Misses / Compare / What if / Tees), subtitles without "simulated" or
+  "dispersion". Route keys (`?view=dispersion` etc.) unchanged.
+- 15 mid-sentence em-dashes rewritten (the spec listed 13 with stale line
+  numbers; a full sweep found 15 live ones). Standalone "—" placeholders kept.
+- "unlock", PlannerSubNav and the old Home were already gone (R1-R4). No emoji.
+- Done-check: `grep -rn "Golf OS\|unlock\|generate_shots" app components`
+  (UI strings) -> none; "Golf OS" remains only in APP_NAME until the rename.
+- Verified with a throwaway route (deleted): info popovers at 375px sit at
+  71-359 px, on top, close on Escape/outside tap; bag pages render the new
+  titles. 149 tests, build clean.
+
 ## Files
 
 | File | Purpose |

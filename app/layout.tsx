@@ -2,16 +2,16 @@ import type { Metadata, Viewport } from "next";
 import NavBar from "@/components/NavBar";
 import { SignInBanner } from "@/components/auth/SignInBanner";
 import { createClient } from "@/lib/supabase/server";
-import { BRAND } from "@/lib/brand";
+import { APP_NAME, BRAND } from "@/lib/brand";
 import { THEME_STORAGE_KEY } from "@/lib/theme/preference";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Golf OS",
+  title: APP_NAME,
   description: "Track your golf practice and plan your shots with your own dispersion",
-  applicationName: "Golf OS",
+  applicationName: APP_NAME,
   // Lets "Add to Home Screen" open it full-screen like an app.
-  appleWebApp: { capable: true, title: "Golf OS", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
   icons: { icon: "/icon.svg" },
 };

@@ -56,7 +56,7 @@ export function RecommendedDrills({
         </span>
       </p>
       {focus.avgDeltaSg >= 0 && (
-        <p className="mt-0.5 text-xs text-muted">Every area is at or above your level — this is the one with the least margin.</p>
+        <p className="mt-0.5 text-xs text-muted">Every area is at or above your level. This one has the least margin.</p>
       )}
 
       {/* Phones: horizontal swipe row of compact cards. Desktop: grid. */}

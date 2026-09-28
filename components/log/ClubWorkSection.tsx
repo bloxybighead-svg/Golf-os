@@ -29,7 +29,7 @@ export function ClubWorkSection({ sessionId, initial }: Props) {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-fg">Club Work</p>
-          <p className="mt-0.5 text-xs text-muted">Editable — refine these as you work on feel & consistency</p>
+          <p className="mt-0.5 text-xs text-muted">Editable. Refine these as you work on feel and consistency.</p>
         </div>
         {dirty && (
           <button

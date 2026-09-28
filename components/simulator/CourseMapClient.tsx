@@ -83,9 +83,9 @@ const LIE_SHORT: Record<Lie, string> = { green: "Grn", fairway: "Fwy", rough: "R
 const STATUS_TITLE: Record<SurfaceStatus, string> = {
   mapped: "Mapped in the course data",
   "hand-drawn": "Hand-drawn by you",
-  estimated: "Not mapped — using an estimated fallback",
+  estimated: "Not mapped, so estimated",
   missing: "Not mapped",
-  "confirmed-absent": "You confirmed there's none here — click to undo",
+  "confirmed-absent": "You confirmed there's none here. Click to undo.",
 }
 const ALWAYS_SHOWN: Lie[] = ["green", "fairway", "rough"]
 // Options offered by "Mark area" for hand-drawing what the map doesn't show
@@ -1731,7 +1731,7 @@ export function CourseMapClient({ calibrated, calibratedName }: Props) {
               <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: lieColor(drawKind) }} />
               <span className="text-fg-2">
                 Tap the map to outline the <strong>{LIE_LABEL[drawKind].toLowerCase()}</strong> area
-                {pendingPoints.length > 0 ? ` — ${pendingPoints.length} point${pendingPoints.length === 1 ? "" : "s"}` : ""}.
+                {pendingPoints.length > 0 ? ` · ${pendingPoints.length} point${pendingPoints.length === 1 ? "" : "s"}` : ""}.
                 {pendingPoints.length >= 3 && " Tap the first (bigger) point again to close it."}
               </span>
               {/* Duplicated as a floating bar over the map on phones (below), so this row is desktop/tablet only. */}

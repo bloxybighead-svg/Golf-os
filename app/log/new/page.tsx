@@ -434,7 +434,7 @@ export default function NewSessionPage() {
           <div className="rounded-md border border-line bg-surface-2 px-4 py-3.5">
             <div className="mb-3">
               <p className="text-sm font-medium text-fg">Club Work</p>
-              <p className="text-xs text-muted">Optional — log shot numbers per club + feel (one entry per feel)</p>
+              <p className="text-xs text-muted">Optional. Shot numbers per club and feel, one entry per feel.</p>
             </div>
             <ClubWork entries={clubWork} onChange={setClubWork} />
           </div>

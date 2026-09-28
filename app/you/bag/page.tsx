@@ -7,10 +7,10 @@ import { CustomGolferSection } from "@/components/bag/CustomGolferSection"
 import { TeeBoxSection } from "@/components/bag/TeeBoxSection"
 
 const VIEWS = [
-  { key: "dispersion", label: "Dispersion" },
+  { key: "dispersion", label: "Misses" },
   { key: "compare", label: "Compare" },
-  { key: "custom", label: "Custom" },
-  { key: "tbox", label: "Tee box" },
+  { key: "custom", label: "What if" },
+  { key: "tbox", label: "Tees" },
 ] as const
 
 type View = (typeof VIEWS)[number]["key"]

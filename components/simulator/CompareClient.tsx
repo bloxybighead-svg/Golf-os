@@ -126,7 +126,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={GitCompare} title="Compare Golfers" subtitle={<>Overlay two golfers&rsquo; simulated dispersion, plus real shots where available.</>} />
+      <PageHeader icon={GitCompare} title="Compare" subtitle={<>Two golfers&rsquo; shots on one chart, plus your real ones.</>} />
 
       <div className="grid grid-cols-1 gap-4 rounded-xl border border-fg/[0.06] bg-surface p-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
@@ -251,8 +251,8 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
               </table>
             </div>
             <p className="mt-2 text-xs text-muted">
-              Each row resamples from the same underlying pool, so the drift you see is pure sampling noise —
-              expect it to shrink as n grows, not to represent a real change in the golfer over time.
+              Each row resamples from the same underlying pool, so the drift you see is pure sampling noise.
+              Expect it to shrink as n grows, not to represent a real change in the golfer over time.
             </p>
           </div>
         </>

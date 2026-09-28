@@ -16,9 +16,9 @@ import { ChevronRight } from "lucide-react"
 // The bag tools that used to be Course Planner sub-tabs, one row each.
 const BAG_TOOLS: { view: string; label: string; blurb: string }[] = [
   { view: "dispersion", label: "Your misses", blurb: "Where each club's shots land" },
-  { view: "compare", label: "Compare golfers", blurb: "Your shots next to another golfer's" },
-  { view: "custom", label: "Custom golfer", blurb: "A what-if golfer from a handicap" },
-  { view: "tbox", label: "Tee box", blurb: "Tees that fit your game" },
+  { view: "compare", label: "Compare", blurb: "Your shots next to another golfer's" },
+  { view: "custom", label: "What if", blurb: "A golfer built from a handicap" },
+  { view: "tbox", label: "Which tees", blurb: "Tees that fit your game" },
 ]
 
 export default async function YouPage() {

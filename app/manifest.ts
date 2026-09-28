@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next"
-import { BRAND } from "@/lib/brand"
+import { APP_NAME, BRAND } from "@/lib/brand"
 
 // Makes the site installable ("Add to Home Screen") and full-screen on phones.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Golf OS",
-    short_name: "Golf OS",
+    name: APP_NAME,
+    short_name: APP_NAME,
     description: "Track your golf practice and plan your shots with your own dispersion",
     start_url: "/",
     display: "standalone",

@@ -12,6 +12,7 @@ import type { Round, Milestone, HandicapEntry } from "@/lib/supabase/types"
 import { rollingHandicapSeries } from "@/lib/handicap"
 import { createMilestone, deleteMilestone } from "@/app/you/milestone-actions"
 import { cssColor, useThemeColor } from "@/lib/theme/tokens"
+import { InfoTip } from "@/components/InfoTip"
 
 type Metric = "handicap" | "scores" | "putts" | "fairways" | "greens"
 
@@ -324,7 +325,7 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
     )
   } else if (metric === "scores") {
     summary = avgDiff != null ? `Average differential: ${avgDiff.toFixed(1)} across ${diffCount} rated rounds · lower is better` : ""
-    caption = `${diffCount} of ${rounds.length} rounds have rating/slope. Differentials put 9- and 18-hole rounds on one scale — the same formula for both, since the rating/slope entered already reflect the tees played.${hasFallback ? " Grey line = strokes vs par per hole (right axis) for rounds without rating/slope." : ""}`
+    caption = `${diffCount} of ${rounds.length} rounds have rating/slope. Differentials put 9- and 18-hole rounds on one scale, since the rating and slope you enter already reflect the tees played.${hasFallback ? " Grey line = strokes vs par per hole (right axis) for rounds without rating/slope." : ""}`
     body = rounds.length < 2 ? (
       <Empty>Needs 2 rounds.</Empty>
     ) : (
@@ -428,9 +429,11 @@ export function TrendsPanel({ rounds, handicapEntries, milestones }: Props) {
             <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           </div>
 
-          <p className="mt-3 min-h-[1rem] text-xs text-fg-3">{summary}</p>
+          <p className="mt-3 flex min-h-[1rem] items-center gap-1.5 text-xs text-fg-3">
+            {summary}
+            {caption && <InfoTip label="How this chart works">{caption}</InfoTip>}
+          </p>
           <div className="mt-2">{body}</div>
-          <p className="mt-2 text-xs text-muted">{caption}</p>
 
           <MilestoneManager milestones={milestones} />
         </div>

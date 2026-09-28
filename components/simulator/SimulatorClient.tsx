@@ -58,7 +58,7 @@ export function SimulatorClient({ clubs, shots, golferName }: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={Activity} title="Shot Dispersion Simulator" subtitle={<>{golferName}&rsquo;s calibrated profile &middot; {shots.length.toLocaleString()} simulated shots</>} />
+      <PageHeader icon={Activity} title="Your misses" subtitle={<>Where {golferName}&rsquo;s shots land, club by club</>} />
 
       <div className="flex flex-wrap items-end gap-6 rounded-xl border border-fg/[0.06] bg-surface p-4">
         <label className="flex flex-col gap-1.5">

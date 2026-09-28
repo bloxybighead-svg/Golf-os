@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ChevronDown } from "lucide-react"
 import type { CategoryTrend } from "@/lib/sgBenchmarks"
 import { qualifierFor } from "@/lib/sgBenchmarks"
+import { InfoTip } from "@/components/InfoTip"
 
 const LABEL: Record<CategoryTrend["category"], string> = {
   off_tee: "Off-Tee",
@@ -68,7 +69,13 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
   return (
     <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="label-xs">Strengths & Weaknesses</p>
+        <p className="label-xs flex items-center gap-1.5">
+          Strengths & Weaknesses
+          <InfoTip label="How strengths and weaknesses are worked out">
+            Estimated from your fairways, greens, putts and up-and-downs, not shot-by-shot strokes gained. Each area is
+            compared with typical stats for your handicap, so treat it as a guide, not a precise measurement.
+          </InfoTip>
+        </p>
         <p className="text-xs text-muted">last {trends[0].roundsCounted} rounds</p>
       </div>
 
@@ -90,11 +97,6 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
           <Bar key={t.category} trend={t} />
         ))}
       </div>
-
-      <p className="mt-4 text-xs text-muted">
-        Estimated from fairways%/GIR%/putts/up-and-downs, not shot-tracked strokes gained — a proxy
-        compared against typical stats for your handicap bracket, not a precise measurement.
-      </p>
     </div>
   )
 }

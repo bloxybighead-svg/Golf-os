@@ -71,8 +71,7 @@ export function CustomGolferClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={SlidersHorizontal} title="Custom Golfer" subtitle={<>Same model as <code>generate_shots.py --handicap N --carry CLUB=YDS</code>, running live in the
-            browser.</>} />
+      <PageHeader icon={SlidersHorizontal} title="What if" subtitle={<>A golfer built from a handicap and a couple of carries.</>} />
 
       <div className="space-y-4 rounded-xl border border-fg/[0.06] bg-surface p-4">
         <div className="flex flex-wrap gap-6">

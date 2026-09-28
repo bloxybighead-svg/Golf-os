@@ -106,7 +106,7 @@ export function ClubWork({ entries, onChange }: Props) {
         + Add Entry
       </button>
       <p className="text-xs text-muted">
-        Hit multiple feels with the same club? Add a separate entry per feel — that keeps the
+        Hit multiple feels with the same club? Add a separate entry per feel so the
         Wedge Numbers averages clean.
       </p>
     </div>

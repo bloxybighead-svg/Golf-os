@@ -51,7 +51,7 @@ export async function DispersionSection() {
   if (shotsError) {
     return (
       <div className="rounded-xl border border-warn/40 bg-warn/10 px-5 py-4 text-sm text-warn">
-        <p className="font-semibold">Could not load simulated shots</p>
+        <p className="font-semibold">Couldn&rsquo;t load your shots</p>
         <p className="mt-1 text-xs text-warn">{shotsError.message}</p>
       </div>
     )

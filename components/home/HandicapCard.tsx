@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react"
 import Link from "next/link"
 import type { HandicapEntry } from "@/lib/supabase/types"
 import { saveManualHandicap } from "@/app/handicap/actions"
+import { InfoTip } from "@/components/InfoTip"
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -57,7 +58,15 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
     <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="label-xs mb-1">Handicap</p>
+          <p className="label-xs mb-1 flex items-center gap-1.5">
+            Handicap
+            {isEstimate && displayIndex != null && (
+              <InfoTip label="How your handicap is worked out">
+                Best 8 of your last 20 differentials × 0.96, updated each time you save a round. A simplified
+                estimate without the official safeguards and caps, so not your GHIN Index.
+              </InfoTip>
+            )}
+          </p>
           {displayIndex != null ? (
             <>
               <p className="text-5xl font-semibold leading-tight tracking-tight text-fg tabular-nums">{fmtIndex(displayIndex)}</p>
@@ -123,12 +132,6 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
         </p>
       )}
 
-      {isEstimate && displayIndex != null && (
-        <p className="mt-3 text-xs text-muted">
-          Best 8 of your last 20 differentials × 0.96, updated each time you save a round. A simplified
-          estimate without the official safeguards and caps, so not your GHIN Index.
-        </p>
-      )}
     </div>
   )
 }

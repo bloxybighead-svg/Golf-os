@@ -61,7 +61,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
       const data = await res.json()
       setSearchResults(data.courses ?? [])
     } catch {
-      setSearchError("Search failed — try again.")
+      setSearchError("Search failed. Try again.")
     } finally {
       setSearching(false)
     }
@@ -81,7 +81,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
         par: t.par,
       }))
       if (realTees.length === 0) {
-        setSearchError(`${course.name} has no tee data in OpenGolfAPI yet — try manual entry below.`)
+        setSearchError(`${course.name} has no tee data yet. Enter it below.`)
         return
       }
       setTees(realTees)
@@ -89,7 +89,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
       setSearchResults([])
       setQuery("")
     } catch {
-      setSearchError("Couldn't load tee data — try again.")
+      setSearchError("Couldn't load tee data. Try again.")
     } finally {
       setLoadingTees(false)
     }
@@ -127,8 +127,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={Flag} title="Tee Box Estimator" subtitle={<>Which tees fit your handicap and driver distance, using the USGA Course Handicap formula plus an
-            approximate distance guideline.</>} />
+      <PageHeader icon={Flag} title="Which tees" subtitle={<>Tees that fit your handicap and driver distance.</>} />
 
       <div className="flex flex-wrap gap-6 rounded-xl border border-fg/[0.06] bg-surface p-4">
         <label className="flex flex-col gap-1.5">
@@ -211,8 +210,8 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
         {knownCourses.length > 0 && (
           <>
             <p className="mb-2 mt-4 text-xs font-medium text-muted">
-              Or load rating/slope/par from a course you&rsquo;ve already logged (yardage still needs manual entry
-              — logged rounds don&rsquo;t track it):
+              Or load rating/slope/par from a course you&rsquo;ve already logged (add the yardage yourself, since
+              logged rounds don&rsquo;t track it):
             </p>
             <div className="flex flex-wrap gap-2">
               {knownCourses.map((c) => (
