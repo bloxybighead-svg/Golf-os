@@ -1501,6 +1501,62 @@ was moved to `public/icon.svg` in R2 and `app/apple-icon.png` +
   (saveBaseline, the login redirect, cross-device apply) -- no test
   credentials; the table's RLS was verified.
 
+### Hole-by-hole round logging (2026-09-29)
+
+The Add/Edit round form no longer asks for Fairways %, GIR %, Missed
+Left/Right % ("from GHIN") or a bare up-and-down count. A round is logged
+by tapping through its holes, and the box score is computed from the taps.
+
+- Table `round_holes` (supabase/round_holes.sql): round_id (cascade),
+  user_id, hole_number 1-18 (unique per round), par 3-6, strokes,
+  fairway_hit (null on par 3s / not tapped), fairway_miss_side
+  left|right, green_hit (null = not tapped), green_miss_side
+  left|right|long|short, putts (null = not tapped), penalty. Owner-only
+  RLS; insert also checks the round belongs to the user.
+- `lib/rounds/holes.ts` (5 tests): `cleanHoles` (server validation: par 3
+  drops fairway, miss side only with a miss, putts <= strokes),
+  `summarizeHoles` -> score, par, holes_played, fairways_pct and
+  miss_left/right_pct (share of par-4/5 tee shots, as GHIN shows them),
+  gir_pct, total_putts and three_putts (only when every hole has putts),
+  up_and_downs = missed greens that still made par or better (scrambling),
+  over missed greens, penalties = holes with a penalty. Percentages count
+  only holes where that stat was tapped. `upAndDownPct(round)` gives the
+  rate for a saved round from up_and_downs + gir_pct (the same way the
+  short-game SG proxy reads it).
+- `app/rounds/actions.ts`: `createRound`/`updateRound` take a `RoundInput`
+  with `holes` (hole by hole) or `score/par/holes_played` (score only).
+  The server computes every stat column and the differential; the client
+  sends no stats. Holes are replaced delete-then-insert; a new round whose
+  holes fail to save is deleted (no half-saved rounds). Score only on a
+  round that had holes clears its stats; an older round with typed-in
+  stats keeps them. `getRoundHoles` loads holes for editing. SG analysis
+  and handicap sync run from the saved row as before.
+- Same Round columns, same readers: Rounds summary, RoundCard, Trends
+  (fairways/greens/putts charts), round_analysis and You all read what
+  they read before. RoundCard now shows whole-number percentages and U&D
+  as a rate.
+- Form (`components/rounds/RoundForm.tsx`): date, course, then "Hole by
+  hole" (default) | "Score only". Hole by hole: 9 | 18, "Thru N · score ·
+  +/-", a strip of all holes with their scores, then per hole: Par 3/4/5,
+  Score (par-2 .. par+3, then "N+" that counts up), Tee shot Left /
+  Fairway / Right (hidden on par 3s), Approach laid out like a green (Long
+  above, Left / Green / Right, Short below), Putts 0-4+, Penalty, "Hole
+  N+1" (last hole: "Save round"). Tapping a chosen option again clears it.
+  Live Fairways / Greens / Putts / Up & down under the hole. All targets
+  44 px. Score only: score, par, holes (for past rounds). Rating and slope
+  stay (they're on the scorecard). A new round in progress is saved to
+  `golfos.roundDraft.v1` on the device and picked up on reopen ("Picked
+  up where you left off. Start over"), so it survives mid-round.
+- Verified (dev, 375 px): an 18-hole round logged in 94 taps, no typed
+  numbers besides the course name; the live line and the saved draft
+  matched a hand count (78, +6; fairways 4/14 = 29%; greens 9/18 = 50%;
+  up and down 6/9; 33 putts); reload restores the draft; missing holes
+  are named and jumped to; signed out, Save gives "Sign in to save
+  rounds."; no horizontal scroll; light and dark. **Not verified: a
+  signed-in save** (no test credentials).
+- Not done: pars aren't prefilled from the course (default 4, one tap to
+  change); a 9-hole round is numbered 1-9 even if it was the back nine.
+
 ## Files
 
 | File | Purpose |

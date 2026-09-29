@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import type { Round } from "@/lib/supabase/types"
 import { RoundForm } from "./RoundForm"
 import { deleteRound } from "@/app/rounds/actions"
+import { upAndDownPct } from "@/lib/rounds/holes"
 
 function formatDate(dateStr: string) {
   return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", {
@@ -32,6 +33,9 @@ export function RoundCard({ round, casualGirAvg }: Props) {
 
   const hasMiss = round.miss_left_pct != null || round.miss_right_pct != null
   const hasShortGame = round.total_putts != null || round.up_and_downs != null
+  // Percentages computed from holes carry a decimal; show whole numbers.
+  const pct = (v: number) => `${Math.round(v)}%`
+  const upDownPct = upAndDownPct(round)
 
   // Dashboard flags
   const compCollapse = round.is_competitive && round.differential != null && round.differential > 8.0
@@ -106,14 +110,14 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           {round.fairways_pct != null && (
             <div className="flex items-baseline gap-1">
               <span className="text-xs text-muted">FIR</span>
-              <span className="text-sm font-semibold text-fg">{round.fairways_pct}%</span>
+              <span className="text-sm font-semibold text-fg">{pct(round.fairways_pct)}</span>
             </div>
           )}
           {round.gir_pct != null && (
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted">GIR</span>
               <span className={["text-sm font-semibold", girCollapse ? "text-danger" : "text-fg"].join(" ")}>
-                {round.gir_pct}%
+                {pct(round.gir_pct)}
               </span>
               {girCollapse && (
                 <span className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
@@ -136,7 +140,7 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           {round.up_and_downs != null && (
             <div className="flex items-baseline gap-1">
               <span className="text-xs text-muted">U&D</span>
-              <span className="text-sm font-semibold text-fg">{round.up_and_downs}</span>
+              <span className="text-sm font-semibold text-fg">{upDownPct != null ? pct(upDownPct) : round.up_and_downs}</span>
             </div>
           )}
           {round.penalties != null && round.penalties > 0 && (
@@ -149,10 +153,10 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           {hasMiss && (
             <div className="flex items-center gap-1.5">
               {round.miss_left_pct != null && (
-                <span className="text-xs text-muted">← {round.miss_left_pct}%</span>
+                <span className="text-xs text-muted">← {pct(round.miss_left_pct)}</span>
               )}
               {round.miss_right_pct != null && (
-                <span className="text-xs text-muted">{round.miss_right_pct}% →</span>
+                <span className="text-xs text-muted">{pct(round.miss_right_pct)} →</span>
               )}
             </div>
           )}
