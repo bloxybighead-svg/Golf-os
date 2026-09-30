@@ -63,6 +63,8 @@ export interface LieMapExtras {
   boundary?: CourseBoundaryShape | null
   /** Roads and tree rows, as centre lines. */
   lines?: CourseLine[]
+  /** Use the spatial index (default). false checks every shape: the slow reference the index must match, for tests. */
+  index?: boolean
 }
 
 interface PreparedRing {
@@ -123,7 +125,7 @@ function segmentsOf(pts: XY[], closed: boolean): Segment[] {
  * nearest coastline segment. Each segment's left is land, so the nearest
  * segment gives the right answer for any point close to that stretch.
  */
-function onSeaSide(x: number, y: number, segs: Segment[]): boolean {
+function onSeaSide(x: number, y: number, segs: readonly Segment[]): boolean {
   let bestD2 = COAST_MAX_YDS * COAST_MAX_YDS
   let sea = false
   for (const s of segs) {
@@ -152,27 +154,131 @@ function prepare(origin: LatLng, ring: LatLng[]): PreparedRing {
   return { ring: xy, minX, maxX, minY, maxY }
 }
 
-const inBox = (x: number, y: number, r: PreparedRing, pad = 0) =>
+const inBox = (x: number, y: number, r: Box, pad = 0) =>
   x >= r.minX - pad && x <= r.maxX + pad && y >= r.minY - pad && y <= r.maxY + pad
 
 const inRing = (x: number, y: number, r: PreparedRing) => inBox(x, y, r) && pointInRing(x, y, r.ring)
 
-/** A polyline (road, tree row, or a ring's edges) with its bounding box, for "within N yards" tests. */
-interface PreparedLine {
-  segs: Segment[]
-  box: PreparedRing
+interface Box {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
 }
 
-function prepareLine(origin: LatLng, line: LatLng[], closed: boolean): PreparedLine {
-  const box = prepare(origin, line)
-  return { segs: segmentsOf(box.ring, closed), box }
+function segBox(s: Segment): Box {
+  const bx = s.ax + s.dx
+  const by = s.ay + s.dy
+  return { minX: Math.min(s.ax, bx), maxX: Math.max(s.ax, bx), minY: Math.min(s.ay, by), maxY: Math.max(s.ay, by) }
 }
 
-function nearLine(x: number, y: number, l: PreparedLine, yds: number): boolean {
-  if (!inBox(x, y, l.box, yds)) return false
-  const d2 = yds * yds
-  return l.segs.some((s) => segDist2(x, y, s) <= d2)
+// ---- Spatial index -------------------------------------------------------
+// A lie lookup runs for every shot the planner simulates (hundreds of
+// thousands per club ranking), and checking every mapped shape on the course
+// each time was most of that cost. The index buckets shapes into square
+// cells so a lookup only checks shapes whose (padded) bounding box touches
+// the point's cell. It only skips shapes that could never match, so the
+// answers are exactly the same as checking everything (lies.test.ts checks
+// this against `index: false`).
+
+/** Cell size of the spatial index, yards. A speed setting only: answers are identical at any size. */
+const INDEX_CELL_YDS = 25
+
+const NONE: readonly never[] = []
+const cellOf = (v: number) => Math.floor(v / INDEX_CELL_YDS)
+const cellKey = (ix: number, iy: number) => ix * 1_000_003 + iy
+
+class Grid<T> {
+  private readonly cells = new Map<number, T[]>()
+
+  add(item: T, b: Box, pad = 0): void {
+    for (let ix = cellOf(b.minX - pad); ix <= cellOf(b.maxX + pad); ix++) {
+      for (let iy = cellOf(b.minY - pad); iy <= cellOf(b.maxY + pad); iy++) {
+        const k = cellKey(ix, iy)
+        const list = this.cells.get(k)
+        if (list) list.push(item)
+        else this.cells.set(k, [item])
+      }
+    }
+  }
+
+  /** Items come back in the order they were added, so "first match wins" rules still hold. */
+  at(x: number, y: number): readonly T[] {
+    return this.cells.get(cellKey(cellOf(x), cellOf(y))) ?? NONE
+  }
 }
+
+interface Edge {
+  xi: number
+  yi: number
+  xj: number
+  yj: number
+}
+
+/**
+ * Point-in-polygon for big rings (the course boundary has hundreds of
+ * vertices): the same even-odd ray cast as geo.ts pointInRing, but only over
+ * the edges whose height range covers the point's row band -- the only edges
+ * that can cross the ray -- so the answer is identical.
+ */
+class BandedRing {
+  private readonly bands = new Map<number, Edge[]>()
+  private readonly box: Box
+
+  constructor(r: PreparedRing) {
+    this.box = r
+    const ring = r.ring
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const e = { xi: ring[i].x, yi: ring[i].y, xj: ring[j].x, yj: ring[j].y }
+      for (let b = cellOf(Math.min(e.yi, e.yj)); b <= cellOf(Math.max(e.yi, e.yj)); b++) {
+        const list = this.bands.get(b)
+        if (list) list.push(e)
+        else this.bands.set(b, [e])
+      }
+    }
+  }
+
+  contains(x: number, y: number): boolean {
+    if (!inBox(x, y, this.box)) return false
+    let inside = false
+    for (const e of this.bands.get(cellOf(y)) ?? NONE) {
+      if (e.yi > y !== e.yj > y && x < ((e.xj - e.xi) * (y - e.yi)) / (e.yj - e.yi) + e.xi) inside = !inside
+    }
+    return inside
+  }
+}
+
+/**
+ * The coastline segments that could be the nearest one to some point in a
+ * cell, in their original order: for any point p in a cell with centre c and
+ * half-diagonal h, d(p, s) lies within d(c, s) +- h, so a segment more than
+ * 2h farther from c than the closest one can never be nearest. Running
+ * onSeaSide over just these gives the same answer as over the whole coast.
+ * Worked out once per cell, the first time a point lands in it.
+ */
+class CoastIndex {
+  private readonly cells = new Map<number, Segment[]>()
+
+  constructor(private readonly segs: readonly Segment[]) {}
+
+  candidates(x: number, y: number): readonly Segment[] {
+    const ix = cellOf(x)
+    const iy = cellOf(y)
+    const k = cellKey(ix, iy)
+    const hit = this.cells.get(k)
+    if (hit) return hit
+    const cx = (ix + 0.5) * INDEX_CELL_YDS
+    const cy = (iy + 0.5) * INDEX_CELL_YDS
+    const h = (INDEX_CELL_YDS * Math.SQRT2) / 2
+    const d = this.segs.map((s) => Math.sqrt(segDist2(cx, cy, s)))
+    const limit = Math.min(Math.min(...d) + 2 * h, COAST_MAX_YDS + h) + 1e-6
+    const list = this.segs.filter((_, i) => d[i] <= limit)
+    this.cells.set(k, list)
+    return list
+  }
+}
+
+type SegSet = "road" | "treeRow" | "edge"
 
 export function buildLieMap(
   origin: LatLng,
@@ -182,7 +288,8 @@ export function buildLieMap(
   extras: LieMapExtras = {}
 ): LieMap {
   // Most-recently-drawn zone wins where zones overlap, so check in reverse.
-  const preparedZones = zones.map((z) => ({ lie: z.lie, prepared: prepare(origin, z.ring) })).reverse()
+  const preparedZones = zones.map((z) => ({ lie: z.lie, ring: prepare(origin, z.ring) })).reverse()
+  type PreparedZone = (typeof preparedZones)[number]
 
   const coastSegs: Segment[] = coast.flatMap((line) => segmentsOf(line.map((p) => toLocal(origin, p)), false))
 
@@ -192,41 +299,70 @@ export function buildLieMap(
     list.push(prepare(origin, f.ring))
     byKind.set(f.kind, list)
   }
-  const ringsOf = (kind: CourseFeature["kind"]) => byKind.get(kind) ?? []
 
   const boundary = extras.boundary && extras.boundary.outer.length > 0 ? extras.boundary : null
   const outer = boundary?.outer.map((r) => prepare(origin, r)) ?? []
   const inner = boundary?.inner.map((r) => prepare(origin, r)) ?? []
 
-  const roads: PreparedLine[] = []
-  const treeRows: PreparedLine[] = []
-  for (const l of extras.lines ?? []) {
-    ;(l.kind === "road" ? roads : treeRows).push(prepareLine(origin, l.line, false))
+  const segs: Record<SegSet, Segment[]> = { road: [], treeRow: [], edge: [] }
+  for (const l of extras.lines ?? []) segs[l.kind].push(...segmentsOf(l.line.map((p) => toLocal(origin, p)), false))
+  for (const f of features) {
+    if (EDGE_KINDS.includes(f.kind)) segs.edge.push(...segmentsOf(f.ring.map((p) => toLocal(origin, p)), true))
+  }
+  const buffer: Record<SegSet, number> = { road: ROAD_BUFFER_YDS, treeRow: TREE_ROW_BUFFER_YDS, edge: ROUGH_BAND_YDS }
+
+  // Candidates for a point: everything (index: false, the plain reference
+  // version), or only what the point's index cell holds.
+  let zonesAt = (_x: number, _y: number): readonly PreparedZone[] => preparedZones
+  let ringsAt = (kind: CourseFeature["kind"], _x: number, _y: number): readonly PreparedRing[] => byKind.get(kind) ?? NONE
+  let segsAt = (set: SegSet, _x: number, _y: number): readonly Segment[] => segs[set]
+  let insideBoundary = (x: number, y: number) => outer.some((r) => inRing(x, y, r)) && !inner.some((r) => inRing(x, y, r))
+  let coastAt = (_x: number, _y: number): readonly Segment[] => coastSegs
+
+  if (extras.index ?? true) {
+    const zoneGrid = new Grid<PreparedZone>()
+    for (const z of preparedZones) zoneGrid.add(z, z.ring)
+    const kindGrids = new Map<string, Grid<PreparedRing>>()
+    byKind.forEach((rings, kind) => {
+      const g = new Grid<PreparedRing>()
+      for (const r of rings) g.add(r, r)
+      kindGrids.set(kind, g)
+    })
+    const segGrids = {} as Record<SegSet, Grid<Segment>>
+    for (const set of ["road", "treeRow", "edge"] as SegSet[]) {
+      const g = new Grid<Segment>()
+      for (const s of segs[set]) g.add(s, segBox(s), buffer[set])
+      segGrids[set] = g
+    }
+    const outerBanded = outer.map((r) => new BandedRing(r))
+    const innerBanded = inner.map((r) => new BandedRing(r))
+
+    zonesAt = (x, y) => zoneGrid.at(x, y)
+    ringsAt = (kind, x, y) => kindGrids.get(kind)?.at(x, y) ?? NONE
+    segsAt = (set, x, y) => segGrids[set].at(x, y)
+    insideBoundary = (x, y) => outerBanded.some((r) => r.contains(x, y)) && !innerBanded.some((r) => r.contains(x, y))
+    const coastIndex = new CoastIndex(coastSegs)
+    coastAt = (x, y) => coastIndex.candidates(x, y)
   }
 
-  const edges: PreparedLine[] = features
-    .filter((f) => EDGE_KINDS.includes(f.kind))
-    .map((f) => prepareLine(origin, f.ring, true))
-
+  const inAny = (kind: CourseFeature["kind"], x: number, y: number) => ringsAt(kind, x, y).some((r) => inRing(x, y, r))
+  const near = (set: SegSet, x: number, y: number) => {
+    const d2 = buffer[set] * buffer[set]
+    return segsAt(set, x, y).some((s) => segDist2(x, y, s) <= d2)
+  }
   const mapped = (lie: Lie): LieClass => ({ lie, source: "mapped" })
 
   function classify(p: LatLng): LieClass {
     const { x, y } = toLocal(origin, p)
-    for (const { lie, prepared: r } of preparedZones) if (inRing(x, y, r)) return mapped(lie)
-    for (const { kind, lie } of SURFACES) for (const r of ringsOf(kind)) if (inRing(x, y, r)) return mapped(lie)
-    if (coastSegs.length > 0 && onSeaSide(x, y, coastSegs)) return mapped("water")
-    if (boundary) {
-      const inside = outer.some((r) => inRing(x, y, r)) && !inner.some((r) => inRing(x, y, r))
-      if (!inside) return mapped("oob")
-    }
-    if (ringsOf("building").some((r) => inRing(x, y, r))) return mapped("oob")
-    if (roads.some((l) => nearLine(x, y, l, ROAD_BUFFER_YDS))) return mapped("oob")
-    if (ringsOf("trees").some((r) => inRing(x, y, r)) || ringsOf("scrub").some((r) => inRing(x, y, r))) return mapped("trees")
-    if (treeRows.some((l) => nearLine(x, y, l, TREE_ROW_BUFFER_YDS))) return mapped("trees")
-    if (boundary && ringsOf("residential").some((r) => inRing(x, y, r))) return mapped("trees")
-    if (edges.length === 0) return { lie: "rough", source: "inferred" }
-    const nearEdge = edges.some((l) => nearLine(x, y, l, ROUGH_BAND_YDS))
-    return { lie: nearEdge ? "rough" : "trees", source: "inferred" }
+    for (const z of zonesAt(x, y)) if (inRing(x, y, z.ring)) return mapped(z.lie)
+    for (const { kind, lie } of SURFACES) if (inAny(kind, x, y)) return mapped(lie)
+    if (coastSegs.length > 0 && onSeaSide(x, y, coastAt(x, y))) return mapped("water")
+    if (boundary && !insideBoundary(x, y)) return mapped("oob")
+    if (inAny("building", x, y) || near("road", x, y)) return mapped("oob")
+    if (inAny("trees", x, y) || inAny("scrub", x, y) || near("treeRow", x, y)) return mapped("trees")
+    if (boundary && inAny("residential", x, y)) return mapped("trees")
+    if (segs.edge.length === 0) return { lie: "rough", source: "inferred" }
+    return { lie: near("edge", x, y) ? "rough" : "trees", source: "inferred" }
   }
 
   return {

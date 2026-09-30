@@ -8,7 +8,6 @@ import dynamic from "next/dynamic"
 import {
   bearingDeg,
   distanceYds,
-  landingPoint,
   ringCentroid,
   type LatLng,
 } from "@/lib/course/geo"
@@ -25,9 +24,22 @@ import {
   type SurfaceStatus,
 } from "@/lib/course/dataQuality"
 import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
-import { buildLieMap, ROUGH_BAND_YDS, type Lie, type LieMap, type UserZone } from "@/lib/course/lies"
+import { ROUGH_BAND_YDS, type Lie, type UserZone } from "@/lib/course/lies"
 import { GEOMETRY_VERSION, type CourseFeature, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
-import { bestAim, flagsUnmapped, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
+import {
+  aimMarkerFor,
+  aimOffsetLabel,
+  evaluateClub,
+  flagsUnmapped,
+  isAtBestAim,
+  isTie,
+  simulateLandings,
+  strokesAtAim,
+  type ClubShots,
+  type OptimizedClubPlan,
+} from "@/lib/course/plan"
+import { buildLieMapFrom, type LieInputs } from "@/lib/course/rankRequest"
+import { useClubRanking, type RankingRequest } from "./useClubRanking"
 import { seededSample } from "@/lib/dispersion/stats"
 import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
 import type { Club } from "@/lib/golfer/tables"
@@ -79,12 +91,8 @@ interface Props {
   baseline: Baseline | null
 }
 
-type AimNote = { club: string; optimal: true } | { club: string; optimal: false; offsetYds: number; savedStrokes: number }
 
 const DOTS_SHOWN = 400
-// Below this many strokes, a "saving" is noise (search-vs-holdout disagreement
-// or plain sampling variance), not a real improvement worth moving the aim for.
-const MEANINGFUL_SAVING = 0.05
 const HANDICAP_SHOTS_PER_CLUB = 1000
 const LIES: Lie[] = ["green", "fairway", "rough", "bunker", "water", "trees", "oob"]
 const LIE_LABEL: Record<Lie, string> = {
@@ -333,7 +341,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const supabaseRef = useRef<ReturnType<typeof createClient>>()
   if (!supabaseRef.current) supabaseRef.current = createClient()
   const [authUser, setAuthUser] = useState<{ id: string; email: string | null } | null>(null)
-  const [aimNote, setAimNote] = useState<AimNote | null>(null)
   const [gpsError, setGpsError] = useState("")
   // Why the last GPS reading didn't move the ball (weak signal, or a jump), until one does.
   const [gpsNote, setGpsNote] = useState("")
@@ -497,7 +504,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     setBall(null)
     setAimManual(null)
     setPinManual(null)
-    setAimNote(null)
     setDrawKind(null)
     setPendingPoints([])
     void loadZonesFor(c)
@@ -650,7 +656,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     const next = normalizeBag(has ? current.filter((x) => x !== c) : [...current, c])
     setBags((prev) => (source === "calibrated" ? { ...prev, calibrated: next } : { ...prev, handicap: next }))
     setClubChoice("auto")
-    setAimNote(null)
   }
 
   // Previous/next hole from the title line, wrapping 18 -> 1 and 1 -> 18.
@@ -784,7 +789,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     setBall(h.line[0])
     setAimManual(null)
     setPinManual(null)
-    setAimNote(null)
     setClubChoice("auto")
     setFit({ bounds: boundsOf([...h.line, holePinFor(h)]), key: `hole-${h.id}` })
     updateLastPositionHole(h.id)
@@ -832,22 +836,28 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     })
   }
 
-  const lies = useMemo(() => {
-    if (course?.lat == null || course.lng == null) return null
-    // "estimated" only happens when neither OSM nor a hand-drawn zone has a
-    // fairway for this hole -- fill in a corridor so club/aim scoring has
-    // something to work with instead of treating the whole hole as rough.
-    const extraFeatures: CourseFeature[] =
-      hole && geometry && holeQuality?.fairway === "estimated" ? [estimatedFairwayCorridor(hole, holePinFor(hole))] : []
-    return buildLieMap(
-      { lat: course.lat, lng: course.lng },
-      [...(geometry?.features ?? []), ...extraFeatures],
-      geometry?.coast ?? [],
-      zones,
-      { boundary: geometry?.boundary ?? null, lines: geometry?.lines ?? [] }
-    )
+  // "estimated" only happens when neither OSM nor a hand-drawn zone has a
+  // fairway for this hole -- fill in a corridor so club/aim scoring has
+  // something to work with instead of treating the whole hole as rough.
+  const fairwayEstimated = holeQuality?.fairway === "estimated"
+  const corridor: CourseFeature | null = useMemo(
+    () => (hole && geometry && fairwayEstimated ? estimatedFairwayCorridor(hole, holePinFor(hole)) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [course, geometry, zones, hole, holeQuality])
+    [hole, geometry, fairwayEstimated]
+  )
+
+  // What the lie map is built from -- also sent to the club-ranking worker, which builds its own copy.
+  const lieInputs: LieInputs | null = useMemo(() => {
+    if (course?.lat == null || course.lng == null) return null
+    return {
+      origin: { lat: course.lat, lng: course.lng },
+      features: [...(geometry?.features ?? []), ...(corridor ? [corridor] : [])],
+      coast: geometry?.coast ?? [],
+      zones,
+      extras: { boundary: geometry?.boundary ?? null, lines: geometry?.lines ?? [] },
+    }
+  }, [course, geometry, zones, corridor])
+  const lies = useMemo(() => (lieInputs ? buildLieMapFrom(lieInputs) : null), [lieInputs])
 
   // Where the ball is lying: the tee uses the tour tee-shot baseline, anything else its mapped lie.
   const startLie: StartLie = useMemo(() => {
@@ -856,58 +866,56 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     return lies ? lies.lieAt(ball) : "fairway"
   }, [ball, hole, lies])
 
-  const ranking = useMemo(() => {
-    if (!ball || !aim || !pin || !lies) return []
-    return rankClubs(clubShots, { from: ball, aim, pin, lies, startLie })
-  }, [ball, aim, pin, lies, clubShots, startLie])
+  // ---------- club ranking: every club at its own best aim ----------
+  // Ranked in a Web Worker (useClubRanking) so the map never stutters. It
+  // depends on the ball, pin, map and bag -- not on the aim marker, since
+  // each club searches for its own aim.
+  const rankingRequest: RankingRequest | null = useMemo(
+    () => (ball && pin && defaultAim ? { holeId, from: ball, aim: defaultAim, pin, startLie, line: hole?.line ?? null } : null),
+    [holeId, ball, pin, defaultAim, startLie, hole]
+  )
+  const rankState = useClubRanking(lieInputs, clubShots, rankingRequest)
+  const ranking: OptimizedClubPlan[] = rankState.results ?? []
+  const rankingPending = rankState.pending
 
-  const shownLies = LIES.filter((l) => ALWAYS_SHOWN.includes(l) || ranking.some((r) => r.lieShare[l] >= 0.005))
-  const chosen = ranking.find((r) => r.club === clubChoice) ?? ranking[0] ?? null
+  const shownLies = LIES.filter((l) => ALWAYS_SHOWN.includes(l) || ranking.some((r) => r.plan.lieShare[l] >= 0.005))
+  const best: OptimizedClubPlan | null = ranking[0] ?? null
+  const chosen: OptimizedClubPlan | null = ranking.find((r) => r.club === clubChoice) ?? best
   const chosenShots = chosen ? clubShots.find((c) => c.club === chosen.club) : undefined
 
-  // Which club auto-aim should optimize for -- ranked at the HEURISTIC aim,
-  // never the live (possibly hand-dragged) one. Using the live "chosen" club
-  // here would create a feedback loop: dragging the aim to a deliberately
-  // bad spot can make a different club rank best there, which would then
-  // retrigger auto-aim (below) and immediately snap the drag back.
-  const autoTargetClub = useMemo(() => {
-    if (clubChoice !== "auto") return clubChoice
-    if (!ball || !defaultAim || !pin || !lies) return null
-    return rankClubs(clubShots, { from: ball, aim: defaultAim, pin, lies, startLie })[0]?.club ?? null
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clubChoice, ball, defaultAim, pin, lies, clubShots, startLie])
+  // The chosen club where the aim marker actually points, with every shot: what the dots, "Finishes" and "leaves" describe.
+  const chosenLive = useMemo(() => {
+    if (!chosenShots || !ball || !aim || !pin || !lies) return null
+    return evaluateClub(chosenShots, { from: ball, aim, pin, lies, startLie })
+  }, [chosenShots, ball, aim, pin, lies, startLie])
+  // The ranking's own held-out shots at the aim marker: the "At your aim" number.
+  const chosenAtAim = useMemo(() => {
+    if (!chosenShots || !ball || !aim || !pin || !lies) return null
+    return strokesAtAim(chosenShots, { from: ball, aim, pin, lies, startLie })
+  }, [chosenShots, ball, aim, pin, lies, startLie])
+  const atBestAim = !!chosen && !!ball && !!aim && isAtBestAim(ball, aim, chosen)
 
-  // Auto-aim: the heuristic default (tee -> fairway middle, or the pin) is
-  // just a starting guess, not a search result -- left alone, "the" aim shown
-  // the instant a hole loads could be beaten by a hand-dragged one, which is
-  // backwards for a strokes-gained tool. Whenever the golfer's actual stance
-  // (ball, pin, mapped/hand-drawn geometry, or which club is being planned
-  // for) genuinely changes, silently re-run the same search "Find best aim"
-  // uses and lock in whatever it finds -- so the number on screen is always
-  // the best this tool knows how to find, with no click required. A manual
-  // aim drag *within* the same stance (nothing above changed) is left alone.
-  const autoAimRef = useRef<{ ball: LatLng | null; pin: LatLng | null; lies: LieMap | null; club: string | null }>({
-    ball: null,
-    pin: null,
-    lies: null,
-    club: null,
-  })
+  function aimAtBest(r: OptimizedClubPlan) {
+    if (!ball || !pin) return
+    setAimManual(aimMarkerFor(ball, pin, r))
+  }
+
+  function pickClub(r: OptimizedClubPlan) {
+    setClubChoice(r.club)
+    aimAtBest(r)
+  }
+
+  // When a new stance (ball, pin, map or bag) has been ranked, move the aim to
+  // the chosen club's best -- or the best club's, on auto. A drag after that
+  // sticks until the stance changes again.
+  const appliedRankingKey = useRef<string | null>(null)
   useEffect(() => {
-    if (!ball || !defaultAim || !pin || !lies || !autoTargetClub) return
-    const targetShots = clubShots.find((c) => c.club === autoTargetClub)
-    if (!targetShots) return
-    const last = autoAimRef.current
-    if (last.ball === ball && last.pin === pin && last.lies === lies && last.club === autoTargetClub) return
-    autoAimRef.current = { ball, pin, lies, club: autoTargetClub }
-    const r = bestAim(targetShots, { from: ball, aim: defaultAim, pin, lies, startLie })
-    const saved = r.baselineStrokes - r.plan.expectedStrokes
-    if (saved >= MEANINGFUL_SAVING) {
-      const dist = distanceYds(ball, defaultAim)
-      setAimManual(landingPoint(ball, r.bearingDeg, dist, 0))
-    } else {
-      setAimManual(null) // the heuristic default is already (near enough) optimal
-    }
-  }, [ball, defaultAim, pin, lies, autoTargetClub, clubShots, startLie])
+    if (!rankState.key || appliedRankingKey.current === rankState.key) return
+    appliedRankingKey.current = rankState.key
+    const target = ranking.find((r) => r.club === clubChoice) ?? ranking[0]
+    if (target) aimAtBest(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rankState.key])
 
   const landings = useMemo(() => {
     if (!chosenShots || !ball || !aim || !lies) return []
@@ -930,19 +938,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     const pts = landings.map((l) => l.point)
     return [dispersionRing(pts, 1.177), dispersionRing(pts, 2.146)].filter((r) => r.length > 0)
   }, [showRings, landings])
-
-  function findBestAim() {
-    if (!chosenShots || !ball || !aim || !pin || !lies) return
-    const r = bestAim(chosenShots, { from: ball, aim, pin, lies, startLie })
-    const saved = r.baselineStrokes - r.plan.expectedStrokes
-    if (saved < MEANINGFUL_SAVING) {
-      setAimNote({ club: chosenShots.club, optimal: true })
-      return
-    }
-    const dist = distanceYds(ball, aim)
-    setAimManual(landingPoint(ball, r.bearingDeg, dist, 0))
-    setAimNote({ club: chosenShots.club, optimal: false, offsetYds: r.offsetYds, savedStrokes: saved })
-  }
 
   // ---------- hand-marking trees / water / OB / etc that aren't on the map ----------
   function startDraw(lie: Lie) {
@@ -1052,7 +1047,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   function moveBallTo(p: LatLng) {
     setBall(p)
     setClubChoice("auto")
-    setAimNote(null)
   }
 
   // Keeps the ball on your live GPS position (about every 2.5 s) so the yardages
@@ -1159,7 +1153,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const aimToPin = aim && pin ? distanceYds(aim, pin) : null
   const aimIsPin = aimToPin != null && aimToPin < 3
   // What the chosen club's pattern leaves: from its average finish point (after roll) to the pin.
-  const avgLeft = pin && chosen ? distanceYds(chosen.meanRest, pin) : null
+  const avgLeft = pin && chosenLive ? distanceYds(chosenLive.meanRest, pin) : null
 
   const labels = useMemo(() => {
     const out: { pos: LatLng; text: string }[] = []
@@ -1171,7 +1165,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     }
     return out
   }, [ball, aim, pin, distAim, aimToPin])
-  const best = ranking[0]
   const fromLabel = startLie === "tee" ? "the tee" : startLie === "oob" ? "out of bounds" : `the ${startLie}`
   const planReady = !!ball && !!pin
 
@@ -1198,7 +1191,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     : [loadState === "loading" ? "Loading course…" : "Find a course"]
 
   const planCard =
-    best && chosen ? (
+    best && chosen && chosenLive ? (
       <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
         <div className="flex items-baseline justify-between gap-2">
           <p className="label-xs">{clubChoice === "auto" || chosen.club === best.club ? "Best club" : "Your pick"}</p>
@@ -1222,9 +1215,14 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           <p className="min-w-0 truncate text-5xl font-semibold leading-none tracking-tight text-fg tabular-nums">{chosen.club}</p>
           <p className="shrink-0 text-right">
             <span className="block text-4xl font-semibold leading-none text-accent tabular-nums">
-              {chosen.expectedStrokes.toFixed(2)}
+              {chosen.plan.expectedStrokes.toFixed(2)}
             </span>
             <span className="text-xs text-muted">strokes to hole out</span>
+            {!atBestAim && chosenAtAim != null && (
+              <span className="block text-xs text-fg-3" title="The same shots, aimed where the marker is now">
+                At your aim <span className="font-semibold tabular-nums">{chosenAtAim.toFixed(2)}</span>
+              </span>
+            )}
           </p>
         </div>
 
@@ -1235,8 +1233,8 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
         </dl>
 
         <p className="mt-2 text-xs text-fg-3">
-          Finishes ~<span className="tabular-nums">{Math.round(chosen.meanTotalYds)}</span> yd (carry{" "}
-          <span className="tabular-nums">{Math.round(chosen.meanCarryYds)}</span>)
+          Finishes ~<span className="tabular-nums">{Math.round(chosenLive.meanTotalYds)}</span> yd (carry{" "}
+          <span className="tabular-nums">{Math.round(chosenLive.meanCarryYds)}</span>)
           {avgLeft != null && (
             <>
               , leaves <span className="font-semibold text-fg tabular-nums">{Math.round(avgLeft)}</span> yd
@@ -1244,19 +1242,24 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           )}
           .
           {estimatedFrom[chosen.club] && <> Estimated from your {estimatedFrom[chosen.club]}.</>}
-          {clubChoice !== "auto" && chosen.club !== best.club && (
-            <>
-              {" "}
-              {best.club} saves{" "}
-              <span className="font-semibold text-accent tabular-nums">{(chosen.expectedStrokes - best.expectedStrokes).toFixed(2)}</span>{" "}
-              strokes.
-            </>
-          )}
+          {chosen.club !== best.club &&
+            (isTie(chosen.plan, best.plan) ? (
+              <> A tie with the {best.club}: the gap is within the noise of the shot samples.</>
+            ) : (
+              <>
+                {" "}
+                {best.club} saves{" "}
+                <span className="font-semibold text-accent tabular-nums">
+                  {(chosen.plan.expectedStrokes - best.plan.expectedStrokes).toFixed(2)}
+                </span>{" "}
+                strokes.
+              </>
+            ))}
         </p>
 
-        {flagsUnmapped(chosen) && (
+        {flagsUnmapped(chosenLive) && (
           <p className="mt-2 text-[11px] text-fg-3">
-            <span className="font-semibold text-warn">{pct(chosen.unmappedShare)}</span> of shots landed on unmapped ground.
+            <span className="font-semibold text-warn">{pct(chosenLive.unmappedShare)}</span> of shots landed on unmapped ground.
             Draw{" "}
             <button onClick={() => startDraw("trees")} className="font-semibold text-accent hover:underline">
               trees
@@ -1372,36 +1375,25 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
             </div>
           )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            onClick={findBestAim}
-            className="h-11 rounded-lg border border-accent/50 px-3 text-xs font-semibold text-accent transition-colors hover:bg-accent/10 md:h-9"
-          >
-            Find best aim
-          </button>
+        <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 md:min-h-9">
+          {!atBestAim && (
+            <button
+              onClick={() => aimAtBest(chosen)}
+              className="h-11 rounded-lg border border-accent/50 px-3 text-xs font-semibold text-accent transition-colors hover:bg-accent/10 md:h-9"
+            >
+              Use best aim
+            </button>
+          )}
           {clubChoice !== "auto" && (
             <button
-              onClick={() => setClubChoice("auto")}
+              onClick={() => {
+                setClubChoice("auto")
+                aimAtBest(best)
+              }}
               className="h-11 rounded-lg border border-fg/[0.08] px-3 text-xs text-fg-3 hover:text-fg md:h-9"
             >
               Back to best club
             </button>
-          )}
-        </div>
-        {/* Reserves the space a result takes so tapping "Find best aim" doesn't shift anything
-            below it and cause a mis-tap -- a real problem on a phone. */}
-        <div className="mt-2 min-h-[2.75rem] text-xs text-fg-3">
-          {aimNote && (
-            <p>
-              {aimNote.optimal ? (
-                <>Already the best aim for the {aimNote.club}.</>
-              ) : (
-                <>
-                  Moved {Math.abs(aimNote.offsetYds)} yd {aimNote.offsetYds < 0 ? "left" : "right"}, saving{" "}
-                  <span className="font-semibold text-accent tabular-nums">{aimNote.savedStrokes.toFixed(2)}</span> strokes.
-                </>
-              )}
-            </p>
           )}
         </div>
       </div>
@@ -1414,11 +1406,19 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     ) : null
 
   const clubTable = (
-    <div className="overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface">
+    <div
+      className={`overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface transition-opacity ${rankingPending ? "opacity-60" : ""}`}
+      aria-busy={rankingPending}
+      data-rank-ms={rankState.ms != null ? Math.round(rankState.ms) : undefined}
+    >
+      {rankingPending && <p className="px-3 pt-2 text-[11px] text-muted">Ranking…</p>}
       <table className="w-full text-xs tabular-nums">
         <thead>
           <tr className="border-b border-fg/[0.06] text-left text-muted">
             <th className="px-3 py-2.5 font-medium">Club</th>
+            <th className="px-1 py-2.5 text-right font-medium" title="Each club's own best aim: yards left or right of the hole's centre line at its distance">
+              Aim
+            </th>
             <th className="px-1 py-2.5 text-right font-medium">Carry</th>
             <th className="px-1 py-2.5 text-right font-medium" title="Carry plus roll">
               Total
@@ -1430,7 +1430,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
             ))}
             <th
               className="px-3 py-2.5 text-right font-medium"
-              title={`Extra strokes to hole out vs the best club here (${best?.club ?? "—"}), on the same shots`}
+              title={`Extra strokes to hole out vs the best club here (${best?.club ?? "—"}), each club at its own best aim. "~ tie" = within the noise of the shot samples`}
             >
               vs {best?.club ?? "best"}
             </th>
@@ -1441,7 +1441,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
             <tr
               key={r.club}
               onClick={() => {
-                setClubChoice(r.club)
+                pickClub(r)
                 setSheetOpen(false)
               }}
               className={`cursor-pointer border-b border-fg/[0.04] transition-colors last:border-0 hover:bg-fg/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
@@ -1456,14 +1456,19 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                   </span>
                 )}
               </td>
-              <td className="px-1 text-right text-fg-3">{Math.round(r.meanCarryYds)}</td>
-              <td className="px-1 text-right text-fg-3">{Math.round(r.meanTotalYds)}</td>
+              <td className="whitespace-nowrap px-1 text-right text-fg-3">{aimOffsetLabel(r.offsetYds)}</td>
+              <td className="px-1 text-right text-fg-3">{Math.round(r.plan.meanCarryYds)}</td>
+              <td className="px-1 text-right text-fg-3">{Math.round(r.plan.meanTotalYds)}</td>
               {shownLies.map((l) => (
                 <td key={l} className="px-1 text-right text-fg-3">
-                  {pct(r.lieShare[l])}
+                  {pct(r.plan.lieShare[l])}
                 </td>
               ))}
-              <td className="px-3 text-right font-semibold text-fg">+{(r.expectedStrokes - best.expectedStrokes).toFixed(2)}</td>
+              <td className="whitespace-nowrap px-3 text-right font-semibold text-fg">
+                {best && r !== best && isTie(r.plan, best.plan)
+                  ? "~ tie"
+                  : `+${(r.plan.expectedStrokes - (best?.plan.expectedStrokes ?? 0)).toFixed(2)}`}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -1482,8 +1487,16 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           <em>Putts Gained</em>, 2011). &ldquo;Strokes to hole out&rdquo; is that value, plus one for the shot itself.
         </p>
         <p>
+          Every club gets its own aim: its search starts on the hole&rsquo;s centre line at the distance that club goes
+          and tries every aim up to 60 yd either side, so a 7-iron lay-up is judged aimed at the fairway, not at the
+          driver&rsquo;s corner. The Aim column says where it ended up. Each club&rsquo;s aim is picked on half its shots and
+          scored on the other half, so the number isn&rsquo;t the search grading its own winner. Tap a club to aim it.
+        </p>
+        <p>
           The table&rsquo;s last column compares every club against the best one here, not against a tour player: the best
-          club is always +0.00 and every other club shows how many extra strokes it&rsquo;s expected to cost.
+          club is always +0.00 and every other club shows how many extra strokes it&rsquo;s expected to cost. &ldquo;~
+          tie&rdquo; means the gap is smaller than one standard error of the difference, i.e. within what a different
+          sample of the same shots could change.
         </p>
         <p>
           Driver and 3-wood shots land at their carry and then roll out along their line before they&rsquo;re scored, so
@@ -1508,9 +1521,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           dropped where it last crossed into it, with one penalty stroke. The ✓ / ⚠ / ✗ line shows what is
           mapped, estimated or missing for this hole; Layers → Mark an area outlines trees, water, out of bounds, or a safe
           patch the map got wrong. Your marks beat the map, and a missing fairway is estimated as a corridor down the middle
-          until you draw the real one. Slope, wind and elevation aren&rsquo;t modelled. &ldquo;Find best aim&rdquo; re-checks
-          its suggestion on a held-out half of the shots it didn&rsquo;t use to pick that aim, so the reported saving
-          isn&rsquo;t the search grading its own winner.
+          until you draw the real one. Slope, wind and elevation aren&rsquo;t modelled.
         </p>
       </div>
     </details>
@@ -1695,7 +1706,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                         onChange={(e) => {
                           setSource(e.target.value as "calibrated" | "handicap")
                           setClubChoice("auto")
-                          setAimNote(null)
                         }}
                         className="h-11 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg md:h-9"
                       >
@@ -1716,7 +1726,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                             value={handicap}
                             onChange={(e) => {
                               setHandicap(Math.min(36, Math.max(0, Number(e.target.value) || 0)))
-                              setAimNote(null)
                             }}
                             className="h-11 w-20 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg md:h-9"
                           />
@@ -1730,7 +1739,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                             value={driverCarry}
                             onChange={(e) => {
                               setDriverCarry(e.target.value)
-                              setAimNote(null)
                             }}
                             className="h-11 w-24 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint md:h-9"
                           />
@@ -1744,7 +1752,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                             value={sevenIronCarry}
                             onChange={(e) => {
                               setSevenIronCarry(e.target.value)
-                              setAimNote(null)
                             }}
                             className="h-11 w-24 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint md:h-9"
                           />
@@ -1753,7 +1760,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                           value={tendency}
                           onChange={(t) => {
                             setTendency(t)
-                            setAimNote(null)
                           }}
                         />
                       </>
@@ -1966,7 +1972,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                 <ToolButton
                   onClick={() => {
                     setAimManual(null)
-                    setAimNote(null)
                   }}
                   icon={RotateCcw}
                   label="Reset aim"
@@ -2059,11 +2064,9 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                 }}
                 onAim={(p) => {
                   setAimManual(p)
-                  setAimNote(null)
                 }}
                 onPin={(p) => {
                   setPinManual(p)
-                  setAimNote(null)
                 }}
                 onPickHole={(id) => {
                   const h = holes.find((x) => x.id === id)
@@ -2235,7 +2238,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
             <span className="flex min-w-0 items-center gap-1.5 truncate text-xs tabular-nums">
               <span className="font-semibold text-fg">{chosen?.club ?? "–"}</span>
               <span className="text-muted">·</span>
-              <span className="text-fg-3">{chosen ? `${chosen.expectedStrokes.toFixed(2)} strokes` : "–"}</span>
+              <span className="text-fg-3">{chosen ? `${chosen.plan.expectedStrokes.toFixed(2)} strokes` : "–"}</span>
               <span className="text-muted">·</span>
               <span className="text-fg-3">All clubs</span>
             </span>

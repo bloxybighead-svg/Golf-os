@@ -1797,6 +1797,76 @@ counted as rough and the aim search saw nothing to avoid.
   shows 15-22% OB (Lodge buildings / outside the boundary) and ~47-60% of
   shots on unmapped ground, so the note shows.
 
+### Every club ranked at its own best aim (2026-09-30, session 10)
+
+Problem: the club table scored every club along ONE bearing (the aim
+marker), so on Pebble 1 the 7-iron, pointed at the driver's dogleg corner,
+showed 100% rough. `bestAim` only ran for the selected club on demand.
+
+- `plan.ts`: `rankClubsOptimized(clubs, ctx, { line, maxOffsetYds 60,
+  stepYds 2, shotCap })`. Per club: score at the aim to get its mean total
+  distance, centre the search on `centerlineAim(line, ball, thatDistance,
+  pin)` (the hole centreline point that far from the ball; the pin if the
+  club goes past the end; null -> ctx.aim if no line or the ball is more
+  than `CENTERLINE_MAX_OFF_YDS` 100 off it), run `bestAim` (half search,
+  half held out, unchanged), rank by held-out strokes. Returns bearing,
+  offsetYds (vs that centre), held-out `plan`, and `atAimStrokes`.
+  `RANKING_SHOT_CAP` 400 (fixed-seed sample, `RANKING_SAMPLE_SEED` 5) --
+  speed. `ClubPlan.strokesSe` (two-pass sample SD / sqrt n). `isTie`: gap
+  <= `TIE_SE_MULTIPLIER` (1) x hypot(SE_a, SE_best) -- SE of the
+  difference (the clubs' shots are independent samples); Dillon OK'd this
+  reading of "within 1 SE". `aimOffsetLabel`, `aimMarkerFor` (along the
+  best bearing at min(mean total, pin distance); the pin itself if aiming
+  at it and reaching), `isAtBestAim` (bearing within 0.1 deg),
+  `strokesAtAim` (same held-out shots at the marker). `rankClubs`,
+  `bestAim`, `evaluateClub` results unchanged.
+- Speed (the ranking is ~134k simulated shots): `lies.ts` got a spatial
+  index -- 25 yd grid cells for zones/polygons/road, tree-row and edge
+  segments; row-banded ray casting for the boundary; a per-cell candidate
+  list for the coastline (d(c,s) +- half-diagonal bound). IDENTICAL answers
+  by construction; `buildLieMap(..., { index: false })` keeps the plain
+  version and lies.test.ts compares them on 20k random points (and 200k on
+  real Pebble data: 0 mismatches). Lie lookup 1.9 -> 0.22 us.
+  Whole-bag ranking on Pebble 1 (Node, this PC): 1,255 ms at 1,000 shots
+  before -> ~180 ms now. In the browser (prod build, desktop): ~190-215 ms
+  per ranking, first one ~530 ms (cold JIT). A mid-range phone (~3-4x
+  slower) would be ~0.6-0.8 s: OVER the 300 ms target. Next steps if
+  wanted: split clubs across 2 workers; cache the Broadie table columns in
+  cost.ts (tourExpected rebuilds its point list per call, ~0.28 us of ~0.8
+  us per shot). Both keep results identical.
+- Worker: `lib/course/rankRequest.ts` (message protocol + `createRankHandler`,
+  `rankKey`, `LruCache`, `RANK_CACHE_SIZE` 20), `lib/course/plan.worker.ts`
+  (just wiring). `components/simulator/useClubRanking.ts`: sends the lie-map
+  inputs and bag only when they change (version counters), debounces rank
+  requests 250 ms (`RANK_DEBOUNCE_MS`), drops stale replies by id, caches by
+  (lies version, bag version, hole, start lie, ball, pin) -- NOT the aim.
+  Falls back to ranking on the page if Worker is unavailable.
+- CourseMapClient: `lieInputs` memo feeds both the page's lie map and the
+  worker (the estimated corridor is its own memo, so changing holes doesn't
+  bump the lie-map version unless the corridor changes). When a new stance
+  is ranked, the aim moves to the chosen club's best (or the top club's on
+  auto); a drag sticks until the stance changes. Removed: the old auto-aim
+  effect, `autoTargetClub`, `findBestAim`, the aim note, MEANINGFUL_SAVING.
+  Table: ranked by optimized strokes, new Aim column, lie shares at each
+  club's own aim, "~ tie" in the last column, row tap = select + aim there,
+  "Ranking..." + dimmed while a new ranking runs, `data-rank-ms` attribute
+  (the worker's time, for checking speed). Card: best club = top of the
+  ranking, big number = its strokes at its best aim, "At your aim X.XX"
+  when the marker is elsewhere, "Use best aim" button (only then), "A tie
+  with the X" or "X saves N strokes". Finishes/leaves/unmapped note still
+  describe the live aim (every shot), matching the dots.
+- Tests: rank.test.ts (14): dogleg-right driver aims >5 deg right of the
+  7-iron; a 7-iron poor at the shared corner aim (4.62 vs a wild 4-iron's
+  4.56) moves above it at its own aim (4.35 vs 4.54); ties rule at the
+  1 SE boundary; SE shrinks with n; centerlineAim cases; the real worker
+  file (fake `self`, structuredClone'd messages) == direct call; version
+  mismatch refused; cache key/LRU. lies.test.ts: index == brute force.
+- Seen on Pebble 1 (default clubs): irons now 83-96% fairway at their own
+  aims (was mostly rough at the driver's), 4-Iron (est.) best 4.13, 3-Wood
+  "~ tie", Driver +0.12 (11% OB). Row tap moves the aim; a hand-placed aim
+  shows "At your aim 4.55" vs 4.25 for the Driver and doesn't re-rank; going
+  back to a hole is instant from the cache.
+
 
 | File | Purpose |
 |---|---|

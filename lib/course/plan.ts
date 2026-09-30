@@ -10,11 +10,12 @@
 // A shot that stops in water is played again from where it crossed into the
 // water (waterEntryPoint), not from where it splashed down.
 
-import { bearingDeg, distanceYds, landingPoint, type LatLng } from "./geo"
+import { bearingDeg, distanceYds, landingPoint, lineLengthYds, pointAlongLine, type LatLng } from "./geo"
+import { projectOnLine } from "./aim"
 import { expectedFromStart, expectedStrokesRemaining, type StartLie } from "./cost"
 import type { Lie, LieMap, LieSource } from "./lies"
 import { rollToRest, rollYds } from "./roll"
-import { seededRng } from "@/lib/dispersion/stats"
+import { seededRng, seededSample } from "@/lib/dispersion/stats"
 
 export interface ShotSample {
   carryYds: number
@@ -38,6 +39,12 @@ export interface ClubPlan {
   /** Share of shots that stop on unmapped ground, whose lie is a guess by distance (see lies.ts). */
   unmappedShare: number
   expectedStrokes: number // this shot + expected strokes remaining afterwards
+  /**
+   * Standard error of expectedStrokes: the spread of the per-shot values
+   * divided by sqrt(n). How much the average would move with a different
+   * sample of the same golfer's shots.
+   */
+  strokesSe: number
   /**
    * Strokes gained per shot against the PGA TOUR baseline:
    * E(strokes from where you stand) - expectedStrokes. Positive = better than
@@ -172,11 +179,14 @@ function scoreLandings(
   let lat = 0
   let lng = 0
   let inferred = 0
+  const perShot: number[] = []
   landings.forEach((l, i) => {
     lieShare[l.lie] += 1
     if (l.lieSource === "inferred") inferred += 1
     const dropDist = l.dropPoint ? distanceYds(l.dropPoint, pin) : undefined
-    strokes += 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin, dropDist)
+    const shot = 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin, dropDist)
+    strokes += shot
+    perShot.push(shot)
     carry += shots[i].carryYds
     total += l.totalYds
     lat += l.point.lat
@@ -185,6 +195,9 @@ function scoreLandings(
   const n = landings.length || 1
   for (const k of Object.keys(lieShare) as Lie[]) lieShare[k] /= n
   const expectedStrokes = strokes / n
+  const m = landings.length
+  // Sample variance, two passes (the one-pass sum-of-squares formula loses precision).
+  const variance = m > 1 ? perShot.reduce((a, v) => a + (v - expectedStrokes) ** 2, 0) / (m - 1) : 0
   return {
     club,
     n: landings.length,
@@ -194,6 +207,7 @@ function scoreLandings(
     lieShare,
     unmappedShare: inferred / n,
     expectedStrokes,
+    strokesSe: m > 0 ? Math.sqrt(variance / m) : 0,
     strokesGained: expectedFromStart(startLie, originDist) - expectedStrokes,
   }
 }
@@ -221,7 +235,7 @@ export interface AimResult {
 
 /** Deterministic disjoint split (even/odd index) -- no shuffle needed since the
  * shots array is already in an arbitrary (seeded-random) order upstream. */
-function splitShots(shots: ShotSample[]): { search: ShotSample[]; holdout: ShotSample[] } {
+export function splitShots(shots: ShotSample[]): { search: ShotSample[]; holdout: ShotSample[] } {
   const search: ShotSample[] = []
   const holdout: ShotSample[] = []
   shots.forEach((s, i) => (i % 2 === 0 ? search : holdout).push(s))
@@ -283,4 +297,150 @@ export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 60, st
     plan: evaluateClub(confirmClub, ctx, w.bearingDeg),
     baselineStrokes: evaluateClub(confirmClub, ctx, baseBearing).expectedStrokes,
   }
+}
+
+// ---- Ranking every club at its own best aim --------------------------------
+// rankClubs scores every club along ONE bearing (the aim marker), which is
+// unfair: a driver's aim at the corner of a dogleg sends a 7-iron through
+// the rough. rankClubsOptimized gives each club its own aim search, centred
+// on the hole's centreline at that club's distance, and ranks clubs by the
+// held-out strokes at their own best bearing.
+
+/**
+ * Shots per club the ranking uses (half to search, half held out). A speed
+ * setting: ranking the whole bag at 1,000 shots a club took ~1.3 s on a
+ * desktop, too slow for a phone. 400 keeps the held-out half at 200 shots,
+ * enough for a standard error of about 0.03 strokes; the tie rule accounts
+ * for it. The dots and the card still use every shot.
+ */
+export const RANKING_SHOT_CAP = 400
+
+/** Seed for picking which RANKING_SHOT_CAP shots are used, so the ranking repeats. */
+export const RANKING_SAMPLE_SEED = 5
+
+/**
+ * Two clubs count as a tie when their gap is within this many standard
+ * errors of the difference, sqrt(SEa^2 + SEb^2): the clubs' shots are
+ * separate samples, so that is how much the gap itself could move by chance.
+ * 1 SE is the spec's choice (lenient: a real gap of 1 SE is still called a
+ * tie about a third of the time).
+ */
+export const TIE_SE_MULTIPLIER = 1
+
+/**
+ * If the ball is farther than this from the hole's centreline, the line
+ * isn't a sensible reference (the ball is on another hole, or placed by
+ * hand somewhere odd) and the search centres on the aim instead. A judgement
+ * call: wider than any fairway plus its rough.
+ */
+export const CENTERLINE_MAX_OFF_YDS = 100
+
+/** Step along the centreline when looking for the point a club reaches, yards. */
+const CENTERLINE_STEP_YDS = 2
+
+export interface OptimizedClubPlan {
+  club: string
+  /** Best bearing found for this club (degrees from north). */
+  bearingDeg: number
+  /** Where that bearing points, relative to the search centre (the centreline at the club's distance): right positive, yards at the club's carry. */
+  offsetYds: number
+  /** Held-out plan at the best bearing: expected strokes, SE, lie shares, carry/total. */
+  plan: ClubPlan
+  /** The same held-out shots, aimed at the aim marker instead, for comparison. */
+  atAimStrokes: number
+}
+
+export interface RankOptions {
+  /** The hole's centreline (tee to green). Without it each club's search centres on ctx.aim. */
+  line?: LatLng[] | null
+  maxOffsetYds?: number
+  stepYds?: number
+  shotCap?: number
+}
+
+/**
+ * The point on the hole's centreline, ahead of the ball, `distYds` from it.
+ * If the club goes past the end of the line, the pin (or the line's end).
+ * Null when there's no line or the ball is far off it.
+ */
+export function centerlineAim(line: LatLng[] | null | undefined, from: LatLng, distYds: number, pin?: LatLng): LatLng | null {
+  if (!line || line.length < 2) return null
+  const start = projectOnLine(line, from)
+  if (start.off > CENTERLINE_MAX_OFF_YDS) return null
+  const length = lineLengthYds(line)
+  for (let s = start.along; s <= length; s += CENTERLINE_STEP_YDS) {
+    const p = pointAlongLine(line, s)
+    if (distanceYds(from, p) >= distYds) return p
+  }
+  return pin ?? line[line.length - 1]
+}
+
+/** The shots the ranking uses for a club: all of them, or a fixed-seed sample of RANKING_SHOT_CAP. */
+export function rankingShots(club: ClubShots, cap = RANKING_SHOT_CAP): ClubShots {
+  return club.shots.length > cap ? { club: club.club, shots: seededSample(club.shots, cap, RANKING_SAMPLE_SEED) } : club
+}
+
+/** Expected strokes at the aim marker on the held-out half of the ranking shots: the "at your aim" number. */
+export function strokesAtAim(club: ClubShots, ctx: PlanContext, cap = RANKING_SHOT_CAP): number {
+  const { search, holdout } = splitShots(rankingShots(club, cap).shots)
+  return evaluateClub({ club: club.club, shots: holdout.length > 0 ? holdout : search }, ctx).expectedStrokes
+}
+
+/** Every club at its own best aim, best (lowest held-out expected strokes) first. */
+export function rankClubsOptimized(clubs: ClubShots[], ctx: PlanContext, opts: RankOptions = {}): OptimizedClubPlan[] {
+  const cap = opts.shotCap ?? RANKING_SHOT_CAP
+  return clubs
+    .filter((c) => c.shots.length > 0)
+    .map((c) => {
+      const shots = rankingShots(c, cap)
+      // How far this club goes (carry + roll) decides where on the centreline its search is centred.
+      const reach = evaluateClub(shots, ctx).meanTotalYds
+      const centre = centerlineAim(opts.line, ctx.from, reach, ctx.pin) ?? ctx.aim
+      const r = bestAim(shots, { ...ctx, aim: centre }, opts.maxOffsetYds ?? 60, opts.stepYds ?? 2)
+      return {
+        club: c.club,
+        bearingDeg: r.bearingDeg,
+        offsetYds: r.offsetYds,
+        plan: r.plan,
+        atAimStrokes: strokesAtAim(c, ctx, cap),
+      }
+    })
+    .sort((a, b) => a.plan.expectedStrokes - b.plan.expectedStrokes)
+}
+
+/** True when `club` is within TIE_SE_MULTIPLIER standard errors of `best` (and isn't the best itself). */
+export function isTie(club: Pick<ClubPlan, "expectedStrokes" | "strokesSe">, best: Pick<ClubPlan, "expectedStrokes" | "strokesSe">): boolean {
+  if (club === best) return false
+  const gap = club.expectedStrokes - best.expectedStrokes
+  return gap <= TIE_SE_MULTIPLIER * Math.hypot(club.strokesSe, best.strokesSe)
+}
+
+/** The table's Aim column: "6 L", "12 R", or "center". */
+export function aimOffsetLabel(offsetYds: number): string {
+  const yds = Math.round(Math.abs(offsetYds))
+  if (yds === 0) return "center"
+  return `${yds} ${offsetYds < 0 ? "L" : "R"}`
+}
+
+/**
+ * Where to put the aim marker for a club's best aim: along its best bearing,
+ * at its average finish or the pin's distance, whichever is shorter (so an
+ * approach that reaches the green aims at the pin itself).
+ */
+export function aimMarkerFor(from: LatLng, pin: LatLng, r: Pick<OptimizedClubPlan, "bearingDeg" | "plan">): LatLng {
+  const toPin = distanceYds(from, pin)
+  if (Math.abs(angleDiffDeg(bearingDeg(from, pin), r.bearingDeg)) < BEARING_MATCH_DEG && r.plan.meanTotalYds >= toPin) return pin
+  return landingPoint(from, r.bearingDeg, Math.min(r.plan.meanTotalYds, toPin), 0)
+}
+
+/** Bearings closer than this count as the same aim (well under a yard at 300 yd). */
+const BEARING_MATCH_DEG = 0.1
+
+function angleDiffDeg(a: number, b: number): number {
+  return ((a - b + 540) % 360) - 180
+}
+
+/** True when the aim marker already points along the club's best bearing (only the bearing is scored). */
+export function isAtBestAim(from: LatLng, aim: LatLng, r: Pick<OptimizedClubPlan, "bearingDeg">): boolean {
+  return Math.abs(angleDiffDeg(bearingDeg(from, aim), r.bearingDeg)) < BEARING_MATCH_DEG
 }

@@ -3,7 +3,8 @@ import { fromLocal, toLocal, type LatLng } from "./geo"
 import { buildLieMap, ROUGH_BAND_YDS } from "./lies"
 import { tourExpected } from "./cost"
 import { evaluateClub, flagsUnmapped, simulateLandings, waterEntryPoint } from "./plan"
-import { isRoad, joinRings, parseBoundaryShape, parseOverpass, type CourseBoundaryShape } from "./overpass"
+import { isRoad, joinRings, parseBoundaryShape, parseOverpass, type CourseBoundaryShape, type CourseFeature } from "./overpass"
+import { seededRng } from "@/lib/dispersion/stats"
 import { boundaryStatus } from "./dataQuality"
 
 const ORIGIN = { lat: 36.5685, lng: -121.949 }
@@ -221,5 +222,51 @@ describe("OpenStreetMap parsing for Session 9 features", () => {
     expect(shape?.outer[0]).toHaveLength(5)
     expect(shape?.inner).toHaveLength(1)
     expect(parseBoundaryShape([])).toBeNull()
+  })
+})
+
+describe("spatial index (session 10: speed only)", () => {
+  it("gives exactly the same lie and source as checking every shape, on 20,000 random points", () => {
+    const r = seededRng(17)
+    const rnd = (lo: number, hi: number) => lo + r() * (hi - lo)
+    // A busy synthetic course: overlapping surfaces of every kind, a boundary with a hole cut out,
+    // a wiggly coastline, roads, tree rows and user zones.
+    const features: CourseFeature[] = []
+    const kinds: CourseFeature["kind"][] = ["water", "range", "bunker", "green", "fairway", "tee", "trees", "building", "scrub", "residential"]
+    for (let i = 0; i < 120; i++) {
+      const cx = rnd(-400, 400)
+      const cy = rnd(-100, 700)
+      const n = 3 + Math.floor(r() * 8)
+      const rad = rnd(5, 80)
+      const ring = Array.from({ length: n }, (_, k) => {
+        const t = (k / n) * 2 * Math.PI
+        const rr = rad * rnd(0.5, 1.2)
+        return at(cx + rr * Math.cos(t), cy + rr * Math.sin(t))
+      })
+      features.push({ kind: kinds[i % kinds.length], ring })
+    }
+    const coast = [Array.from({ length: 40 }, (_, k) => at(-600 + k * 30, -150 + 40 * Math.sin(k / 3)))]
+    const zones = Array.from({ length: 6 }, (_, k) => ({
+      id: `z${k}`,
+      lie: (["trees", "oob", "fairway", "water", "rough", "bunker"] as const)[k],
+      ring: rect(rnd(-300, 200), rnd(0, 500), rnd(210, 400), rnd(510, 700)),
+    }))
+    const extras = {
+      boundary: { outer: [[...rect(-450, -120, 450, 720), at(-450, -120)]], inner: [[...rect(100, 100, 180, 200), at(100, 100)]] },
+      lines: [
+        { kind: "road" as const, line: Array.from({ length: 30 }, (_, k) => at(-500 + k * 35, 300 + 60 * Math.sin(k / 2))) },
+        { kind: "treeRow" as const, line: [at(-200, -50), at(-150, 200), at(-180, 600)] },
+      ],
+    }
+    const fast = buildLieMap(ORIGIN, features, coast, zones, extras)
+    const slow = buildLieMap(ORIGIN, features, coast, zones, { ...extras, index: false })
+    const lies = new Set<string>()
+    for (let i = 0; i < 20000; i++) {
+      const p = at(rnd(-700, 700), rnd(-400, 1000))
+      const a = fast.classify(p)
+      expect(a).toEqual(slow.classify(p))
+      lies.add(`${a.lie}/${a.source}`)
+    }
+    expect(lies.size).toBeGreaterThanOrEqual(8) // the points really did cover most rules
   })
 })
