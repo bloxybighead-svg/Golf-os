@@ -7,9 +7,18 @@ describe("calcDifferential", () => {
     expect(calcDifferential(74, 71.4, 128)).toBe(2.3)
   })
 
-  it("uses the exact same formula for a 9-hole round -- no scaling", () => {
-    // (40 - 35.6) * 113 / 140 = 3.550... -> 3.6, same shape as an 18-hole calc
-    expect(calcDifferential(40, 35.6, 140)).toBe(3.6)
+  it("scales a 9-hole round to an 18-hole differential", () => {
+    // (40 - 35.6) * 113 / 140 = 3.551... x 18/9 = 7.10... -> 7.1
+    expect(calcDifferential(40, 35.6, 140, 9)).toBe(7.1)
+  })
+
+  it("scales other partial rounds by 18 / holes played", () => {
+    // (40 - 39) * 113 / 132 = 0.856... x 18/10 = 1.54... -> 1.5
+    expect(calcDifferential(40, 39, 132, 10)).toBe(1.5)
+  })
+
+  it("gives no differential under 9 holes", () => {
+    expect(calcDifferential(30, 27, 130, 7)).toBeNull()
   })
 
   it("returns null when rating or slope is missing", () => {

@@ -447,7 +447,7 @@ function ScorePanel({
   )
 
   if (finishing) {
-    const differential = scored.length > 0 ? calcDifferential(summary.score, parseFloat(rating), parseFloat(slope)) : null
+    const differential = scored.length > 0 ? calcDifferential(summary.score, parseFloat(rating), parseFloat(slope), scored.length) : null
     return (
       <div className="mx-auto max-w-lg space-y-5">
         <div>

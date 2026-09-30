@@ -1628,11 +1628,26 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
   56% / 14 putts / 0/4, rating 36.7, slope 137, differential 2.7 (all
   matching a hand count); reload kept the round; End without saving
   cleared it. **Not verified: the signed-in save from Play.**
-- Open question for Dillon: a partial round's differential is on its own
-  scale ((score - share of rating) x 113 / slope), so a 9-hole round's is
-  about half an 18-hole one, and `syncCalculatedHandicap` averages them
-  together. `lib/handicap.ts` says never to rescale; WHS instead turns a
-  9-hole score into an 18-hole differential. Left as is pending his call.
+- Partial rounds (decided by Dillon, 2026-09-30): see "18-hole
+  differentials" below.
+
+### 18-hole differentials for short rounds (2026-09-30)
+
+- `calcDifferential(score, rating, slope, holesPlayed)` now scales a 9-17
+  hole round to an 18-hole differential (x 18 / holes played) and gives no
+  differential under 9 holes (as WHS). Before, a 9-hole differential was
+  about half an 18-hole one and the best-8-of-20 averaged them as equals,
+  pulling the estimate low. Official WHS adds an expected 9-hole
+  differential from the golfer's index instead; the straight scale was
+  Dillon's call. Used by the server save, the round form preview and
+  Play's finish screen. 3 tests.
+- Existing rounds rescaled (supabase/scale_partial_differentials.sql,
+  migration `scale_partial_differentials`): 20 nine-hole rounds and 1
+  ten-hole round. Average differential now 7.1 (9 holes) vs 6.8 (18).
+  Estimate over the last 20: 2.2 -> 3.0 (his entered index: 3.5). You
+  shows the latest handicap_tracking entry (the manual 3.5 from setup)
+  until the next round save records the new calculated estimate; no
+  tracking row was written by hand.
 
 ## Files
 

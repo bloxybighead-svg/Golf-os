@@ -1,16 +1,24 @@
 // Score differential and handicap-index estimation.
 //
-// USGA differential formula is holes-agnostic: (score - courseRating) * 113 /
-// slopeRating, no adjustment for 9 vs 18 holes. The rating/slope entered for a
-// 9-hole round already reflect that shorter course, so the raw differential
-// is already on the same scale as an 18-hole one -- it must never be scaled
-// again by holes played.
+// Differential = (score - courseRating) * 113 / slopeRating, with the rating
+// for the holes actually played (a 9-hole rating for 9 holes). That number is
+// only about half as big for 9 holes as for 18, so a shorter round is scaled
+// up to an 18-hole differential (x 18 / holes played) before it's saved --
+// otherwise 9-hole rounds would sit next to 18-hole ones in the best-8-of-20
+// and drag the estimate down. (Dillon's call, 2026-09-30. Official WHS
+// instead adds an expected 9-hole differential from the golfer's index; a
+// straight scale needs no index and treats both nines the same.) Rounds of
+// fewer than 9 holes get no differential, as under WHS.
 
-export function calcDifferential(score: number, courseRating: number, slopeRating: number): number | null {
+export const MIN_HOLES_FOR_DIFFERENTIAL = 9
+
+export function calcDifferential(score: number, courseRating: number, slopeRating: number, holesPlayed = 18): number | null {
   if (!Number.isFinite(score) || !Number.isFinite(courseRating) || !Number.isFinite(slopeRating) || slopeRating === 0) {
     return null
   }
-  return Math.round(((score - courseRating) * 113 / slopeRating) * 10) / 10
+  if (!Number.isFinite(holesPlayed) || holesPlayed < MIN_HOLES_FOR_DIFFERENTIAL) return null
+  const toEighteen = 18 / Math.min(holesPlayed, 18)
+  return Math.round(((score - courseRating) * 113 / slopeRating) * toEighteen * 10) / 10
 }
 
 /**

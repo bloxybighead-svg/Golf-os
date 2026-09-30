@@ -203,7 +203,7 @@ export function RoundForm({ round, onDone }: Props) {
   const relToPar = mode === "holes"
     ? scored.length > 0 ? summary.score - summary.par : null
     : totalScore != null && totalPar != null ? totalScore - totalPar : null
-  const differential = totalScore != null ? calcDifferential(totalScore, parseFloat(courseRating), parseFloat(slopeRating)) : null
+  const differential = totalScore != null ? calcDifferential(totalScore, parseFloat(courseRating), parseFloat(slopeRating), mode === "holes" ? count : parseInt(holesPlayed) || 18) : null
 
   function submit() {
     if (!date || !course.trim()) {

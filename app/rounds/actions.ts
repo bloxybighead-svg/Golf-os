@@ -75,7 +75,7 @@ function buildRound(input: RoundInput): { row: RoundRow; holes: ScoredHole[] | n
   }
 
   const differential = base.course_rating != null && base.slope_rating != null
-    ? calcDifferential(counts.score, base.course_rating, base.slope_rating)
+    ? calcDifferential(counts.score, base.course_rating, base.slope_rating, counts.holes_played)
     : null
   return { row: { ...base, ...counts, differential }, holes }
 }
