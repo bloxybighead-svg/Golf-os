@@ -54,6 +54,8 @@ interface Props {
   aim: LatLng | null
   pin: LatLng | null
   landings: Landing[]
+  /** Also draw where each shot first landed (hollow), not only where it stopped. */
+  showCarry?: boolean
   labels: { pos: LatLng; text: string }[]
   cells: { sw: LatLng; ne: LatLng; color: string; opacity: number }[]
   rings: LatLng[][]
@@ -404,11 +406,24 @@ export default function CourseMap(props: Props) {
     }
   }, [props.labels])
 
-  // Simulated landing dots.
+  // Simulated shots: a dot where each one stops, plus (optionally) a hollow
+  // ring where it first landed.
   useEffect(() => {
     const g = layers.current?.landings
     if (!g) return
     g.clearLayers()
+    if (props.showCarry) {
+      for (const s of props.landings) {
+        L.circleMarker(ll(s.carryPoint), {
+          radius: 2.5,
+          color: readColor(LIE_TOKEN[s.carryLie]),
+          weight: 1,
+          fill: false,
+          opacity: 0.8,
+          interactive: false,
+        }).addTo(g)
+      }
+    }
     for (const s of props.landings) {
       L.circleMarker(ll(s.point), {
         radius: 3,
@@ -419,7 +434,7 @@ export default function CourseMap(props: Props) {
         interactive: false,
       }).addTo(g)
     }
-  }, [props.landings])
+  }, [props.landings, props.showCarry])
 
   // Fit the view when a course or hole is picked.
   useEffect(() => {

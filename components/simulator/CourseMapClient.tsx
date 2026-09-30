@@ -312,6 +312,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const [pendingPoints, setPendingPoints] = useState<LatLng[]>([])
   const [showTrouble, setShowTrouble] = useState(false)
   const [showRings, setShowRings] = useState(true)
+  const [showCarry, setShowCarry] = useState(false) // dots are where shots stop; this adds where they landed
   const [showZones, setShowZones] = useState(true)
   const [pickerOpen, setPickerOpen] = useState(false) // the course/hole/golfer sheet behind the title line
   const [showMarks, setShowMarks] = useState(false) // hand-drawn marks list under the map, collapsed by default
@@ -908,7 +909,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
 
   const landings = useMemo(() => {
     if (!chosenShots || !ball || !aim || !lies) return []
-    return simulateLandings(seededSample(chosenShots.shots, DOTS_SHOWN, 3), ball, bearingDeg(ball, aim), lies)
+    return simulateLandings(chosenShots.club, seededSample(chosenShots.shots, DOTS_SHOWN, 3), ball, bearingDeg(ball, aim), lies)
   }, [chosenShots, ball, aim, lies])
 
   // Trouble map: what each spot around the hole costs compared with a fairway lie.
@@ -921,7 +922,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     })
   }, [showTrouble, ball, aim, pin, hole, lies, startLie])
 
-  // 50% and 90% dispersion rings around where the chosen club's shots land.
+  // 50% and 90% dispersion rings around where the chosen club's shots finish.
   const rings = useMemo(() => {
     if (!showRings || landings.length < 5) return []
     const pts = landings.map((l) => l.point)
@@ -1155,11 +1156,8 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const distAim = ball && aim ? distanceYds(ball, aim) : null
   const aimToPin = aim && pin ? distanceYds(aim, pin) : null
   const aimIsPin = aimToPin != null && aimToPin < 3
-  // Where the recommended club's average shot ends up, and what that leaves.
-  const avgLeft =
-    ball && aim && pin && chosen
-      ? distanceYds(landingPoint(ball, bearingDeg(ball, aim), chosen.meanCarryYds, 0), pin)
-      : null
+  // What the chosen club's pattern leaves: from its average finish point (after roll) to the pin.
+  const avgLeft = pin && chosen ? distanceYds(chosen.meanRest, pin) : null
 
   const labels = useMemo(() => {
     const out: { pos: LatLng; text: string }[] = []
@@ -1229,16 +1227,17 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
         </div>
 
         <dl className="mt-4 grid grid-cols-3 divide-x divide-fg/[0.08] border-y border-fg/[0.08] py-2 text-center">
-          <Stat label="To aim" value={distAim != null ? Math.round(distAim) : null} />
+          <Stat label="Aim line" value={distAim != null ? Math.round(distAim) : null} />
           <Stat label={aimIsPin ? "Aim is pin" : "Aim to pin"} value={aimIsPin ? 0 : aimToPin != null ? Math.round(aimToPin) : null} />
           <Stat label="To pin" value={distPin != null ? Math.round(distPin) : null} />
         </dl>
 
         <p className="mt-2 text-xs text-fg-3">
-          Averages <span className="tabular-nums">{Math.round(chosen.meanCarryYds)}</span> yd
+          Finishes ~<span className="tabular-nums">{Math.round(chosen.meanTotalYds)}</span> yd (carry{" "}
+          <span className="tabular-nums">{Math.round(chosen.meanCarryYds)}</span>)
           {avgLeft != null && (
             <>
-              , leaving <span className="font-semibold text-fg tabular-nums">{Math.round(avgLeft)}</span> yd
+              , leaves <span className="font-semibold text-fg tabular-nums">{Math.round(avgLeft)}</span> yd
             </>
           )}
           .
@@ -1387,6 +1386,9 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           <tr className="border-b border-fg/[0.06] text-left text-muted">
             <th className="px-3 py-2.5 font-medium">Club</th>
             <th className="px-1 py-2.5 text-right font-medium">Carry</th>
+            <th className="px-1 py-2.5 text-right font-medium" title="Carry plus roll">
+              Total
+            </th>
             {shownLies.map((l) => (
               <th key={l} className="px-1 py-2.5 text-right font-medium" title={LIE_LABEL[l]}>
                 {LIE_SHORT[l]}
@@ -1421,6 +1423,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                 )}
               </td>
               <td className="px-1 text-right text-fg-3">{Math.round(r.meanCarryYds)}</td>
+              <td className="px-1 text-right text-fg-3">{Math.round(r.meanTotalYds)}</td>
               {shownLies.map((l) => (
                 <td key={l} className="px-1 text-right text-fg-3">
                   {pct(r.lieShare[l])}
@@ -1447,6 +1450,18 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
         <p>
           The table&rsquo;s last column compares every club against the best one here, not against a tour player: the best
           club is always +0.00 and every other club shows how many extra strokes it&rsquo;s expected to cost.
+        </p>
+        <p>
+          Each shot lands at its carry and then rolls out along its line before it&rsquo;s scored, so the dots, the lie
+          percentages and &ldquo;leaves&rdquo; are where shots stop, not where they land (Layers &rarr; Show carry points adds
+          the landing spots). Roll is an estimate by club, not measured: about 20 yd for a driver, 12 for woods, 8 for long
+          irons, 5 for mid irons, 3 for short irons and 1 for wedges on the fairway, give or take 30%; a third of that in
+          the rough, a fifth in trees, half on the green for irons and wedges, none in bunkers or water. A ball that runs
+          into a bunker or water stops there.
+        </p>
+        <p>
+          The aim marker sets the direction for a full swing: each club flies its own carry along that line, so the
+          &ldquo;Aim line&rdquo; distance is where the line is drawn to, not a distance to hit.
         </p>
         <p>
           Water costs one penalty stroke plus a drop; out of bounds is stroke and distance; trees use the benchmark&rsquo;s
@@ -1504,6 +1519,14 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           }}
           active={showRings}
           label="Shot rings"
+        />
+        <LayerMenuItem
+          onClick={() => {
+            setShowCarry((v) => !v)
+            setShowLayersMenu(false)
+          }}
+          active={showCarry}
+          label="Show carry points"
         />
         {zones.length > 0 && (
           <LayerMenuItem
@@ -1979,6 +2002,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                 aim={aim}
                 pin={pin}
                 landings={landings}
+                showCarry={showCarry}
                 cells={troubleCells}
                 rings={rings}
                 zones={showZones ? zones : []}

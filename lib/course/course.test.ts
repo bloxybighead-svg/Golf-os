@@ -154,6 +154,10 @@ describe("planning", () => {
     offlineYds: offline + ((i * 7) % 9) - 4,
   }))
 
+  // Rollout (lib/course/roll.ts, 2026-09-30) didn't move any expectation in
+  // this file: these shots land on a 30x30 green (a 7-iron checks up ~2.5 yd
+  // and stays on it), in rough (~1.5 yd for a 7-iron, ~6 for a driver) or
+  // in water (no roll), so every lie share and ranking comes out the same.
   it("prefers the club that reaches the pin over one 40 yd short", () => {
     const ranked = rankClubs([{ club: "9-Iron", shots: mk(110, 0) }, { club: "7-Iron", shots: mk(150, 0) }], ctx)
     expect(ranked[0].club).toBe("7-Iron")

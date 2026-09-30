@@ -56,14 +56,19 @@ export function computeDispersionStats(shots: StatShot[]): DispersionStats {
   }
 }
 
-/** Deterministic subsample (first N after a seeded shuffle) so re-renders are stable. */
-export function seededSample<T>(items: T[], n: number, seed: number): T[] {
-  const arr = items.slice()
+/** A seeded random-number generator in [0, 1): the same seed always gives the same sequence. */
+export function seededRng(seed: number): () => number {
   let s = seed
-  const rng = () => {
+  return () => {
     s = (s * 1103515245 + 12345) & 0x7fffffff
     return s / 0x7fffffff
   }
+}
+
+/** Deterministic subsample (first N after a seeded shuffle) so re-renders are stable. */
+export function seededSample<T>(items: T[], n: number, seed: number): T[] {
+  const arr = items.slice()
+  const rng = seededRng(seed)
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1))
     ;[arr[i], arr[j]] = [arr[j], arr[i]]

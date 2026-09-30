@@ -1710,6 +1710,40 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
   5-round avg, one y-axis; drills default Approach (weakest, -0.85),
   switching to Putting / Short Game / Off-Tee changes drills and framing.
 
+### Rollout: shots judged where they stop (2026-09-30, session 8)
+
+- `lib/course/roll.ts`: `rollYds(club, landingLie, carry, rng)`. Base roll
+  on fairway by club group -- driver 20, woods/hybrids 12, long irons 8,
+  mid 5, short 3, wedges 1 yd -- x the landing lie (fairway 1, rough 0.3,
+  trees 0.2, bunker/water/OOB 0, green 0.5 for irons and wedges, 1 for
+  woods) x a +-30% seeded spread, capped at a quarter of the carry. ALL
+  ESTIMATES (no roll data -- monitors measure carry). `rollToRest` walks
+  the roll in 2-yd steps and stops in the first bunker, water or OOB it
+  enters. `clubGroup` reads "Driver", "3-Wood", "7-Iron", "PW", "56 (SW)".
+- `plan.ts`: `simulateLandings(club, shots, from, bearing, lies, rng)`
+  lands each shot at carry, rolls it along its travel direction, and
+  scores the REST point and lie. `Landing` keeps carryPoint/carryLie;
+  `ClubPlan` adds `meanTotalYds` and `meanRest`, and `lieShare` is by rest
+  lie. The roll rng is seeded (`ROLL_SEED`) per evaluation, so every aim
+  bearing bestAim tries gets the same roll draws. `seededRng` is now
+  exported from lib/dispersion/stats.ts (seededSample uses it).
+- Play: dots and shot rings are rest positions; Layers -> "Show carry
+  points" (off by default) adds a hollow ring where each shot landed. The
+  card's "To aim" is "Aim line", and its line reads "Finishes ~272 yd
+  (carry 264), leaves 91 yd." (leaves = pattern's average finish point to
+  the pin). The club table has a Total column. "How this is scored"
+  explains roll and that the aim marker is a direction for full swings.
+- Unchanged: cost tables, the aim search, the trouble map, handicap code.
+- Tests: roll.test.ts (12): 0 in water/bunker/OOB, driver > wedge, lie
+  factors, +-30% spread, cap, fairway landing short of a bunker stops in
+  it, a hazard mid-roll is caught, deterministic for a seed, 264 carry
+  finishes ~280 on open fairway, rest-lie share. course.test.ts: no
+  expectation moved (green/rough/water landings barely roll); a comment
+  says why.
+- Seen on Pebble 1 from the tee (Dillon's shots): Driver 264 carry -> 272
+  total (most of that pattern lands in rough, a third of the roll), fairway
+  share 19% -> 12% as fairway landings run off into rough at the dogleg.
+
 
 | File | Purpose |
 |---|---|

@@ -4,10 +4,15 @@
 // offline distribution, so a club that is too short or too long for the
 // target simply lands in a worse place and scores worse -- no separate
 // "does it reach" rule is needed.
+//
+// Two stages per shot: it lands at its carry (landing lie), rolls out
+// (lib/course/roll.ts), and is scored where it STOPS (rest point and lie).
 
 import { bearingDeg, distanceYds, landingPoint, type LatLng } from "./geo"
 import { expectedFromStart, expectedStrokesRemaining, type StartLie } from "./cost"
 import type { Lie, LieMap } from "./lies"
+import { rollToRest, rollYds } from "./roll"
+import { seededRng } from "@/lib/dispersion/stats"
 
 export interface ShotSample {
   carryYds: number
@@ -23,7 +28,11 @@ export interface ClubPlan {
   club: string
   n: number
   meanCarryYds: number
-  lieShare: Record<Lie, number> // fractions summing to 1
+  /** Carry plus roll: how far the average shot finishes along its line. */
+  meanTotalYds: number
+  /** The pattern's average finish point. */
+  meanRest: LatLng
+  lieShare: Record<Lie, number> // where the shots STOP, fractions summing to 1
   expectedStrokes: number // this shot + expected strokes remaining afterwards
   /**
    * Strokes gained per shot against the PGA TOUR baseline:
@@ -43,14 +52,38 @@ export interface PlanContext {
 }
 
 export interface Landing {
+  /** Where the shot stops, after rolling out. */
   point: LatLng
   lie: Lie
+  /** Where it first came down. */
+  carryPoint: LatLng
+  carryLie: Lie
+  /** Carry plus the roll it actually ran (less when a hazard stopped it). */
+  totalYds: number
 }
 
-export function simulateLandings(shots: ShotSample[], from: LatLng, aimBearing: number, lies: LieMap): Landing[] {
+/**
+ * Seed for the roll spread. Fixed, so a club scores the same every time --
+ * and every aim bearing `bestAim` tries gets the same roll draws, so aims are
+ * compared on their geometry, not on luck.
+ */
+export const ROLL_SEED = 11
+
+export function simulateLandings(
+  club: string,
+  shots: ShotSample[],
+  from: LatLng,
+  aimBearing: number,
+  lies: LieMap,
+  rng: () => number = seededRng(ROLL_SEED)
+): Landing[] {
   return shots.map((s) => {
-    const point = landingPoint(from, aimBearing, s.carryYds, s.offlineYds)
-    return { point, lie: lies.lieAt(point) }
+    const carryPoint = landingPoint(from, aimBearing, s.carryYds, s.offlineYds)
+    const carryLie = lies.lieAt(carryPoint)
+    const roll = rollYds(club, carryLie, s.carryYds, rng)
+    // It runs on in the direction it was travelling: from the golfer to where it came down.
+    const rest = rollToRest(carryPoint, carryLie, bearingDeg(from, carryPoint), roll, lies)
+    return { point: rest.point, lie: rest.lie, carryPoint, carryLie, totalYds: s.carryYds + rest.rolledYds }
   })
 }
 
@@ -67,10 +100,16 @@ function scoreLandings(
   const origin = { distYds: originDist, lie: startLie }
   let strokes = 0
   let carry = 0
+  let total = 0
+  let lat = 0
+  let lng = 0
   landings.forEach((l, i) => {
     lieShare[l.lie] += 1
     strokes += 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin)
     carry += shots[i].carryYds
+    total += l.totalYds
+    lat += l.point.lat
+    lng += l.point.lng
   })
   const n = landings.length || 1
   for (const k of Object.keys(lieShare) as Lie[]) lieShare[k] /= n
@@ -79,6 +118,8 @@ function scoreLandings(
     club,
     n: landings.length,
     meanCarryYds: carry / n,
+    meanTotalYds: total / n,
+    meanRest: landings.length ? { lat: lat / n, lng: lng / n } : from,
     lieShare,
     expectedStrokes,
     strokesGained: expectedFromStart(startLie, originDist) - expectedStrokes,
@@ -87,7 +128,7 @@ function scoreLandings(
 
 export function evaluateClub(club: ClubShots, ctx: PlanContext, aimBearingOverride?: number): ClubPlan {
   const bearing = aimBearingOverride ?? bearingDeg(ctx.from, ctx.aim)
-  const landings = simulateLandings(club.shots, ctx.from, bearing, ctx.lies)
+  const landings = simulateLandings(club.club, club.shots, ctx.from, bearing, ctx.lies)
   return scoreLandings(club.club, club.shots, landings, ctx.from, ctx.pin, ctx.startLie ?? "fairway")
 }
 
