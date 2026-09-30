@@ -1649,7 +1649,31 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
   until the next round save records the new calculated estimate; no
   tracking row was written by hand.
 
-## Files
+### GPS filtering and club reset on Play (2026-09-30)
+
+- `lib/course/gps.ts` (7 tests): `judgeFix(track, reading)` -> accept /
+  inaccurate / jump. A reading worse than 20 yd never moves the ball. A
+  move must fit cart speed (7.5 yd/s, ~15 mph -- not walking pace, since
+  most golfers ride) x seconds since the last accepted reading + both
+  error radii. A bigger move is a jump; it's believed only after readings
+  stay at the new place for 3 s (phone slept through a cart ride), never
+  for glitches that disagree with each other.
+- Follow GPS uses it; rejected readings show a one-line status under the
+  toolbar ("Weak GPS signal (±40 yd). Ball not moved." / "GPS jumped.
+  Ball not moved until it settles.") and the menu reads "Following ±25 yd,
+  weak". My location now waits up to 10 s for a reading within 20 yd
+  ("Finding you… ±65 yd so far"), else says so and leaves the ball.
+- Every ball move (tap, drag, GPS) goes through `moveBallTo`, which resets
+  the club to the best one; a club picked after a move holds until the
+  next move. Before, a club picked on the tee stayed pinned for the
+  approach.
+- Verified (dev, mocked geolocation): weak first fix ignored; 4 yd walk
+  followed; 180 yd jump in 3 s ignored; a different glitch ignored; a
+  jump agreeing after 1 s still ignored, after 3.5 s followed; My
+  location ignored ±65, took ±12, and after 10 s of ±40 left the ball
+  with the message. Club: picked PW -> "Your pick"; tapped the ball
+  elsewhere -> "Best club", 145 -> 121 yd; picked 9-iron after -> held.
+
 
 | File | Purpose |
 |---|---|
