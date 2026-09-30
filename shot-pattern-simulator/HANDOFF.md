@@ -1692,6 +1692,24 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
   Leaflet's panes (z-index 400) painted over Play / Rounds / You. The map
   box now has `isolate`, so its layers stay inside it.
 
+### You: score chart and drills by category (2026-09-30)
+
+- Trends "Round scores": only Differential and its 5-round average (one
+  axis). The grey "Strokes vs Par / hole" fallback line, its right axis
+  and its caption are gone; the empty state is now "Needs 2 rated
+  rounds." and the caption says short rounds are scaled to 18 holes.
+- Recommended Drills: a dropdown (Putting / Approach / Off-Tee / Short
+  Game, the weakest marked "(weakest)") in the same style as the Trends
+  metric picker. It opens on the weakest category as before; picking
+  another shows that category's drills and its own "vs your HCP" line and
+  "Why", or "No short game stats yet. Add round" when there's no data for
+  it. `app/you/page.tsx` runs `recommendDrills` for all four
+  (`DRILL_CATEGORIES` in lib/drillRecommendations.ts). With no round stats
+  at all, it opens on Putting instead of hiding the drills.
+- Verified with a throwaway fixture page (deleted): legend Differential +
+  5-round avg, one y-axis; drills default Approach (weakest, -0.85),
+  switching to Putting / Short Game / Off-Tee changes drills and framing.
+
 
 | File | Purpose |
 |---|---|

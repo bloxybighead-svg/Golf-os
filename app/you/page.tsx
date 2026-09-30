@@ -9,7 +9,8 @@ import { RecommendedDrills } from "@/components/you/RecommendedDrills"
 import { DrillHistory } from "@/components/you/DrillHistory"
 import { AppearanceSetting } from "@/components/you/AppearanceSetting"
 import type { HandicapEntry, LibraryDrill, Milestone, Round, UserDrillRun } from "@/lib/supabase/types"
-import { weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
+import type { SgCategory } from "@/lib/sgBenchmarks"
+import { DRILL_CATEGORIES, weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
 import { estimateHandicapIndex } from "@/lib/handicap"
 import { ChevronRight } from "lucide-react"
 
@@ -57,12 +58,14 @@ export default async function YouPage() {
     [...rounds].reverse().slice(0, 20).map((r) => r.differential).filter((d): d is number => d != null)
   )
 
-  // Drill recommendations target the weakest category on the Strengths & Weaknesses card.
+  // Drills open on the weakest category on the Strengths & Weaknesses card;
+  // the other three are ready for the golfer to switch to.
   const drillRuns = (drillRunsData ?? []) as unknown as UserDrillRun[]
   const focusArea = weakestCategory(categoryTrends)
-  const recommended = focusArea
-    ? recommendDrills((libraryData ?? []) as LibraryDrill[], focusArea.category, drillRuns)
-    : []
+  const library = (libraryData ?? []) as LibraryDrill[]
+  const drillsByCategory = Object.fromEntries(
+    DRILL_CATEGORIES.map((c) => [c, recommendDrills(library, c, drillRuns)])
+  ) as Record<SgCategory, LibraryDrill[]>
 
   return (
     <div className="space-y-6 pt-4">
@@ -83,8 +86,9 @@ export default async function YouPage() {
 
       <RecommendedDrills
         focus={focusArea}
+        trends={categoryTrends}
         handicapIndex={latestHandicap?.handicap_index ?? null}
-        drills={recommended}
+        drillsByCategory={drillsByCategory}
         signedIn={!!user}
       />
 

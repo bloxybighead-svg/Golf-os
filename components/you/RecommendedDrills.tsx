@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Target, Clock, Repeat } from "lucide-react"
+import { ChevronDown, Target, Clock, Repeat } from "lucide-react"
 import type { LibraryDrill } from "@/lib/supabase/types"
-import type { CategoryTrend } from "@/lib/sgBenchmarks"
-import { CATEGORY_LABEL } from "@/lib/drillRecommendations"
+import type { CategoryTrend, SgCategory } from "@/lib/sgBenchmarks"
+import { CATEGORY_LABEL, DRILL_CATEGORIES } from "@/lib/drillRecommendations"
 import { DrillModal } from "./DrillModal"
 
 function fmtDelta(n: number) {
@@ -13,35 +13,29 @@ function fmtDelta(n: number) {
   return `${sign}${Math.abs(n).toFixed(2)} SG`
 }
 
+// Opens on the golfer's weakest category (as on Strengths & Weaknesses); the
+// dropdown shows any of the four on request.
 export function RecommendedDrills({
   focus,
+  trends,
   handicapIndex,
-  drills,
+  drillsByCategory,
   signedIn,
 }: {
   focus: CategoryTrend | null
+  trends: readonly CategoryTrend[]
   handicapIndex: number | null
-  drills: LibraryDrill[]
+  drillsByCategory: Record<SgCategory, LibraryDrill[]>
   signedIn: boolean
 }) {
   const [open, setOpen] = useState<LibraryDrill | null>(null)
   const [savedNote, setSavedNote] = useState<string | null>(null)
+  const [category, setCategory] = useState<SgCategory>(focus?.category ?? DRILL_CATEGORIES[0])
 
-  if (!focus || drills.length === 0) {
-    return (
-      <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
-        <p className="label-xs mb-2">Recommended Drills</p>
-        <p className="text-sm text-fg-3">
-          Needs rounds with stats.{" "}
-          <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
-            Add round
-          </Link>
-        </p>
-      </div>
-    )
-  }
-
-  const label = CATEGORY_LABEL[focus.category]
+  const drills = drillsByCategory[category] ?? []
+  const trend = trends.find((t) => t.category === category) ?? null
+  const label = CATEGORY_LABEL[category]
+  const vsHandicap = handicapIndex != null ? `your ${handicapIndex.toFixed(1)} HCP` : "your handicap"
 
   return (
     <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
@@ -49,15 +43,47 @@ export function RecommendedDrills({
         <Target size={15} className="text-accent" />
         <p className="label-xs">Recommended Drills</p>
       </div>
-      <p className="mt-2 text-sm text-fg">
-        Focus area: <span className="font-semibold">{label}</span>{" "}
-        <span className={focus.avgDeltaSg < 0 ? "text-danger" : "text-accent"}>
-          ({fmtDelta(focus.avgDeltaSg)} vs. {handicapIndex != null ? `your ${handicapIndex.toFixed(1)} HCP` : "your handicap"})
-        </span>
-      </p>
-      {focus.avgDeltaSg >= 0 && (
-        <p className="mt-0.5 text-xs text-muted">Every area is at or above your level. This one has the least margin.</p>
+
+      <div className="relative mt-3">
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as SgCategory)}
+          aria-label="Drills for"
+          className="w-full appearance-none rounded-lg border border-fg/[0.08] bg-surface-3 py-2.5 pl-3 pr-9 text-sm font-medium text-fg focus:border-accent focus:outline-none"
+        >
+          {DRILL_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {CATEGORY_LABEL[c]}
+              {focus?.category === c ? " (weakest)" : ""}
+            </option>
+          ))}
+        </select>
+        <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
+      </div>
+
+      {trend ? (
+        <>
+          <p className="mt-3 text-sm text-fg">
+            {trend.category === focus?.category && "Focus area: "}
+            <span className="font-semibold">{label}</span>{" "}
+            <span className={trend.avgDeltaSg < 0 ? "text-danger" : "text-accent"}>
+              ({fmtDelta(trend.avgDeltaSg)} vs. {vsHandicap})
+            </span>
+          </p>
+          {trend.category === focus?.category && trend.avgDeltaSg >= 0 && (
+            <p className="mt-0.5 text-xs text-muted">Every area is at or above your level. This one has the least margin.</p>
+          )}
+        </>
+      ) : (
+        <p className="mt-3 text-sm text-fg-3">
+          No {label.toLowerCase()} stats yet.{" "}
+          <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
+            Add round
+          </Link>
+        </p>
       )}
+
+      {drills.length === 0 && <p className="mt-4 text-sm text-fg-3">No {label.toLowerCase()} drills in the library yet.</p>}
 
       {/* Phones: horizontal swipe row of compact cards. Desktop: grid. */}
       <div className="-mx-5 mt-4 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto px-5 pb-1 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:scroll-px-0 md:px-0">
@@ -74,9 +100,11 @@ export function RecommendedDrills({
               {d.reps_suggested != null && <span className="flex items-center gap-1"><Repeat size={11} /> {d.reps_suggested} reps</span>}
               {d.time_estimate_mins != null && <span className="flex items-center gap-1"><Clock size={11} /> {d.time_estimate_mins} min</span>}
             </div>
-            <p className="mt-2 text-xs text-muted">
-              Why: your {label.toLowerCase()} is {fmtDelta(focus.avgDeltaSg)} vs. your handicap
-            </p>
+            {trend && (
+              <p className="mt-2 text-xs text-muted">
+                Why: your {label.toLowerCase()} is {fmtDelta(trend.avgDeltaSg)} vs. your handicap
+              </p>
+            )}
             <div className="flex-1" />
             <button
               onClick={() => setOpen(d)}

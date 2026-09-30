@@ -7,6 +7,9 @@ export const CATEGORY_LABEL: Record<SgCategory, string> = {
   putting: "Putting",
 }
 
+/** The order the drill picker lists them in. */
+export const DRILL_CATEGORIES: readonly SgCategory[] = ["putting", "approach", "off_tee", "short_game"]
+
 /** The category with the most negative average delta vs. the golfer's handicap bracket. */
 export function weakestCategory(trends: readonly CategoryTrend[]): CategoryTrend | null {
   if (trends.length === 0) return null

@@ -221,7 +221,6 @@ export function TrendsPanel({ rounds, milestones }: Props) {
   const ACCENT = c("accent")
   const BLUE = c("viz-blue")
   const ORANGE = c("viz-orange")
-  const FALLBACK = c("fg-3")
   const AXIS = axisProps(c)
   const GRID = c("fg", 0.03)
   const CURSOR_LINE = { stroke: c("fg", 0.08) }
@@ -229,7 +228,7 @@ export function TrendsPanel({ rounds, milestones }: Props) {
   const [open, setOpen] = useState(true)
   const [metric, setMetric] = useState<Metric>("scores")
 
-  // ── Scores: differential + 5-round average, strokes-vs-par fallback ──
+  // ── Scores: differential + 5-round average ───────────────────────
   const diffSeq: number[] = []
   const scorePoints = indexed(rounds.map((r) => {
     const diff = r.differential
@@ -238,17 +237,13 @@ export function TrendsPanel({ rounds, milestones }: Props) {
       diffSeq.push(diff)
       roll = r1(avg(diffSeq.slice(-5))!)
     }
-    // Fallback for rounds with no rating/slope: strokes vs par per hole
-    const svp = diff == null && r.holes_played > 0 ? r2((r.score - r.par) / r.holes_played) : null
     return {
       rawDate: r.date,
       date: shortDate(r.date),
       Differential: diff != null ? r1(diff) : null,
       "5-round avg": roll,
-      "Strokes vs Par / hole": svp,
     }
   }))
-  const hasFallback = scorePoints.some((p) => p["Strokes vs Par / hole"] != null)
   const diffCount = scorePoints.filter((p) => p.Differential != null).length
   const avgDiff = avg(rounds.map((r) => r.differential).filter((n): n is number => n != null))
 
@@ -281,16 +276,15 @@ export function TrendsPanel({ rounds, milestones }: Props) {
 
   if (metric === "scores") {
     summary = avgDiff != null ? `Average differential: ${avgDiff.toFixed(1)} across ${diffCount} rated rounds · lower is better` : ""
-    caption = `${diffCount} of ${rounds.length} rounds have rating/slope. Differentials put 9- and 18-hole rounds on one scale, since the rating and slope you enter already reflect the tees played.${hasFallback ? " Grey line = strokes vs par per hole (right axis) for rounds without rating/slope." : ""}`
-    body = rounds.length < 2 ? (
-      <Empty>Needs 2 rounds.</Empty>
+    caption = `${diffCount} of ${rounds.length} rounds have rating/slope, which a differential needs. Shorter rounds are scaled to 18 holes so every round is on one scale.`
+    body = diffCount < 2 ? (
+      <Empty>Needs 2 rated rounds.</Empty>
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={scorePoints} margin={MARGIN}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
           <XAxis {...xAxisProps(scorePoints, c)} />
           <YAxis yAxisId="diff" {...AXIS} />
-          {hasFallback && <YAxis yAxisId="svp" orientation="right" {...AXIS} />}
           <Tooltip content={<ChartTooltip />} cursor={CURSOR_LINE} />
           <Legend wrapperStyle={LEGEND_STYLE} />
           {milestoneLines(c, milestones, scorePoints, "diff")}
@@ -298,10 +292,6 @@ export function TrendsPanel({ rounds, milestones }: Props) {
             strokeOpacity={0.5} dot={{ r: 2, fill: ACCENT }} activeDot={{ r: 4 }} connectNulls />
           <Line yAxisId="diff" type="monotone" dataKey="5-round avg" stroke={ACCENT} strokeWidth={2.5}
             dot={false} activeDot={{ r: 5 }} connectNulls />
-          {hasFallback && (
-            <Line yAxisId="svp" type="monotone" dataKey="Strokes vs Par / hole" stroke={FALLBACK}
-              strokeWidth={1.5} strokeDasharray="5 4" dot={{ r: 2, fill: FALLBACK }} activeDot={{ r: 4 }} connectNulls />
-          )}
         </LineChart>
       </ResponsiveContainer>
     )
