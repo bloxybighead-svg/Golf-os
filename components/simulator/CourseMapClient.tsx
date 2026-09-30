@@ -431,6 +431,13 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     return () => document.removeEventListener("keydown", onKey)
   }, [pickerOpen])
 
+  useEffect(() => {
+    if (!sheetOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSheetOpen(false)
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [sheetOpen])
+
   // Stop GPS following when leaving the page.
   useEffect(() => {
     return () => {
@@ -1223,7 +1230,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
 
         <dl className="mt-4 grid grid-cols-3 divide-x divide-fg/[0.08] border-y border-fg/[0.08] py-2 text-center">
           <Stat label="To aim" value={distAim != null ? Math.round(distAim) : null} />
-          <Stat label={aimIsPin ? "Aim is pin" : "Left"} value={aimIsPin ? 0 : aimToPin != null ? Math.round(aimToPin) : null} />
+          <Stat label={aimIsPin ? "Aim is pin" : "Aim to pin"} value={aimIsPin ? 0 : aimToPin != null ? Math.round(aimToPin) : null} />
           <Stat label="To pin" value={distPin != null ? Math.round(distPin) : null} />
         </dl>
 
@@ -1397,7 +1404,10 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           {ranking.map((r) => (
             <tr
               key={r.club}
-              onClick={() => setClubChoice(r.club)}
+              onClick={() => {
+                setClubChoice(r.club)
+                setSheetOpen(false)
+              }}
               className={`cursor-pointer border-b border-fg/[0.04] transition-colors last:border-0 hover:bg-fg/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
                 chosen?.club === r.club ? "bg-accent/10" : ""
               }`}
@@ -1958,7 +1968,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
 
           <div
             ref={mapWrapRef}
-            className="relative h-[60svh] min-h-[380px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
+            className="relative isolate h-[60svh] min-h-[380px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
           >
             {course?.lat != null && course.lng != null ? (
               <CourseMap
@@ -2013,22 +2023,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                     Find a course
                   </button>
                 )}
-              </div>
-            )}
-            {/* Phone HUD: the numbers you need mid-round, on the map itself (hidden while drawing, replaced by the controls below) */}
-            {ball && pin && distPin != null && !drawKind && (
-              <div className="pointer-events-none absolute bottom-7 left-2 right-2 z-[1100] grid grid-cols-4 gap-px overflow-hidden rounded-xl border border-white/20 bg-white/10 text-center backdrop-blur-sm md:hidden">
-                {[
-                  { k: "Club", v: chosen?.club ?? "–", small: true },
-                  { k: "To aim", v: distAim != null ? `${Math.round(distAim)}` : "–" },
-                  { k: aimIsPin ? "Pin" : "Left", v: aimIsPin ? "0" : aimToPin != null ? `${Math.round(aimToPin)}` : "–" },
-                  { k: "To pin", v: `${Math.round(distPin)}` },
-                ].map((cell) => (
-                  <div key={cell.k} className="bg-black/75 px-1 py-1.5">
-                    <p className="text-[9px] uppercase tracking-wide text-gray-400">{cell.k}</p>
-                    <p className={`font-semibold text-white tabular-nums ${cell.small ? "truncate text-sm" : "text-lg leading-tight"}`}>{cell.v}</p>
-                  </div>
-                ))}
               </div>
             )}
             {/* Drawing controls, pinned over the map so a thumb never has to leave it to tap Finish. */}
@@ -2157,16 +2151,25 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
         </div>
       </div>
 
+      {/* Phones: the club table. Collapsed, a chip above the tab bar; open, a
+          full-screen list (it covers the map, so every club fits without a
+          scroll fighting the map). Picking a club closes it. */}
       {planReady && ranking.length > 0 && !scoring && (
         <div
-          className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface transition-[max-height] duration-200 md:hidden"
-          style={{ maxHeight: sheetOpen ? "min(65vh, 26rem)" : "3.25rem" }}
+          role={sheetOpen ? "dialog" : undefined}
+          aria-modal={sheetOpen ? true : undefined}
+          aria-label={sheetOpen ? "All clubs" : undefined}
+          className={
+            sheetOpen
+              ? "fixed inset-0 z-[1200] !mt-0 flex flex-col bg-page pt-[env(safe-area-inset-top)] md:hidden"
+              : "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[1100] flex h-[3.25rem] flex-col overflow-hidden rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface md:hidden"
+          }
         >
           <button
             type="button"
             onClick={() => setSheetOpen((v) => !v)}
             aria-expanded={sheetOpen}
-            className="flex min-h-[3.25rem] shrink-0 items-center justify-between gap-2 px-4 text-left"
+            className={`flex min-h-[3.25rem] shrink-0 items-center justify-between gap-2 px-4 text-left ${sheetOpen ? "border-b border-fg/[0.08]" : ""}`}
           >
             <span className="flex min-w-0 items-center gap-1.5 truncate text-xs tabular-nums">
               <span className="font-semibold text-fg">{chosen?.club ?? "–"}</span>
@@ -2175,9 +2178,13 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
               <span className="text-muted">·</span>
               <span className="text-fg-3">All clubs</span>
             </span>
-            <ChevronDown size={16} className={`shrink-0 text-fg-3 transition-transform ${sheetOpen ? "" : "rotate-180"}`} />
+            {sheetOpen ? (
+              <X size={18} className="shrink-0 text-fg-3" aria-label="Close" />
+            ) : (
+              <ChevronDown size={16} className="shrink-0 rotate-180 text-fg-3" />
+            )}
           </button>
-          <div className="overflow-y-auto pb-[env(safe-area-inset-bottom)]">{clubTable}</div>
+          {sheetOpen && <div className="flex-1 overflow-y-auto px-2 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">{clubTable}</div>}
         </div>
       )}
 

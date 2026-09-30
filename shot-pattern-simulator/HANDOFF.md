@@ -1674,6 +1674,24 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
   with the message. Club: picked PW -> "Your pick"; tapped the ball
   elsewhere -> "Best club", 145 -> 121 yd; picked 9-iron after -> held.
 
+### Play map clean-up (2026-09-30)
+
+- Phone club list: collapsed it's the chip above the tab bar (z-[1100]);
+  open it's full screen (fixed inset-0, z-[1200], covers the map) so all
+  13 clubs show with no inner scroll. Tapping a club picks it and closes
+  the list; the X or Escape closes it too. (`!mt-0`: the page's space-y-3
+  had given the fixed overlay a 12 px top margin.)
+- The on-map HUD (Club / To aim / Left / To pin) is gone; the plan card
+  under the map is the one place for those numbers, and its "Left" is now
+  "Aim to pin" (it was the aim point's distance to the pin, not yards
+  left of target).
+- Map credits: Leaflet's attribution control now sits bottom-left as a
+  9 px light-on-dark label (globals.css, `.leaflet-bottom` for
+  specificity over leaflet.css) instead of a full-width white strip.
+- Found on the way: on phones the map ran under the fixed tab bar and
+  Leaflet's panes (z-index 400) painted over Play / Rounds / You. The map
+  box now has `isolate`, so its layers stay inside it.
+
 
 | File | Purpose |
 |---|---|

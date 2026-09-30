@@ -151,6 +151,7 @@ export default function CourseMap(props: Props) {
     // (touch devices get pinch-to-zoom, Leaflet's default, regardless).
     const map = L.map(containerRef.current, {
       zoomControl: false,
+      attributionControl: false,
       preferCanvas: true,
       minZoom: 16,
       maxZoom: 19,
@@ -163,10 +164,13 @@ export default function CourseMap(props: Props) {
       props.initialZoom ?? 16
     )
     L.control.zoom({ position: "bottomright" }).addTo(map)
+    // Credits as a small label in the bottom-left corner (styled in globals.css),
+    // clear of the zoom buttons.
+    L.control.attribution({ position: "bottomleft", prefix: '<a href="https://leafletjs.com">Leaflet</a>' }).addTo(map)
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       maxNativeZoom: 19,
       maxZoom: 19,
-      attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics | Course data &copy; OpenStreetMap contributors",
+      attribution: "&copy; Esri, Maxar, Earthstar Geographics | &copy; OpenStreetMap contributors",
     }).addTo(map)
     map.on("zoomend", () => cb.current.onZoomChange?.(map.getZoom()))
     const onWheel = (e: WheelEvent) => {
