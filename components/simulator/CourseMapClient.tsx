@@ -1452,12 +1452,11 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           club is always +0.00 and every other club shows how many extra strokes it&rsquo;s expected to cost.
         </p>
         <p>
-          Each shot lands at its carry and then rolls out along its line before it&rsquo;s scored, so the dots, the lie
-          percentages and &ldquo;leaves&rdquo; are where shots stop, not where they land (Layers &rarr; Show carry points adds
-          the landing spots). Roll is an estimate by club, not measured: about 20 yd for a driver, 12 for woods, 8 for long
-          irons, 5 for mid irons, 3 for short irons and 1 for wedges on the fairway, give or take 30%; a third of that in
-          the rough, a fifth in trees, half on the green for irons and wedges, none in bunkers or water. A ball that runs
-          into a bunker or water stops there.
+          Driver and 3-wood shots land at their carry and then roll out along their line before they&rsquo;re scored, so
+          for those the dots, the lie percentages and &ldquo;leaves&rdquo; are where shots stop (Layers &rarr; Show carry
+          points adds the landing spots). Every other club is scored where it lands. Roll is an estimate, not measured:
+          about 20 yd for a driver and 12 for a 3-wood on the fairway, give or take 30%; a third of that in the rough, a
+          fifth in trees, none in bunkers or water. A ball that runs into a bunker or water stops there.
         </p>
         <p>
           The aim marker sets the direction for a full swing: each club flies its own carry along that line, so the

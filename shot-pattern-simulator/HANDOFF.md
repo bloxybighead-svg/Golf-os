@@ -1712,12 +1712,13 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
 
 ### Rollout: shots judged where they stop (2026-09-30, session 8)
 
-- `lib/course/roll.ts`: `rollYds(club, landingLie, carry, rng)`. Base roll
-  on fairway by club group -- driver 20, woods/hybrids 12, long irons 8,
-  mid 5, short 3, wedges 1 yd -- x the landing lie (fairway 1, rough 0.3,
-  trees 0.2, bunker/water/OOB 0, green 0.5 for irons and wedges, 1 for
-  woods) x a +-30% seeded spread, capped at a quarter of the carry. ALL
-  ESTIMATES (no roll data -- monitors measure carry). `rollToRest` walks
+- `lib/course/roll.ts`: `rollYds(club, landingLie, carry, rng)`. Only the
+  tee clubs roll (Dillon: his 7-iron doesn't roll at all, so irons,
+  wedges, hybrids and 5/7-wood are scored where they land): Driver 20 yd,
+  3-Wood 12 yd on fairway, x the landing lie (fairway/green 1, rough 0.3,
+  trees 0.2, bunker/water/OOB 0) x a +-30% seeded spread, capped at a
+  quarter of the carry. ESTIMATES (no roll data -- monitors measure
+  carry). First version rolled every club (wedge 1 ... long iron 8 yd). `rollToRest` walks
   the roll in 2-yd steps and stops in the first bunker, water or OOB it
   enters. `clubGroup` reads "Driver", "3-Wood", "7-Iron", "PW", "56 (SW)".
 - `plan.ts`: `simulateLandings(club, shots, from, bearing, lies, rng)`

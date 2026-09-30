@@ -22,15 +22,11 @@ function bands(...b: [number, Lie][]): LieMap {
 }
 
 describe("clubGroup", () => {
-  it("reads the club names the app uses", () => {
+  it("rolls only the tee clubs: Driver and 3-Wood", () => {
     expect(clubGroup("Driver")).toBe("driver")
-    expect(clubGroup("3-Wood")).toBe("wood")
-    expect(clubGroup("7-Wood")).toBe("wood")
-    expect(clubGroup("4-Iron")).toBe("longIron")
-    expect(clubGroup("7-Iron")).toBe("midIron")
-    expect(clubGroup("9-Iron")).toBe("shortIron")
-    expect(clubGroup("PW")).toBe("wedge")
-    expect(clubGroup("56 (SW)")).toBe("wedge")
+    expect(clubGroup("3-Wood")).toBe("threeWood")
+    expect(clubGroup("3W")).toBe("threeWood")
+    for (const c of ["5-Wood", "7-Wood", "4-Iron", "7-Iron", "9-Iron", "PW", "56 (SW)"]) expect(clubGroup(c)).toBe("noRoll")
   })
 })
 
@@ -41,14 +37,19 @@ describe("rollYds", () => {
 
   it("rolls a driver much further than a wedge", () => {
     expect(rollYds("Driver", "fairway", 260, always(0.5))).toBe(BASE_ROLL_YDS.driver)
-    expect(rollYds("PW", "fairway", 120, always(0.5))).toBe(BASE_ROLL_YDS.wedge)
     expect(rollYds("Driver", "fairway", 260, always(0))).toBeGreaterThan(rollYds("PW", "fairway", 120, always(1)))
   })
 
-  it("scales by the landing lie: rough grabs it, irons check up on the green, woods don't", () => {
+  it("doesn't roll irons, wedges or the other woods at all, on any lie", () => {
+    for (const club of ["5-Wood", "7-Wood", "4-Iron", "7-Iron", "PW"]) {
+      for (const lie of ["fairway", "green", "rough"] as Lie[]) expect(rollYds(club, lie, 180, always(1))).toBe(0)
+    }
+  })
+
+  it("scales by the landing lie: rough grabs it, a green doesn't stop a 3-wood", () => {
     expect(rollYds("Driver", "rough", 260, always(0.5))).toBeCloseTo(BASE_ROLL_YDS.driver * 0.3)
-    expect(rollYds("7-Iron", "green", 160, always(0.5))).toBeCloseTo(BASE_ROLL_YDS.midIron * 0.5)
-    expect(rollYds("3-Wood", "green", 230, always(0.5))).toBeCloseTo(BASE_ROLL_YDS.wood)
+    expect(rollYds("3-Wood", "fairway", 230, always(0.5))).toBeCloseTo(BASE_ROLL_YDS.threeWood)
+    expect(rollYds("3-Wood", "green", 230, always(0.5))).toBeCloseTo(BASE_ROLL_YDS.threeWood)
   })
 
   it("spreads each shot +-30% around the estimate", () => {
