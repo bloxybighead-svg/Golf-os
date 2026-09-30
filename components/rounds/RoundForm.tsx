@@ -6,7 +6,8 @@ import type { Round } from "@/lib/supabase/types"
 import { BREAKDOWN_TAGS } from "@/lib/supabase/types"
 import { calcDifferential } from "@/lib/handicap"
 import { createRound, getRoundHoles, updateRound } from "@/app/rounds/actions"
-import { blankHoles, summarizeHoles, type GreenMiss, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
+import { blankHoles, summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
+import { Choice, HolePad } from "./HolePad"
 
 interface Props {
   round?: Round
@@ -52,46 +53,6 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-/** One tap target: 44px, filled with the accent when chosen. */
-function Choice({
-  selected,
-  onClick,
-  children,
-  label,
-  className = "",
-}: {
-  selected: boolean
-  onClick: () => void
-  children: React.ReactNode
-  label?: string
-  className?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      aria-label={label}
-      className={[
-        "flex h-11 min-w-[44px] items-center justify-center rounded-lg border px-2 text-sm font-semibold tabular-nums transition-colors",
-        selected ? "border-accent bg-accent text-on-accent" : "border-fg/[0.08] bg-surface text-fg-2 hover:border-fg/20 hover:text-fg",
-        className,
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  )
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <p className="label-xs">{label}</p>
-      {children}
-    </div>
-  )
-}
-
 function relLabel(n: number) {
   return n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`
 }
@@ -116,6 +77,9 @@ export function RoundForm({ round, onDone }: Props) {
   const [mode, setMode] = useState<Mode>(round ? "score" : "holes")
   const [holeCount, setHoleCount] = useState(round ? (round.holes_played <= 9 ? 9 : 18) : 18)
   const [holes, setHoles] = useState<HoleEntry[]>(() => blankHoles(18))
+  // Hole numbers in play. A new round here is 1..9 or 1..18; a saved round
+  // keeps its own (a back nine started on Play is 10-18).
+  const [savedOrder, setSavedOrder] = useState<number[] | null>(null)
   const [current, setCurrent] = useState(0)
   const [loadingHoles, setLoadingHoles] = useState(!!round)
   const [hadHoles, setHadHoles] = useState(false)
@@ -141,7 +105,7 @@ export function RoundForm({ round, onDone }: Props) {
       .then((saved) => {
         if (!live || saved.length === 0) return
         setHoles(fullHoles(saved))
-        setHoleCount(saved.length <= 9 ? 9 : 18)
+        setSavedOrder(saved.map((h) => h.hole_number))
         setMode("holes")
         setHadHoles(true)
       })
@@ -224,16 +188,17 @@ export function RoundForm({ round, onDone }: Props) {
     })
   }
 
-  function patchHole(patch: Partial<HoleEntry>) {
-    setHoles((prev) => prev.map((h, i) => (i === current ? { ...h, ...patch } : h)))
-  }
-
-  const inPlay = holes.slice(0, holeCount)
+  const inPlay = savedOrder ? savedOrder.map((n) => holes[n - 1]) : holes.slice(0, holeCount)
+  const count = inPlay.length
   const scored = inPlay.filter((h): h is ScoredHole => h.strokes != null)
   const summary = summarizeHoles(scored)
-  const hole = holes[current]
+  const hole = inPlay[Math.min(current, count - 1)]
 
-  const totalScore = mode === "holes" ? (scored.length === holeCount ? summary.score : null) : parseInt(score) || null
+  function patchHole(patch: Partial<HoleEntry>) {
+    setHoles((prev) => prev.map((h) => (h.hole_number === hole.hole_number ? { ...h, ...patch } : h)))
+  }
+
+  const totalScore = mode === "holes" ? (scored.length === count ? summary.score : null) : parseInt(score) || null
   const totalPar = mode === "holes" ? summary.par : parseInt(par) || null
   const relToPar = mode === "holes"
     ? scored.length > 0 ? summary.score - summary.par : null
@@ -247,9 +212,10 @@ export function RoundForm({ round, onDone }: Props) {
     }
     if (mode === "holes") {
       const missing = inPlay.filter((h) => h.strokes == null).map((h) => h.hole_number)
+      const firstMissing = inPlay.findIndex((h) => h.strokes == null)
       if (missing.length > 0) {
         setError(`Score every hole. Missing: ${missing.join(", ")}.`)
-        setCurrent(missing[0] - 1)
+        setCurrent(firstMissing)
         return
       }
     } else if (!score || !par) {
@@ -286,24 +252,6 @@ export function RoundForm({ round, onDone }: Props) {
       }
     })
   }
-
-  // Score buttons around par: par-2 .. par+3, then one more that counts up.
-  const scoreChoices = hole ? Array.from({ length: 6 }, (_, i) => hole.par - 2 + i).filter((n) => n >= 1) : []
-  const bigNumber = hole ? hole.par + 4 : 0
-  const green = (side: GreenMiss) => (
-    <Choice
-      selected={hole.green_hit === false && hole.green_miss_side === side}
-      onClick={() =>
-        hole.green_hit === false && hole.green_miss_side === side
-          ? patchHole({ green_hit: null, green_miss_side: null })
-          : patchHole({ green_hit: false, green_miss_side: side })
-      }
-      label={`Green missed ${side}`}
-      className="w-full"
-    >
-      {side[0].toUpperCase() + side.slice(1)}
-    </Choice>
-  )
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-page">
@@ -361,7 +309,7 @@ export function RoundForm({ round, onDone }: Props) {
             <section className="space-y-5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex gap-2">
-                  {[9, 18].map((n) => (
+                  {!savedOrder && [9, 18].map((n) => (
                     <Choice
                       key={n}
                       selected={holeCount === n}
@@ -404,127 +352,15 @@ export function RoundForm({ round, onDone }: Props) {
 
               {/* The current hole */}
               <div className="space-y-5 border-t border-fg/[0.06] pt-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-fg">Hole {hole.hole_number}</h3>
-                  <div className="flex items-center gap-1" role="radiogroup" aria-label="Par">
-                    <span className="mr-1 text-xs text-muted">Par</span>
-                    {[3, 4, 5].map((p) => (
-                      <Choice
-                        key={p}
-                        selected={hole.par === p}
-                        onClick={() =>
-                          patchHole(p === 3 ? { par: p, fairway_hit: null, fairway_miss_side: null } : { par: p })
-                        }
-                        label={`Par ${p}`}
-                      >
-                        {p}
-                      </Choice>
-                    ))}
-                  </div>
-                </div>
+                <HolePad hole={hole} onChange={patchHole} />
 
-                <Row label="Score">
-                  <div className="grid grid-cols-7 gap-1">
-                    {scoreChoices.map((n) => (
-                      <Choice key={n} selected={hole.strokes === n} onClick={() => patchHole({ strokes: n })}>
-                        {n}
-                      </Choice>
-                    ))}
-                    <Choice
-                      selected={hole.strokes != null && hole.strokes >= bigNumber}
-                      onClick={() =>
-                        patchHole({ strokes: hole.strokes != null && hole.strokes >= bigNumber ? Math.min(hole.strokes + 1, 20) : bigNumber })
-                      }
-                      label={hole.strokes != null && hole.strokes >= bigNumber ? `${hole.strokes}, tap for one more` : `${bigNumber} or more`}
-                    >
-                      {hole.strokes != null && hole.strokes >= bigNumber ? hole.strokes : `${bigNumber}+`}
-                    </Choice>
-                  </div>
-                </Row>
-
-                {hole.par > 3 && (
-                  <Row label="Tee shot">
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {(["left", "hit", "right"] as const).map((t) => {
-                        const selected = t === "hit" ? hole.fairway_hit === true : hole.fairway_hit === false && hole.fairway_miss_side === t
-                        return (
-                          <Choice
-                            key={t}
-                            selected={selected}
-                            onClick={() =>
-                              selected
-                                ? patchHole({ fairway_hit: null, fairway_miss_side: null })
-                                : t === "hit"
-                                  ? patchHole({ fairway_hit: true, fairway_miss_side: null })
-                                  : patchHole({ fairway_hit: false, fairway_miss_side: t })
-                            }
-                            label={t === "hit" ? "Fairway hit" : `Fairway missed ${t}`}
-                          >
-                            {t === "hit" ? "Fairway" : t === "left" ? "Left" : "Right"}
-                          </Choice>
-                        )
-                      })}
-                    </div>
-                  </Row>
-                )}
-
-                <Row label="Approach">
-                  {/* Laid out like the green: long above, short below */}
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <div />
-                    {green("long")}
-                    <div />
-                    {green("left")}
-                    <Choice
-                      selected={hole.green_hit === true}
-                      onClick={() =>
-                        hole.green_hit === true
-                          ? patchHole({ green_hit: null, green_miss_side: null })
-                          : patchHole({ green_hit: true, green_miss_side: null })
-                      }
-                      label="Green in regulation"
-                      className="w-full"
-                    >
-                      Green
-                    </Choice>
-                    {green("right")}
-                    <div />
-                    {green("short")}
-                    <div />
-                  </div>
-                </Row>
-
-                <Row label="Putts">
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {[0, 1, 2, 3, 4].map((n) => {
-                      const selected = n === 4 ? (hole.putts ?? 0) >= 4 : hole.putts === n
-                      return (
-                        <Choice
-                          key={n}
-                          selected={selected}
-                          onClick={() =>
-                            patchHole({ putts: n === 4 && selected ? Math.min((hole.putts ?? 4) + 1, 10) : selected ? null : n })
-                          }
-                          label={n === 4 ? "4 or more putts" : `${n} putts`}
-                        >
-                          {n === 4 && (hole.putts ?? 0) > 4 ? hole.putts : n === 4 ? "4+" : n}
-                        </Choice>
-                      )
-                    })}
-                  </div>
-                </Row>
-
-                <Choice selected={hole.penalty} onClick={() => patchHole({ penalty: !hole.penalty })} className="px-4">
-                  Penalty
-                </Choice>
-
-                {current < holeCount - 1 ? (
+                {current < count - 1 ? (
                   <button
                     type="button"
                     onClick={() => setCurrent((c) => c + 1)}
                     className="flex h-11 w-full items-center justify-center gap-1 rounded-lg border border-fg/[0.08] text-sm font-semibold text-fg hover:border-fg/20"
                   >
-                    Hole {hole.hole_number + 1}
+                    Hole {inPlay[current + 1].hole_number}
                     <ChevronRight size={16} />
                   </button>
                 ) : (
@@ -607,7 +443,7 @@ export function RoundForm({ round, onDone }: Props) {
               />
             </Field>
           </div>
-          {(mode === "holes" ? holeCount : parseInt(holesPlayed)) < 18 && (
+          {(mode === "holes" ? count : parseInt(holesPlayed)) < 18 && (
             <p className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
               For 9 holes, enter the <span className="font-semibold">9-hole rating and slope</span> for your tees, not half of the 18-hole numbers.
             </p>

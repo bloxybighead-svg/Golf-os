@@ -1,5 +1,8 @@
 import type { TeeOption } from "./estimate"
 
+/** Where the tee a golfer picked for a course is remembered on the device. */
+export const teeChoiceKey = (courseId: string) => `golfos.tee.${courseId}.v1`
+
 /** One tee as OpenGolfAPI returns it (via /api/courses/[id]/tees). */
 export interface OpenGolfApiTee {
   tee_name: string

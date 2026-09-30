@@ -42,6 +42,8 @@ import { createClient } from "@/lib/supabase/client"
 import { TendencyPicker } from "./TendencyPicker"
 import { EditHoleModal, type HoleCorrectionSubmission } from "./EditHoleModal"
 import { TeeLine } from "./TeeLine"
+import { PlayRound, type PlayView } from "@/components/play/PlayRound"
+import { loadActiveRound, nextUnscored, saveActiveRound, type ActiveRound } from "@/lib/rounds/activeRound"
 import { lieColor, type Placing } from "./courseColors"
 import { cssColor } from "@/lib/theme/tokens"
 
@@ -283,6 +285,9 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const [extraCarries, setExtraCarries] = useState<Partial<Record<Club, number>>>({})
   // First visit on this device with no setup yet: offer it, once.
   const [showSetupPrompt, setShowSetupPrompt] = useState(false)
+  // A round being scored (kept on the device) and which side of it is showing.
+  const [round, setRound] = useState<ActiveRound | null>(null)
+  const [playView, setPlayView] = useState<PlayView>("map")
   // Which clubs are in the bag, per shot source (the calibrated golfer and a
   // handicap-based one carry different bags). Remembered on this device.
   const [bags, setBags] = useState<{ calibrated: Club[]; handicap: Club[] }>({
@@ -364,8 +369,13 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
       const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")
       if (Array.isArray(r)) setRecent(r.filter((c) => c && typeof c.id === "string" && typeof c.name === "string").slice(0, 5))
       // Resume where the golfer left off; a first visit opens on the default hole.
+      // A round in progress wins: reopening mid-round lands back on its course.
+      const active = loadActiveRound()
+      setRound(active)
       const last = loadLastPosition()
-      if (last) void loadCourse(last.course, last.holeId ? { autoHoleId: last.holeId } : { autoFirstHole: true })
+      if (active && last?.course.id !== active.course.id) {
+        void loadCourse(active.course, { autoHoleRef: nextUnscored(active) ?? active.startHole })
+      } else if (last) void loadCourse(last.course, last.holeId ? { autoHoleId: last.holeId } : { autoFirstHole: true })
       else void loadCourse(DEFAULT_COURSE, { autoHoleRef: DEFAULT_HOLE_REF })
     } catch {
       /* private mode or corrupt data: start from defaults */
@@ -631,10 +641,34 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   }
 
   // Previous/next hole from the title line, wrapping 18 -> 1 and 1 -> 18.
-  function stepHole(dir: 1 | -1) {
-    if (holes.length === 0) return
+  // During a round it follows the round's holes instead (a back nine: 10..18).
+  function neighbourHole(dir: 1 | -1): CourseHole | null {
+    if (holes.length === 0) return null
     const i = holes.findIndex((h) => h.id === holeId)
-    pickHole(i < 0 ? holes[0] : holes[(i + dir + holes.length) % holes.length])
+    if (roundHere) {
+      const order = roundHere.holes.map((h) => h.hole_number)
+      const at = order.indexOf(i < 0 ? -1 : holes[i].ref ?? -1)
+      const next = holes.find((h) => h.ref === order[at < 0 ? 0 : (at + dir + order.length) % order.length])
+      if (next) return next
+    }
+    return i < 0 ? holes[0] : holes[(i + dir + holes.length) % holes.length]
+  }
+  function stepHole(dir: 1 | -1) {
+    const h = neighbourHole(dir)
+    if (h) pickHole(h)
+  }
+  function goToHoleNumber(n: number) {
+    const h = holes.find((x) => x.ref === n)
+    if (h) pickHole(h)
+  }
+  function changeRound(next: ActiveRound | null) {
+    setRound(next)
+    saveActiveRound(next)
+  }
+  function changePlayView(v: PlayView) {
+    setPlayView(v)
+    // The map was hidden, not unmounted: have Leaflet re-measure itself.
+    if (v === "map") setTimeout(() => window.dispatchEvent(new Event("resize")), 0)
   }
   function chooseCourse(c: CourseHit) {
     setQuery("")
@@ -712,6 +746,9 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   // ---------- hole selection ----------
   const holes = geometry?.holes ?? []
   const hole: CourseHole | null = holes.find((h) => h.id === holeId) ?? null
+  // The round in progress, when it's at the course that's open.
+  const roundHere = round && course && round.course.id === course.id ? round : null
+  const scoring = !!roundHere && playView === "score"
 
   function holePinFor(h: CourseHole): LatLng {
     const end = h.line[h.line.length - 1]
@@ -1064,9 +1101,8 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   // "Hole 8" for the arrows' tooltips.
   const holeIndex = holes.findIndex((h) => h.id === holeId)
   const holeLabel = (offset: 1 | -1) => {
-    if (holes.length === 0) return ""
-    const h = holes[holeIndex < 0 ? 0 : (holeIndex + offset + holes.length) % holes.length]
-    return `Hole ${h.ref ?? "?"}`
+    const h = neighbourHole(offset)
+    return h ? `Hole ${h.ref ?? "?"}` : ""
   }
 
   const hasCourseProblems = !!geometry && (geometry.scope === "radius" || holes.length === 0 || (holes.length > 0 && stats.greens === 0))
@@ -1738,7 +1774,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
       )}
       {loadState === "idle" && loadError && <p className="text-xs text-muted">{loadError}</p>}
 
-      {course && loadState !== "error" && (
+      {course && loadState !== "error" && !roundHere && (
         <TeeLine
           courseId={course.id}
           courseName={course.name}
@@ -1747,7 +1783,25 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
         />
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]">
+      {course && loadState !== "error" && hydrated && (
+        <PlayRound
+          course={course}
+          courseHoles={holes}
+          currentHole={hole?.ref ?? null}
+          round={round}
+          onRoundChange={changeRound}
+          view={playView}
+          onViewChange={changePlayView}
+          onGoToHole={goToHoleNumber}
+          onResume={(c, n) => void loadCourse(c, { autoHoleRef: n })}
+          driverCarryYds={bagDriverCarry ?? (longestCarry > 0 ? longestCarry : null)}
+          handicapIndex={source === "handicap" ? handicap : trackedHandicap}
+          signedIn={!!authUser}
+        />
+      )}
+
+      {/* Scoring a hole hides the map (kept mounted, so it comes back as it was). */}
+      <div className={scoring ? "hidden" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]"}>
         {/* ---- map ---- (min-w-0 stops a wide child from stretching the page on phones) */}
         <div className="min-w-0 space-y-2.5">
           <div className="flex items-center gap-2 text-xs">
@@ -2033,7 +2087,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
         </div>
       </div>
 
-      {planReady && ranking.length > 0 && (
+      {planReady && ranking.length > 0 && !scoring && (
         <div
           className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface transition-[max-height] duration-200 md:hidden"
           style={{ maxHeight: sheetOpen ? "min(65vh, 26rem)" : "3.25rem" }}

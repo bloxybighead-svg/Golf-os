@@ -5,9 +5,7 @@ import { createPortal } from "react-dom"
 import Link from "next/link"
 import { Check, ChevronDown, X } from "lucide-react"
 import { courseHandicap, recommendTee, type TeeOption } from "@/lib/tbox/estimate"
-import { neighbourTees, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
-
-const choiceKey = (courseId: string) => `golfos.tee.${courseId}.v1`
+import { neighbourTees, teeChoiceKey as choiceKey, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
 
 interface Props {
   courseId: string

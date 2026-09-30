@@ -1584,6 +1584,56 @@ by tapping through its holes, and the box score is computed from the taps.
   from the single-user days; re-running one would have switched RLS off.
   Those lines are gone.
 
+### Keeping score on Play (2026-09-30)
+
+Scoring used to live only behind Rounds -> Add round. Play now has a
+"Start round" button under the tee line.
+
+- Start sheet (`components/play/PlayRound.tsx`, `StartRoundSheet`): Tees
+  (the course's tees with yardage and rating/slope; preselects the tee
+  already picked for the course, else the best fit), Holes (18 | 9 | Other
+  with a number), Starting hole (1-18 grid, plus "Start on hole N" for the
+  hole the map is on). The footer spells it out before starting: "9 holes:
+  10-18 · Gold 36.7 / 137". Courses with no tee data still start; rating
+  and slope are asked for at the end.
+- `lib/rounds/activeRound.ts` (8 tests): `playOrder(start, count,
+  courseHoles)` wraps past the last hole (9 from the 10th = 10..18; 12
+  from the 10th = 10..18, 1..3) and never repeats a hole; `holesFor` fills
+  each hole's par from the course map data (default 4); `ratingForHoles`
+  = the tee's 18-hole rating x holes/18 (an estimate for partial rounds --
+  tee data has no 9-hole ratings; slope used as is); `describeOrder`;
+  the round is stored on the device in `golfos.activeRound.v1`.
+- During a round: the tee line is replaced by a Map | Score switch and
+  "Gold · Thru 3 · +2". Score shows the hole strip and the same tap pad as
+  the round form (`components/rounds/HolePad.tsx`, extracted and shared)
+  for the hole the map is on; "Hole N" moves both the pad and the map.
+  The map is hidden with CSS, not unmounted, and gets a resize event when
+  it comes back. The title's previous/next arrows follow the round's
+  holes (18 -> 10 on a back nine). Reopening the app mid-round returns to
+  the round's course; opening another course shows "Round in progress at
+  X. Resume".
+- Finish: score, to par, holes, Fairways/Greens/Putts/Up & down, rating
+  and slope prefilled and editable, differential, "Save round" (or "Save
+  N holes" when some have no score, with "Go to hole N"). Saves through
+  `createRound` with the holes, so the stats are computed server-side as
+  for any hole-by-hole round; the tee goes in the notes ("Gold tees").
+  Signed out: "Sign in to save" -- the round stays on the phone. "End
+  without saving" asks first.
+- RoundForm now keeps a saved round's own hole numbers when editing (a
+  back nine shows 10-18, not blank 1-9).
+- Verified (dev, 375 px, signed out): 9 holes from the 10th on Pebble
+  Beach: pars 4 4 3 4 5 4 4 3 5 prefilled, map jumped to 10, scored all
+  nine from the Score tab, title followed each hole, map came back at
+  341x485 with tiles, next from 18 -> 10, finish showed 40 (+4), 29% /
+  56% / 14 putts / 0/4, rating 36.7, slope 137, differential 2.7 (all
+  matching a hand count); reload kept the round; End without saving
+  cleared it. **Not verified: the signed-in save from Play.**
+- Open question for Dillon: a partial round's differential is on its own
+  scale ((score - share of rating) x 113 / slope), so a 9-hole round's is
+  about half an 18-hole one, and `syncCalculatedHandicap` averages them
+  together. `lib/handicap.ts` says never to rescale; WHS instead turns a
+  9-hole score into an 18-hole differential. Left as is pending his call.
+
 ## Files
 
 | File | Purpose |
