@@ -9,7 +9,7 @@ import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import type { LatLng } from "@/lib/course/geo"
 import type { Lie, UserZone } from "@/lib/course/lies"
-import type { CourseGeometry, FeatureKind } from "@/lib/course/overpass"
+import type { CourseGeometry, FeatureKind, LineKind } from "@/lib/course/overpass"
 import type { Landing } from "@/lib/course/plan"
 import { LIE_TOKEN, type Placing } from "./courseColors"
 import { cssColor, readColor } from "@/lib/theme/tokens"
@@ -38,6 +38,15 @@ const FEATURE_STYLE: Record<FeatureKind, { token: string; weight: number; fillOp
   tee: { token: "map-tee", weight: 1, fillOpacity: 0.25 },
   trees: { token: "lie-trees", weight: 1, fillOpacity: 0.12, dashArray: "3 4" },
   range: { token: "lie-oob", weight: 1.5, fillOpacity: 0.18, dashArray: "6 4" },
+  building: { token: "lie-oob", weight: 1, fillOpacity: 0.3 },
+  scrub: { token: "lie-trees", weight: 1, fillOpacity: 0.1, dashArray: "3 4" },
+  residential: { token: "lie-trees", weight: 0.5, fillOpacity: 0.05, dashArray: "2 6" },
+}
+
+// Roads and tree rows are centre lines; the course boundary is drawn as a faint outline.
+const LINE_STYLE: Record<LineKind, { token: string; weight: number; opacity: number; dashArray?: string }> = {
+  road: { token: "lie-oob", weight: 3, opacity: 0.45 },
+  treeRow: { token: "lie-trees", weight: 4, opacity: 0.35 },
 }
 
 function featureStyle(kind: FeatureKind): L.PathOptions {
@@ -224,13 +233,20 @@ export default function CourseMap(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Course polygons.
+  // Course polygons, roads and tree rows, and the course boundary.
   useEffect(() => {
     const g = layers.current?.features
     if (!g) return
     g.clearLayers()
+    for (const ring of props.geometry?.boundary?.outer ?? []) {
+      L.polyline(ring.map(ll), { color: readColor("lie-oob"), weight: 1.5, opacity: 0.5, dashArray: "8 6", interactive: false }).addTo(g)
+    }
     for (const f of props.geometry?.features ?? []) {
       L.polygon(f.ring.map(ll), { ...featureStyle(f.kind), interactive: false }).addTo(g)
+    }
+    for (const l of props.geometry?.lines ?? []) {
+      const { token, ...rest } = LINE_STYLE[l.kind]
+      L.polyline(l.line.map(ll), { ...rest, color: readColor(token), interactive: false }).addTo(g)
     }
   }, [props.geometry])
 

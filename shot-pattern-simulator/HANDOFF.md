@@ -1745,6 +1745,58 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
   total (most of that pattern lands in rough, a third of the roll), fairway
   share 19% -> 12% as fairway landings run off into rough at the dogleg.
 
+### Unmapped ground is no longer all rough (2026-09-30, session 9)
+
+Problem: `buildLieMap` returned "rough" for anything outside a polygon, so
+on Pebble 1 driver shots into the Lodge buildings right of the fairway
+counted as rough and the aim search saw nothing to avoid.
+
+- `lib/course/lies.ts`: `buildLieMap(origin, features, coast, zones,
+  { boundary, lines })`, first match wins: user zones > mapped water /
+  range / bunker / green / fairway / tee > coastline sea side (water) >
+  outside the course boundary or inside a hole cut out of it (OOB) >
+  buildings, roads within `ROAD_BUFFER_YDS` 4 (OOB) > woods, scrub, tree
+  rows within `TREE_ROW_BUFFER_YDS` 6, residential (only when a boundary
+  exists) (trees) > unmapped: rough within `ROUGH_BAND_YDS` 25 of a
+  fairway/green/tee edge, trees beyond; rough if no such edge exists at
+  all. All three distances are ESTIMATES. New `classify(p)` returns
+  `{ lie, source: "mapped" | "inferred" }`; `lieAt` wraps it.
+- `lib/course/overpass.ts`: `GEOMETRY_VERSION` 3 -> 4 (Supabase and
+  browser caches refetch). `CourseGeometry` gains optional `boundary`
+  (`{ outer, inner }` rings) and `lines` (road, treeRow). New kinds
+  building, scrub, residential. `isRoad(tags)` skips golf=cartpath,
+  golf_cart=designated, footway/path/steps/pedestrian/track/bridleway/
+  cycleway (walking paths between holes often aren't tagged as cart
+  paths -- a deliberate widening of the spec), tunnels and area=yes.
+  `boundaryGeometryQuery` + `parseBoundaryShape` + `joinRings` (stitches a
+  relation's split ways; drops rings that won't close). The id query adds
+  scrub, tree_row, residential, building, highway; the radius fallback
+  adds the same except residential.
+- Route: fetches the boundary outline after the coast (required, 502 if
+  busy). No migration: `course_geometry.geometry` is jsonb.
+- `plan.ts`: `Landing.lieSource`, `Landing.dropPoint`;
+  `ClubPlan.unmappedShare`; `UNMAPPED_NOTE_SHARE` 0.2 + `flagsUnmapped`.
+  `waterEntryPoint` walks back along the shot path (golfer -> landing ->
+  rest) in 5 yd steps, then 4 halvings, to the last dry point; null if the
+  whole path is water. `cost.ts` `expectedStrokesRemaining(..., waterDropDistYds)`:
+  water = 1 + fairway from the drop distance (falls back to the landing
+  distance). The trouble map still uses the landing distance.
+- `dataQuality.ts`: `boundaryStatus(geometry)`.
+- Play: the card says "N% of shots landed on unmapped ground. Draw trees
+  or out of bounds to sharpen this." (buttons open the drawing tool) above
+  20%; the data-quality line has a Boundary item, and "No course boundary
+  mapped..." + Mark out of bounds when it's missing. The map draws the
+  boundary (faint dashed), buildings, scrub, residential, roads and tree
+  rows. "How this is scored" rewritten for the new rules.
+- Unchanged: rollout, aim search, cost table values.
+- Tests: new lies.test.ts (20). course.test.ts: two expectations moved
+  from "rough" to "trees" on purpose (points 85 and ~240 yd from any
+  fairway edge); roll.test.ts's hand-made LieMap gained `classify`.
+- Seen on Pebble 1 (default clubs, live OSM): boundary 1 outer + 1 inner
+  ring, 6 buildings, 10 roads. Best club from the tee is 7-Wood; Driver
+  shows 15-22% OB (Lodge buildings / outside the boundary) and ~47-60% of
+  shots on unmapped ground, so the note shows.
+
 
 | File | Purpose |
 |---|---|

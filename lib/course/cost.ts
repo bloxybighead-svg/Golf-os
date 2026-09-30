@@ -76,9 +76,11 @@ export function expectedFromStart(lie: StartLie, distToPinYds: number): number {
  * Expected strokes remaining after a shot ends in `lie`, `distToPinYds` from the pin.
  *
  * Assumptions where the benchmark is silent (water and out of bounds):
- *  - water: one penalty stroke, then played from the fairway column at the
- *    landing distance (a drop near where the ball entered, ignoring lateral
- *    relief options and the chance the drop is in rough).
+ *  - water: one penalty stroke, then played from the fairway column at
+ *    `waterDropDistYds` -- the distance from where the shot last crossed
+ *    into the water (the planner finds it, see plan.ts waterEntryPoint).
+ *    Without it, the landing distance is used. Ignores lateral relief
+ *    options and the chance the drop is in rough.
  *  - out of bounds: stroke and distance -- one penalty stroke, then the shot is
  *    replayed from where it was hit. `origin` says where that was.
  * Trees use the benchmark's "recovery" column (trees, bushes and other trouble).
@@ -86,7 +88,8 @@ export function expectedFromStart(lie: StartLie, distToPinYds: number): number {
 export function expectedStrokesRemaining(
   lie: Lie,
   distToPinYds: number,
-  origin: { distYds: number; lie: StartLie } = { distYds: distToPinYds, lie: "fairway" }
+  origin: { distYds: number; lie: StartLie } = { distYds: distToPinYds, lie: "fairway" },
+  waterDropDistYds?: number
 ): number {
   switch (lie) {
     case "green":
@@ -100,7 +103,7 @@ export function expectedStrokesRemaining(
     case "trees":
       return tourExpected("recovery", distToPinYds)
     case "water":
-      return 1 + tourExpected("fairway", distToPinYds)
+      return 1 + tourExpected("fairway", waterDropDistYds ?? distToPinYds)
     case "oob":
       return 1 + expectedFromStart(origin.lie, origin.distYds)
   }

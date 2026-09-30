@@ -115,7 +115,9 @@ describe("lie map", () => {
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 10, y: 150 }))).toBe("green")
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 0, y: 60 }))).toBe("fairway")
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 60, y: 150 }))).toBe("water")
-    expect(lies.lieAt(fromLocal(ORIGIN, { x: 300, y: 300 }))).toBe("rough")
+    // Session 9: unmapped ground far (here ~240 yd) from any fairway/green/tee
+    // edge is now trees, not rough (was "rough" before lies.ts ROUGH_BAND_YDS).
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 300, y: 300 }))).toBe("trees")
   })
 })
 
@@ -491,7 +493,10 @@ describe("hole data-quality badge", () => {
     expect(corridor.kind).toBe("fairway")
     const lies = buildLieMap(ORIGIN, [corridor])
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 0, y: 75 }))).toBe("fairway") // middle of the corridor
-    expect(lies.lieAt(fromLocal(ORIGIN, { x: 100, y: 75 }))).toBe("rough") // well outside its width
+    // Well outside its width (85 yd off its edge): unmapped ground past the rough band
+    // is trees since Session 9 (was "rough").
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 100, y: 75 }))).toBe("trees")
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 25, y: 75 }))).toBe("rough") // 10 yd off its edge
   })
 
   it("a real hazard still beats the estimated fairway corridor (priority 1: mapped/drawn > 2: fallback)", () => {

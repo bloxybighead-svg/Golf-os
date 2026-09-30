@@ -6,7 +6,7 @@
 
 import { bearingDeg, distanceYds, fromLocal, ringCentroid, type LatLng } from "./geo"
 import { projectOnLine } from "./aim"
-import type { CourseFeature, CourseHole } from "./overpass"
+import type { CourseFeature, CourseGeometry, CourseHole } from "./overpass"
 import type { Lie, UserZone } from "./lies"
 
 export type SurfaceStatus = "mapped" | "hand-drawn" | "estimated" | "missing" | "confirmed-absent"
@@ -73,6 +73,15 @@ export function assessHoleDataQuality(hole: CourseHole, features: CourseFeature[
     bunkers: checkAlongLine("bunker", "bunker", false),
     water: checkAlongLine("water", "water", false),
   }
+}
+
+/**
+ * Whether the course boundary is mapped. Course-wide, not per hole: without
+ * it nothing counts as out of bounds except buildings, roads, driving ranges
+ * and the golfer's own marks.
+ */
+export function boundaryStatus(geometry: Pick<CourseGeometry, "boundary"> | null): "mapped" | "missing" {
+  return geometry?.boundary && geometry.boundary.outer.length > 0 ? "mapped" : "missing"
 }
 
 const FALLBACK_WIDTH_YDS = 32 // middle of the spec's "30-35 yards wide" range

@@ -7,10 +7,12 @@
 //
 // Two stages per shot: it lands at its carry (landing lie), rolls out
 // (lib/course/roll.ts), and is scored where it STOPS (rest point and lie).
+// A shot that stops in water is played again from where it crossed into the
+// water (waterEntryPoint), not from where it splashed down.
 
 import { bearingDeg, distanceYds, landingPoint, type LatLng } from "./geo"
 import { expectedFromStart, expectedStrokesRemaining, type StartLie } from "./cost"
-import type { Lie, LieMap } from "./lies"
+import type { Lie, LieMap, LieSource } from "./lies"
 import { rollToRest, rollYds } from "./roll"
 import { seededRng } from "@/lib/dispersion/stats"
 
@@ -33,6 +35,8 @@ export interface ClubPlan {
   /** The pattern's average finish point. */
   meanRest: LatLng
   lieShare: Record<Lie, number> // where the shots STOP, fractions summing to 1
+  /** Share of shots that stop on unmapped ground, whose lie is a guess by distance (see lies.ts). */
+  unmappedShare: number
   expectedStrokes: number // this shot + expected strokes remaining afterwards
   /**
    * Strokes gained per shot against the PGA TOUR baseline:
@@ -60,6 +64,61 @@ export interface Landing {
   carryLie: Lie
   /** Carry plus the roll it actually ran (less when a hazard stopped it). */
   totalYds: number
+  /** Whether the lie where it stops is mapped or guessed. */
+  lieSource: LieSource
+  /** For a shot that stops in water: where it last crossed into the water (the drop). Null if not found. */
+  dropPoint: LatLng | null
+}
+
+/**
+ * Above this share of a club's shots stopping on unmapped ground, the planner
+ * says so and asks the golfer to draw what's there. A judgement call: about
+ * one shot in five is enough guesswork to change a club or aim decision.
+ */
+export const UNMAPPED_NOTE_SHARE = 0.2
+
+/** True when enough of a club's pattern rests on guessed ground to warn about it. */
+export function flagsUnmapped(plan: Pick<ClubPlan, "unmappedShare">): boolean {
+  return plan.unmappedShare > UNMAPPED_NOTE_SHARE
+}
+
+/** Step size, yards, when walking back along a shot to find where it went into the water. */
+const WATER_ENTRY_STEP_YDS = 5
+/** Halvings after that step brackets the water's edge: 5 yd / 2^4 = about a third of a yard. */
+const WATER_ENTRY_BISECTIONS = 4
+
+/**
+ * Where a shot that stopped in water last crossed into it: walking back
+ * along its path (the golfer -> where it landed -> where it stopped), the
+ * first spot that isn't water. That's the reference point for the drop.
+ * Null when the whole path back to the golfer is water (nothing to drop at).
+ */
+export function waterEntryPoint(from: LatLng, carryPoint: LatLng, rest: LatLng, lies: LieMap): LatLng | null {
+  const flight = distanceYds(from, carryPoint)
+  const rolled = distanceYds(carryPoint, rest)
+  const total = flight + rolled
+  const flightBearing = bearingDeg(from, carryPoint)
+  const rollBearing = rolled > 0 ? bearingDeg(carryPoint, rest) : flightBearing
+  // Distance s along the path -> point.
+  const at = (s: number) => (s <= flight ? landingPoint(from, flightBearing, s, 0) : landingPoint(carryPoint, rollBearing, s - flight, 0))
+  const wet = (s: number) => lies.lieAt(at(s)) === "water"
+
+  let wetS = total
+  let dryS = total - WATER_ENTRY_STEP_YDS
+  while (dryS > 0 && wet(dryS)) {
+    wetS = dryS
+    dryS -= WATER_ENTRY_STEP_YDS
+  }
+  if (dryS <= 0) {
+    if (wet(0)) return null
+    dryS = 0
+  }
+  for (let i = 0; i < WATER_ENTRY_BISECTIONS; i++) {
+    const mid = (dryS + wetS) / 2
+    if (wet(mid)) wetS = mid
+    else dryS = mid
+  }
+  return at(dryS)
 }
 
 /**
@@ -79,11 +138,20 @@ export function simulateLandings(
 ): Landing[] {
   return shots.map((s) => {
     const carryPoint = landingPoint(from, aimBearing, s.carryYds, s.offlineYds)
-    const carryLie = lies.lieAt(carryPoint)
-    const roll = rollYds(club, carryLie, s.carryYds, rng)
+    const carry = lies.classify(carryPoint)
+    const roll = rollYds(club, carry.lie, s.carryYds, rng)
     // It runs on in the direction it was travelling: from the golfer to where it came down.
-    const rest = rollToRest(carryPoint, carryLie, bearingDeg(from, carryPoint), roll, lies)
-    return { point: rest.point, lie: rest.lie, carryPoint, carryLie, totalYds: s.carryYds + rest.rolledYds }
+    const rest = rollToRest(carryPoint, carry.lie, bearingDeg(from, carryPoint), roll, lies)
+    const lieSource = rest.rolledYds > 0 ? lies.classify(rest.point).source : carry.source
+    return {
+      point: rest.point,
+      lie: rest.lie,
+      carryPoint,
+      carryLie: carry.lie,
+      totalYds: s.carryYds + rest.rolledYds,
+      lieSource,
+      dropPoint: rest.lie === "water" ? waterEntryPoint(from, carryPoint, rest.point, lies) : null,
+    }
   })
 }
 
@@ -103,9 +171,12 @@ function scoreLandings(
   let total = 0
   let lat = 0
   let lng = 0
+  let inferred = 0
   landings.forEach((l, i) => {
     lieShare[l.lie] += 1
-    strokes += 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin)
+    if (l.lieSource === "inferred") inferred += 1
+    const dropDist = l.dropPoint ? distanceYds(l.dropPoint, pin) : undefined
+    strokes += 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin, dropDist)
     carry += shots[i].carryYds
     total += l.totalYds
     lat += l.point.lat
@@ -121,6 +192,7 @@ function scoreLandings(
     meanTotalYds: total / n,
     meanRest: landings.length ? { lat: lat / n, lng: lng / n } : from,
     lieShare,
+    unmappedShare: inferred / n,
     expectedStrokes,
     strokesGained: expectedFromStart(startLie, originDist) - expectedStrokes,
   }

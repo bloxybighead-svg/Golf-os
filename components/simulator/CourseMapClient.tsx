@@ -18,15 +18,16 @@ import type { StartLie } from "@/lib/course/cost"
 import {
   applyConfirmedAbsent,
   assessHoleDataQuality,
+  boundaryStatus,
   estimatedFairwayCorridor,
   type ConfirmableHazard,
   type HoleDataQuality,
   type SurfaceStatus,
 } from "@/lib/course/dataQuality"
 import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
-import { buildLieMap, type Lie, type LieMap, type UserZone } from "@/lib/course/lies"
+import { buildLieMap, ROUGH_BAND_YDS, type Lie, type LieMap, type UserZone } from "@/lib/course/lies"
 import { GEOMETRY_VERSION, type CourseFeature, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
-import { bestAim, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
+import { bestAim, flagsUnmapped, rankClubs, simulateLandings, type ClubShots } from "@/lib/course/plan"
 import { seededSample } from "@/lib/dispersion/stats"
 import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
 import type { Club } from "@/lib/golfer/tables"
@@ -842,7 +843,8 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
       { lat: course.lat, lng: course.lng },
       [...(geometry?.features ?? []), ...extraFeatures],
       geometry?.coast ?? [],
-      zones
+      zones,
+      { boundary: geometry?.boundary ?? null, lines: geometry?.lines ?? [] }
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course, geometry, zones, hole, holeQuality])
@@ -1252,6 +1254,21 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           )}
         </p>
 
+        {flagsUnmapped(chosen) && (
+          <p className="mt-2 text-[11px] text-fg-3">
+            <span className="font-semibold text-warn">{pct(chosen.unmappedShare)}</span> of shots landed on unmapped ground.
+            Draw{" "}
+            <button onClick={() => startDraw("trees")} className="font-semibold text-accent hover:underline">
+              trees
+            </button>{" "}
+            or{" "}
+            <button onClick={() => startDraw("oob")} className="font-semibold text-accent hover:underline">
+              out of bounds
+            </button>{" "}
+            to sharpen this.
+          </p>
+        )}
+
         {holeQuality && (
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
             {(
@@ -1287,14 +1304,31 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
                 </span>
               )
             })}
+            <span className="flex items-center gap-1" title={STATUS_TITLE[boundaryStatus(geometry)]}>
+              {boundaryStatus(geometry) === "mapped" ? (
+                <Check size={12} className="text-accent" />
+              ) : (
+                <X size={12} className="text-danger" />
+              )}
+              <span className="text-fg-3">Boundary</span>
+            </span>
           </div>
         )}
         {holeQuality &&
           (holeQuality.fairway === "estimated" ||
             holeQuality.bunkers === "missing" ||
             holeQuality.water === "missing" ||
-            holeQuality.greens === "missing") && (
+            holeQuality.greens === "missing" ||
+            boundaryStatus(geometry) === "missing") && (
             <div className="mt-1.5 space-y-1 text-[11px] text-fg-3">
+              {boundaryStatus(geometry) === "missing" && (
+                <p>
+                  No course boundary mapped: nothing counts as out of bounds unless you mark it.{" "}
+                  <button onClick={() => startDraw("oob")} className="font-semibold text-accent hover:underline">
+                    Mark out of bounds
+                  </button>
+                </p>
+              )}
               {holeQuality.fairway === "estimated" && (
                 <p>
                   Fairway estimated.{" "}
@@ -1467,7 +1501,11 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
           &ldquo;recovery&rdquo; column. These rules are my assumptions, since the benchmark doesn&rsquo;t cover them.
         </p>
         <p>
-          Shapes come from OpenStreetMap volunteers, so anything untraced counts as rough. The ✓ / ⚠ / ✗ line shows what is
+          Shapes come from OpenStreetMap volunteers. Outside the mapped course boundary is out of bounds, and so are
+          buildings and roads (not cart or walking paths); woods, scrub, tree rows and gardens inside the boundary play as
+          trees. Untraced ground is a guess: rough within {ROUGH_BAND_YDS} yd of a fairway, green or tee, trees beyond that (an
+          estimate), and the card warns when more than a fifth of a club&rsquo;s shots end up on it. A ball in the water is
+          dropped where it last crossed into it, with one penalty stroke. The ✓ / ⚠ / ✗ line shows what is
           mapped, estimated or missing for this hole; Layers → Mark an area outlines trees, water, out of bounds, or a safe
           patch the map got wrong. Your marks beat the map, and a missing fairway is estimated as a corridor down the middle
           until you draw the real one. Slope, wind and elevation aren&rsquo;t modelled. &ldquo;Find best aim&rdquo; re-checks

@@ -11,14 +11,13 @@ const always = (v: number) => () => v // an rng that always returns v (0.5 = no 
 
 /** Lies by distance north of the origin: [fromYds, lie] bands, rough before the first. */
 function bands(...b: [number, Lie][]): LieMap {
-  return {
-    lieAt(p) {
-      const y = toLocal(ORIGIN, p).y
-      let lie: Lie = "rough"
-      for (const [from, l] of b) if (y >= from) lie = l
-      return lie
-    },
+  const lieAt = (p: Parameters<LieMap["lieAt"]>[0]) => {
+    const y = toLocal(ORIGIN, p).y
+    let lie: Lie = "rough"
+    for (const [from, l] of b) if (y >= from) lie = l
+    return lie
   }
+  return { lieAt, classify: (p) => ({ lie: lieAt(p), source: "mapped" }) }
 }
 
 describe("clubGroup", () => {

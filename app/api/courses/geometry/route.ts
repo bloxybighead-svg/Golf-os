@@ -3,12 +3,14 @@ import { applyCorrections } from "@/lib/course/corrections"
 import { courseKey, readCachedGeometry, writeCachedGeometry } from "@/lib/supabase/courseCache"
 import { readCorrections } from "@/lib/supabase/courseCorrections"
 import {
+  boundaryGeometryQuery,
   boundaryQuery,
   coastQuery,
   courseGeometryQuery,
   courseWayIdsQuery,
   parseBoundaries,
   parseCoast,
+  parseBoundaryShape,
   parseOverpass,
   pickBoundary,
   radiusQuery,
@@ -17,7 +19,7 @@ import {
 } from "@/lib/course/overpass"
 
 // Fetches a course's mapped holes, greens, fairways, bunkers, tees and water
-// from OpenStreetMap via the Overpass API (fixed hosts, numeric-only
+// (plus its boundary, woods, scrub, buildings and roads) from OpenStreetMap via the Overpass API (fixed hosts, numeric-only
 // parameters, so nothing user-supplied is ever forwarded as a URL).
 // Data (c) OpenStreetMap contributors, ODbL. Overpass asks clients to send
 // an identifying User-Agent, and its public servers are shared and
@@ -140,6 +142,11 @@ export async function GET(req: NextRequest) {
         const coastEls = await runQuery(coastQuery(chosen.bounds), deadline)
         if (!coastEls) return busy()
         g.coast = parseCoast(coastEls)
+        // The boundary makes everything outside it out of bounds, so it is
+        // required too (a missing one would silently drop that rule).
+        const boundaryEls = await runQuery(boundaryGeometryQuery(chosen), deadline)
+        if (!boundaryEls) return busy()
+        g.boundary = parseBoundaryShape(boundaryEls)
         geometry = g
       }
     }

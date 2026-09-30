@@ -8,15 +8,44 @@
 import { distanceYds, pointInRing, toLocal, type LatLng } from "./geo"
 
 // "trees": mapped woods/forest (punch-out or lost ball). "range": driving range
-// or practice area -- out of play, treated as out of bounds.
-export type FeatureKind = "green" | "fairway" | "bunker" | "water" | "tee" | "trees" | "range"
+// or practice area -- out of play, treated as out of bounds. "building":
+// out of bounds. "scrub" and "residential" (gardens, only counted inside the
+// course boundary) play as trees -- see lies.ts for the full order.
+export type FeatureKind =
+  | "green"
+  | "fairway"
+  | "bunker"
+  | "water"
+  | "tee"
+  | "trees"
+  | "range"
+  | "building"
+  | "scrub"
+  | "residential"
 
-/** Bump when the shape or meaning of CourseGeometry changes; older cached rows are refetched. */
-export const GEOMETRY_VERSION = 3
+/**
+ * Bump when the shape or meaning of CourseGeometry changes; older cached rows are refetched.
+ * 4 (2026-09-30): course boundary, buildings, roads, scrub, tree rows, residential.
+ */
+export const GEOMETRY_VERSION = 4
 
 export interface CourseFeature {
   kind: FeatureKind
   ring: LatLng[]
+}
+
+/** Mapped as centre lines, not areas: roads (out of bounds) and tree rows (trees). */
+export type LineKind = "road" | "treeRow"
+
+export interface CourseLine {
+  kind: LineKind
+  line: LatLng[]
+}
+
+/** The course's leisure=golf_course outline: outer rings, minus holes cut out of it (usually private homes). */
+export interface CourseBoundaryShape {
+  outer: LatLng[][]
+  inner: LatLng[][]
 }
 
 export type CorrectableField = "par" | "tee_lat" | "tee_lng" | "yardage" | "handicap"
@@ -44,6 +73,10 @@ export interface CourseGeometry {
    * (OSM convention), so the ocean needs no polygon of its own.
    */
   coast: LatLng[][]
+  /** Roads and tree rows. Optional: absent from geometry built before version 4. */
+  lines?: CourseLine[]
+  /** The chosen course's boundary; null in the radius fallback (no boundary chosen) or when it couldn't be assembled. */
+  boundary?: CourseBoundaryShape | null
   scope: "course-area" | "radius" // how the features were selected
   version: number
 }
@@ -91,15 +124,90 @@ function featureKind(tags: Record<string, string>): FeatureKind | null {
   }
   if (tags.natural === "water") return "water"
   if (tags.natural === "wood" || tags.landuse === "forest") return "trees"
+  if (tags.building && tags.building !== "no") return "building"
+  if (tags.natural === "scrub") return "scrub"
+  if (tags.landuse === "residential") return "residential"
   return null
+}
+
+// highway=* values that aren't roads a ball would be out of bounds on:
+// walking paths between holes are often not tagged golf=cartpath, and
+// treating them as out of bounds would be badly wrong.
+const NOT_ROADS = new Set([
+  "footway",
+  "path",
+  "steps",
+  "pedestrian",
+  "track",
+  "bridleway",
+  "cycleway",
+  "corridor",
+  "proposed",
+  "construction",
+  "platform",
+])
+
+/** A mapped road (out of bounds), not a cart path, walking path or tunnel. */
+export function isRoad(tags: Record<string, string>): boolean {
+  if (!tags.highway || NOT_ROADS.has(tags.highway)) return false
+  if (tags.golf === "cartpath" || tags.golf_cart === "designated") return false
+  if (tags.area === "yes" || (tags.tunnel && tags.tunnel !== "no")) return false
+  return true
+}
+
+/**
+ * Stitches ways that share end points into closed rings (a multipolygon's
+ * outline is often split into several ways). Rings that can't be closed are
+ * dropped: an open one would draw a false edge across the course.
+ */
+export function joinRings(ways: LatLng[][]): LatLng[][] {
+  const same = (a: LatLng, b: LatLng) => a.lat === b.lat && a.lng === b.lng
+  const left = ways.filter((w) => w.length >= 2).map((w) => [...w])
+  const rings: LatLng[][] = []
+  while (left.length > 0) {
+    let ring = left.shift() as LatLng[]
+    while (!same(ring[0], ring[ring.length - 1])) {
+      const end = ring[ring.length - 1]
+      const i = left.findIndex((w) => same(w[0], end) || same(w[w.length - 1], end))
+      if (i < 0) break
+      const [next] = left.splice(i, 1)
+      ring = ring.concat((same(next[0], end) ? next : [...next].reverse()).slice(1))
+    }
+    if (ring.length >= 4 && same(ring[0], ring[ring.length - 1])) rings.push(ring)
+  }
+  return rings
+}
+
+/** The course outline from `boundaryGeometryQuery`'s answer, or null if it can't be closed. */
+export function parseBoundaryShape(elements: OverpassElement[]): CourseBoundaryShape | null {
+  const outerWays: LatLng[][] = []
+  const innerWays: LatLng[][] = []
+  for (const el of elements) {
+    if (el.type === "way" && el.geometry) outerWays.push(toLatLngs(el.geometry))
+    if (el.type === "relation" && el.members) {
+      for (const m of el.members) {
+        if (m.type !== "way" || !m.geometry) continue
+        ;(m.role === "inner" ? innerWays : outerWays).push(toLatLngs(m.geometry))
+      }
+    }
+  }
+  const outer = joinRings(outerWays)
+  return outer.length > 0 ? { outer, inner: joinRings(innerWays) } : null
 }
 
 export function parseOverpass(elements: OverpassElement[], scope: CourseGeometry["scope"]): CourseGeometry {
   const holes: CourseHole[] = []
   const features: CourseFeature[] = []
+  const lines: CourseLine[] = []
 
   for (const el of elements) {
     const tags = el.tags ?? {}
+
+    if (el.type === "way" && el.geometry && el.geometry.length >= 2 && (isRoad(tags) || tags.natural === "tree_row")) {
+      lines.push({ kind: tags.natural === "tree_row" ? "treeRow" : "road", line: toLatLngs(el.geometry) })
+      continue
+    }
+    if (tags.highway) continue // cart paths and walking paths: not a lie of their own
 
     if (el.type === "way" && tags.golf === "hole" && el.geometry && el.geometry.length >= 2) {
       const ref = parseInt(tags.ref ?? "", 10)
@@ -135,7 +243,7 @@ export function parseOverpass(elements: OverpassElement[], scope: CourseGeometry
 
   holes.sort((a, b) => (a.ref ?? 999) - (b.ref ?? 999))
   markPracticeAreas(holes, features)
-  return { holes, features, coast: [], scope, version: GEOMETRY_VERSION }
+  return { holes, features, coast: [], lines, boundary: null, scope, version: GEOMETRY_VERSION }
 }
 
 const ORPHAN_SAMPLE_YDS = 10
@@ -230,11 +338,12 @@ export function pickBoundary(cands: CourseBoundary[], lat: number, lng: number, 
 const GOLF_TYPES = "hole|green|fairway|bunker|tee|water_hazard|lateral_water_hazard|driving_range"
 
 /**
- * Step 1 of loading a course: the ids of every mapped golf way (and water
- * way) inside one course boundary. Ids only, because Overpass's public
- * servers reject "area + full geometry" queries under load but answer this
- * one. Large lakes mapped as multipolygon relations are not included; the
- * relation queries that would fetch them time out on the public servers.
+ * Step 1 of loading a course: the ids of every mapped golf way (and water,
+ * woods, scrub, tree rows, residential land, buildings and roads) inside one
+ * course boundary. Ids only, because Overpass's public servers reject
+ * "area + full geometry" queries under load but answer this one. Large lakes
+ * mapped as multipolygon relations are not included; the relation queries
+ * that would fetch them time out on the public servers.
  */
 export function courseWayIdsQuery(b: Pick<CourseBoundary, "type" | "id">): string {
   const areaId = (b.type === "way" ? 2400000000 : 3600000000) + b.id
@@ -242,10 +351,19 @@ export function courseWayIdsQuery(b: Pick<CourseBoundary, "type" | "id">): strin
 area(${areaId})->.c;
 (
   way(area.c)["golf"~"^(${GOLF_TYPES})$"];
-  way(area.c)["natural"~"^(water|wood)$"];
-  way(area.c)["landuse"="forest"];
+  way(area.c)["natural"~"^(water|wood|scrub|tree_row)$"];
+  way(area.c)["landuse"~"^(forest|residential)$"];
+  way(area.c)["building"];
+  way(area.c)["highway"];
 );
 out ids;`
+}
+
+/** The chosen course boundary's own outline (a relation's member ways come with it). */
+export function boundaryGeometryQuery(b: Pick<CourseBoundary, "type" | "id">): string {
+  return `[out:json][timeout:25];
+${b.type}(id:${b.id});
+out geom;`
 }
 
 /** Step 2: full geometry for those ways. */
@@ -255,13 +373,19 @@ way(id:${wayIds.join(",")});
 out geom tags;`
 }
 
-/** Fallback when no course boundary is mapped: everything within radiusM. */
+/**
+ * Fallback when no course boundary is mapped: everything within radiusM.
+ * No residential land here -- without a boundary there's no telling the
+ * course's own grounds from the neighbours', so it isn't used.
+ */
 export function radiusQuery(lat: number, lng: number, radiusM: number): string {
   return `[out:json][timeout:40];
 (
   way(around:${radiusM},${lat},${lng})["golf"];
-  way(around:${radiusM},${lat},${lng})["natural"~"^(water|wood)$"];
+  way(around:${radiusM},${lat},${lng})["natural"~"^(water|wood|scrub|tree_row)$"];
   way(around:${radiusM},${lat},${lng})["landuse"="forest"];
+  way(around:${radiusM},${lat},${lng})["building"];
+  way(around:${radiusM},${lat},${lng})["highway"];
   relation(around:${radiusM},${lat},${lng})["natural"="water"];
 );
 out geom tags;`

@@ -37,7 +37,7 @@ export async function readCachedGeometry(key: string): Promise<CourseGeometry | 
     if (error || !data) return null
     if (Date.now() - new Date(data.fetched_at).getTime() > CACHE_MAX_AGE_MS) return null
     const g = data.geometry as CourseGeometry
-    // Rows written by an older geometry version lack newer feature kinds (trees, range): refetch.
+    // Rows written by an older geometry version lack newer data (trees, range; v4: boundary, buildings, roads): refetch.
     if (!g || g.version !== GEOMETRY_VERSION || !Array.isArray(g.holes) || g.holes.length === 0) return null
     return { ...g, coast: g.coast ?? [] }
   } catch {
