@@ -1,3 +1,4 @@
+-- Applied to project clgjzoedmtguchilmkdj (migration: round_holes).
 -- Hole-by-hole scores for a round. The round's summary stats (fairways %,
 -- GIR %, miss left/right %, putts, 3-putts, up-and-downs, penalties, score,
 -- par) are computed from these rows when the round is saved
@@ -21,7 +22,7 @@ create table if not exists public.round_holes (
   unique (round_id, hole_number)
 );
 
-create index if not exists round_holes_round_id_idx on public.round_holes (round_id);
+create index if not exists round_holes_user_id_idx on public.round_holes (user_id);
 
 alter table public.round_holes enable row level security;
 create policy "select own round_holes" on public.round_holes for select using (auth.uid() = user_id);

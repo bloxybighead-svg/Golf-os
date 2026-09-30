@@ -46,11 +46,11 @@ create table if not exists session_blocks (
 );
 
 -- ============================================================
--- RLS: disabled for now (personal tracker, no auth yet)
--- Re-enable and add policies when you add user accounts
+-- RLS: ON for drills, practice_sessions and session_blocks, with owner-only
+-- policies (supabase/per_user_data.sql). Never disable it.
 -- ============================================================
-alter table drills             disable row level security;
-alter table practice_sessions  disable row level security;
-alter table session_blocks     disable row level security;
+alter table drills             enable row level security;
+alter table practice_sessions  enable row level security;
+alter table session_blocks     enable row level security;
 
 -- Seed drills: add your own via the app or paste an insert block here

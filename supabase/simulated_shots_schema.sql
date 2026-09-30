@@ -56,6 +56,5 @@ create index if not exists idx_simulated_shots_profile    on simulated_shots (go
 create index if not exists idx_simulated_shots_batch      on simulated_shots (batch_id);
 create index if not exists idx_simulated_shots_club_carry on simulated_shots (club, carry_yds);
 
--- Single-user app, no auth yet — same as every other table in this schema.
-alter table golfer_profiles disable row level security;
-alter table simulated_shots disable row level security;
+-- Row level security is ON for these tables: anyone can read, only the
+-- service-role key can write (supabase/simulator_rls_migration.sql).

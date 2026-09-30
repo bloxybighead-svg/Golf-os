@@ -10,5 +10,6 @@ create table if not exists milestones (
   created_at timestamptz default now()
 );
 
--- Single-user app, no auth yet
-alter table milestones disable row level security;
+-- Row level security is ON for this table, with owner-only policies
+-- (supabase/per_user_data.sql). Never disable it: that would expose every
+-- golfer's rows to anyone with the public key.

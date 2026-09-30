@@ -1556,6 +1556,33 @@ by tapping through its holes, and the box score is computed from the taps.
   signed-in save** (no test credentials).
 - Not done: pars aren't prefilled from the course (default 4, one tap to
   change); a 9-hole round is numbered 1-9 even if it was the back nine.
+- 2026-09-30: `round_holes` applied (migration `round_holes`). Checked in
+  a rolled-back transaction: the owner sees their 2 test holes, another
+  user sees 0 and is blocked (42501) from adding holes to that round; anon
+  select -> [], anon insert -> 42501.
+
+### Supabase security check (2026-09-30)
+
+- RLS is ON for all 19 public tables (pg_class.relrowsecurity). Private
+  tables (rounds, round_holes, handicap_tracking, golfer_baseline,
+  round_analysis, milestones, practice_sessions, session_blocks, drills,
+  user_drills, course_zones) are owner-only and return [] to the public
+  key. Public-read by design: course_geometry, course_corrections,
+  drill_library, sg_benchmarks, wedge_reference, golfer_profiles,
+  real_shots, simulated_shots (Play shows Dillon's shots signed out).
+  course_corrections is also editable by any signed-in user (shared
+  course fixes) -- deliberate, revisit if the app gets strangers.
+- Passwords are not readable: the auth schema isn't exposed by the API
+  (PGRST106) and the admin user list returns 403 to the public key.
+- The one security advisor warning is "Leaked Password Protection
+  Disabled" -- an Auth setting (reject passwords found in known breaches,
+  via HaveIBeenPwned), not a leak. It is a dashboard toggle and can't be
+  set from SQL.
+- The old schema files (schema.sql, rounds_schema.sql,
+  milestones_schema.sql, real_shots_schema.sql,
+  simulated_shots_schema.sql) still said `disable row level security`
+  from the single-user days; re-running one would have switched RLS off.
+  Those lines are gone.
 
 ## Files
 

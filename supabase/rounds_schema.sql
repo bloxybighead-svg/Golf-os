@@ -17,8 +17,6 @@ create table if not exists rounds (
   created_at     timestamptz default now()
 );
 
--- RLS disabled for now (no auth yet — single-user app)
--- When you add Supabase Auth, re-enable with:
---   alter table rounds enable row level security;
---   create policy "owner" on rounds using (auth.uid() = user_id);
-alter table rounds disable row level security;
+-- Row level security is ON for this table, with owner-only policies
+-- (supabase/per_user_data.sql). Never disable it: that would expose every
+-- golfer's rows to anyone with the public key.

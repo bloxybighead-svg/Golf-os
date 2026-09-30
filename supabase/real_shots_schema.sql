@@ -22,5 +22,5 @@ create table if not exists real_shots (
 
 create index if not exists idx_real_shots_golfer_club on real_shots (golfer_name, club);
 
--- Single-user app, no auth yet — same as every other table in this schema.
-alter table real_shots disable row level security;
+-- Row level security is ON for this table: anyone can read, only the
+-- service-role key can write (supabase/simulator_rls_migration.sql).
