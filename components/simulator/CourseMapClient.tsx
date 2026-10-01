@@ -100,6 +100,7 @@ import { usePlannerSettings } from "@/hooks/usePlannerSettings"
 import { useAuthUser } from "@/hooks/useAuthUser"
 import { useCourseGeometry, type AutoHole, type OnGeometryApplied } from "@/hooks/useCourseGeometry"
 import { useZones } from "@/hooks/useZones"
+import { useBallPosition } from "@/hooks/useBallPosition"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -184,7 +185,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
 
   // --- positions ---
   const [holeId, setHoleId] = useState<string | null>(null)
-  const [ball, setBall] = useState<LatLng | null>(null)
   const [aimManual, setAimManual] = useState<LatLng | null>(null)
   const [pinManual, setPinManual] = useState<LatLng | null>(null)
   const [placing, setPlacing] = useState<Placing>("ball")
@@ -222,19 +222,13 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   // Rendered through a portal (see below), so its position is tracked in viewport
   // coordinates rather than relying on CSS positioning relative to an ancestor.
   const [layersMenuPos, setLayersMenuPos] = useState<{ top: number; left: number } | null>(null)
-  const [following, setFollowing] = useState(false)
-  const [gpsAccuracyYds, setGpsAccuracyYds] = useState<number | null>(null)
   const mapWrapRef = useRef<HTMLDivElement>(null)
-  const watchId = useRef<number | null>(null)
-  const lastFollowAt = useRef(0)
-  const [gpsError, setGpsError] = useState("")
-  // Why the last GPS reading didn't move the ball (weak signal, or a jump), until one does.
-  const [gpsNote, setGpsNote] = useState("")
-  const gpsTrack = useRef<GpsTrack>(EMPTY_TRACK) // the readings that moved the ball while following, for judging the next
   const [fit, setFit] = useState<{ bounds: [[number, number], [number, number]] | null; key: string }>({
     bounds: null,
     key: "none",
   })
+  const ballState = useBallPosition({ setClubChoice, setFit })
+  const { ball, setBall, following, gpsAccuracyYds, gpsError, gpsNote, stopFollowing, moveBallTo, toggleFollow } = ballState
 
   // ---------- remembered settings and recent courses (this device only) ----------
   // Runs once. The guard matters in development, where React runs mount effects
@@ -276,13 +270,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
   }, [sheetOpen])
-
-  // Stop GPS following when leaving the page.
-  useEffect(() => {
-    return () => {
-      if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current)
-    }
-  }, [])
 
   // Close the Layers menu on an outside tap. A visual backdrop element would need its
   // z-index compared against the map's own stacking context (the map wrapper below establishes
@@ -613,123 +600,8 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     await geo.submitHoleCorrection(input, { supabase, authUser, hole, onApplied: applyGeometry })
   }
 
-  function stopFollowing() {
-    if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current)
-    watchId.current = null
-    setFollowing(false)
-    setGpsAccuracyYds(null)
-    setGpsNote("")
-    gpsTrack.current = EMPTY_TRACK
-  }
-
-  function fixFrom(pos: GeolocationPosition): GpsFix {
-    return {
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
-      accuracyYds: Math.round(pos.coords.accuracy * YD_PER_M),
-      t: pos.timestamp || Date.now(),
-    }
-  }
-
-  // Every ball move asks for the best club again; a club picked to check its
-  // numbers only holds until the ball moves.
-  function moveBallTo(p: LatLng) {
-    setBall(p)
-    setClubChoice("auto")
-  }
-
-  // Keeps the ball on your live GPS position (about every 2.5 s) so the yardages
-  // update as you walk -- but only on readings worth trusting (lib/course/gps.ts):
-  // within 20 yd, and no faster than a cart could have taken you there.
-  function toggleFollow() {
-    if (following) {
-      stopFollowing()
-      return
-    }
-    setGpsError("")
-    setGpsNote("")
-    if (!navigator.geolocation) {
-      setGpsError("This browser has no location access.")
-      return
-    }
-    gpsTrack.current = EMPTY_TRACK
-    setFollowing(true)
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const now = Date.now()
-        if (now - lastFollowAt.current < 2500) return
-        const next = fixFrom(pos)
-        setGpsAccuracyYds(next.accuracyYds)
-        const { verdict, track } = judgeFix(gpsTrack.current, next)
-        gpsTrack.current = track
-        if (verdict === "inaccurate") {
-          setGpsNote(`Weak GPS signal (±${next.accuracyYds} yd). Ball not moved.`)
-          return
-        }
-        if (verdict === "jump") {
-          setGpsNote("GPS jumped. Ball not moved until it settles.")
-          return
-        }
-        lastFollowAt.current = now
-        setGpsNote("")
-        moveBallTo({ lat: next.lat, lng: next.lng })
-      },
-      (err) => {
-        setGpsError(err.code === err.PERMISSION_DENIED ? "Location permission was denied." : "Couldn't get your location.")
-        stopFollowing()
-      },
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 }
-    )
-  }
-
-  // One tap: waits up to 10 s for a reading within 20 yd (the first one a
-  // phone reports is often a coarse guess), then moves the ball there once.
   function useMyLocation() {
-    setGpsError("")
-    setGpsNote("")
-    if (!navigator.geolocation) {
-      setGpsError("This browser has no location access.")
-      return
-    }
-    let best: GpsFix | null = null
-    let done = false
-    const finish = (id: number) => {
-      done = true
-      navigator.geolocation.clearWatch(id)
-      clearTimeout(timer)
-    }
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        if (done) return
-        const next = fixFrom(pos)
-        if (!best || next.accuracyYds < best.accuracyYds) best = next
-        if (judgeFix(EMPTY_TRACK, next).verdict !== "accept") {
-          setGpsNote(`Finding you… ±${next.accuracyYds} yd so far.`)
-          return
-        }
-        finish(id)
-        setGpsNote("")
-        const p = { lat: next.lat, lng: next.lng }
-        moveBallTo(p)
-        setFit({ bounds: boundsOf([p, ...(pin ? [pin] : [])]), key: `gps-${Date.now()}` })
-      },
-      (err) => {
-        if (done) return
-        finish(id)
-        setGpsNote("")
-        setGpsError(err.code === err.PERMISSION_DENIED ? "Location permission was denied." : "Couldn't get your location.")
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
-    )
-    const timer = setTimeout(() => {
-      if (done) return
-      finish(id)
-      setGpsNote(
-        best
-          ? `Weak GPS signal (±${best.accuracyYds} yd). Ball not moved; tap the map to place it.`
-          : "No GPS fix yet. Tap the map to place the ball."
-      )
-    }, 10000)
+    ballState.useMyLocation(pin)
   }
 
   const stats = useMemo(() => {
