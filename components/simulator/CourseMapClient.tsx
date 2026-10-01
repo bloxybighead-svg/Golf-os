@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
-import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight, Layers, Loader2, RefreshCw, RotateCcw, Undo2, X, type LucideIcon } from "lucide-react"
+import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight, Layers, Loader2, RefreshCw, RotateCcw, Undo2, X } from "lucide-react"
 import dynamic from "next/dynamic"
 import {
   bearingDeg,
@@ -87,6 +87,7 @@ import {
   type NoHazardMap,
 } from "@/lib/planner/storage"
 import { boundsOf, holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
+import { LayerMenuItem, Stat, ToolButton } from "@/components/planner/ui"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -2146,63 +2147,5 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
         </div>
       )}
     </div>
-  )
-}
-
-// ---------- small presentational helpers ----------
-
-function Stat({ label, value }: { label: string; value: number | null }) {
-  return (
-    <div className="px-2">
-      <dt className="text-[11px] uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="text-2xl font-semibold leading-tight text-fg tabular-nums">
-        {value ?? "–"}
-        <span className="ml-0.5 text-xs font-normal text-muted">yd</span>
-      </dd>
-    </div>
-  )
-}
-
-// Icon-only (44px) on phones, icon + label from tablet up.
-function ToolButton({
-  onClick,
-  icon: Icon,
-  label,
-  active,
-}: {
-  onClick: () => void
-  icon: LucideIcon
-  label: string
-  active?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      aria-label={label}
-      title={label}
-      className={`flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border font-medium transition-colors md:h-9 md:w-auto md:px-3 ${
-        active ? "border-accent text-accent" : "border-fg/[0.08] text-fg-3 hover:border-fg/20 hover:text-fg"
-      }`}
-    >
-      <Icon size={15} />
-      <span className="hidden md:inline">{label}</span>
-    </button>
-  )
-}
-
-// A full-width row inside the Layers menu.
-function LayerMenuItem({ onClick, label, active }: { onClick: () => void; label: string; active?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      className={`flex min-h-[40px] w-full items-center justify-between gap-2 rounded-md px-2.5 text-left text-sm ${
-        active ? "text-accent" : "text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
-      }`}
-    >
-      {label}
-      {active && <Check size={14} />}
-    </button>
   )
 }
