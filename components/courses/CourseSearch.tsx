@@ -24,6 +24,7 @@ export function CourseSearch({
   const [hits, setHits] = useState<CourseRef[]>([])
   const [searching, setSearching] = useState(false)
   const [open, setOpen] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     const q = value.trim()
@@ -36,7 +37,9 @@ export function CourseSearch({
       setSearching(true)
       try {
         const res = await fetch(`/api/courses/search?q=${encodeURIComponent(q)}`, { signal: ctl.signal })
-        setHits(((await res.json()).courses ?? []) as CourseRef[])
+        const data = await res.json()
+        setError(res.ok ? "" : data?.error ?? "Search failed.")
+        setHits((data.courses ?? []) as CourseRef[])
       } catch {
         /* aborted or offline: free text still works */
       } finally {
@@ -65,7 +68,7 @@ export function CourseSearch({
       {open && value.trim().length >= 3 && (
         <ul className="absolute left-0 right-0 top-full z-20 mt-1 max-h-72 divide-y divide-fg/[0.06] overflow-y-auto rounded-lg border border-fg/[0.08] bg-page shadow-2xl">
           {searching && hits.length === 0 && <li className="px-3 py-2.5 text-sm text-muted">Searching…</li>}
-          {!searching && hits.length === 0 && <li className="px-3 py-2.5 text-sm text-muted">Not listed: keep typing to use this name.</li>}
+          {!searching && hits.length === 0 && <li className="px-3 py-2.5 text-sm text-muted">{error || "Not listed: keep typing to use this name."}</li>}
           {hits.map((h) => (
             <li key={h.id}>
               <button

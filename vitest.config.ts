@@ -7,4 +7,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "."),
     },
   },
+  // Compile .tsx tests with the automatic JSX runtime (components don't import React),
+  // so component smoke tests can render to HTML with react-dom/server.
+  esbuild: { jsx: "automatic" },
 })

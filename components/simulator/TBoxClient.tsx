@@ -59,6 +59,7 @@ export function TBoxClient({ knownCourses, defaultDriverCarryYds }: Props) {
     try {
       const res = await fetch(`/api/courses/search?q=${encodeURIComponent(query)}`)
       const data = await res.json()
+      if (!res.ok) setSearchError(data?.error ?? "Search failed. Try again.")
       setSearchResults(data.courses ?? [])
     } catch {
       setSearchError("Search failed. Try again.")

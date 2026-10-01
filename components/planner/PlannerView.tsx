@@ -32,6 +32,7 @@ const CourseMap = dynamic(() => import("@/components/simulator/CourseMap"), {
 
 export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }: { vm: PlannerVM } & Omit<Props, "baseline">) {
   const {
+    loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, chipParts,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
@@ -137,6 +138,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
       onQueryChange={setQuery}
       searching={searching}
       searched={searched}
+      searchError={searchError}
       hits={hits}
       onChooseCourse={chooseCourse}
       course={course}
@@ -271,9 +273,15 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
       {loadState === "error" && course && (
         <p className="text-xs text-danger">
           {loadError}{" "}
-          <button onClick={() => loadCourse(course, { autoFirstHole: true })} className="font-semibold underline">
-            Retry
-          </button>
+          {loadNeedsSignIn ? (
+            <Link href="/login?redirect=%2F" className="font-semibold underline">
+              Sign in
+            </Link>
+          ) : (
+            <button onClick={() => loadCourse(course, { autoFirstHole: true })} className="font-semibold underline">
+              Retry
+            </button>
+          )}
         </p>
       )}
       {loadState === "idle" && loadError && <p className="text-xs text-muted">{loadError}</p>}

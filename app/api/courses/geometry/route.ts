@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { applyCorrections } from "@/lib/course/corrections"
 import { courseKey, readCachedGeometry, writeCachedGeometry } from "@/lib/supabase/courseCache"
 import { readCorrections } from "@/lib/supabase/courseCorrections"
+import { createClient } from "@/lib/supabase/server"
+import { hitRateLimit, rateLimitBucket, RATE_LIMITS, tooManyRequests } from "@/lib/supabase/rateLimit"
 import {
   boundaryGeometryQuery,
   boundaryQuery,
@@ -24,6 +26,14 @@ import {
 // Data (c) OpenStreetMap contributors, ODbL. Overpass asks clients to send
 // an identifying User-Agent, and its public servers are shared and
 // sometimes busy, so each query races two servers, up to three times, within a 52 s budget.
+//
+// Courses already in the Supabase cache (course_geometry) are served to
+// everyone, signed in or not. A fresh OpenStreetMap fetch -- a cache miss or
+// "Refresh course data" -- needs a signed-in golfer and is limited to
+// RATE_LIMITS.geometryMiss per golfer per hour, so nobody can hammer the
+// public Overpass servers through this route. (No in-memory caches: on
+// serverless they only lived as long as one instance; the CDN header below
+// and the Supabase cache are the real ones.)
 export const maxDuration = 60
 
 const OVERPASS_HOSTS = [
@@ -31,8 +41,6 @@ const OVERPASS_HOSTS = [
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ]
 const USER_AGENT = "golf-os-capstone/0.1 (shot dispersion research project)"
-const CACHE_TTL_MS = 6 * 3600 * 1000
-const queryCache = new Map<string, { at: number; els: OverpassElement[] }>()
 const BOUNDARY_SEARCH_RADIUS_M = 1000
 const FALLBACK_RADIUS_M = 900
 
@@ -51,16 +59,6 @@ async function askHost(host: string, query: string, timeoutMs: number, signal: A
 
 /** Ask both servers at once and take the first good answer; retry if both are busy. */
 async function runQuery(query: string, deadline: number): Promise<OverpassElement[] | null> {
-  // Remember each successful query so that a retry after a partial failure
-  // only re-asks the queries that failed.
-  const cached = queryCache.get(query)
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.els
-  const els = await runQueryUncached(query, deadline)
-  if (els) queryCache.set(query, { at: Date.now(), els })
-  return els
-}
-
-async function runQueryUncached(query: string, deadline: number): Promise<OverpassElement[] | null> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const left = deadline - Date.now()
     if (left < 3000) return null
@@ -77,10 +75,6 @@ async function runQueryUncached(query: string, deadline: number): Promise<Overpa
   return null
 }
 
-// Per-instance memory caches on top of the CDN cache header below: Overpass
-// is slow (5-30 s), and repeat loads of the same course shouldn't pay again.
-const cache = new Map<string, { at: number; body: unknown }>()
-
 export async function GET(req: NextRequest) {
   const lat = Number(req.nextUrl.searchParams.get("lat"))
   const lng = Number(req.nextUrl.searchParams.get("lng"))
@@ -90,7 +84,6 @@ export async function GET(req: NextRequest) {
   }
   const qLat = Math.round(lat * 1e4) / 1e4
   const qLng = Math.round(lng * 1e4) / 1e4
-  const key = `${qLat},${qLng},${name ?? ""}`
   const dbKey = courseKey(req.nextUrl.searchParams.get("id"))
   // "Refresh course data": skip every cache layer and re-fetch from OpenStreetMap, then
   // overwrite whatever was cached so the NEXT normal load (no force) picks up the refresh.
@@ -98,23 +91,33 @@ export async function GET(req: NextRequest) {
   const CDN = force ? "no-store" : "public, s-maxage=86400, stale-while-revalidate=604800"
   // Applied fresh on every request, on top of whatever cache layer served the geometry --
   // never baked into the cached copy itself -- so a new correction takes effect on the very
-  // next load instead of waiting for that cache to expire (90 days for Supabase, 6h in-memory).
+  // next load instead of waiting for that cache to expire (90 days for Supabase).
   const corrections = dbKey ? await readCorrections(dbKey) : []
   const withCorrections = (g: CourseGeometry) => applyCorrections(g, corrections)
 
-  // 1) in-memory (this server instance), 2) Supabase (shared, survives deploys)
-  if (!force) {
-    const hit = cache.get(key)
-    if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-      return NextResponse.json(withCorrections(hit.body as CourseGeometry), { headers: { "Cache-Control": CDN, "X-Course-Cache": "memory" } })
+  // Cached courses: for everyone, unlimited.
+  if (!force && dbKey) {
+    const stored = await readCachedGeometry(dbKey)
+    if (stored) {
+      return NextResponse.json(withCorrections(stored), { headers: { "Cache-Control": CDN, "X-Course-Cache": "supabase" } })
     }
-    if (dbKey) {
-      const stored = await readCachedGeometry(dbKey)
-      if (stored) {
-        cache.set(key, { at: Date.now(), body: stored })
-        return NextResponse.json(withCorrections(stored), { headers: { "Cache-Control": CDN, "X-Course-Cache": "supabase" } })
-      }
-    }
+  }
+
+  // A fresh OpenStreetMap fetch: signed-in golfers only, RATE_LIMITS.geometryMiss an hour each.
+  const {
+    data: { user },
+  } = await createClient().auth.getUser()
+  if (!user) {
+    return NextResponse.json(
+      { error: "Sign in to load a course that hasn't been loaded before.", signIn: true },
+      { status: 401, headers: { "Cache-Control": "no-store" } }
+    )
+  }
+  if (!(await hitRateLimit("geometryMiss", rateLimitBucket("geometryMiss", { userId: user.id })))) {
+    return tooManyRequests(
+      `You've loaded ${RATE_LIMITS.geometryMiss.max} new courses in the last hour. Courses already loaded still work; try a new one again later.`,
+      RATE_LIMITS.geometryMiss.windowSeconds
+    )
   }
 
   const deadline = Date.now() + 52000
@@ -158,7 +161,6 @@ export async function GET(req: NextRequest) {
   }
   let writeStatus = "not-attempted"
   if (geometry.scope === "course-area") {
-    cache.set(key, { at: Date.now(), body: geometry })
     // Only persist plausible single courses (9 or 18 holes): a boundary that
     // swallows several courses would otherwise be saved and served as wrong data.
     const plausible = geometry.holes.length === 9 || geometry.holes.length === 18

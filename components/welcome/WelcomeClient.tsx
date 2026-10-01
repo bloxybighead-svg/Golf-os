@@ -43,6 +43,7 @@ export function WelcomeClient({
   const [query, setQuery] = useState("")
   const [hits, setHits] = useState<CourseRef[]>([])
   const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -79,7 +80,9 @@ export function WelcomeClient({
       setSearching(true)
       try {
         const res = await fetch(`/api/courses/search?q=${encodeURIComponent(q)}`, { signal: ctl.signal })
-        setHits(((await res.json()).courses ?? []) as CourseRef[])
+        const data = await res.json()
+        setSearchError(res.ok ? "" : data?.error ?? "Search failed.")
+        setHits((data.courses ?? []) as CourseRef[])
       } catch {
         /* aborted or offline */
       } finally {
@@ -207,7 +210,7 @@ export function WelcomeClient({
             {query.trim().length >= 3 && (
               <ul className="divide-y divide-fg/[0.06] rounded-lg border border-fg/[0.08] bg-surface">
                 {searching && hits.length === 0 && <li className="px-3 py-2.5 text-sm text-muted">Searching…</li>}
-                {!searching && hits.length === 0 && <li className="px-3 py-2.5 text-sm text-muted">No courses found.</li>}
+                {!searching && hits.length === 0 && <li className="px-3 py-2.5 text-sm text-muted">{searchError || "No courses found."}</li>}
                 {hits.map((h) => (
                   <li key={h.id}>
                     <button

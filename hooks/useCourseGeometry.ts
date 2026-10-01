@@ -31,6 +31,9 @@ export function useCourseGeometry() {
   const [editingHole, setEditingHole] = useState(false)
   const [correctionSubmitting, setCorrectionSubmitting] = useState(false)
   const [correctionNote, setCorrectionNote] = useState<string | null>(null)
+  // The last load was refused because it needs a signed-in golfer (a course not cached yet).
+  const [loadNeedsSignIn, setLoadNeedsSignIn] = useState(false)
+  const [searchError, setSearchError] = useState("")
 
   // ---------- course search ----------
   useEffect(() => {
@@ -46,6 +49,7 @@ export function useCourseGeometry() {
       try {
         const res = await fetch(`/api/courses/search?q=${encodeURIComponent(q)}`, { signal: ctl.signal })
         const data = await res.json()
+        setSearchError(res.ok ? "" : data?.error ?? "Search failed.")
         setHits(data.courses ?? [])
         setSearched(true)
       } catch {
@@ -97,9 +101,10 @@ export function useCourseGeometry() {
     }
     setLoadState("loading")
     setLoadError("")
-    // The free map-data servers are often busy. The API route keeps whatever
-    // it already fetched, so retrying picks up where the last try stopped.
+    setLoadNeedsSignIn(false)
+    // The free map-data servers are often busy, so a failed load is retried.
     // force=1 also skips the server's own (Supabase) cache, so a stale entry there gets replaced.
+    // Not retried: 401 (a new course needs a signed-in golfer) and 429 (too many new courses this hour).
     const url = `/api/courses/geometry?lat=${c.lat}&lng=${c.lng}&name=${encodeURIComponent(c.name)}&id=${encodeURIComponent(c.id)}&v=${GEOMETRY_VERSION}${opts?.force ? "&force=1" : ""}`
     let lastError = "Could not load course map data"
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -107,6 +112,11 @@ export function useCourseGeometry() {
       try {
         const res = await fetch(url)
         const data = await res.json().catch(() => null)
+        if (res.status === 401 || res.status === 429) {
+          lastError = data?.error ?? lastError
+          setLoadNeedsSignIn(res.status === 401)
+          break
+        }
         if (!res.ok || !data) throw new Error(data?.error ?? lastError)
         const g = { ...(data as CourseGeometry), coast: (data as CourseGeometry).coast ?? [] }
         apply(g)
@@ -209,6 +219,8 @@ export function useCourseGeometry() {
     setEditingHole,
     correctionSubmitting,
     correctionNote,
+    loadNeedsSignIn,
+    searchError,
     fetchGeometry,
     refreshCourseData,
     submitHoleCorrection,

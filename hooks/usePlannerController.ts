@@ -34,7 +34,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
   const {
     query, setQuery, hits, setHits, searching, searched, course, setCourse, geometry, setGeometry, loadState,
     setLoadState, loadError, setLoadError, refreshing, initialZoom, setInitialZoom, editingHole,
-    setEditingHole, correctionSubmitting, correctionNote,
+    setEditingHole, correctionSubmitting, correctionNote, loadNeedsSignIn, searchError,
   } = geo
 
   // --- golfer (whose shots, bag, carries; saved on this device) ---
@@ -310,6 +310,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
     : [loadState === "loading" ? "Loading course…" : "Find a course"]
 
   return {
+    loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, chipParts,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,

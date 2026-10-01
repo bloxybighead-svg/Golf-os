@@ -30,6 +30,8 @@ export interface CoursePickerSheetProps {
   onQueryChange: (q: string) => void
   searching: boolean
   searched: boolean
+  /** Why the last search failed (e.g. too many searches), shown instead of "No courses found". */
+  searchError: string
   hits: CourseHit[]
   onChooseCourse: (c: CourseHit) => void
   course: CourseHit | null
@@ -66,6 +68,7 @@ export function CoursePickerSheet({
   onQueryChange,
   searching,
   searched,
+  searchError,
   hits,
   onChooseCourse,
   course,
@@ -128,7 +131,9 @@ export function CoursePickerSheet({
             {query.trim().length >= 3 ? (
               <ul className="divide-y divide-fg/[0.06]">
                 {searching && hits.length === 0 && <li className="px-4 py-3 text-sm text-muted">Searching…</li>}
-                {!searching && searched && hits.length === 0 && <li className="px-4 py-3 text-sm text-muted">No courses found.</li>}
+                {!searching && searched && hits.length === 0 && (
+                  <li className="px-4 py-3 text-sm text-muted">{searchError || "No courses found."}</li>
+                )}
                 {hits.map((h) => (
                   <li key={h.id}>
                     <button
