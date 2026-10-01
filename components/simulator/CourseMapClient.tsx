@@ -91,6 +91,7 @@ import { LayerMenuItem, Stat, ToolButton } from "@/components/planner/ui"
 import { ScoringDetails } from "@/components/planner/ScoringDetails"
 import { ClubTable } from "@/components/planner/ClubTable"
 import { ResultCard } from "@/components/planner/ResultCard"
+import { LayersMenu } from "@/components/planner/LayersMenu"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -1109,80 +1110,28 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
 
   const scoringDetails = <ScoringDetails baselineHandicap={baselineHandicap} />
 
-  const layersMenu =
-    showLayersMenu &&
-    layersMenuPos &&
-    createPortal(
-      // Rendered through a portal to document.body, not inline: the map sits in its own
-      // stacking context (Leaflet's CSS), which made a same-tree dropdown paint underneath it.
-      <div
-        style={{ top: layersMenuPos.top, left: layersMenuPos.left }}
-        className="fixed z-[1300] max-h-[70svh] w-56 space-y-0.5 overflow-y-auto rounded-lg border border-fg/[0.1] bg-page p-1.5 shadow-2xl"
-      >
-        <LayerMenuItem
-          onClick={() => {
-            useMyLocation()
-            setShowLayersMenu(false)
-          }}
-          label="My location"
-        />
-        <LayerMenuItem
-          onClick={() => {
-            toggleFollow()
-            setShowLayersMenu(false)
-          }}
-          active={following}
-          label={following ? `Following${gpsAccuracyYds != null ? ` ±${gpsAccuracyYds} yd${gpsNote ? ", weak" : ""}` : "…"}` : "Follow GPS"}
-        />
-        <LayerMenuItem
-          onClick={() => {
-            setShowTrouble((v) => !v)
-            setShowLayersMenu(false)
-          }}
-          active={showTrouble}
-          label="Trouble map"
-        />
-        <LayerMenuItem
-          onClick={() => {
-            setShowRings((v) => !v)
-            setShowLayersMenu(false)
-          }}
-          active={showRings}
-          label="Shot rings"
-        />
-        <LayerMenuItem
-          onClick={() => {
-            setShowCarry((v) => !v)
-            setShowLayersMenu(false)
-          }}
-          active={showCarry}
-          label="Show carry points"
-        />
-        {zones.length > 0 && (
-          <LayerMenuItem
-            onClick={() => {
-              setShowZones((v) => !v)
-              setShowLayersMenu(false)
-            }}
-            active={showZones}
-            label="My marks"
-          />
-        )}
-        <p className="px-2.5 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wider text-muted">Mark an area</p>
-        {DRAW_KINDS.map((k) => (
-          <LayerMenuItem
-            key={k}
-            onClick={() => {
-              startDraw(k)
-              setShowLayersMenu(false)
-            }}
-            active={drawKind === k}
-            label={LIE_LABEL[k]}
-          />
-        ))}
-      </div>,
-      document.body
-    )
+  const layersMenu = showLayersMenu && layersMenuPos && (
+    <LayersMenu
+      pos={layersMenuPos}
+      onClose={() => setShowLayersMenu(false)}
+      onMyLocation={useMyLocation}
+      onToggleFollow={toggleFollow}
+      following={following}
+      gpsAccuracyYds={gpsAccuracyYds}
+      gpsNote={gpsNote}
+      showTrouble={showTrouble}
+      onToggleTrouble={() => setShowTrouble((v) => !v)}
+      showRings={showRings}
+      onToggleRings={() => setShowRings((v) => !v)}
+      showCarry={showCarry}
+      onToggleCarry={() => setShowCarry((v) => !v)}
+      hasZones={zones.length > 0}
+      showZones={showZones}
+      onToggleZones={() => setShowZones((v) => !v)}
+      drawKind={drawKind}
+      onStartDraw={startDraw}
+    />
+  )
 
   const pickerSheet =
     pickerOpen &&
