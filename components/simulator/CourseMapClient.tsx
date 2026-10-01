@@ -68,6 +68,25 @@ import { PlayRound, type PlayView } from "@/components/play/PlayRound"
 import { loadActiveRound, nextUnscored, saveActiveRound, type ActiveRound } from "@/lib/rounds/activeRound"
 import { lieColor, type Placing } from "./courseColors"
 import { cssColor } from "@/lib/theme/tokens"
+import { ALWAYS_SHOWN, DRAW_KINDS, LIE_LABEL, LIE_SHORT, LIES, pct, shortCourseName, STATUS_TITLE } from "@/lib/planner/labels"
+import {
+  COURSE_CACHE_MAX_AGE_MS,
+  DEFAULT_COURSE,
+  DEFAULT_HOLE_REF,
+  loadLastPosition,
+  loadNoHazard,
+  loadZones,
+  loadZoom,
+  RECENT_KEY,
+  saveLastPosition,
+  saveNoHazard,
+  saveZones,
+  saveZoom,
+  updateLastPositionHole,
+  type CourseHit,
+  type NoHazardMap,
+} from "@/lib/planner/storage"
+import { boundsOf, holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -78,16 +97,6 @@ export interface CalibratedClub {
   club: string
   meanCarryYds: number
   shots: { carryYds: number; offlineYds: number }[]
-}
-
-interface CourseHit {
-  id: string
-  name: string
-  city: string | null
-  state: string | null
-  par: number | null
-  lat: number | null
-  lng: number | null
 }
 
 interface Props {
@@ -102,180 +111,10 @@ interface Props {
 
 const DOTS_SHOWN = 400
 const HANDICAP_SHOTS_PER_CLUB = 1000
-const LIES: Lie[] = ["green", "fairway", "rough", "bunker", "water", "trees", "oob"]
-const LIE_LABEL: Record<Lie, string> = {
-  green: "Green",
-  fairway: "Fairway",
-  rough: "Rough",
-  bunker: "Bunker",
-  water: "Water",
-  trees: "Trees",
-  oob: "Out of bounds",
-}
-const LIE_SHORT: Record<Lie, string> = { green: "Grn", fairway: "Fwy", rough: "Rgh", bunker: "Bkr", water: "Wtr", trees: "Tre", oob: "OB" }
-const STATUS_TITLE: Record<SurfaceStatus, string> = {
-  mapped: "Mapped in the course data",
-  "hand-drawn": "Hand-drawn by you",
-  estimated: "Not mapped, so estimated",
-  missing: "Not mapped",
-  "confirmed-absent": "You confirmed there's none here. Click to undo.",
-}
-const ALWAYS_SHOWN: Lie[] = ["green", "fairway", "rough"]
-// Options offered by "Mark area" for hand-drawing what the map doesn't show
-// (or gets wrong): "fairway"/"rough"/"green" let you mark a SAFE area too,
-// e.g. to correct a wrongly-guessed out-of-bounds patch.
-const DRAW_KINDS: Lie[] = ["trees", "water", "bunker", "oob", "fairway", "rough", "green"]
-// A first visit opens straight onto a real, well-mapped hole with the ball on the
-// tee, so the recommendation is the first thing anyone sees -- no instructions.
-const DEFAULT_COURSE: CourseHit = {
-  id: "40977ee8-33ee-4195-b6a2-99a4ca83c2bc",
-  name: "Pebble Beach Golf Links",
-  city: "Pebble Beach",
-  state: "CA",
-  par: 72,
-  lat: 36.5685,
-  lng: -121.949,
-}
-const DEFAULT_HOLE_REF = 7
-const RECENT_KEY = "golfos.recentCourses.v1"
-const COURSE_CACHE_MAX_AGE_MS = 30 * 24 * 3600 * 1000
 const YD_PER_M = 1.09361
 const SIDES = ["auto", "straight", "left", "right", "both"]
 const STRENGTHS = ["slight", "moderate", "strong"]
 
-function zonesKey(courseId: string): string {
-  return `golfos.zones.${courseId}.v1`
-}
-
-function zoomKey(courseId: string): string {
-  return `golfos.zoom.${courseId}.v1`
-}
-
-/** Remembered zoom for a course, used only as the INITIAL view when it loads -- picking a
- * hole still fits that hole's own bounds, which is a smarter default than a stale number
- * from a differently-shaped hole. */
-function loadZoom(courseId: string): number | undefined {
-  try {
-    const v = Number(localStorage.getItem(zoomKey(courseId)))
-    return Number.isFinite(v) && v >= 10 && v <= 21 ? v : undefined
-  } catch {
-    return undefined
-  }
-}
-
-function saveZoom(courseId: string, zoom: number) {
-  try {
-    localStorage.setItem(zoomKey(courseId), String(zoom))
-  } catch {
-    /* storage full or blocked: it just won't be remembered next time */
-  }
-}
-
-type NoHazardMap = Record<string, Partial<Record<ConfirmableHazard, boolean>>> // holeId -> which hazards are confirmed absent
-
-function noHazardKey(courseId: string): string {
-  return `golfos.noHazard.${courseId}.v1`
-}
-
-/** Which hazards the golfer has confirmed don't exist on which holes, saved on this device. */
-function loadNoHazard(courseId: string): NoHazardMap {
-  try {
-    const raw = localStorage.getItem(noHazardKey(courseId))
-    if (!raw) return {}
-    const v = JSON.parse(raw)
-    return v && typeof v === "object" ? v : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveNoHazard(courseId: string, map: NoHazardMap) {
-  try {
-    localStorage.setItem(noHazardKey(courseId), JSON.stringify(map))
-  } catch {
-    /* storage full or blocked: the confirmations just won't be remembered */
-  }
-}
-
-interface LastPosition {
-  course: CourseHit
-  holeId: string | null
-}
-
-/** The last course (and hole, if one was picked) the golfer had open, so reopening the
- * planner can resume there instead of starting from an empty search every time. */
-function loadLastPosition(): LastPosition | null {
-  try {
-    const v = JSON.parse(localStorage.getItem(LAST_POSITION_KEY) ?? "null")
-    return v && v.course && typeof v.course.id === "string" && typeof v.course.name === "string" ? v : null
-  } catch {
-    return null
-  }
-}
-
-function saveLastPosition(pos: LastPosition) {
-  try {
-    localStorage.setItem(LAST_POSITION_KEY, JSON.stringify(pos))
-  } catch {
-    /* storage full or blocked: it just won't resume next time */
-  }
-}
-
-// Updates just the remembered hole, keeping whichever course loadCourse already saved --
-// reading it back (instead of taking the course as a parameter) sidesteps a stale-closure
-// trap: pickHole can run inside the SAME async call that is still in the middle of loading
-// a course, before that course's own setCourse state update has actually rendered.
-function updateLastPositionHole(holeId: string) {
-  try {
-    const raw = localStorage.getItem(LAST_POSITION_KEY)
-    if (!raw) return
-    const v = JSON.parse(raw)
-    if (v?.course) localStorage.setItem(LAST_POSITION_KEY, JSON.stringify({ course: v.course, holeId }))
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Zones a golfer hand-marks for a course (trees, OB, water, ...), saved on this device. */
-function loadZones(courseId: string): UserZone[] {
-  try {
-    const raw = localStorage.getItem(zonesKey(courseId))
-    if (!raw) return []
-    const v = JSON.parse(raw)
-    if (!Array.isArray(v)) return []
-    return v.filter(
-      (z): z is UserZone =>
-        !!z && typeof z.id === "string" && (DRAW_KINDS as string[]).includes(z.lie) && Array.isArray(z.ring) && z.ring.length >= 3
-    )
-  } catch {
-    return []
-  }
-}
-
-function saveZones(courseId: string, zones: UserZone[]) {
-  try {
-    localStorage.setItem(zonesKey(courseId), JSON.stringify(zones))
-  } catch {
-    /* storage full or blocked: the marks just won't be remembered */
-  }
-}
-
-function boundsOf(points: LatLng[]): [[number, number], [number, number]] | null {
-  if (points.length === 0) return null
-  let minLat = Infinity
-  let maxLat = -Infinity
-  let minLng = Infinity
-  let maxLng = -Infinity
-  for (const p of points) {
-    minLat = Math.min(minLat, p.lat)
-    maxLat = Math.max(maxLat, p.lat)
-    minLng = Math.min(minLng, p.lng)
-    maxLng = Math.max(maxLng, p.lng)
-  }
-  return [[minLat, minLng], [maxLat, maxLng]]
-}
-
-const pct = (x: number) => (x < 0.005 ? "–" : `${Math.round(x * 100)}%`)
 
 export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, baseline }: Props) {
   // --- course search / loading ---
@@ -792,19 +631,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const scoring = !!roundHere && playView === "score"
 
   function holePinFor(h: CourseHole): LatLng {
-    const end = h.line[h.line.length - 1]
-    let best: LatLng | null = null
-    let bestD = 60
-    for (const f of geometry?.features ?? []) {
-      if (f.kind !== "green") continue
-      const c = ringCentroid(f.ring)
-      const d = distanceYds(c, end)
-      if (d < bestD) {
-        bestD = d
-        best = c
-      }
-    }
-    return best ?? end
+    return holePinForFeatures(h, geometry?.features ?? [])
   }
 
   function pickHole(h: CourseHole) {
@@ -2323,12 +2150,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
 }
 
 // ---------- small presentational helpers ----------
-
-/** "Pebble Beach Golf Links" -> "Pebble Beach": the title line has room for one short name. */
-function shortCourseName(name: string): string {
-  const short = name.replace(/\s+(golf\s+(club|links|course|resort)|country\s+club|g\.?c\.?|c\.?c\.?)$/i, "").trim()
-  return short || name
-}
 
 function Stat({ label, value }: { label: string; value: number | null }) {
   return (
