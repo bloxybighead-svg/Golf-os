@@ -12,7 +12,8 @@
 
 import { bearingDeg, distanceYds, landingPoint, lineLengthYds, pointAlongLine, type LatLng } from "./geo"
 import { projectOnLine } from "./aim"
-import { expectedFromStart, expectedStrokesRemaining, type StartLie } from "./cost"
+import type { StartLie } from "./cost"
+import { TOUR_BASELINE, type Baseline } from "./baseline"
 import type { Lie, LieMap, LieSource } from "./lies"
 import { rollToRest, rollYds } from "./roll"
 import { seededRng, seededSample } from "@/lib/dispersion/stats"
@@ -60,6 +61,8 @@ export interface PlanContext {
   lies: LieMap
   /** Where the ball is lying now (defaults to fairway); the tee uses the tour tee-shot column. */
   startLie?: StartLie
+  /** What strokes to hole out are measured against (baseline.ts): a handicap, or the PGA TOUR (default). */
+  baseline?: Baseline
 }
 
 export interface Landing {
@@ -168,7 +171,8 @@ function scoreLandings(
   landings: Landing[],
   from: LatLng,
   pin: LatLng,
-  startLie: StartLie
+  startLie: StartLie,
+  baseline: Baseline
 ): ClubPlan {
   const lieShare: Record<Lie, number> = { water: 0, oob: 0, bunker: 0, green: 0, fairway: 0, trees: 0, rough: 0 }
   const originDist = distanceYds(from, pin)
@@ -184,7 +188,7 @@ function scoreLandings(
     lieShare[l.lie] += 1
     if (l.lieSource === "inferred") inferred += 1
     const dropDist = l.dropPoint ? distanceYds(l.dropPoint, pin) : undefined
-    const shot = 1 + expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin, dropDist)
+    const shot = 1 + baseline.expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin, dropDist)
     strokes += shot
     perShot.push(shot)
     carry += shots[i].carryYds
@@ -208,14 +212,14 @@ function scoreLandings(
     unmappedShare: inferred / n,
     expectedStrokes,
     strokesSe: m > 0 ? Math.sqrt(variance / m) : 0,
-    strokesGained: expectedFromStart(startLie, originDist) - expectedStrokes,
+    strokesGained: baseline.expectedFromStart(startLie, originDist) - expectedStrokes,
   }
 }
 
 export function evaluateClub(club: ClubShots, ctx: PlanContext, aimBearingOverride?: number): ClubPlan {
   const bearing = aimBearingOverride ?? bearingDeg(ctx.from, ctx.aim)
   const landings = simulateLandings(club.club, club.shots, ctx.from, bearing, ctx.lies)
-  return scoreLandings(club.club, club.shots, landings, ctx.from, ctx.pin, ctx.startLie ?? "fairway")
+  return scoreLandings(club.club, club.shots, landings, ctx.from, ctx.pin, ctx.startLie ?? "fairway", ctx.baseline ?? TOUR_BASELINE)
 }
 
 /** Every club, best (lowest expected strokes) first. */

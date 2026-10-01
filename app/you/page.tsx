@@ -8,6 +8,7 @@ import { TrendsPanel } from "@/components/you/TrendsPanel"
 import { RecommendedDrills } from "@/components/you/RecommendedDrills"
 import { DrillHistory } from "@/components/you/DrillHistory"
 import { AppearanceSetting } from "@/components/you/AppearanceSetting"
+import { PlannerSetting } from "@/components/you/PlannerSetting"
 import type { HandicapEntry, LibraryDrill, Milestone, Round, UserDrillRun } from "@/lib/supabase/types"
 import type { SgCategory } from "@/lib/sgBenchmarks"
 import { DRILL_CATEGORIES, weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
@@ -131,6 +132,7 @@ export default async function YouPage() {
       </div>
 
       <AppearanceSetting />
+      <PlannerSetting />
     </div>
   )
 }

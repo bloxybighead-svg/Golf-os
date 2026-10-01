@@ -5,7 +5,8 @@
 //  - dispersion rings: where 50% and 90% of a club's shots land
 // Pure geometry so it can be tested without a browser.
 
-import { tourExpected, expectedStrokesRemaining, type StartLie } from "./cost"
+import type { StartLie } from "./cost"
+import { TOUR_BASELINE, type Baseline } from "./baseline"
 import { distanceYds, fromLocal, toLocal, type LatLng } from "./geo"
 import type { LieMap } from "./lies"
 
@@ -28,7 +29,8 @@ export function buildValueGrid(
   pin: LatLng,
   from: LatLng,
   startLie: StartLie,
-  lies: LieMap
+  lies: LieMap,
+  baseline: Baseline = TOUR_BASELINE
 ): ValueCell[] {
   if (points.length === 0) return []
   const origin = points[0]
@@ -46,11 +48,11 @@ export function buildValueGrid(
       const centre = fromLocal(origin, { x: x + cell / 2, y: y + cell / 2 })
       const d = distanceYds(centre, pin)
       const lie = lies.lieAt(centre)
-      const e = expectedStrokesRemaining(lie, d, origin2)
+      const e = baseline.expectedStrokesRemaining(lie, d, origin2)
       out.push({
         sw: fromLocal(origin, { x, y }),
         ne: fromLocal(origin, { x: x + cell, y: y + cell }),
-        delta: e - tourExpected("fairway", d),
+        delta: e - baseline.fairway(d),
       })
     }
   }

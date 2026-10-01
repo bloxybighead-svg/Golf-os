@@ -32,6 +32,8 @@ export interface RankingRequest {
   pin: LatLng
   startLie: StartLie
   line: LatLng[] | null
+  /** Handicap of the scoring baseline; null = PGA TOUR. */
+  handicap: number | null
 }
 
 export interface ClubRanking {

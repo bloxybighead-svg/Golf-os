@@ -1891,6 +1891,54 @@ None came from mapped woods/scrub/tree rows/residential.
   sprays +-130 yd: shared corner aim 4-Iron 4.50 vs 7-Iron 4.90 (100% in
   the woods); own aims 7-Iron 4.36 vs 4-Iron 4.42.
 
+### Planner scored against the golfer's handicap (2026-10-01, session 12)
+
+Dillon's spec numbered this "Session 11"; it's session 12 here because 11
+was the trees fix. Problem: everything was scored against the PGA TOUR table.
+
+- Research: NO verifiable amateur strokes-to-hole-out table by lie and
+  distance exists in public (Every Shot Counts tabulates tour pros only;
+  blog "15-handicap" figures aren't sourced), so there is no
+  amateurTables.ts. Cited anchors used instead: Broadie, Interfaces 2012
+  s3.1 (tee lines: tour 2.38 + 0.0041d, 90-golfer 2.79 + 0.0066d) and s3.3
+  (two-putt distance tour 33 ft, 90-golfer 19 ft); Broadie 2008
+  Golfmetrics Tables 1/2/4 (sand saves 50/26/17/7%, putting by group, and
+  the finding that rough hurt PROS more than amateurs in his data).
+- `lib/course/baseline.ts`: `getBaseline(handicap | null)` -> `Baseline`
+  {expectedStrokesRemaining, expectedFromStart, fairway, label}; null =
+  `TOUR_BASELINE` = the cost.ts functions themselves (exact). Handicap h:
+  offGreen = tour value + lie gap x max(0, 1 + `LIE_PENALTY_PER_HCP` (0.03,
+  estimate) x h) + base offset (`SCRATCH_VS_TOUR_STROKES` (computed 2.48) +
+  h) x shape(d) / sum of shape over `REFERENCE_ROUND` (4x165 / 10x380 /
+  4x510 = par 72, 6,500 yd), shape(d) = 0.41 + 0.0025d (the 90-golfer minus
+  tour tee lines). Sand gap floored at `AMATEUR_SAND_VS_ROUGH_MIN` (1.1,
+  estimate) x the rough gap (tour has sand easier than rough at 15-34 yd;
+  amateurs' sand saves are far lower). Putting = tourPutting(ft x (1 +
+  `PUTT_STRETCH_PER_HCP` x h)), stretch = (33/19 - 1) / `GOLFER90_HANDICAP`
+  (16, estimate) = 0.046. Water / OOB keep cost.ts's rules with the
+  golfer's own values. Calibration is by construction (the offset is linear
+  in distance, so every 18-hole 6,500 yd layout gets the same extra).
+  10 handicap from 150 yd: fairway 3.36 / rough 3.68 / sand 3.76 / trees
+  4.48 (tour 2.95 / 3.19 / 3.25 / 3.80); rounds 72.0 / 77 / 82 / 92 for
+  h = 0 / 5 / 10 / 20 (tour 69.5).
+- Wired through `PlanContext.baseline` (default tour), `buildValueGrid(...,
+  baseline)` (trouble map compares against the baseline's fairway), the
+  worker's rank message (`handicap`) and the ranking cache key.
+- Handicap used: compare = tour -> null; else the latest calculated index
+  (trackedHandicap) ?? setup handicap (golfer_baseline) ?? the device's
+  planner handicap (defaults to 10, so guests get 10).
+- You -> "Planner": Compare against My handicap / Tour
+  (`components/you/PlannerSetting.tsx`, localStorage
+  `golfos.compareAgainst.v1`, default handicap; same-tab event
+  `golfos:compare-against`). Card shows "vs a 10.0 handicap" / "vs PGA
+  TOUR" under the strokes; table tooltip and "How this is scored" say which.
+- Tests: baseline.test.ts (10): calibration +-1.5 for h = 0/5/10/20 on two
+  layouts, monotonic in h for every lie and distance, lie order, tour mode
+  == cost.ts exactly and planner unchanged with no baseline, 10-hcp rough
+  penalty at 150 > tour, worker handler passes the handicap through,
+  90-golfer two-putt anchor. Seen on Pebble 7 (guest): handicap mode PW
+  +0.37 / LW +0.45 vs tour +0.30 / +0.33 (tour identical to before).
+
 
 | File | Purpose |
 |---|---|

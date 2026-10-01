@@ -39,6 +39,14 @@ import {
   type OptimizedClubPlan,
 } from "@/lib/course/plan"
 import { buildLieMapFrom, type LieInputs } from "@/lib/course/rankRequest"
+import {
+  COMPARE_AGAINST_EVENT,
+  COMPARE_AGAINST_KEY,
+  DEFAULT_BASELINE_HANDICAP,
+  getBaseline,
+  readCompareAgainst,
+  type CompareAgainst,
+} from "@/lib/course/baseline"
 import { useClubRanking, type RankingRequest } from "./useClubRanking"
 import { seededSample } from "@/lib/dispersion/stats"
 import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
@@ -322,6 +330,21 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const [showTrouble, setShowTrouble] = useState(false)
   const [showRings, setShowRings] = useState(true)
   const [showCarry, setShowCarry] = useState(false) // dots are where shots stop; this adds where they landed
+  // Score against the golfer's handicap (default) or the PGA TOUR -- chosen on You, saved per device.
+  const [compareAgainst, setCompareAgainst] = useState<CompareAgainst>("handicap")
+  useEffect(() => {
+    const sync = () => setCompareAgainst(readCompareAgainst())
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === COMPARE_AGAINST_KEY) sync()
+    }
+    sync()
+    window.addEventListener(COMPARE_AGAINST_EVENT, sync)
+    window.addEventListener("storage", onStorage)
+    return () => {
+      window.removeEventListener(COMPARE_AGAINST_EVENT, sync)
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [])
   const [showZones, setShowZones] = useState(true)
   const [pickerOpen, setPickerOpen] = useState(false) // the course/hole/golfer sheet behind the title line
   const [showMarks, setShowMarks] = useState(false) // hand-drawn marks list under the map, collapsed by default
@@ -870,9 +893,18 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   // Ranked in a Web Worker (useClubRanking) so the map never stutters. It
   // depends on the ball, pin, map and bag -- not on the aim marker, since
   // each club searches for its own aim.
+  // The handicap the plan is scored against: the latest calculated index, else the one from setup, else this
+  // device's planner handicap (10 until a guest sets one). Null = the PGA TOUR, if the golfer chose it on You.
+  const baselineHandicap: number | null =
+    compareAgainst === "tour" ? null : trackedHandicap ?? baseline?.handicapIndex ?? (Number.isFinite(handicap) ? handicap : DEFAULT_BASELINE_HANDICAP)
+  const scoreBaseline = getBaseline(baselineHandicap)
+
   const rankingRequest: RankingRequest | null = useMemo(
-    () => (ball && pin && defaultAim ? { holeId, from: ball, aim: defaultAim, pin, startLie, line: hole?.line ?? null } : null),
-    [holeId, ball, pin, defaultAim, startLie, hole]
+    () =>
+      ball && pin && defaultAim
+        ? { holeId, from: ball, aim: defaultAim, pin, startLie, line: hole?.line ?? null, handicap: baselineHandicap }
+        : null,
+    [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap]
   )
   const rankState = useClubRanking(lieInputs, clubShots, rankingRequest)
   const ranking: OptimizedClubPlan[] = rankState.results ?? []
@@ -886,13 +918,13 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   // The chosen club where the aim marker actually points, with every shot: what the dots, "Finishes" and "leaves" describe.
   const chosenLive = useMemo(() => {
     if (!chosenShots || !ball || !aim || !pin || !lies) return null
-    return evaluateClub(chosenShots, { from: ball, aim, pin, lies, startLie })
-  }, [chosenShots, ball, aim, pin, lies, startLie])
+    return evaluateClub(chosenShots, { from: ball, aim, pin, lies, startLie, baseline: scoreBaseline })
+  }, [chosenShots, ball, aim, pin, lies, startLie, scoreBaseline])
   // The ranking's own held-out shots at the aim marker: the "At your aim" number.
   const chosenAtAim = useMemo(() => {
     if (!chosenShots || !ball || !aim || !pin || !lies) return null
-    return strokesAtAim(chosenShots, { from: ball, aim, pin, lies, startLie })
-  }, [chosenShots, ball, aim, pin, lies, startLie])
+    return strokesAtAim(chosenShots, { from: ball, aim, pin, lies, startLie, baseline: scoreBaseline })
+  }, [chosenShots, ball, aim, pin, lies, startLie, scoreBaseline])
   const atBestAim = !!chosen && !!ball && !!aim && isAtBestAim(ball, aim, chosen)
 
   function aimAtBest(r: OptimizedClubPlan) {
@@ -926,11 +958,11 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const troubleCells = useMemo(() => {
     if (!showTrouble || !ball || !pin || !lies) return []
     const pts = [ball, aim ?? pin, pin, ...(hole?.line ?? [])]
-    return buildValueGrid(pts, pin, ball, startLie, lies).flatMap((c) => {
+    return buildValueGrid(pts, pin, ball, startLie, lies, scoreBaseline).flatMap((c) => {
       const { color, opacity } = deltaColor(c.delta)
       return opacity > 0 ? [{ sw: c.sw, ne: c.ne, color, opacity }] : []
     })
-  }, [showTrouble, ball, aim, pin, hole, lies, startLie])
+  }, [showTrouble, ball, aim, pin, hole, lies, startLie, scoreBaseline])
 
   // 50% and 90% dispersion rings around where the chosen club's shots finish.
   const rings = useMemo(() => {
@@ -1218,6 +1250,9 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
               {chosen.plan.expectedStrokes.toFixed(2)}
             </span>
             <span className="text-xs text-muted">strokes to hole out</span>
+            <span className="block text-[11px] text-muted" title="Change on You, under Planner">
+              vs {baselineHandicap == null ? "PGA TOUR" : `a ${baselineHandicap.toFixed(1)} handicap`}
+            </span>
             {!atBestAim && chosenAtAim != null && (
               <span className="block text-xs text-fg-3" title="The same shots, aimed where the marker is now">
                 At your aim <span className="font-semibold tabular-nums">{chosenAtAim.toFixed(2)}</span>
@@ -1430,7 +1465,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
             ))}
             <th
               className="px-3 py-2.5 text-right font-medium"
-              title={`Extra strokes to hole out vs the best club here (${best?.club ?? "—"}), each club at its own best aim. "~ tie" = within the noise of the shot samples`}
+              title={`Extra strokes to hole out vs the best club here (${best?.club ?? "—"}), each club at its own best aim, scored for ${scoreBaseline.label === "PGA TOUR" ? "the PGA TOUR" : `a ${scoreBaseline.label}`}. "~ tie" = within the noise of the shot samples`}
             >
               vs {best?.club ?? "best"}
             </th>
@@ -1482,9 +1517,22 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
       <div className="mt-2 space-y-2">
         <p>
           Every shot is placed on the map and given a lie (green, fairway, rough, bunker, trees, water or out of bounds).
-          Its value is the PGA TOUR average number of strokes to hole out from that lie and distance, from Mark Broadie&rsquo;s
-          published benchmark (<em>Assessing Golfer Performance on the PGA TOUR</em>, Interfaces 2012, Table 9; putting from{" "}
-          <em>Putts Gained</em>, 2011). &ldquo;Strokes to hole out&rdquo; is that value, plus one for the shot itself.
+          Its value is the average number of strokes to hole out from that lie and distance, plus one for the shot itself.
+          The starting point is Mark Broadie&rsquo;s published PGA TOUR benchmark (<em>Assessing Golfer Performance on the
+          PGA TOUR</em>, Interfaces 2012, Table 9; putting from <em>Putts Gained</em>, 2011).
+        </p>
+        <p>
+          {baselineHandicap == null ? (
+            <>You&rsquo;re comparing against the PGA TOUR (change it on You, under Planner). </>
+          ) : (
+            <>
+              Scored for a {baselineHandicap.toFixed(1)} handicap (change it on You, under Planner).{" "}
+            </>
+          )}
+          No one publishes amateur tables by lie, so the handicap version adjusts the tour numbers: a bit worse from everywhere
+          (sized so a par-72 round adds up to 72 plus your handicap), a bigger penalty for rough, sand and trees, and
+          putting from a given distance as hard as a pro&rsquo;s from farther away, using Broadie&rsquo;s amateur figures where
+          they exist. The extra penalty for bad lies is an estimate.
         </p>
         <p>
           Every club gets its own aim: its search starts on the hole&rsquo;s centre line at the distance that club goes

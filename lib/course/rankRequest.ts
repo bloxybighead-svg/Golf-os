@@ -10,6 +10,7 @@ import { buildLieMap, type LieMap, type LieMapExtras, type UserZone } from "./li
 import type { StartLie } from "./cost"
 import type { CourseFeature } from "./overpass"
 import { rankClubsOptimized, type ClubShots, type OptimizedClubPlan, type RankOptions } from "./plan"
+import { getBaseline } from "./baseline"
 
 /** Everything buildLieMap needs, as plain data that survives postMessage. */
 export interface LieInputs {
@@ -33,6 +34,8 @@ export type RankMessage =
       pin: LatLng
       startLie: StartLie
       line: LatLng[] | null
+      /** Handicap of the baseline to score against; null or absent = PGA TOUR. */
+      handicap?: number | null
       opts?: Omit<RankOptions, "line">
     }
 
@@ -49,7 +52,7 @@ export const RANK_CACHE_SIZE = 20
 
 /**
  * What a ranking depends on: the map and bag versions, the hole, the lie the
- * ball sits on, and where the ball and pin are. Not the aim marker: each club
+ * ball sits on, where the ball and pin are, and the baseline. Not the aim marker: each club
  * finds its own aim, so dragging the marker never needs a re-rank.
  */
 export function rankKey(k: {
@@ -59,9 +62,11 @@ export function rankKey(k: {
   startLie: StartLie
   from: LatLng
   pin: LatLng
+  /** The baseline's handicap (null = PGA TOUR). */
+  handicap?: number | null
 }): string {
   const pt = (p: LatLng) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`
-  return [k.liesVersion, k.bagVersion, k.holeId ?? "-", k.startLie, pt(k.from), pt(k.pin)].join("|")
+  return [k.liesVersion, k.bagVersion, k.holeId ?? "-", k.startLie, pt(k.from), pt(k.pin), k.handicap ?? "tour"].join("|")
 }
 
 /** A small least-recently-used cache. */
@@ -110,7 +115,7 @@ export function createRankHandler(now: () => number = () => performance.now()) {
     const t0 = now()
     const results = rankClubsOptimized(
       bag.clubs,
-      { from: msg.from, aim: msg.aim, pin: msg.pin, lies: lies.map, startLie: msg.startLie },
+      { from: msg.from, aim: msg.aim, pin: msg.pin, lies: lies.map, startLie: msg.startLie, baseline: getBaseline(msg.handicap ?? null) },
       { ...msg.opts, line: msg.line }
     )
     return { id: msg.id, results, ms: now() - t0 }
