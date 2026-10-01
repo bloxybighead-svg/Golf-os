@@ -89,6 +89,7 @@ import {
 import { boundsOf, holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import { LayerMenuItem, Stat, ToolButton } from "@/components/planner/ui"
 import { ScoringDetails } from "@/components/planner/ScoringDetails"
+import { ClubTable } from "@/components/planner/ClubTable"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -1270,74 +1271,20 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     ) : null
 
   const clubTable = (
-    <div
-      className={`overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface transition-opacity ${rankingPending ? "opacity-60" : ""}`}
-      aria-busy={rankingPending}
-      data-rank-ms={rankState.ms != null ? Math.round(rankState.ms) : undefined}
-    >
-      {rankingPending && <p className="px-3 pt-2 text-[11px] text-muted">Ranking…</p>}
-      <table className="w-full text-xs tabular-nums">
-        <thead>
-          <tr className="border-b border-fg/[0.06] text-left text-muted">
-            <th className="px-3 py-2.5 font-medium">Club</th>
-            <th className="px-1 py-2.5 text-right font-medium" title="Each club's own best aim: yards left or right of the hole's centre line at its distance">
-              Aim
-            </th>
-            <th className="px-1 py-2.5 text-right font-medium">Carry</th>
-            <th className="px-1 py-2.5 text-right font-medium" title="Carry plus roll">
-              Total
-            </th>
-            {shownLies.map((l) => (
-              <th key={l} className="px-1 py-2.5 text-right font-medium" title={LIE_LABEL[l]}>
-                {LIE_SHORT[l]}
-              </th>
-            ))}
-            <th
-              className="px-3 py-2.5 text-right font-medium"
-              title={`Extra strokes to hole out vs the best club here (${best?.club ?? "—"}), each club at its own best aim, scored for ${scoreBaseline.label === "PGA TOUR" ? "the PGA TOUR" : `a ${scoreBaseline.label}`}. "~ tie" = within the noise of the shot samples`}
-            >
-              vs {best?.club ?? "best"}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {ranking.map((r) => (
-            <tr
-              key={r.club}
-              onClick={() => {
-                pickClub(r)
-                setSheetOpen(false)
-              }}
-              className={`cursor-pointer border-b border-fg/[0.04] transition-colors last:border-0 hover:bg-fg/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
-                chosen?.club === r.club ? "bg-accent/10" : ""
-              }`}
-            >
-              <td className="whitespace-nowrap px-3 font-semibold text-fg">
-                {r.club}
-                {estimatedFrom[r.club] && (
-                  <span className="ml-1 text-[10px] font-normal text-muted" title={`No ${r.club} shots on record: estimated from your ${estimatedFrom[r.club]}`}>
-                    est.
-                  </span>
-                )}
-              </td>
-              <td className="whitespace-nowrap px-1 text-right text-fg-3">{aimOffsetLabel(r.offsetYds)}</td>
-              <td className="px-1 text-right text-fg-3">{Math.round(r.plan.meanCarryYds)}</td>
-              <td className="px-1 text-right text-fg-3">{Math.round(r.plan.meanTotalYds)}</td>
-              {shownLies.map((l) => (
-                <td key={l} className="px-1 text-right text-fg-3">
-                  {pct(r.plan.lieShare[l])}
-                </td>
-              ))}
-              <td className="whitespace-nowrap px-3 text-right font-semibold text-fg">
-                {best && r !== best && isTie(r.plan, best.plan)
-                  ? "~ tie"
-                  : `+${(r.plan.expectedStrokes - (best?.plan.expectedStrokes ?? 0)).toFixed(2)}`}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ClubTable
+      ranking={ranking}
+      pending={rankingPending}
+      rankMs={rankState.ms}
+      shownLies={shownLies}
+      best={best}
+      chosen={chosen}
+      estimatedFrom={estimatedFrom}
+      baselineLabel={scoreBaseline.label}
+      onPick={(r) => {
+        pickClub(r)
+        setSheetOpen(false)
+      }}
+    />
   )
 
   const scoringDetails = <ScoringDetails baselineHandicap={baselineHandicap} />
