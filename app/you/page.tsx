@@ -52,9 +52,8 @@ export default async function YouPage() {
   const latestHandicap = handicapEntries[handicapEntries.length - 1] ?? null
   const rounds = (roundsData ?? []) as Round[] // oldest first
 
-  // Live estimate over the most recent 20 rounds, shown until the golfer has
-  // actually recalculated and gotten a persisted handicap_tracking row. Mirrors
-  // the window the Recalculate server action itself queries.
+  // Live WHS index from the saved differentials (most recent 20), shown until a
+  // round save has recorded one in handicap_tracking.
   const liveEstimate = estimateHandicapIndex(
     [...rounds].reverse().slice(0, 20).map((r) => r.differential).filter((d): d is number => d != null)
   )

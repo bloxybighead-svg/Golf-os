@@ -19,6 +19,14 @@ function relToPar(score: number, par: number) {
   return           { label: `${diff}`,         color: "text-accent" }
 }
 
+// Why a round's adjusted score differs from what was shot (lib/handicap.ts adjustHoles).
+const CAP_TITLE: Record<NonNullable<Round["score_cap"]>, string> = {
+  net_double_bogey: "Each hole capped at net double bogey (par + 2 + your handicap strokes there)",
+  par_plus_5: "Each hole capped at par + 5 (before you had a Handicap Index)",
+  approximate: "Each hole capped at about net double bogey (no stroke index, so strokes spread evenly)",
+  none: "Score only: posted as entered",
+}
+
 interface Props { round: Round; casualGirAvg?: number | null }
 
 export function RoundCard({ round, casualGirAvg }: Props) {
@@ -96,13 +104,29 @@ export function RoundCard({ round, casualGirAvg }: Props) {
         <div className="flex shrink-0 items-baseline gap-2">
           <span className="text-2xl font-bold tracking-tight text-fg">{round.score}</span>
           <span className={["text-sm font-semibold", rel.color].join(" ")}>{rel.label}</span>
+          {round.adjusted_score != null && round.adjusted_score !== round.score && (
+            <span className="text-xs text-muted" title={CAP_TITLE[round.score_cap ?? "none"]}>
+              → {round.adjusted_score} adj.
+            </span>
+          )}
           {round.differential != null && (
             <span className={["text-xs", compCollapse ? "font-semibold text-danger" : "text-muted"].join(" ")}>
               · Diff {round.differential.toFixed(1)}
             </span>
           )}
+          {round.differential == null && round.differential_status === "waiting_for_index" && (
+            <span className="text-xs text-muted" title="A 9-hole score's differential uses your Handicap Index for the other nine. It fills in once you have 54 holes posted.">
+              · Waiting for index
+            </span>
+          )}
         </div>
       </div>
+      {round.score_cap === "none" && round.differential != null && (
+        <p className="mt-1 text-xs text-muted">Score only, not capped per hole</p>
+      )}
+      {round.score_cap === "approximate" && (
+        <p className="mt-1 text-xs text-muted">Hole caps approximate: add each hole&rsquo;s HCP for exact net double bogey</p>
+      )}
 
       {/* Stats row */}
       {(round.fairways_pct != null || round.gir_pct != null || hasShortGame || hasMiss) && (

@@ -1,38 +1,106 @@
 import { createClient } from "@/lib/supabase/server"
-import { estimateHandicapIndex, needsNewCalculatedEntry } from "@/lib/handicap"
+import { needsNewCalculatedEntry, recalculateRounds, type HoleScore, type RoundForHandicap } from "@/lib/handicap"
+
+type Supabase = ReturnType<typeof createClient>
+
+const PAGE = 1000 // Supabase returns at most 1,000 rows per request
 
 /**
- * Recomputes the handicap estimate from the golfer's last 20 rounds and records
- * it when it changed. Called after a round is added, edited or deleted, so the
- * index is never stale and there's no Recalculate button to remember. Never
- * throws: a failure here mustn't fail the round save that triggered it.
+ * Re-scores the golfer's whole record under WHS (lib/handicap.ts
+ * recalculateRounds): adjusted gross scores (net double bogey / par + 5),
+ * 9- and 10-17-hole differentials completed with the index of the day, then
+ * the Handicap Index. Updates only rounds whose numbers changed, and records
+ * the index when it changed. Runs after every round save, edit or delete --
+ * an edited old round can change the caps of every round after it -- and
+ * from "Recalculate all rounds". Returns what it did; throws only when asked
+ * to (`strict`), so a failure here never fails the save that triggered it.
  */
-export async function syncCalculatedHandicap(supabase: ReturnType<typeof createClient>, userId: string): Promise<void> {
+export async function syncCalculatedHandicap(
+  supabase: Supabase,
+  userId: string,
+  { strict = false }: { strict?: boolean } = {}
+): Promise<{ changed: number; index: number | null; rounds: number }> {
   try {
-    const [{ data: rounds }, { data: latest }] = await Promise.all([
-      supabase
-        .from("rounds")
-        .select("differential")
-        .order("date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(20),
-      supabase
-        .from("handicap_tracking")
-        .select("source, handicap_index")
-        .order("calculation_date", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ])
-    const diffs = (rounds ?? []).map((r) => r.differential as number | null).filter((d): d is number => d != null)
-    const index = estimateHandicapIndex(diffs)
-    if (!needsNewCalculatedEntry(latest ?? null, index)) return
-    await supabase.from("handicap_tracking").insert({
-      user_id: userId,
-      handicap_index: index,
-      source: "calculated",
-      rounds_used: diffs.length,
+    const { data: rounds, error } = await supabase
+      .from("rounds")
+      .select("id, date, created_at, score, holes_played, course_rating, slope_rating, differential, adjusted_score, differential_status, score_cap")
+    if (error) throw new Error(error.message)
+
+    const holesByRound = new Map<string, HoleScore[]>()
+    for (let from = 0; ; from += PAGE) {
+      const { data: holes, error: holesError } = await supabase
+        .from("round_holes")
+        .select("round_id, hole_number, par, strokes, stroke_index")
+        .order("round_id")
+        .order("hole_number")
+        .range(from, from + PAGE - 1)
+      if (holesError) throw new Error(holesError.message)
+      for (const h of holes ?? []) {
+        const list = holesByRound.get(h.round_id) ?? []
+        list.push({ par: h.par, strokes: h.strokes, strokeIndex: h.stroke_index ?? null })
+        holesByRound.set(h.round_id, list)
+      }
+      if ((holes ?? []).length < PAGE) break
+    }
+
+    const { data: entries } = await supabase
+      .from("handicap_tracking")
+      .select("source, handicap_index, calculation_date")
+      .order("calculation_date", { ascending: true })
+    const manual = (entries ?? [])
+      .filter((e) => e.source === "manual")
+      .map((e) => ({ date: String(e.calculation_date).slice(0, 10), index: Number(e.handicap_index) }))
+
+    const record: RoundForHandicap[] = (rounds ?? []).map((r) => ({
+      id: r.id,
+      date: r.date,
+      createdAt: r.created_at,
+      score: r.score,
+      holesPlayed: r.holes_played,
+      courseRating: r.course_rating == null ? null : Number(r.course_rating),
+      slopeRating: r.slope_rating == null ? null : Number(r.slope_rating),
+      holes: holesByRound.get(r.id) ?? null,
+    }))
+    const { results, index, differentialsUsed } = recalculateRounds(record, manual)
+
+    const byId = new Map((rounds ?? []).map((r) => [r.id, r]))
+    const changes = results.filter((res) => {
+      const r = byId.get(res.id)
+      return (
+        !r ||
+        (r.differential == null ? null : Number(r.differential)) !== res.differential ||
+        r.adjusted_score !== res.adjustedScore ||
+        r.differential_status !== res.status ||
+        r.score_cap !== res.scoreCap
+      )
     })
-  } catch {
-    // Leave the previous index in place; the next round save retries.
+    for (const res of changes) {
+      const { error: upError } = await supabase
+        .from("rounds")
+        .update({
+          differential: res.differential,
+          adjusted_score: res.adjustedScore,
+          differential_status: res.status,
+          score_cap: res.scoreCap,
+        })
+        .eq("id", res.id)
+      if (upError) throw new Error(upError.message)
+    }
+
+    const latest = entries && entries.length > 0 ? entries[entries.length - 1] : null
+    if (needsNewCalculatedEntry(latest ?? null, index)) {
+      const { error: insError } = await supabase.from("handicap_tracking").insert({
+        user_id: userId,
+        handicap_index: index,
+        source: "calculated",
+        rounds_used: differentialsUsed,
+      })
+      if (insError) throw new Error(insError.message)
+    }
+    return { changed: changes.length, index, rounds: results.length }
+  } catch (e) {
+    if (strict) throw e
+    // Leave things as they were; the next round save retries.
+    return { changed: 0, index: null, rounds: 0 }
   }
 }

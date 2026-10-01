@@ -16,7 +16,7 @@ function fmtIndex(n: number) {
 
 interface Props {
   latest: HandicapEntry | null
-  /** Best-8-of-20 estimate computed from the loaded rounds, shown until a round save records one. */
+  /** WHS index computed from the loaded rounds' differentials, shown until a round save records one. */
   liveEstimate: number | null
   signedIn: boolean
 }
@@ -62,8 +62,11 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
             Handicap
             {isEstimate && displayIndex != null && (
               <InfoTip label="How your handicap is worked out">
-                Best 8 of your last 20 differentials × 0.96, updated each time you save a round. A simplified
-                estimate without the official safeguards and caps, so not your GHIN Index.
+                World Handicap System: the lowest 8 of your last 20 differentials averaged (fewer with under 20
+                rounds), rounded to a tenth. Hole-by-hole rounds are capped at net double bogey, and 9-hole rounds
+                are completed with your expected score. Updated each time you save a round. It leaves out the
+                playing-conditions adjustment and the caps on how fast it can rise, so it&rsquo;s close to, not the
+                same as, your GHIN Index.
               </InfoTip>
             )}
           </p>
@@ -80,7 +83,7 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
             <>
               <p className="text-5xl font-semibold leading-tight tracking-tight text-muted">—</p>
               <p className="mt-1 text-sm text-fg-3">
-                Needs 8 rated rounds.{" "}
+                Needs 54 holes of rated rounds (three 18s).{" "}
                 <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
                   Add round
                 </Link>

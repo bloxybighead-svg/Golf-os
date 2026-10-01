@@ -6,6 +6,8 @@ import type { Round } from "@/lib/supabase/types"
 import { toCSV, downloadCSV } from "@/lib/csv"
 import { RoundCard } from "./RoundCard"
 import { RoundForm } from "./RoundForm"
+import { SignInToSave } from "./SignInToSave"
+import { recalculateAllRounds } from "@/app/rounds/actions"
 
 interface Props {
   rounds: Round[]
@@ -13,11 +15,15 @@ interface Props {
   /** The hero number and supporting stats, built on the server. */
   summary: ReactNode
   initialAdding?: boolean
+  signedIn: boolean
 }
 
-export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = false }: Props) {
-  const [adding, setAdding] = useState(initialAdding)
+export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = false, signedIn }: Props) {
+  const [adding, setAdding] = useState(initialAdding && signedIn)
+  // Signed out, "Add round" first explains that saving needs an account.
+  const [guestSheet, setGuestSheet] = useState(initialAdding && !signedIn)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [recalc, setRecalc] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Close the overflow menu on an outside tap.
@@ -31,7 +37,20 @@ export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = fa
   }, [menuOpen])
 
   if (adding) {
-    return <RoundForm onDone={() => setAdding(false)} />
+    return <RoundForm onDone={() => setAdding(false)} signedIn={signedIn} />
+  }
+
+  async function recalculate() {
+    setMenuOpen(false)
+    setRecalc("Recalculating…")
+    try {
+      const r = await recalculateAllRounds()
+      setRecalc(
+        `Rescored ${r.rounds} rounds (${r.changed} changed)` + (r.index != null ? `. Handicap ${r.index < 0 ? `+${Math.abs(r.index).toFixed(1)}` : r.index.toFixed(1)}.` : ".")
+      )
+    } catch (e) {
+      setRecalc(e instanceof Error ? e.message : "Couldn't recalculate.")
+    }
   }
 
   // The most recent 20 rounds (the list arrives date-descending from the page).
@@ -43,7 +62,7 @@ export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = fa
 
   const addButton = (
     <button
-      onClick={() => setAdding(true)}
+      onClick={() => (signedIn ? setAdding(true) : setGuestSheet(true))}
       className="h-11 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent transition-all hover:brightness-110 md:h-10"
     >
       Add round
@@ -74,12 +93,35 @@ export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = fa
                   >
                     Export last 20 (CSV)
                   </button>
+                  {signedIn && (
+                    <button
+                      onClick={recalculate}
+                      className="flex min-h-[40px] w-full items-center rounded-md px-2.5 text-left text-sm text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
+                    >
+                      Recalculate all rounds
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           </div>
         )}
       </div>
+
+      {recalc && (
+        <p className="rounded-lg border border-fg/[0.08] bg-surface px-3 py-2 text-sm text-fg-2" role="status">
+          {recalc}
+        </p>
+      )}
+      {guestSheet && (
+        <SignInToSave
+          onSecondary={() => {
+            setGuestSheet(false)
+            setAdding(true)
+          }}
+          secondaryLabel="Try it without saving"
+        />
+      )}
 
       {rounds.length === 0 ? (
         <div className="rounded-xl border border-fg/[0.06] bg-surface py-16 text-center">

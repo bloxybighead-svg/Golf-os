@@ -84,6 +84,22 @@ export function HolePad({ hole, onChange }: { hole: HoleEntry; onChange: (patch:
               {p}
             </Choice>
           ))}
+          <label className="ml-2 flex items-center gap-1 text-xs text-muted" title="Stroke index from the scorecard (1 = hardest), for net double bogey">
+            HCP
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={18}
+              value={hole.stroke_index ?? ""}
+              onChange={(e) => {
+                const v = parseInt(e.target.value)
+                onChange({ stroke_index: Number.isInteger(v) && v >= 1 && v <= 18 ? v : null })
+              }}
+              aria-label={`Hole ${hole.hole_number} stroke index`}
+              className="h-11 w-12 rounded-lg border border-fg/[0.08] bg-surface px-1 text-center text-sm text-fg tabular-nums focus:border-accent focus:outline-none"
+            />
+          </label>
         </div>
       </div>
 

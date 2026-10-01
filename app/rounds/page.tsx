@@ -9,6 +9,7 @@ export default async function RoundsPage({
   searchParams?: { new?: string }
 }) {
   const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { data, error } = await supabase
     .from("rounds")
@@ -39,6 +40,7 @@ export default async function RoundsPage({
       casualGirAvg={casualGirAvg}
       summary={<RoundsSummary rounds={rounds} />}
       initialAdding={searchParams?.new === "1"}
+      signedIn={!!user}
     />
   )
 }

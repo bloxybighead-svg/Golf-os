@@ -19,6 +19,8 @@ export interface HoleEntry {
   green_miss_side: GreenMiss | null
   putts: number | null
   penalty: boolean
+  /** The hole's stroke index from the scorecard (1 = hardest), for net double bogey. Optional. */
+  stroke_index?: number | null
 }
 
 /** A hole that has a score, ready to save. */
@@ -69,7 +71,10 @@ export function cleanHoles(raw: unknown): ScoredHole[] {
     const green_miss_side =
       green_hit === false && GREEN_MISSES.includes(h.green_miss_side) ? (h.green_miss_side as GreenMiss) : null
 
-    return { hole_number, par, strokes, fairway_hit, fairway_miss_side, green_hit, green_miss_side, putts, penalty: h.penalty === true }
+    const stroke_index = h.stroke_index == null || h.stroke_index === "" ? null : intIn(h.stroke_index, 1, 18)
+    if (h.stroke_index != null && h.stroke_index !== "" && stroke_index == null) throw new Error(`Hole ${hole_number}: HCP must be 1 to 18.`)
+
+    return { hole_number, par, strokes, fairway_hit, fairway_miss_side, green_hit, green_miss_side, putts, penalty: h.penalty === true, stroke_index }
   })
   return out.sort((a, b) => a.hole_number - b.hole_number)
 }

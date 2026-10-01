@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache"
 import { syncCalculatedHandicap } from "@/lib/supabase/syncHandicap"
 import { createClient } from "@/lib/supabase/server"
-import { calcDifferential } from "@/lib/handicap"
 import { computeUserSg, handicapBracketRange } from "@/lib/sgBenchmarks"
 import { cleanHoles, summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
 import type { Round } from "@/lib/supabase/types"
@@ -22,6 +21,9 @@ export interface RoundInput {
   course_rating: number | null
   slope_rating: number | null
   notes: string | null
+  /** OpenGolfAPI course id and tee, when the course was picked from search. */
+  course_id?: string | null
+  tee_name?: string | null
   holes: HoleEntry[] | null
   score?: number
   par?: number
@@ -34,14 +36,13 @@ const STAT_COLUMNS = [
 ] as const
 type StatColumn = (typeof STAT_COLUMNS)[number]
 type RoundCounts = { score: number; par: number; holes_played: number } & Partial<Record<StatColumn, number | null>>
-type RoundRow = Omit<RoundInput, "holes" | "score" | "par" | "holes_played"> & RoundCounts & {
-  differential: number | null
-}
+type RoundRow = Omit<RoundInput, "holes" | "score" | "par" | "holes_played" | "course_id" | "tee_name"> &
+  RoundCounts & { course_id: string | null; tee_name: string | null }
 
 /**
  * The rounds row for this input plus its validated holes (null for score
- * only). The differential is recomputed server-side rather than trusted from
- * the client, so a stale or tampered one never makes it into a saved round.
+ * only). The differential, adjusted score and caps are never taken from the
+ * client: syncCalculatedHandicap re-scores the whole record after the save.
  */
 function buildRound(input: RoundInput): { row: RoundRow; holes: ScoredHole[] | null } {
   const base = {
@@ -52,6 +53,8 @@ function buildRound(input: RoundInput): { row: RoundRow; holes: ScoredHole[] | n
     course_rating: input.course_rating,
     slope_rating: input.slope_rating,
     notes: input.notes,
+    course_id: typeof input.course_id === "string" && input.course_id ? input.course_id.slice(0, 64) : null,
+    tee_name: typeof input.tee_name === "string" && input.tee_name ? input.tee_name.slice(0, 60) : null,
   }
   if (!base.date || !base.course_name) throw new Error("Date and course are required.")
 
@@ -74,10 +77,7 @@ function buildRound(input: RoundInput): { row: RoundRow; holes: ScoredHole[] | n
     counts = { score, par, holes_played: holesPlayed }
   }
 
-  const differential = base.course_rating != null && base.slope_rating != null
-    ? calcDifferential(counts.score, base.course_rating, base.slope_rating, counts.holes_played)
-    : null
-  return { row: { ...base, ...counts, differential }, holes }
+  return { row: { ...base, ...counts }, holes }
 }
 
 /** Replaces a round's holes (none for score only). */
@@ -205,11 +205,26 @@ export async function getRoundHoles(roundId: string): Promise<HoleEntry[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from("round_holes")
-    .select("hole_number, par, strokes, fairway_hit, fairway_miss_side, green_hit, green_miss_side, putts, penalty")
+    .select("hole_number, par, strokes, fairway_hit, fairway_miss_side, green_hit, green_miss_side, putts, penalty, stroke_index")
     .eq("round_id", roundId)
     .order("hole_number")
   if (error) throw new Error(error.message)
   return (data ?? []) as HoleEntry[]
+}
+
+/**
+ * Re-scores every saved round under the current WHS rules (net double bogey,
+ * 9-hole expected score) and updates the index. Saving a round does this
+ * anyway; this is the one-time catch-up for rounds saved under the old rules.
+ */
+export async function recalculateAllRounds(): Promise<{ changed: number; index: number | null; rounds: number }> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Sign in to recalculate your rounds.")
+  const result = await syncCalculatedHandicap(supabase, user.id, { strict: true })
+  revalidatePath("/rounds")
+  revalidatePath("/you")
+  return result
 }
 
 export async function deleteRound(id: string) {

@@ -1939,6 +1939,72 @@ was the trees fix. Problem: everything was scored against the PGA TOUR table.
   90-golfer two-putt anchor. Seen on Pebble 7 (guest): handicap mode PW
   +0.37 / LW +0.45 vs tour +0.30 / +0.33 (tour identical to before).
 
+### Handicap follows the World Handicap System (2026-10-01, session 13)
+
+Dillon's spec called this "Session 12". Checked against the USGA Rules of
+Handicapping (usga.org/handicapping/roh): 5.1a, 5.1b, 5.2a, 5.2b, 3.1b,
+3.2b, 6.1a, 6.1b, Definitions, and the 2024 9-hole FAQ.
+
+- `lib/handicap.ts`: `handicapIndexFrom` (Rule 5.2a table from 3
+  differentials; ROUNDED to a tenth, .5 up -- the old code truncated, and
+  x0.96 is gone; max 54.0), `courseHandicap` (6.1, whole number .5 up;
+  9 holes use index/2), `strokesReceived` (by stroke-index rank among holes
+  played; plus handicaps give back on the easiest), `adjustHoles` (net
+  double bogey; par + 5 with no index; "approximate" = par + 2 +
+  round(CH / holes) when any hole lacks a stroke index), `scoreDifferential`
+  (18: (113/slope)(adjusted - rating); 9: unrounded 9-hole + expected 9-hole
+  diff; 10-17: played + expected x unplayed/9; no PCC), expected 9-hole
+  differential = `EXPECTED_9_PER_INDEX` 0.52 x index + `EXPECTED_9_CONSTANT`
+  1.2 (the WHS formula is proprietary -- SCGA; this reproduces the USGA
+  FAQ example 7.2 -> 15.7), `recalculateRounds` (whole record in date order;
+  each day uses the index from the start of the day; calculated index needs
+  54 holes, `HOLES_TO_ESTABLISH_INDEX`; before that a hand-entered index
+  dated on/before the round stands in; waiting short rounds are completed
+  with a provisional index (their played differential x 18/holes) when the
+  54th hole is posted -- approximation of WHS's unpublished initial step).
+  `calcDifferential` now only previews 18-hole rounds.
+- `lib/supabase/syncHandicap.ts` `syncCalculatedHandicap`: loads all rounds,
+  round_holes (paged, 1,000/request) and manual index entries, runs
+  recalculateRounds, updates only changed rounds (differential,
+  adjusted_score, differential_status, score_cap), records the index.
+  Runs after every create/update/delete (an edited old round can change
+  later rounds) and from Rounds -> ... -> "Recalculate all rounds"
+  (`recalculateAllRounds` action, strict). `buildRound` no longer computes a
+  differential.
+- Migration `supabase/whs_rounds.sql` (APPLIED 2026-10-01 via MCP, migration
+  whs_rounds): rounds.adjusted_score / score_cap / differential_status /
+  course_id / tee_name, round_holes.stroke_index (1-18), with check
+  constraints. No new tables, so existing owner-only RLS covers them.
+- OpenGolfAPI (logged real response, Pebble): each tee has 18-hole
+  course_rating, slope, par, yardage, gender; holes_data has par and
+  handicap_index (stroke index). `lib/courses/scorecard.ts` parseScorecard
+  + teeFill (9 holes: half the rating and par, slope as is -- no 9-hole
+  ratings in the data), route `/api/courses/[id]/scorecard`.
+- Round form: `components/courses/CourseSearch.tsx` (shared search box,
+  free text still allowed), tee chips fill rating/slope/par and the hole
+  pad's par + HCP; course_id and tee_name saved (and kept in the draft).
+  HolePad has an optional "HCP" field. Play's round save fetches the
+  scorecard to add stroke indexes and saves course_id / tee_name.
+- Guests: "Add round" opens `SignInToSave` ("Sign in to save rounds. It
+  takes 20 seconds." / Try it without saving); Save in a guest's form shows
+  it with "Keep editing"; the draft stays in localStorage and
+  /login?redirect=/rounds?new=1 reopens the form.
+- Round card: "-> 85 adj." when adjusted differs (tooltip says which cap),
+  "Waiting for index", "Score only, not capped per hole", approximate-caps
+  note. HandicapCard explainer rewritten; "Needs 54 holes of rated rounds".
+- Tests: handicap.test.ts (table at 3/5/6/8/12/20, rounding, 54 cap, no
+  0.96 in the handicap files, course handicap, strokes incl. plus, NDB with
+  / without stroke index / without index, 9-hole with and without index,
+  10-17, record recalculation incl. waiting 9s backfilled, manual index,
+  same-day); scorecard.test.ts.
+- Dillon's real data (read-only preview, nothing written): all 47 rounds
+  are score only (no NDB effect yet); 21 of 45 rated rounds change (all
+  9/10-hole); new index 2.7 from 20 differentials. He needs to click
+  "Recalculate all rounds" once (signed in) to rescore the saved rounds.
+- Not done (follow-ups): soft/hard cap vs 365-day low index (5.8),
+  exceptional score reduction (5.9), PCC (5.6), real 9-hole ratings, the
+  planner's own inline course search not switched to CourseSearch.
+
 
 | File | Purpose |
 |---|---|

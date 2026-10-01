@@ -6,6 +6,20 @@ import Link from "next/link"
 import { Check, ChevronRight, X } from "lucide-react"
 import type { CourseRef } from "@/lib/golfer/baseline"
 import { calcDifferential } from "@/lib/handicap"
+import type { Scorecard } from "@/lib/courses/scorecard"
+
+/** Adds each hole's stroke index from the course's scorecard (for net double bogey), when the hole has none. */
+async function withStrokeIndexes<T extends { hole_number: number; stroke_index?: number | null }>(courseId: string, holes: T[]): Promise<T[]> {
+  try {
+    const res = await fetch(`/api/courses/${encodeURIComponent(courseId)}/scorecard`)
+    if (!res.ok) return holes
+    const card = (await res.json()) as Scorecard
+    const si = new Map(card.holes.map((h) => [h.number, h.strokeIndex]))
+    return holes.map((h) => (h.stroke_index != null ? h : { ...h, stroke_index: si.get(h.hole_number) ?? null }))
+  } catch {
+    return holes // offline: the round saves with approximate caps
+  }
+}
 import { summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
 import { describeOrder, holesFor, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
 import { recommendTee, type TeeOption } from "@/lib/tbox/estimate"
@@ -419,7 +433,9 @@ function ScorePanel({
           course_rating: rating !== "" ? parseFloat(rating) : null,
           slope_rating: slope !== "" ? parseInt(slope) : null,
           notes: round.teeName ? `${round.teeName} tees` : null,
-          holes: scored,
+          course_id: round.course.id,
+          tee_name: round.teeName,
+          holes: await withStrokeIndexes(round.course.id, scored),
         })
         onSaved()
       } catch (e) {

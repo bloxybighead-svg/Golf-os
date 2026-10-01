@@ -8,10 +8,15 @@ import { calcDifferential } from "@/lib/handicap"
 import { createRound, getRoundHoles, updateRound } from "@/app/rounds/actions"
 import { blankHoles, summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
 import { Choice, HolePad } from "./HolePad"
+import { CourseSearch } from "@/components/courses/CourseSearch"
+import { SignInToSave } from "./SignInToSave"
+import { teeFill, type Scorecard, type ScorecardTee } from "@/lib/courses/scorecard"
 
 interface Props {
   round?: Round
   onDone: () => void
+  /** Signed out: the form still works, but Save asks to sign in (the draft is kept). */
+  signedIn?: boolean
 }
 
 type Mode = "holes" | "score"
@@ -23,6 +28,8 @@ const DRAFT_KEY = "golfos.roundDraft.v1"
 interface Draft {
   date: string
   course: string
+  courseId?: string | null
+  teeName?: string | null
   isCompetitive: boolean
   breakdownTags: string[]
   courseRating: string
@@ -63,11 +70,16 @@ function fullHoles(from: HoleEntry[]): HoleEntry[] {
   return out
 }
 
-export function RoundForm({ round, onDone }: Props) {
+export function RoundForm({ round, onDone, signedIn = true }: Props) {
   const [isCompetitive, setIsCompetitive] = useState(round?.is_competitive ?? false)
   const [breakdownTags, setBreakdownTags] = useState<string[]>(round?.breakdown_tags ?? [])
   const [date, setDate] = useState(round?.date ?? todayISO())
   const [course, setCourse] = useState(round?.course_name ?? "")
+  // Picked from course search: its OpenGolfAPI id, its tees (with ratings) and the tee chosen.
+  const [courseId, setCourseId] = useState<string | null>(round?.course_id ?? null)
+  const [teeName, setTeeName] = useState<string | null>(round?.tee_name ?? null)
+  const [scorecard, setScorecard] = useState<Scorecard | null>(null)
+  const [askSignIn, setAskSignIn] = useState(false)
   const [courseRating, setCourseRating] = useState(round?.course_rating?.toString() ?? "")
   const [slopeRating, setSlopeRating] = useState(round?.slope_rating?.toString() ?? "")
   const [notes, setNotes] = useState(round?.notes ?? "")
@@ -126,6 +138,8 @@ export function RoundForm({ round, onDone }: Props) {
       if (d && Array.isArray(d.holes) && d.holes.length === 18) {
         setDate(d.date)
         setCourse(d.course)
+        setCourseId(d.courseId ?? null)
+        setTeeName(d.teeName ?? null)
         setIsCompetitive(d.isCompetitive)
         setBreakdownTags(d.breakdownTags)
         setCourseRating(d.courseRating)
@@ -145,13 +159,65 @@ export function RoundForm({ round, onDone }: Props) {
 
   useEffect(() => {
     if (round || !draftLoaded) return
-    const d: Draft = { date, course, isCompetitive, breakdownTags, courseRating, slopeRating, notes, mode, holeCount, holes, current }
+    const d: Draft = { date, course, courseId, teeName, isCompetitive, breakdownTags, courseRating, slopeRating, notes, mode, holeCount, holes, current }
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(d))
     } catch {
       /* storage full or private mode: the draft just isn't kept */
     }
-  }, [round, draftLoaded, date, course, isCompetitive, breakdownTags, courseRating, slopeRating, notes, mode, holeCount, holes, current])
+  }, [round, draftLoaded, date, course, courseId, teeName, isCompetitive, breakdownTags, courseRating, slopeRating, notes, mode, holeCount, holes, current])
+
+  // A course picked from search: load its scorecard (tees with ratings; each hole's par and stroke index).
+  useEffect(() => {
+    if (!courseId) {
+      setScorecard(null)
+      return
+    }
+    let live = true
+    fetch(`/api/courses/${encodeURIComponent(courseId)}/scorecard`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((sc: Scorecard | null) => live && setScorecard(sc && Array.isArray(sc.tees) ? sc : null))
+      .catch(() => live && setScorecard(null))
+    return () => {
+      live = false
+    }
+  }, [courseId])
+
+  function pickCourse(c: { id: string; name: string }) {
+    setCourse(c.name)
+    setCourseId(c.id)
+    setTeeName(null)
+  }
+
+  // Scorecard pars and stroke indexes go onto the holes as soon as they arrive (still editable on each hole).
+  useEffect(() => {
+    if (!scorecard || scorecard.holes.length === 0) return
+    const byNumber = new Map(scorecard.holes.map((h) => [h.number, h]))
+    setHoles((prev) =>
+      prev.map((h) => {
+        const card = byNumber.get(h.hole_number)
+        return card ? { ...h, par: card.par, stroke_index: card.strokeIndex ?? h.stroke_index ?? null } : h
+      })
+    )
+  }, [scorecard])
+
+  const roundHoles = mode === "holes" ? (savedOrder?.length ?? holeCount) : parseInt(holesPlayed) || 18
+  function pickTee(t: ScorecardTee) {
+    setTeeName(t.label)
+    const fill = teeFill(t, roundHoles)
+    setCourseRating(String(fill.courseRating))
+    setSlopeRating(String(fill.slopeRating))
+    if (mode === "score") setPar(String(fill.par))
+  }
+  // Changing 9 / 18 holes after picking a tee refills the rating for the new length.
+  useEffect(() => {
+    const t = scorecard?.tees.find((x) => x.label === teeName)
+    if (!t) return
+    const fill = teeFill(t, roundHoles)
+    setCourseRating(String(fill.courseRating))
+    setSlopeRating(String(fill.slopeRating))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundHoles])
 
   // Keep the current hole's chip in view in the strip.
   useEffect(() => {
@@ -167,6 +233,8 @@ export function RoundForm({ round, onDone }: Props) {
     }
     setDate(todayISO())
     setCourse("")
+    setCourseId(null)
+    setTeeName(null)
     setIsCompetitive(false)
     setBreakdownTags([])
     setCourseRating("")
@@ -223,6 +291,11 @@ export function RoundForm({ round, onDone }: Props) {
       return
     }
     setError(null)
+    if (!signedIn) {
+      // Nothing is lost: the draft stays on this device and reopens after signing in.
+      setAskSignIn(true)
+      return
+    }
     startTransition(async () => {
       try {
         const payload = {
@@ -233,6 +306,8 @@ export function RoundForm({ round, onDone }: Props) {
           course_rating: courseRating !== "" ? parseFloat(courseRating) : null,
           slope_rating: slopeRating !== "" ? parseInt(slopeRating) : null,
           notes: notes.trim() || null,
+          course_id: courseId,
+          tee_name: teeName,
           ...(mode === "holes"
             ? { holes: inPlay }
             : { holes: null, score: parseInt(score), par: parseInt(par), holes_played: parseInt(holesPlayed) || 18 }),
@@ -287,15 +362,32 @@ export function RoundForm({ round, onDone }: Props) {
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
             </Field>
             <Field label="Course">
-              <input
-                type="text"
+              <CourseSearch
                 value={course}
-                onChange={(e) => setCourse(e.target.value)}
+                onChange={(text) => {
+                  setCourse(text)
+                  setCourseId(null) // typed by hand: not the searched course any more
+                  setTeeName(null)
+                }}
+                onPick={pickCourse}
+                inputClassName={inputCls}
                 placeholder="e.g. Colts Neck CC"
-                className={inputCls}
               />
             </Field>
           </div>
+
+          {/* Tees from the course's scorecard: fill rating, slope and par */}
+          {scorecard && scorecard.tees.length > 0 && (
+            <Field label="Tees" hint="fills rating and slope">
+              <div className="flex flex-wrap gap-2">
+                {scorecard.tees.map((t) => (
+                  <Choice key={t.label} selected={teeName === t.label} onClick={() => pickTee(t)} className="px-3 text-xs font-medium">
+                    {t.label} · {t.courseRating}/{t.slopeRating}
+                  </Choice>
+                ))}
+              </div>
+            </Field>
+          )}
 
           {/* How to log it */}
           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="How to log">
@@ -445,7 +537,9 @@ export function RoundForm({ round, onDone }: Props) {
           </div>
           {(mode === "holes" ? count : parseInt(holesPlayed)) < 18 && (
             <p className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
-              For 9 holes, enter the <span className="font-semibold">9-hole rating and slope</span> for your tees, not half of the 18-hole numbers.
+              For 9 holes, use the <span className="font-semibold">9-hole rating and slope</span> from your scorecard if it lists
+              them{teeName ? " (half the 18-hole rating is filled in, which is close)" : ""}. Its differential uses your Handicap Index
+              for the other nine, so it&rsquo;s worked out when you save.
             </p>
           )}
 
@@ -454,7 +548,8 @@ export function RoundForm({ round, onDone }: Props) {
             <p className="text-sm text-fg-2 tabular-nums">
               {relToPar !== null && (relToPar === 0 ? "Even par" : relToPar > 0 ? `${relToPar} over par` : `${-relToPar} under par`)}
               {relToPar !== null && differential !== null && " · "}
-              {differential !== null && `Differential ${differential.toFixed(1)}`}
+              {differential !== null && `Differential about ${differential.toFixed(1)}`}
+              {differential !== null && mode === "holes" && " before score caps"}
             </p>
           )}
 
@@ -529,6 +624,7 @@ export function RoundForm({ round, onDone }: Props) {
           <div className="h-8" />
         </div>
       </div>
+      {askSignIn && <SignInToSave onSecondary={() => setAskSignIn(false)} secondaryLabel="Keep editing" />}
     </div>
   )
 }

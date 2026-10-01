@@ -68,6 +68,12 @@ export interface Round {
   handicap_index: number | null   // golfer's tracked index at the time this round was saved
   is_9_hole: boolean              // derived from holes_played, kept only for convenient filtering
   created_at: string
+  // WHS scoring (lib/handicap.ts, filled in by syncCalculatedHandicap). Absent until whs_rounds.sql has run.
+  adjusted_score?: number | null  // after net double bogey / par + 5; null for score-only rounds
+  score_cap?: 'net_double_bogey' | 'par_plus_5' | 'approximate' | 'none' | null
+  differential_status?: 'rated' | 'waiting_for_index' | 'no_rating' | 'too_short' | null
+  course_id?: string | null       // OpenGolfAPI course id, when picked from search
+  tee_name?: string | null
 }
 
 export type SgCategory = 'off_tee' | 'approach' | 'short_game' | 'putting'
