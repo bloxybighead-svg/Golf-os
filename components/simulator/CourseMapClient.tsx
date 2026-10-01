@@ -97,6 +97,8 @@ import { ClubSheet } from "@/components/planner/ClubSheet"
 import { CoursePickerSheet } from "@/components/planner/CoursePickerSheet"
 import { MapView } from "@/components/planner/MapView"
 import { usePlannerSettings } from "@/hooks/usePlannerSettings"
+import { useAuthUser } from "@/hooks/useAuthUser"
+import { useCourseGeometry, type AutoHole, type OnGeometryApplied } from "@/hooks/useCourseGeometry"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -125,20 +127,33 @@ const YD_PER_M = 1.09361
 
 
 export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, baseline }: Props) {
+  const { supabase, authUser } = useAuthUser()
+
   // --- course search / loading ---
-  const [query, setQuery] = useState("")
-  const [hits, setHits] = useState<CourseHit[]>([])
-  const [searching, setSearching] = useState(false)
-  const [searched, setSearched] = useState(false)
-  const [course, setCourse] = useState<CourseHit | null>(null)
-  const [geometry, setGeometry] = useState<CourseGeometry | null>(null)
-  const [loadState, setLoadState] = useState<"idle" | "loading" | "error">("idle")
-  const [loadError, setLoadError] = useState("")
-  const [refreshing, setRefreshing] = useState(false) // "Refresh course data": refetches geometry only, leaves ball/aim/pin alone
-  const [initialZoom, setInitialZoom] = useState<number | undefined>(undefined) // remembered per course, initial view only
-  const [editingHole, setEditingHole] = useState(false)
-  const [correctionSubmitting, setCorrectionSubmitting] = useState(false)
-  const [correctionNote, setCorrectionNote] = useState<string | null>(null)
+  const geo = useCourseGeometry()
+  const {
+    query,
+    setQuery,
+    hits,
+    setHits,
+    searching,
+    searched,
+    course,
+    setCourse,
+    geometry,
+    setGeometry,
+    loadState,
+    setLoadState,
+    loadError,
+    setLoadError,
+    refreshing,
+    initialZoom,
+    setInitialZoom,
+    editingHole,
+    setEditingHole,
+    correctionSubmitting,
+    correctionNote,
+  } = geo
 
   // --- golfer (whose shots, bag, carries; saved on this device) ---
   const settings = usePlannerSettings({ calibrated, baseline })
@@ -196,9 +211,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const mapWrapRef = useRef<HTMLDivElement>(null)
   const watchId = useRef<number | null>(null)
   const lastFollowAt = useRef(0)
-  const supabaseRef = useRef<ReturnType<typeof createClient>>()
-  if (!supabaseRef.current) supabaseRef.current = createClient()
-  const [authUser, setAuthUser] = useState<{ id: string; email: string | null } | null>(null)
   const [gpsError, setGpsError] = useState("")
   // Why the last GPS reading didn't move the ball (weak signal, or a jump), until one does.
   const [gpsNote, setGpsNote] = useState("")
@@ -242,21 +254,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     saveZones(course.id, zones)
   }, [course, zones])
 
-  // Track sign-in state so hand-marked areas can be saved per account instead of
-  // just to this browser.
-  useEffect(() => {
-    const supabase = supabaseRef.current!
-    supabase.auth.getUser().then(({ data }) => {
-      setAuthUser(data.user ? { id: data.user.id, email: data.user.email ?? null } : null)
-    })
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthUser(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
-
   // Escape closes the course/hole sheet.
   useEffect(() => {
     if (!pickerOpen) return
@@ -291,36 +288,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     return () => document.removeEventListener("click", onDocClick)
   }, [showLayersMenu])
 
-  // ---------- course search ----------
-  useEffect(() => {
-    const q = query.trim()
-    if (q.length < 3) {
-      setHits([])
-      setSearched(false)
-      return
-    }
-    const ctl = new AbortController()
-    const t = setTimeout(async () => {
-      setSearching(true)
-      try {
-        const res = await fetch(`/api/courses/search?q=${encodeURIComponent(q)}`, { signal: ctl.signal })
-        const data = await res.json()
-        setHits(data.courses ?? [])
-        setSearched(true)
-      } catch {
-        /* aborted or offline: leave the previous list */
-      } finally {
-        setSearching(false)
-      }
-    }, 300)
-    return () => {
-      clearTimeout(t)
-      ctl.abort()
-    }
-  }, [query])
-
-  type AutoHole = { autoHoleId?: string; autoHoleRef?: number; autoFirstHole?: boolean }
-
   async function loadCourse(c: CourseHit, opts?: AutoHole) {
     setCourse(c)
     setHits([])
@@ -344,97 +311,29 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     await fetchGeometry(c, opts)
   }
 
-  /**
-   * The actual geometry fetch: this device's cache, then the shared Supabase cache and
-   * OpenStreetMap (both behind `/api/courses/geometry`), in that order. Split out from
-   * `loadCourse` so "Refresh course data" can re-run just this half -- it should leave
-   * the golfer's current ball/aim/pin exactly where they are, not reset the whole page
-   * the way picking a *different* course does.
-   */
+  // What a course's map data arriving does here: frame the course, then stand on a
+  // hole straight away so a recommendation shows without any taps -- the remembered
+  // hole, the default one, or hole 1 of a newly picked course. pickHole does its own
+  // state resets, fine since nothing golfer-specific was set yet.
+  const applyGeometry: OnGeometryApplied = (g, c, opts) => {
+    const pts: LatLng[] = g.holes.flatMap((h) => h.line)
+    setFit({ bounds: boundsOf(pts.length ? pts : [{ lat: c.lat as number, lng: c.lng as number }]), key: `course-${c.id}` })
+    const target = opts?.autoHoleId
+      ? g.holes.find((h) => h.id === opts.autoHoleId)
+      : opts?.autoHoleRef
+        ? g.holes.find((h) => h.ref === opts.autoHoleRef)
+        : opts?.autoFirstHole
+          ? g.holes[0]
+          : undefined
+    if (target) pickHole(target)
+  }
+
   async function fetchGeometry(c: CourseHit, opts?: { force?: boolean } & AutoHole) {
-    const cacheKey = `golfos.course.${c.id}.v${GEOMETRY_VERSION}`
-    const apply = (g: CourseGeometry) => {
-      setGeometry(g)
-      const pts: LatLng[] = g.holes.flatMap((h) => h.line)
-      setFit({ bounds: boundsOf(pts.length ? pts : [{ lat: c.lat as number, lng: c.lng as number }]), key: `course-${c.id}` })
-      setLoadError("")
-      setLoadState("idle")
-      // Stand on a hole straight away so a recommendation shows without any taps:
-      // the remembered hole, the default one, or hole 1 of a newly picked course.
-      // pickHole does its own state resets, fine since nothing golfer-specific was set yet.
-      const target = opts?.autoHoleId
-        ? g.holes.find((h) => h.id === opts.autoHoleId)
-        : opts?.autoHoleRef
-          ? g.holes.find((h) => h.ref === opts.autoHoleRef)
-          : opts?.autoFirstHole
-            ? g.holes[0]
-            : undefined
-      if (target) pickHole(target)
-    }
-    // Saved on this device (great for a round with weak signal): use it if it is recent,
-    // unless a refresh was explicitly requested.
-    let stale: CourseGeometry | null = null
-    if (!opts?.force) {
-      try {
-        const raw = localStorage.getItem(cacheKey)
-        if (raw) {
-          const saved = JSON.parse(raw)
-          if (saved?.geometry?.holes?.length) {
-            if (Date.now() - saved.at < COURSE_CACHE_MAX_AGE_MS) {
-              apply({ ...saved.geometry, coast: saved.geometry.coast ?? [] })
-              return
-            }
-            stale = { ...saved.geometry, coast: saved.geometry.coast ?? [] }
-          }
-        }
-      } catch {
-        /* ignore unreadable saved data */
-      }
-    }
-    setLoadState("loading")
-    setLoadError("")
-    // The free map-data servers are often busy. The API route keeps whatever
-    // it already fetched, so retrying picks up where the last try stopped.
-    // force=1 also skips the server's own (Supabase) cache, so a stale entry there gets replaced.
-    const url = `/api/courses/geometry?lat=${c.lat}&lng=${c.lng}&name=${encodeURIComponent(c.name)}&id=${encodeURIComponent(c.id)}&v=${GEOMETRY_VERSION}${opts?.force ? "&force=1" : ""}`
-    let lastError = "Could not load course map data"
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt > 0) setLoadError(`Map data server is busy, retrying (${attempt + 1}/3)…`)
-      try {
-        const res = await fetch(url)
-        const data = await res.json().catch(() => null)
-        if (!res.ok || !data) throw new Error(data?.error ?? lastError)
-        const g = { ...(data as CourseGeometry), coast: (data as CourseGeometry).coast ?? [] }
-        apply(g)
-        if (g.scope === "course-area") {
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), geometry: g }))
-          } catch {
-            /* storage full: fine, it just won't be available offline */
-          }
-        }
-        return
-      } catch (e) {
-        lastError = e instanceof Error ? e.message : lastError
-      }
-    }
-    if (stale) {
-      apply(stale)
-      setLoadError("Showing the copy saved on this phone (couldn't refresh it).")
-      return
-    }
-    setLoadState("error")
-    setLoadError(lastError)
+    await geo.fetchGeometry(c, opts, applyGeometry)
   }
 
   async function refreshCourseData() {
-    if (!course || refreshing) return
-    setRefreshing(true)
-    try {
-      await fetchGeometry(course, { force: true })
-    } finally {
-      setRefreshing(false)
-    }
+    await geo.refreshCourseData(applyGeometry)
   }
 
   // Loads hand-marked zones for a course: from the signed-in user's account if
@@ -445,7 +344,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   async function loadZonesFor(c: CourseHit) {
     const local = loadZones(c.id)
     if (authUser) {
-      const { data, error } = await supabaseRef.current!.from("course_zones").select("id, lie, ring").eq("course_id", c.id)
+      const { data, error } = await supabase.from("course_zones").select("id, lie, ring").eq("course_id", c.id)
       if (!error && data) {
         const remote = data as { id: string; lie: Lie; ring: LatLng[] }[]
         setZones(remote)
@@ -463,7 +362,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     setSyncingZones(true)
     try {
       const rows = localOnlyZones.map((z) => ({ user_id: authUser.id, course_id: course.id, lie: z.lie, ring: z.ring }))
-      const { data, error } = await supabaseRef.current!.from("course_zones").insert(rows).select("id, lie, ring")
+      const { data, error } = await supabase.from("course_zones").insert(rows).select("id, lie, ring")
       if (!error && data) {
         setZones(data as { id: string; lie: Lie; ring: LatLng[] }[])
         setLocalOnlyZones(null)
@@ -766,7 +665,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     setDrawKind(null)
     setPendingPoints([])
     if (authUser && course) {
-      const { data, error } = await supabaseRef.current!
+      const { data, error } = await supabase
         .from("course_zones")
         .insert({ user_id: authUser.id, course_id: course.id, lie, ring })
         .select("id, lie, ring")
@@ -784,49 +683,11 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     setZones((prev) => prev.filter((z) => z.id !== id)) // optimistic
     // supabase-js query builders are lazy thenables -- they only actually send the
     // request once awaited/`.then()`-ed, so this must be awaited, not just built.
-    if (authUser) await supabaseRef.current!.from("course_zones").delete().eq("id", id)
+    if (authUser) await supabase.from("course_zones").delete().eq("id", id)
   }
 
-  // Corrections are global (course_key, hole_id, field_name), not per-user -- any
-  // signed-in golfer can submit or overwrite one, so this is a plain upsert, not
-  // scoped to the current account's own rows the way zones are.
   async function submitHoleCorrection(input: HoleCorrectionSubmission) {
-    if (!authUser || !course || !hole) return
-    const rows: { course_key: string; hole_id: string; field_name: string; original_value: string | null; corrected_value: string; reason: string | null; user_id: string; submitted_by: string | null }[] = []
-    const add = (field: string, original: string | null, corrected: number | undefined) => {
-      if (corrected == null) return
-      rows.push({
-        course_key: `ogapi:${course.id}`,
-        hole_id: hole.id,
-        field_name: field,
-        original_value: original,
-        corrected_value: String(corrected),
-        reason: input.reason || null,
-        user_id: authUser.id,
-        submitted_by: authUser.email,
-      })
-    }
-    add("par", hole.par != null ? String(hole.par) : null, input.par)
-    add("tee_lat", String(hole.line[0].lat), input.teeLat)
-    add("tee_lng", String(hole.line[0].lng), input.teeLng)
-    add("yardage", hole.yardageYds != null ? String(hole.yardageYds) : null, input.yardageYds)
-    add("handicap", hole.strokeIndex != null ? String(hole.strokeIndex) : null, input.strokeIndex)
-    if (rows.length === 0) {
-      setEditingHole(false)
-      return
-    }
-    setCorrectionSubmitting(true)
-    try {
-      const { error } = await supabaseRef.current!.from("course_corrections").upsert(rows, { onConflict: "course_key,hole_id,field_name" })
-      if (!error) {
-        setEditingHole(false)
-        setCorrectionNote("Correction submitted. This will help other golfers.")
-        setTimeout(() => setCorrectionNote(null), 5000)
-        await fetchGeometry(course, { force: true }) // see the fix immediately, not after a manual reload
-      }
-    } finally {
-      setCorrectionSubmitting(false)
-    }
+    await geo.submitHoleCorrection(input, { supabase, authUser, hole, onApplied: applyGeometry })
   }
 
   function stopFollowing() {
