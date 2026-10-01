@@ -25,7 +25,7 @@ import { ALWAYS_SHOWN, LIES } from "@/lib/planner/labels"
 import { holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import type { CourseHit, NoHazardMap } from "@/lib/planner/storage"
 import { useClubRanking, type RankingRequest } from "@/components/simulator/useClubRanking"
-import type { CalibratedClub } from "@/components/simulator/CourseMapClient"
+import type { CalibratedClub } from "@/lib/planner/types"
 
 const DOTS_SHOWN = 400
 const HANDICAP_SHOTS_PER_CLUB = 1000

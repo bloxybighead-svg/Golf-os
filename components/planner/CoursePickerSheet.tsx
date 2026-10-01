@@ -13,7 +13,7 @@ import { CLUB_CATALOG } from "@/lib/golfer/bag"
 import { shortCourseName } from "@/lib/planner/labels"
 import type { CourseHit } from "@/lib/planner/storage"
 import { TendencyPicker } from "@/components/simulator/TendencyPicker"
-import type { CalibratedClub } from "@/components/simulator/CourseMapClient"
+import type { CalibratedClub } from "@/lib/planner/types"
 
 export interface CourseStats {
   greens: number
