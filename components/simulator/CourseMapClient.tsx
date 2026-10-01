@@ -99,6 +99,7 @@ import { MapView } from "@/components/planner/MapView"
 import { usePlannerSettings } from "@/hooks/usePlannerSettings"
 import { useAuthUser } from "@/hooks/useAuthUser"
 import { useCourseGeometry, type AutoHole, type OnGeometryApplied } from "@/hooks/useCourseGeometry"
+import { useZones } from "@/hooks/useZones"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -188,12 +189,27 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const [pinManual, setPinManual] = useState<LatLng | null>(null)
   const [placing, setPlacing] = useState<Placing>("ball")
   const [clubChoice, setClubChoice] = useState<string>("auto")
-  const [zones, setZones] = useState<UserZone[]>([])
-  const [noHazard, setNoHazard] = useState<NoHazardMap>({})
-  const [localOnlyZones, setLocalOnlyZones] = useState<UserZone[] | null>(null) // marks made before signing in
-  const [syncingZones, setSyncingZones] = useState(false)
-  const [drawKind, setDrawKind] = useState<Lie | null>(null)
-  const [pendingPoints, setPendingPoints] = useState<LatLng[]>([])
+  const zoneState = useZones({ supabase, authUser, course })
+  const {
+    zones,
+    noHazard,
+    setNoHazard,
+    localOnlyZones,
+    setLocalOnlyZones,
+    syncingZones,
+    drawKind,
+    setDrawKind,
+    pendingPoints,
+    setPendingPoints,
+    loadZonesFor,
+    syncLocalZonesToAccount,
+    startDraw,
+    addDrawPoint,
+    undoDrawPoint,
+    cancelDraw,
+    finishDraw,
+    deleteZone,
+  } = zoneState
   const [showTrouble, setShowTrouble] = useState(false)
   const [showRings, setShowRings] = useState(true)
   const [showCarry, setShowCarry] = useState(false) // dots are where shots stop; this adds where they landed
@@ -245,14 +261,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     settings.markHydrated()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // Save hand-marked zones for the loaded course whenever they change (guest/offline
-  // fallback -- while signed in, marks are already the source of truth in Supabase,
-  // but keeping a local mirror costs nothing and covers a failed write).
-  useEffect(() => {
-    if (!course) return
-    saveZones(course.id, zones)
-  }, [course, zones])
 
   // Escape closes the course/hole sheet.
   useEffect(() => {
@@ -334,43 +342,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
 
   async function refreshCourseData() {
     await geo.refreshCourseData(applyGeometry)
-  }
-
-  // Loads hand-marked zones for a course: from the signed-in user's account if
-  // there is one, otherwise from this browser's local storage. If the account
-  // has none yet but this browser does (marks made before signing in, or on a
-  // guest session), those are offered for one-time upload rather than silently
-  // dropped or silently merged.
-  async function loadZonesFor(c: CourseHit) {
-    const local = loadZones(c.id)
-    if (authUser) {
-      const { data, error } = await supabase.from("course_zones").select("id, lie, ring").eq("course_id", c.id)
-      if (!error && data) {
-        const remote = data as { id: string; lie: Lie; ring: LatLng[] }[]
-        setZones(remote)
-        setLocalOnlyZones(remote.length === 0 && local.length > 0 ? local : null)
-        return
-      }
-      // Read failed (offline, RLS hiccup, ...): fall back to the local copy rather than showing nothing.
-    }
-    setZones(local)
-    setLocalOnlyZones(null)
-  }
-
-  async function syncLocalZonesToAccount() {
-    if (!authUser || !course || !localOnlyZones || localOnlyZones.length === 0) return
-    setSyncingZones(true)
-    try {
-      const rows = localOnlyZones.map((z) => ({ user_id: authUser.id, course_id: course.id, lie: z.lie, ring: z.ring }))
-      const { data, error } = await supabase.from("course_zones").insert(rows).select("id, lie, ring")
-      if (!error && data) {
-        setZones(data as { id: string; lie: Lie; ring: LatLng[] }[])
-        setLocalOnlyZones(null)
-        saveZones(course.id, []) // now that the account has them, this browser doesn't need its own copy
-      }
-    } finally {
-      setSyncingZones(false)
-    }
   }
 
   function toggleClub(c: Club) {
@@ -523,12 +494,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   }, [hole, geometry, zones, noHazard])
 
   function setHazardConfirmed(hazard: ConfirmableHazard, value: boolean) {
-    if (!hole || !course) return
-    setNoHazard((prev) => {
-      const next = { ...prev, [hole.id]: { ...prev[hole.id], [hazard]: value } }
-      saveNoHazard(course.id, next)
-      return next
-    })
+    zoneState.setHazardConfirmed(hazard, value, hole)
   }
 
   // "estimated" only happens when neither OSM nor a hand-drawn zone has a
@@ -642,49 +608,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     const pts = landings.map((l) => l.point)
     return [dispersionRing(pts, 1.177), dispersionRing(pts, 2.146)].filter((r) => r.length > 0)
   }, [showRings, landings])
-
-  // ---------- hand-marking trees / water / OB / etc that aren't on the map ----------
-  function startDraw(lie: Lie) {
-    setDrawKind(lie)
-    setPendingPoints([])
-  }
-  function addDrawPoint(p: LatLng) {
-    setPendingPoints((prev) => [...prev, p])
-  }
-  function undoDrawPoint() {
-    setPendingPoints((prev) => prev.slice(0, -1))
-  }
-  function cancelDraw() {
-    setDrawKind(null)
-    setPendingPoints([])
-  }
-  async function finishDraw() {
-    if (!drawKind || pendingPoints.length < 3) return
-    const lie = drawKind
-    const ring = pendingPoints
-    setDrawKind(null)
-    setPendingPoints([])
-    if (authUser && course) {
-      const { data, error } = await supabase
-        .from("course_zones")
-        .insert({ user_id: authUser.id, course_id: course.id, lie, ring })
-        .select("id, lie, ring")
-        .single()
-      if (!error && data) {
-        setZones((prev) => [...prev, data as { id: string; lie: Lie; ring: LatLng[] }])
-        return
-      }
-      // Write failed (offline, etc): still keep the mark locally rather than lose it.
-    }
-    const zone: UserZone = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, lie, ring }
-    setZones((prev) => [...prev, zone])
-  }
-  async function deleteZone(id: string) {
-    setZones((prev) => prev.filter((z) => z.id !== id)) // optimistic
-    // supabase-js query builders are lazy thenables -- they only actually send the
-    // request once awaited/`.then()`-ed, so this must be awaited, not just built.
-    if (authUser) await supabase.from("course_zones").delete().eq("id", id)
-  }
 
   async function submitHoleCorrection(input: HoleCorrectionSubmission) {
     await geo.submitHoleCorrection(input, { supabase, authUser, hole, onApplied: applyGeometry })
