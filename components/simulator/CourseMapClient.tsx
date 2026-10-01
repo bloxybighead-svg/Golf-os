@@ -94,6 +94,7 @@ import { ResultCard } from "@/components/planner/ResultCard"
 import { LayersMenu } from "@/components/planner/LayersMenu"
 import { HoleHeader } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
+import { CoursePickerSheet } from "@/components/planner/CoursePickerSheet"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -1135,244 +1136,46 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     />
   )
 
-  const pickerSheet =
-    pickerOpen &&
-    createPortal(
-      <div
-        className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/50 md:items-start md:p-4 md:pt-24"
-        onClick={() => setPickerOpen(false)}
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Course and hole"
-          onClick={(e) => e.stopPropagation()}
-          className="flex max-h-[85svh] w-full flex-col overflow-hidden rounded-t-2xl border border-fg/[0.08] bg-page pb-[env(safe-area-inset-bottom)] md:max-w-xl md:rounded-2xl md:pb-0"
-        >
-          <div className="flex items-center gap-2 border-b border-fg/[0.08] p-3">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Find a course"
-              aria-label="Find a course"
-              className="h-11 min-w-0 flex-1 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
-            />
-            <button
-              onClick={() => setPickerOpen(false)}
-              aria-label="Close"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-fg-3 hover:bg-fg/[0.06] hover:text-fg"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="overflow-y-auto">
-            {query.trim().length >= 3 ? (
-              <ul className="divide-y divide-fg/[0.06]">
-                {searching && hits.length === 0 && <li className="px-4 py-3 text-sm text-muted">Searching…</li>}
-                {!searching && searched && hits.length === 0 && <li className="px-4 py-3 text-sm text-muted">No courses found.</li>}
-                {hits.map((h) => (
-                  <li key={h.id}>
-                    <button
-                      onClick={() => chooseCourse(h)}
-                      className="flex min-h-[44px] w-full items-baseline gap-2 px-4 py-2.5 text-left hover:bg-fg/[0.04]"
-                    >
-                      <span className="min-w-0 flex-1 truncate text-sm text-fg">{h.name}</span>
-                      <span className="shrink-0 text-xs text-muted">{[h.city, h.state].filter(Boolean).join(", ")}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <>
-                {holes.length > 0 && course && (
-                  <section className="p-4">
-                    <p className="label-xs">{shortCourseName(course.name)}</p>
-                    <div className="mt-2 grid grid-cols-6 gap-1.5">
-                      {holes.map((h, i) => (
-                        <button
-                          key={h.id}
-                          onClick={() => {
-                            pickHole(h)
-                            setPickerOpen(false)
-                          }}
-                          aria-pressed={h.id === holeId}
-                          className={`flex h-12 flex-col items-center justify-center rounded-lg tabular-nums transition-colors ${
-                            h.id === holeId ? "bg-accent text-on-accent" : "bg-surface text-fg hover:bg-fg/[0.06]"
-                          }`}
-                        >
-                          <span className="text-sm font-semibold leading-tight">{h.ref ?? i + 1}</span>
-                          {h.par != null && <span className="text-[10px] leading-tight opacity-70">Par {h.par}</span>}
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {recent.filter((r) => r.id !== course?.id).length > 0 && (
-                  <section className="border-t border-fg/[0.06] py-2">
-                    <p className="label-xs px-4 pt-2">Recent</p>
-                    <ul className="mt-1 divide-y divide-fg/[0.06]">
-                      {recent
-                        .filter((r) => r.id !== course?.id)
-                        .map((r) => (
-                          <li key={r.id}>
-                            <button
-                              onClick={() => chooseCourse(r)}
-                              className="flex min-h-[44px] w-full items-center px-4 py-2.5 text-left text-sm text-fg hover:bg-fg/[0.04]"
-                            >
-                              {r.name}
-                            </button>
-                          </li>
-                        ))}
-                    </ul>
-                  </section>
-                )}
-
-                <section className="space-y-3 border-t border-fg/[0.06] p-4">
-                  <p className="label-xs">Shots</p>
-                  <div className="flex flex-wrap items-end gap-3">
-                    <label className="flex flex-col gap-1.5">
-                      <span className="text-xs text-muted">Whose shots</span>
-                      <select
-                        value={source}
-                        onChange={(e) => {
-                          setSource(e.target.value as "calibrated" | "handicap")
-                          setClubChoice("auto")
-                        }}
-                        className="h-11 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg md:h-9"
-                      >
-                        {calibrated && <option value="calibrated">{calibratedName}</option>}
-                        <option value="handicap">Your clubs</option>
-                      </select>
-                    </label>
-                    {source === "handicap" && (
-                      <>
-                        <label className="flex flex-col gap-1.5">
-                          <span className="text-xs text-muted">Handicap</span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={36}
-                            step={1}
-                            inputMode="decimal"
-                            value={handicap}
-                            onChange={(e) => {
-                              setHandicap(Math.min(36, Math.max(0, Number(e.target.value) || 0)))
-                            }}
-                            className="h-11 w-20 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg md:h-9"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-1.5">
-                          <span className="text-xs text-muted">Driver carry</span>
-                          <input
-                            type="number"
-                            placeholder="avg"
-                            inputMode="numeric"
-                            value={driverCarry}
-                            onChange={(e) => {
-                              setDriverCarry(e.target.value)
-                            }}
-                            className="h-11 w-24 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint md:h-9"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-1.5">
-                          <span className="text-xs text-muted">7-iron carry</span>
-                          <input
-                            type="number"
-                            placeholder="avg"
-                            inputMode="numeric"
-                            value={sevenIronCarry}
-                            onChange={(e) => {
-                              setSevenIronCarry(e.target.value)
-                            }}
-                            className="h-11 w-24 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint md:h-9"
-                          />
-                        </label>
-                        <TendencyPicker
-                          value={tendency}
-                          onChange={(t) => {
-                            setTendency(t)
-                          }}
-                        />
-                      </>
-                    )}
-                  </div>
-                  {source === "handicap" && (
-                    <p className="text-xs text-muted">
-                      {Object.keys(extraCarries).length > 0 &&
-                        `Plus ${Object.keys(extraCarries).length} more carr${Object.keys(extraCarries).length === 1 ? "y" : "ies"} from setup. `}
-                      <Link href="/welcome" className="font-semibold text-accent hover:underline">
-                        Edit setup
-                      </Link>
-                    </p>
-                  )}
-                  <div>
-                    <p className="text-xs text-muted">
-                      Bag · <span className="tabular-nums">{bag.length}</span> clubs
-                    </p>
-                    <div className="mt-1.5 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
-                      {CLUB_CATALOG.map((c) => {
-                        const on = bag.includes(c)
-                        return (
-                          <button
-                            key={c}
-                            onClick={() => toggleClub(c)}
-                            aria-pressed={on}
-                            className={`h-11 rounded-lg text-xs font-medium transition-colors md:h-9 ${
-                              on ? "bg-accent text-on-accent" : "bg-surface text-fg-3 hover:text-fg"
-                            }`}
-                          >
-                            {c}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    {Object.keys(estimatedFrom).length > 0 && (
-                      <p className="mt-2 text-xs text-muted">
-                        No shots on record for{" "}
-                        {Object.entries(estimatedFrom)
-                          .map(([club, from]) => `${club} (estimated from ${from})`)
-                          .join(", ")}
-                        .
-                      </p>
-                    )}
-                  </div>
-                </section>
-
-                {course && geometry && (
-                  <section className="space-y-2 border-t border-fg/[0.06] p-4 text-xs text-fg-3">
-                    <p className="label-xs">Course data</p>
-                    <p className="tabular-nums">
-                      {holes.length} holes · {stats.greens} greens · {stats.fairways} fairways · {stats.bunkers} bunkers ·{" "}
-                      {stats.water} water · {stats.trees} tree areas
-                    </p>
-                    {hasCourseProblems && (
-                      <div className="space-y-1">
-                        {geometry.scope === "radius" && <p>No course boundary is mapped, so neighbouring courses may appear.</p>}
-                        {holes.length === 0 && <p>No hole lines are mapped. Place the ball and pin by hand.</p>}
-                        {holes.length > 0 && stats.greens === 0 && (
-                          <p>Greens and hazards aren&rsquo;t traced, so the club ranking is only a distance guide.</p>
-                        )}
-                      </div>
-                    )}
-                    <button
-                      onClick={refreshCourseData}
-                      disabled={refreshing}
-                      className="flex h-11 items-center gap-1.5 rounded-lg border border-fg/[0.08] px-3 text-fg-2 hover:text-fg disabled:opacity-50 md:h-9"
-                    >
-                      <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
-                      {refreshing ? "Refreshing…" : "Refresh course data"}
-                    </button>
-                  </section>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </div>,
-      document.body
-    )
+  const pickerSheet = pickerOpen && (
+    <CoursePickerSheet
+      onClose={() => setPickerOpen(false)}
+      query={query}
+      onQueryChange={setQuery}
+      searching={searching}
+      searched={searched}
+      hits={hits}
+      onChooseCourse={chooseCourse}
+      course={course}
+      holes={holes}
+      holeId={holeId}
+      onPickHole={pickHole}
+      recent={recent}
+      calibrated={calibrated}
+      calibratedName={calibratedName}
+      source={source}
+      onSourceChange={(v) => {
+        setSource(v)
+        setClubChoice("auto")
+      }}
+      handicap={handicap}
+      onHandicapChange={setHandicap}
+      driverCarry={driverCarry}
+      onDriverCarryChange={setDriverCarry}
+      sevenIronCarry={sevenIronCarry}
+      onSevenIronCarryChange={setSevenIronCarry}
+      tendency={tendency}
+      onTendencyChange={setTendency}
+      extraCarries={extraCarries}
+      bag={bag}
+      onToggleClub={toggleClub}
+      estimatedFrom={estimatedFrom}
+      geometry={geometry}
+      stats={stats}
+      hasCourseProblems={hasCourseProblems}
+      refreshing={refreshing}
+      onRefresh={refreshCourseData}
+    />
+  )
 
   return (
     <div className="space-y-3">
