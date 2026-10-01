@@ -96,6 +96,7 @@ import { HoleHeader } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
 import { CoursePickerSheet } from "@/components/planner/CoursePickerSheet"
 import { MapView } from "@/components/planner/MapView"
+import { usePlannerSettings } from "@/hooks/usePlannerSettings"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -121,8 +122,6 @@ interface Props {
 const DOTS_SHOWN = 400
 const HANDICAP_SHOTS_PER_CLUB = 1000
 const YD_PER_M = 1.09361
-const SIDES = ["auto", "straight", "left", "right", "both"]
-const STRENGTHS = ["slight", "moderate", "strong"]
 
 
 export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, baseline }: Props) {
@@ -141,26 +140,31 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const [correctionSubmitting, setCorrectionSubmitting] = useState(false)
   const [correctionNote, setCorrectionNote] = useState<string | null>(null)
 
-  // --- golfer ---
-  const [source, setSource] = useState<"calibrated" | "handicap">(calibrated ? "calibrated" : "handicap")
-  const [handicap, setHandicap] = useState(10)
-  const [driverCarry, setDriverCarry] = useState("") // yards; blank = handicap average
-  const [sevenIronCarry, setSevenIronCarry] = useState("")
-  const [tendency, setTendency] = useState<Tendency>({ side: "auto", strength: "moderate" })
-  // Carries for clubs beyond driver and 7-iron, from setup (/welcome).
-  const [extraCarries, setExtraCarries] = useState<Partial<Record<Club, number>>>({})
-  // First visit on this device with no setup yet: offer it, once.
-  const [showSetupPrompt, setShowSetupPrompt] = useState(false)
+  // --- golfer (whose shots, bag, carries; saved on this device) ---
+  const settings = usePlannerSettings({ calibrated, baseline })
+  const {
+    source,
+    setSource,
+    handicap,
+    setHandicap,
+    driverCarry,
+    setDriverCarry,
+    sevenIronCarry,
+    setSevenIronCarry,
+    tendency,
+    setTendency,
+    extraCarries,
+    showSetupPrompt,
+    setShowSetupPrompt,
+    bag,
+    compareAgainst,
+    recent,
+    hydrated,
+    remember,
+  } = settings
   // A round being scored (kept on the device) and which side of it is showing.
   const [round, setRound] = useState<ActiveRound | null>(null)
   const [playView, setPlayView] = useState<PlayView>("map")
-  // Which clubs are in the bag, per shot source (the calibrated golfer and a
-  // handicap-based one carry different bags). Remembered on this device.
-  const [bags, setBags] = useState<{ calibrated: Club[]; handicap: Club[] }>({
-    calibrated: CALIBRATED_DEFAULT_BAG,
-    handicap: DEFAULT_BAG,
-  })
-  const bag = source === "calibrated" ? bags.calibrated : bags.handicap
 
   // --- positions ---
   const [holeId, setHoleId] = useState<string | null>(null)
@@ -178,21 +182,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   const [showTrouble, setShowTrouble] = useState(false)
   const [showRings, setShowRings] = useState(true)
   const [showCarry, setShowCarry] = useState(false) // dots are where shots stop; this adds where they landed
-  // Score against the golfer's handicap (default) or the PGA TOUR -- chosen on You, saved per device.
-  const [compareAgainst, setCompareAgainst] = useState<CompareAgainst>("handicap")
-  useEffect(() => {
-    const sync = () => setCompareAgainst(readCompareAgainst())
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === COMPARE_AGAINST_KEY) sync()
-    }
-    sync()
-    window.addEventListener(COMPARE_AGAINST_EVENT, sync)
-    window.addEventListener("storage", onStorage)
-    return () => {
-      window.removeEventListener(COMPARE_AGAINST_EVENT, sync)
-      window.removeEventListener("storage", onStorage)
-    }
-  }, [])
   const [showZones, setShowZones] = useState(true)
   const [pickerOpen, setPickerOpen] = useState(false) // the course/hole/golfer sheet behind the title line
   const [showMarks, setShowMarks] = useState(false) // hand-drawn marks list under the map, collapsed by default
@@ -202,8 +191,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   // Rendered through a portal (see below), so its position is tracked in viewport
   // coordinates rather than relying on CSS positioning relative to an ancestor.
   const [layersMenuPos, setLayersMenuPos] = useState<{ top: number; left: number } | null>(null)
-  const [recent, setRecent] = useState<CourseHit[]>([])
-  const [hydrated, setHydrated] = useState(false)
   const [following, setFollowing] = useState(false)
   const [gpsAccuracyYds, setGpsAccuracyYds] = useState<number | null>(null)
   const mapWrapRef = useRef<HTMLDivElement>(null)
@@ -230,28 +217,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     if (initRef.current) return
     initRef.current = true
     try {
-      // A signed-in golfer's setup numbers become this device's settings the
-      // first time Play opens here (their home course, their clubs).
-      const onboarded = localStorage.getItem(ONBOARDED_KEY)
-      if (baseline && onboarded !== "1") applyBaselineToDevice(baseline)
-      else if (!baseline && onboarded == null) setShowSetupPrompt(true)
-      const raw = localStorage.getItem(SETTINGS_KEY)
-      if (raw) {
-        const v = JSON.parse(raw)
-        if (v.source === "handicap" || (v.source === "calibrated" && calibrated)) setSource(v.source)
-        if (typeof v.handicap === "number") setHandicap(Math.min(36, Math.max(0, v.handicap)))
-        if (typeof v.driverCarry === "string") setDriverCarry(v.driverCarry.slice(0, 4))
-        if (v.carries && typeof v.carries === "object") setExtraCarries(cleanCarries(v.carries))
-        if (typeof v.sevenIronCarry === "string") setSevenIronCarry(v.sevenIronCarry.slice(0, 4))
-        if (v.tendency && SIDES.includes(v.tendency.side) && STRENGTHS.includes(v.tendency.strength)) setTendency(v.tendency)
-        if (v.bags && typeof v.bags === "object") {
-          const cal = Array.isArray(v.bags.calibrated) ? normalizeBag(v.bags.calibrated) : []
-          const hcp = Array.isArray(v.bags.handicap) ? normalizeBag(v.bags.handicap) : []
-          setBags({ calibrated: cal.length ? cal : CALIBRATED_DEFAULT_BAG, handicap: hcp.length ? hcp : DEFAULT_BAG })
-        }
-      }
-      const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")
-      if (Array.isArray(r)) setRecent(r.filter((c) => c && typeof c.id === "string" && typeof c.name === "string").slice(0, 5))
+      settings.loadFromDevice() // setup numbers, saved settings, recent courses
       // Resume where the golfer left off; a first visit opens on the default hole.
       // A round in progress wins: reopening mid-round lands back on its course.
       const active = loadActiveRound()
@@ -264,21 +230,9 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     } catch {
       /* private mode or corrupt data: start from defaults */
     }
-    setHydrated(true)
+    settings.markHydrated()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    if (!hydrated) return
-    try {
-      localStorage.setItem(
-        SETTINGS_KEY,
-        JSON.stringify({ source, handicap, driverCarry, sevenIronCarry, carries: extraCarries, tendency, bags })
-      )
-    } catch {
-      /* storage full or blocked: settings just won't be remembered */
-    }
-  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, extraCarries, tendency, bags])
 
   // Save hand-marked zones for the loaded course whenever they change (guest/offline
   // fallback -- while signed in, marks are already the source of truth in Supabase,
@@ -521,12 +475,7 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
   }
 
   function toggleClub(c: Club) {
-    const current = source === "calibrated" ? bags.calibrated : bags.handicap
-    const has = current.includes(c)
-    if (has && current.length === 1) return // a bag needs at least one club
-    const next = normalizeBag(has ? current.filter((x) => x !== c) : [...current, c])
-    setBags((prev) => (source === "calibrated" ? { ...prev, calibrated: next } : { ...prev, handicap: next }))
-    setClubChoice("auto")
+    if (settings.toggleClub(c)) setClubChoice("auto")
   }
 
   // Previous/next hole from the title line, wrapping 18 -> 1 and 1 -> 18.
@@ -563,18 +512,6 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     setQuery("")
     setPickerOpen(false)
     void loadCourse(c, { autoFirstHole: true })
-  }
-
-  function remember(c: CourseHit) {
-    setRecent((prev) => {
-      const next = [c, ...prev.filter((x) => x.id !== c.id)].slice(0, 5)
-      try {
-        localStorage.setItem(RECENT_KEY, JSON.stringify(next))
-      } catch {
-        /* ignore */
-      }
-      return next
-    })
   }
 
   // ---------- golfer shots ----------
