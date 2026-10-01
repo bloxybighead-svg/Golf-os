@@ -92,6 +92,7 @@ import { ScoringDetails } from "@/components/planner/ScoringDetails"
 import { ClubTable } from "@/components/planner/ClubTable"
 import { ResultCard } from "@/components/planner/ResultCard"
 import { LayersMenu } from "@/components/planner/LayersMenu"
+import { HoleHeader } from "@/components/planner/HoleHeader"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -1400,41 +1401,13 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
       )}
 
       {/* ---- title: one tappable line that opens the course/hole sheet, plus previous/next hole ---- */}
-      <div className="sticky top-[calc(3rem+env(safe-area-inset-top))] z-30 -mx-4 flex w-[calc(100%+2rem)] min-h-[48px] items-center gap-2 border-b border-fg/[0.08] bg-page/95 px-4 py-1 backdrop-blur-md md:static md:mx-0 md:w-full md:border-0 md:bg-transparent md:px-0 md:backdrop-blur-none">
-        <button
-          type="button"
-          onClick={() => setPickerOpen(true)}
-          aria-haspopup="dialog"
-          className="flex min-h-[44px] min-w-0 items-center gap-1.5 text-left"
-        >
-          <span className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg tabular-nums">
-            {chipParts.join(" · ")}
-          </span>
-          <ChevronDown size={18} className="shrink-0 text-muted" />
-        </button>
-        {holes.length > 1 && (
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={() => stepHole(-1)}
-              aria-label={`Previous hole (${holeLabel(-1)})`}
-              title={holeLabel(-1)}
-              className="flex h-11 w-11 items-center justify-center rounded-lg border border-fg/[0.08] text-fg-2 transition-colors hover:border-fg/20 hover:text-fg md:h-9 md:w-9"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => stepHole(1)}
-              aria-label={`Next hole (${holeLabel(1)})`}
-              title={holeLabel(1)}
-              className="flex h-11 w-11 items-center justify-center rounded-lg border border-fg/[0.08] text-fg-2 transition-colors hover:border-fg/20 hover:text-fg md:h-9 md:w-9"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        )}
-      </div>
+      <HoleHeader
+        title={chipParts.join(" · ")}
+        onOpenPicker={() => setPickerOpen(true)}
+        showArrows={holes.length > 1}
+        onStep={stepHole}
+        holeLabel={holeLabel}
+      />
 
       {loadState === "loading" && course && (
         <p className="flex items-center gap-1.5 text-xs text-muted">
