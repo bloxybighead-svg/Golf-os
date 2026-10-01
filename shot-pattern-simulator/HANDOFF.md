@@ -2005,6 +2005,60 @@ Handicapping (usga.org/handicapping/roh): 5.1a, 5.1b, 5.2a, 5.2b, 3.1b,
   exceptional score reduction (5.9), PCC (5.6), real 9-hole ratings, the
   planner's own inline course search not switched to CourseSearch.
 
+### Code health: planner split, API rate limits (2026-10-01, session 14)
+
+Dillon's spec called this "Session 13". No planner numbers or layout changed:
+Pebble 1 compared before/after (all 13 table rows, card, labels, localStorage
+keys identical; screenshots match; row pick, Layers, course sheet, Escape,
+Reset aim all work).
+
+- CourseMapClient.tsx (2,387 lines) is now a 10-line wrapper:
+  `usePlannerController` (hooks/, state + start-up + loadCourse/pickHole --
+  the moves that touch several hooks) returns a vm that
+  `components/planner/PlannerView.tsx` draws. Hooks: usePlannerSettings
+  (settings + recent + compare-against; `loadFromDevice()` /
+  `markHydrated()` keep the original single start-up effect order),
+  useCourseGeometry (search, fetch/cache, refresh, corrections; what
+  happens on load is the caller's `onApplied`, passed at call time),
+  useAuthUser, useZones, useBallPosition (GPS), usePlan (shots, pin/aim,
+  lie map, worker ranking, chosen club, dots, rings, labels). Components:
+  HoleHeader, MapView, ResultCard, ClubTable, ClubSheet, LayersMenu,
+  CoursePickerSheet, ScoringDetails, ui (Stat/ToolButton/LayerMenuItem).
+  lib/planner: storage.ts (every localStorage key, unchanged strings),
+  labels.ts, geometry.ts (boundsOf, holePinFor), types.ts (CalibratedClub,
+  PlannerProps). Largest file 393 lines. 17 commits on
+  session-14-code-health, each tested + built.
+- Rate limits (supabase/api_rate_limits.sql, APPLIED via MCP): table
+  api_rate_limits (RLS on, no policies, revoked from anon/authenticated)
+  and hit_rate_limit(bucket, max, window_seconds) (security definer,
+  EXECUTE for service_role only; one INSERT ... ON CONFLICT DO UPDATE so
+  concurrent requests can't both slip under; deletes rows older than 1 h
+  each call). lib/supabase/rateLimit.ts: RATE_LIMITS search/tees/scorecard
+  30/min per IP (separate buckets), geometryMiss 10/hour per user;
+  clientIp from x-real-ip / x-forwarded-for; fails OPEN (logs) if the key
+  is missing or the call errors. Needs SUPABASE_SERVICE_ROLE_KEY (server
+  only) in Vercel Production AND Preview. Verified locally: 31st search ->
+  429, tees still 200 for that IP, 40 parallel -> exactly 30 allowed; anon
+  key gets 42501 on select/insert/rpc.
+- Geometry route: both in-memory Maps removed (queryCache = raw Overpass
+  answers per query, only used so client retries skipped finished queries;
+  cache = finished bodies, the only copy for radius-scope / non-9/18
+  courses, which now rely on the CDN s-maxage header). Supabase hits serve
+  everyone; a miss or force=1 needs a signed-in user (401 otherwise) and
+  counts toward geometryMiss (429 over). Errors are no-store. Client:
+  no retry on 401/429; the load error shows the message + Sign in link.
+  Search boxes (planner, round form, setup, Which tees) show the 429 text.
+- Search was already debounced 300 ms with a 3-character minimum (Which
+  tees searches only on its button).
+- Tests: rateLimit.test.ts, components/planner/planner.smoke.test.tsx
+  (react-dom/server render of ClubTable/HoleHeader/ResultCard;
+  vitest.config esbuild jsx "automatic"). A full interactive page test
+  would need jsdom + @testing-library/react and Leaflet/Worker mocks.
+- Follow-ups: on a failed course load the map still shows the previous
+  course's imagery (pre-existing); every 502 retry of a geometry miss
+  counts toward the 10/hour; tees/scorecard 429s degrade silently (no tee
+  chips) rather than showing a message.
+
 
 | File | Purpose |
 |---|---|
