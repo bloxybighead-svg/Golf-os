@@ -115,9 +115,10 @@ describe("lie map", () => {
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 10, y: 150 }))).toBe("green")
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 0, y: 60 }))).toBe("fairway")
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 60, y: 150 }))).toBe("water")
-    // Session 9: unmapped ground far (here ~240 yd) from any fairway/green/tee
-    // edge is now trees, not rough (was "rough" before lies.ts ROUGH_BAND_YDS).
-    expect(lies.lieAt(fromLocal(ORIGIN, { x: 300, y: 300 }))).toBe("trees")
+    // Unmapped ground is rough. (Session 9 made this "trees" -- far from any
+    // mapped edge -- and Session 11 took that rule out again: it turned
+    // untraced fairways into trees.)
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 300, y: 300 }))).toBe("rough")
   })
 })
 
@@ -493,9 +494,9 @@ describe("hole data-quality badge", () => {
     expect(corridor.kind).toBe("fairway")
     const lies = buildLieMap(ORIGIN, [corridor])
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 0, y: 75 }))).toBe("fairway") // middle of the corridor
-    // Well outside its width (85 yd off its edge): unmapped ground past the rough band
-    // is trees since Session 9 (was "rough").
-    expect(lies.lieAt(fromLocal(ORIGIN, { x: 100, y: 75 }))).toBe("trees")
+    // Outside its width, near or far, is plain (unmapped) rough. Session 9 made the
+    // far case "trees"; Session 11 removed that rule.
+    expect(lies.lieAt(fromLocal(ORIGIN, { x: 100, y: 75 }))).toBe("rough")
     expect(lies.lieAt(fromLocal(ORIGIN, { x: 25, y: 75 }))).toBe("rough") // 10 yd off its edge
   })
 

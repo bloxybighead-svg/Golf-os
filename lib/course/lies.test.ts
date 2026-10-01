@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { fromLocal, toLocal, type LatLng } from "./geo"
-import { buildLieMap, ROUGH_BAND_YDS } from "./lies"
+import { buildLieMap } from "./lies"
 import { tourExpected } from "./cost"
 import { evaluateClub, flagsUnmapped, simulateLandings, waterEntryPoint } from "./plan"
 import { isRoad, joinRings, parseBoundaryShape, parseOverpass, type CourseBoundaryShape, type CourseFeature } from "./overpass"
@@ -90,13 +90,14 @@ describe("buildings, roads and cover", () => {
 describe("unmapped ground", () => {
   const lies = buildLieMap(ORIGIN, [fairway], [], [], { boundary })
 
-  it(`is rough within ${ROUGH_BAND_YDS} yd of a fairway edge and trees beyond, flagged as inferred`, () => {
+  it("is rough however far it is from a mapped fairway, flagged as inferred (never trees: Session 11)", () => {
     expect(lies.classify(at(30, 200))).toEqual({ lie: "rough", source: "inferred" }) // 10 yd off
-    expect(lies.classify(at(80, 200))).toEqual({ lie: "trees", source: "inferred" }) // 60 yd off
+    expect(lies.classify(at(80, 200))).toEqual({ lie: "rough", source: "inferred" }) // 60 yd off
+    expect(lies.classify(at(180, 400))).toEqual({ lie: "rough", source: "inferred" }) // 160 yd off
     expect(lies.classify(at(0, 200))).toEqual({ lie: "fairway", source: "mapped" })
   })
 
-  it("stays rough when no fairway, green or tee is mapped to measure from", () => {
+  it("is rough when nothing at all is mapped", () => {
     expect(buildLieMap(ORIGIN, []).classify(at(500, 500))).toEqual({ lie: "rough", source: "inferred" })
   })
 

@@ -24,7 +24,8 @@ const rect = (x0: number, y0: number, x1: number, y1: number): LatLng[] => [at(x
 const angle = (a: number, b: number) => ((a - b + 540) % 360) - 180
 
 // A dogleg right: 200 yd straight up, then 45 degrees right to a green at (140, 340).
-// Fairway 30 yd wide on both legs; everything else unmapped (rough near the fairway, trees beyond).
+// Fairway 30 yd wide on both legs, mapped woods filling the inside of the corner;
+// everything else unmapped (rough).
 const line = [at(0, 0), at(0, 200), at(140, 340)]
 const pin = at(140, 340)
 function leg(a: { x: number; y: number }, b: { x: number; y: number }, halfWidth: number): LatLng[] {
@@ -39,6 +40,7 @@ const doglegInputs: LieInputs = {
     { kind: "fairway", ring: leg({ x: 0, y: 90 }, { x: 0, y: 215 }, 15) },
     { kind: "fairway", ring: leg({ x: -10, y: 190 }, { x: 125, y: 325 }, 15) },
     { kind: "green", ring: rect(125, 325, 155, 355) },
+    { kind: "trees", ring: rect(16, 95, 140, 175) },
   ],
   coast: [],
   zones: [],
@@ -52,7 +54,7 @@ function pattern(carry: number, carrySpread: number, offSpread: number, seed: nu
 }
 const driver: ClubShots = { club: "Driver", shots: pattern(255, 10, 12, 1) }
 const sevenIron: ClubShots = { club: "7-Iron", shots: pattern(160, 6, 8, 2) }
-const wildFourIron: ClubShots = { club: "4-Iron", shots: pattern(190, 6, 70, 4) } // sprays it everywhere, whatever the aim
+const wildFourIron: ClubShots = { club: "4-Iron", shots: pattern(190, 6, 130, 4) } // sprays it everywhere, whatever the aim
 const tee = { from: ORIGIN, pin, lies: dogleg, startLie: "tee" as const }
 
 describe("ranking each club at its own aim", () => {
@@ -67,7 +69,7 @@ describe("ranking each club at its own aim", () => {
   })
 
   it("a club that's poor at the shared aim but good at its own moves up the ranking", () => {
-    // The shared aim is the driver's corner: the 7-iron, aimed there, flies into the rough and trees.
+    // The shared aim is the driver's corner: the 7-iron, aimed there, flies into the mapped woods.
     const cornerAim = at(62, 262)
     const shared = rankClubs([sevenIron, wildFourIron], { ...tee, aim: cornerAim }).map((r) => r.club)
     const own = rankClubsOptimized([sevenIron, wildFourIron], { ...tee, aim: cornerAim }, { line })

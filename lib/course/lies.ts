@@ -13,18 +13,23 @@
 //  5. Buildings, and roads within ROAD_BUFFER_YDS, are out of bounds.
 //  6. Woods, scrub, tree rows (within TREE_ROW_BUFFER_YDS) and -- only when a
 //     boundary is mapped -- residential land inside it are trees (recovery).
-//  7. Anything left is unmapped: rough within ROUGH_BAND_YDS of a fairway,
-//     green or tee edge, trees beyond that. With no fairway, green or tee
-//     mapped at all there is nothing to measure from, so it stays rough.
+//  7. Anything left is unmapped, and plays as rough.
 // Steps 1-6 are "mapped" lies; step 7 is "inferred" (guesswork), which the
 // planner reports so the golfer knows how much of a pattern is a guess.
+//
+// Session 9 briefly guessed "trees" for unmapped ground more than 25 yd from
+// a mapped fairway, green or tee. Removed (Session 11): where OpenStreetMap
+// hasn't traced a hole's fairway, the real fairway is exactly that kind of
+// ground, so it was being called trees (Pebble 13, 15, 16: most of the
+// centre line). Trees now come only from mapped woods, scrub, tree rows,
+// residential land and the golfer's own marks.
 
 import { pointInRing, toLocal, type LatLng, type XY } from "./geo"
 import type { CourseBoundaryShape, CourseFeature, CourseLine } from "./overpass"
 
 export type Lie = "water" | "oob" | "bunker" | "green" | "fairway" | "trees" | "rough"
 
-/** "mapped": the lie comes from the map or the golfer's marks. "inferred": unmapped ground, guessed by distance. */
+/** "mapped": the lie comes from the map or the golfer's marks. "inferred": unmapped ground, assumed to be rough. */
 export type LieSource = "mapped" | "inferred"
 
 export interface LieClass {
@@ -38,14 +43,6 @@ export interface UserZone {
   lie: Lie
   ring: LatLng[]
 }
-
-/**
- * How far off a fairway, green or tee edge unmapped ground still plays as
- * rough; beyond it, unmapped ground is treated as trees (recovery). ESTIMATE:
- * a typical first cut plus light rough on a parkland course is roughly 20-30
- * yd wide before the trees, houses or native areas start.
- */
-export const ROUGH_BAND_YDS = 25
 
 /** Roads are mapped as centre lines: a shot within this many yards of one is on the road (out of bounds). ESTIMATE: half a two-lane road. */
 export const ROAD_BUFFER_YDS = 4
@@ -85,9 +82,6 @@ const SURFACES: { kind: CourseFeature["kind"]; lie: Lie }[] = [
   { kind: "fairway", lie: "fairway" },
   { kind: "tee", lie: "fairway" },
 ]
-
-/** Kinds whose edges unmapped ground is measured from (step 7). */
-const EDGE_KINDS: CourseFeature["kind"][] = ["fairway", "green", "tee"]
 
 const COAST_MAX_YDS = 1500 // farther than this from any coastline segment, don't guess
 
@@ -278,7 +272,7 @@ class CoastIndex {
   }
 }
 
-type SegSet = "road" | "treeRow" | "edge"
+type SegSet = "road" | "treeRow"
 
 export function buildLieMap(
   origin: LatLng,
@@ -304,12 +298,9 @@ export function buildLieMap(
   const outer = boundary?.outer.map((r) => prepare(origin, r)) ?? []
   const inner = boundary?.inner.map((r) => prepare(origin, r)) ?? []
 
-  const segs: Record<SegSet, Segment[]> = { road: [], treeRow: [], edge: [] }
+  const segs: Record<SegSet, Segment[]> = { road: [], treeRow: [] }
   for (const l of extras.lines ?? []) segs[l.kind].push(...segmentsOf(l.line.map((p) => toLocal(origin, p)), false))
-  for (const f of features) {
-    if (EDGE_KINDS.includes(f.kind)) segs.edge.push(...segmentsOf(f.ring.map((p) => toLocal(origin, p)), true))
-  }
-  const buffer: Record<SegSet, number> = { road: ROAD_BUFFER_YDS, treeRow: TREE_ROW_BUFFER_YDS, edge: ROUGH_BAND_YDS }
+  const buffer: Record<SegSet, number> = { road: ROAD_BUFFER_YDS, treeRow: TREE_ROW_BUFFER_YDS }
 
   // Candidates for a point: everything (index: false, the plain reference
   // version), or only what the point's index cell holds.
@@ -329,7 +320,7 @@ export function buildLieMap(
       kindGrids.set(kind, g)
     })
     const segGrids = {} as Record<SegSet, Grid<Segment>>
-    for (const set of ["road", "treeRow", "edge"] as SegSet[]) {
+    for (const set of ["road", "treeRow"] as SegSet[]) {
       const g = new Grid<Segment>()
       for (const s of segs[set]) g.add(s, segBox(s), buffer[set])
       segGrids[set] = g
@@ -361,8 +352,7 @@ export function buildLieMap(
     if (inAny("building", x, y) || near("road", x, y)) return mapped("oob")
     if (inAny("trees", x, y) || inAny("scrub", x, y) || near("treeRow", x, y)) return mapped("trees")
     if (boundary && inAny("residential", x, y)) return mapped("trees")
-    if (segs.edge.length === 0) return { lie: "rough", source: "inferred" }
-    return { lie: near("edge", x, y) ? "rough" : "trees", source: "inferred" }
+    return { lie: "rough", source: "inferred" }
   }
 
   return {

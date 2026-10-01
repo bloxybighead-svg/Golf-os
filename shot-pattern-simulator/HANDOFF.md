@@ -1867,6 +1867,30 @@ showed 100% rough. `bestAim` only ran for the selected club on demand.
   shows "At your aim 4.55" vs 4.25 for the Driver and doesn't re-rank; going
   back to a hole is instant from the cache.
 
+### Unmapped ground is rough again, never trees (2026-10-01, session 11)
+
+Dillon: "it is now putting trees in fairways". Cause: Session 9's guess
+that unmapped ground more than `ROUGH_BAND_YDS` (25) from a mapped
+fairway/green/tee edge is trees. Where OSM hasn't traced a hole's fairway,
+the real fairway is exactly that ground: on Pebble, 47-49 of ~60-70
+centre-line points on holes 13, 15 and 16 were "trees" (holes 3 and 4 too).
+None came from mapped woods/scrub/tree rows/residential.
+
+- `lies.ts`: step 7 is now just "unmapped -> rough" (source still
+  "inferred", so the unmapped-ground note on the card still works).
+  Removed `ROUGH_BAND_YDS`, the edge segments and their index. Trees come
+  only from mapped woods, scrub, tree rows, residential land inside the
+  boundary, and the golfer's marks. Inside Pebble's boundary now: 5,092
+  sample points rough/inferred, 0 inferred trees; 69 trees from the 2
+  mapped woods, 1 from residential.
+- "How this is scored" copy updated.
+- Tests: course.test.ts lines ~118 and ~494 back to "rough" (Session 9
+  had moved them to "trees"); lies.test.ts unmapped test now expects rough
+  at 10, 60 and 160 yd off. rank.test.ts's dogleg gained mapped woods
+  inside the corner (it relied on the guessed trees), and the wild 4-iron
+  sprays +-130 yd: shared corner aim 4-Iron 4.50 vs 7-Iron 4.90 (100% in
+  the woods); own aims 7-Iron 4.36 vs 4-Iron 4.42.
+
 
 | File | Purpose |
 |---|---|

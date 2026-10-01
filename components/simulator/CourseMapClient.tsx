@@ -24,7 +24,7 @@ import {
   type SurfaceStatus,
 } from "@/lib/course/dataQuality"
 import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
-import { ROUGH_BAND_YDS, type Lie, type UserZone } from "@/lib/course/lies"
+import type { Lie, UserZone } from "@/lib/course/lies"
 import { GEOMETRY_VERSION, type CourseFeature, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import {
   aimMarkerFor,
@@ -1516,8 +1516,8 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
         <p>
           Shapes come from OpenStreetMap volunteers. Outside the mapped course boundary is out of bounds, and so are
           buildings and roads (not cart or walking paths); woods, scrub, tree rows and gardens inside the boundary play as
-          trees. Untraced ground is a guess: rough within {ROUGH_BAND_YDS} yd of a fairway, green or tee, trees beyond that (an
-          estimate), and the card warns when more than a fifth of a club&rsquo;s shots end up on it. A ball in the water is
+          trees. Untraced ground counts as rough, and the card warns when more than a fifth of a club&rsquo;s shots end up
+          on it. A ball in the water is
           dropped where it last crossed into it, with one penalty stroke. The ✓ / ⚠ / ✗ line shows what is
           mapped, estimated or missing for this hole; Layers → Mark an area outlines trees, water, out of bounds, or a safe
           patch the map got wrong. Your marks beat the map, and a missing fairway is estimated as a corridor down the middle
