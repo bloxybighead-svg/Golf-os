@@ -95,6 +95,7 @@ import { LayersMenu } from "@/components/planner/LayersMenu"
 import { HoleHeader } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
 import { CoursePickerSheet } from "@/components/planner/CoursePickerSheet"
+import { MapView } from "@/components/planner/MapView"
 
 const CourseMap = dynamic(() => import("./CourseMap"), {
   ssr: false,
@@ -1177,6 +1178,62 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
     />
   )
 
+  const mapContent =
+    course?.lat != null && course.lng != null ? (
+      <CourseMap
+        center={{ lat: course.lat, lng: course.lng }}
+        geometry={geometry}
+        selectedHoleId={holeId}
+        ball={ball}
+        aim={aim}
+        pin={pin}
+        landings={landings}
+        showCarry={showCarry}
+        cells={troubleCells}
+        rings={rings}
+        zones={showZones ? zones : []}
+        drawKind={drawKind}
+        pendingPoints={pendingPoints}
+        labels={labels}
+        placing={placing}
+        fitBounds={fit.bounds}
+        fitKey={fit.key}
+        initialZoom={initialZoom}
+        onZoomChange={(z) => course && saveZoom(course.id, z)}
+        holeBearingDeg={holeBearingDeg}
+        onBall={(p) => {
+          stopFollowing()
+          moveBallTo(p)
+          if (!pin) setPlacing("pin") // no hole to take a pin from: the next tap places it
+        }}
+        onAim={(p) => {
+          setAimManual(p)
+        }}
+        onPin={(p) => {
+          setPinManual(p)
+        }}
+        onPickHole={(id) => {
+          const h = holes.find((x) => x.id === id)
+          if (h) pickHole(h)
+        }}
+        onDrawPoint={addDrawPoint}
+        onDrawClose={finishDraw}
+      />
+    ) : (
+      <div className="flex h-full items-center justify-center">
+        {loadState === "loading" && !course ? (
+          <Loader2 size={20} className="animate-spin text-muted" />
+        ) : (
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="h-11 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent"
+          >
+            Find a course
+          </button>
+        )}
+      </div>
+    )
+
   return (
     <div className="space-y-3">
       {showSetupPrompt && (
@@ -1257,256 +1314,44 @@ export function CourseMapClient({ calibrated, calibratedName, trackedHandicap, b
       {/* Scoring a hole hides the map (kept mounted, so it comes back as it was). */}
       <div className={scoring ? "hidden" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]"}>
         {/* ---- map ---- (min-w-0 stops a wide child from stretching the page on phones) */}
-        <div className="min-w-0 space-y-2.5">
-          <div className="flex items-center gap-2 text-xs">
-            <div role="group" aria-label="What a tap on the map moves" className="flex shrink-0 overflow-hidden rounded-lg border border-fg/[0.08]">
-              {(["ball", "aim", "pin"] as Placing[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPlacing(p)}
-                  disabled={!!drawKind}
-                  aria-pressed={placing === p}
-                  title={`Tap the map to move the ${p}`}
-                  className={`h-11 px-4 font-medium capitalize disabled:opacity-30 md:h-9 ${
-                    placing === p ? "bg-accent text-on-accent" : "bg-surface text-fg-3 hover:text-fg"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-            <div className="ml-auto flex items-center gap-2">
-              {aimManual && (
-                <ToolButton
-                  onClick={() => {
-                    setAimManual(null)
-                  }}
-                  icon={RotateCcw}
-                  label="Reset aim"
-                />
-              )}
-              <div ref={layersMenuRef}>
-                <ToolButton
-                  onClick={() => {
-                    if (!showLayersMenu && layersMenuRef.current) {
-                      const r = layersMenuRef.current.getBoundingClientRect()
-                      setLayersMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 224) })
-                    }
-                    setShowLayersMenu((v) => !v)
-                  }}
-                  icon={Layers}
-                  active={showLayersMenu || showTrouble || following || !!drawKind}
-                  label="Layers"
-                />
-              </div>
-            </div>
-          </div>
-          {layersMenu}
-          {gpsError && <p className="text-xs text-danger">{gpsError}</p>}
-          {gpsNote && !gpsError && <p className="text-xs text-warn" role="status">{gpsNote}</p>}
-
-          {drawKind && (
-            <div
-              className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs"
-              style={{ borderColor: lieColor(drawKind, 0.33), backgroundColor: lieColor(drawKind, 0.08) }}
-            >
-              <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: lieColor(drawKind) }} />
-              <span className="text-fg-2">
-                Tap the map to outline the <strong>{LIE_LABEL[drawKind].toLowerCase()}</strong> area
-                {pendingPoints.length > 0 ? ` · ${pendingPoints.length} point${pendingPoints.length === 1 ? "" : "s"}` : ""}.
-                {pendingPoints.length >= 3 && " Tap the first (bigger) point again to close it."}
-              </span>
-              {/* Duplicated as a floating bar over the map on phones (below), so this row is desktop/tablet only. */}
-              <div className="ml-auto hidden shrink-0 items-center gap-1.5 md:flex">
-                <button
-                  onClick={undoDrawPoint}
-                  disabled={pendingPoints.length === 0}
-                  className="flex items-center gap-1 rounded-md border border-fg/[0.15] px-2 py-1 font-medium text-fg-2 hover:text-fg disabled:opacity-30"
-                >
-                  <Undo2 size={12} /> Undo
-                </button>
-                <button
-                  onClick={finishDraw}
-                  disabled={pendingPoints.length < 3}
-                  className="flex items-center gap-1 rounded-md bg-accent px-2 py-1 font-semibold text-on-accent disabled:opacity-30"
-                >
-                  <Check size={12} /> Finish
-                </button>
-                <button onClick={cancelDraw} className="flex items-center gap-1 rounded-md border border-fg/[0.15] px-2 py-1 font-medium text-fg-2 hover:text-fg">
-                  <X size={12} /> Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div
-            ref={mapWrapRef}
-            className="relative isolate h-[60svh] min-h-[380px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
-          >
-            {course?.lat != null && course.lng != null ? (
-              <CourseMap
-                center={{ lat: course.lat, lng: course.lng }}
-                geometry={geometry}
-                selectedHoleId={holeId}
-                ball={ball}
-                aim={aim}
-                pin={pin}
-                landings={landings}
-                showCarry={showCarry}
-                cells={troubleCells}
-                rings={rings}
-                zones={showZones ? zones : []}
-                drawKind={drawKind}
-                pendingPoints={pendingPoints}
-                labels={labels}
-                placing={placing}
-                fitBounds={fit.bounds}
-                fitKey={fit.key}
-                initialZoom={initialZoom}
-                onZoomChange={(z) => course && saveZoom(course.id, z)}
-                holeBearingDeg={holeBearingDeg}
-                onBall={(p) => {
-                  stopFollowing()
-                  moveBallTo(p)
-                  if (!pin) setPlacing("pin") // no hole to take a pin from: the next tap places it
-                }}
-                onAim={(p) => {
-                  setAimManual(p)
-                }}
-                onPin={(p) => {
-                  setPinManual(p)
-                }}
-                onPickHole={(id) => {
-                  const h = holes.find((x) => x.id === id)
-                  if (h) pickHole(h)
-                }}
-                onDrawPoint={addDrawPoint}
-                onDrawClose={finishDraw}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                {loadState === "loading" && !course ? (
-                  <Loader2 size={20} className="animate-spin text-muted" />
-                ) : (
-                  <button
-                    onClick={() => setPickerOpen(true)}
-                    className="h-11 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent"
-                  >
-                    Find a course
-                  </button>
-                )}
-              </div>
-            )}
-            {/* Drawing controls, pinned over the map so a thumb never has to leave it to tap Finish. */}
-            {drawKind && (
-              <div className="absolute bottom-3 left-2 right-2 z-[1100] flex items-center justify-center gap-2 md:hidden">
-                <button
-                  onClick={undoDrawPoint}
-                  disabled={pendingPoints.length === 0}
-                  className="flex h-11 items-center gap-1 rounded-full border border-white/25 bg-black/80 px-4 text-xs font-medium text-white backdrop-blur-sm disabled:opacity-30"
-                >
-                  <Undo2 size={13} /> Undo
-                </button>
-                <button
-                  onClick={finishDraw}
-                  disabled={pendingPoints.length < 3}
-                  className="flex h-11 items-center gap-1 rounded-full bg-accent px-5 text-xs font-semibold text-on-accent disabled:opacity-30"
-                >
-                  <Check size={13} /> Finish
-                </button>
-                <button onClick={cancelDraw} className="flex h-11 items-center gap-1 rounded-full border border-white/25 bg-black/80 px-4 text-xs font-medium text-white backdrop-blur-sm">
-                  <X size={13} /> Cancel
-                </button>
-              </div>
-            )}
-          </div>
-
-          {planReady && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-fg-3">
-              {LIES.map((l) => (
-                <span key={l} className="flex items-center gap-1.5">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full border border-black/60" style={{ background: lieColor(l) }} />
-                  {LIE_LABEL[l]}
-                </span>
-              ))}
-              {showTrouble && (
-                <span className="flex items-center gap-1.5 text-fg-2">
-                  <span
-                    className="inline-block h-2.5 w-14 rounded-full"
-                    style={{ background: `linear-gradient(90deg, ${cssColor("map-better")}, ${cssColor("map-marker", 0.2)}, ${cssColor("map-caution")}, ${cssColor("map-worse")})` }}
-                  />
-                  better ← vs fairway → worse
-                </span>
-              )}
-            </div>
-          )}
-
-          {(zones.length > 0 || (localOnlyZones?.length ?? 0) > 0) && (
-            <div className="text-xs">
-              <button
-                type="button"
-                onClick={() => setShowMarks((v) => !v)}
-                aria-expanded={showMarks}
-                className="flex min-h-[44px] items-center gap-1.5 text-fg-3 hover:text-fg md:min-h-0"
-              >
-                Your marks · <span className="tabular-nums">{zones.length}</span>
-                <ChevronDown size={14} className={`transition-transform ${showMarks ? "rotate-180" : ""}`} />
-              </button>
-              {showMarks && (
-                <div className="mt-1.5 space-y-2">
-                  {localOnlyZones && localOnlyZones.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2 text-fg-2">
-                      <span>
-                        {localOnlyZones.length} mark{localOnlyZones.length === 1 ? "" : "s"} saved on this device only.
-                      </span>
-                      <button
-                        onClick={syncLocalZonesToAccount}
-                        disabled={syncingZones}
-                        className="ml-auto flex shrink-0 items-center gap-1 rounded-md bg-accent px-2.5 py-1 font-semibold text-on-accent disabled:opacity-50"
-                      >
-                        {syncingZones ? <Loader2 size={12} className="animate-spin" /> : null}
-                        {syncingZones ? "Saving…" : "Save to my account"}
-                      </button>
-                      <button onClick={() => setLocalOnlyZones(null)} className="shrink-0 text-muted hover:text-fg">
-                        Not now
-                      </button>
-                    </div>
-                  )}
-                  {zones.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                      {!authUser && (
-                        <span className="text-muted">
-                          On this device only.{" "}
-                          <Link href="/login" className="text-accent hover:underline">
-                            Sign in to sync
-                          </Link>
-                        </span>
-                      )}
-                      {zones.map((z) => (
-                        <span
-                          key={z.id}
-                          className="flex items-center gap-1.5 rounded-full border px-2 py-1 text-fg-2"
-                          style={{ borderColor: lieColor(z.lie, 0.44) }}
-                        >
-                          <span className="inline-block h-2 w-2 rounded-full" style={{ background: lieColor(z.lie) }} />
-                          {LIE_LABEL[z.lie]}
-                          <button
-                            onClick={() => deleteZone(z.id)}
-                            aria-label={`Remove marked ${LIE_LABEL[z.lie]} area`}
-                            className="text-muted hover:text-danger"
-                          >
-                            <X size={11} />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
+        <MapView
+          placing={placing}
+          onPlacingChange={setPlacing}
+          drawKind={drawKind}
+          pendingPoints={pendingPoints}
+          aimIsManual={!!aimManual}
+          onResetAim={() => {
+            setAimManual(null)
+          }}
+          layersRef={layersMenuRef}
+          layersActive={showLayersMenu || showTrouble || following || !!drawKind}
+          onLayersClick={() => {
+            if (!showLayersMenu && layersMenuRef.current) {
+              const r = layersMenuRef.current.getBoundingClientRect()
+              setLayersMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 224) })
+            }
+            setShowLayersMenu((v) => !v)
+          }}
+          layersMenu={layersMenu}
+          gpsError={gpsError}
+          gpsNote={gpsNote}
+          onUndoDraw={undoDrawPoint}
+          onFinishDraw={finishDraw}
+          onCancelDraw={cancelDraw}
+          mapWrapRef={mapWrapRef}
+          mapContent={mapContent}
+          planReady={planReady}
+          showTrouble={showTrouble}
+          zones={zones}
+          localOnlyZones={localOnlyZones}
+          showMarks={showMarks}
+          onToggleMarks={() => setShowMarks((v) => !v)}
+          onSyncZones={syncLocalZonesToAccount}
+          syncingZones={syncingZones}
+          onDismissLocalZones={() => setLocalOnlyZones(null)}
+          signedIn={!!authUser}
+          onDeleteZone={deleteZone}
+        />
         {/* ---- shot plan (tablet/desktop: everything inline, including the table) ---- */}
         <aside className="hidden min-w-0 space-y-3 md:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
           {placePrompt}
