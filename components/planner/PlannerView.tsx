@@ -8,6 +8,7 @@
 import type { PlannerProps as Props } from "@/lib/planner/types"
 import type { PlannerVM } from "@/hooks/usePlannerController"
 import Link from "next/link"
+import { MAP_TAP_GUARD_MS } from "@/lib/planner/clubChoice"
 import { Loader2, X } from "lucide-react"
 import dynamic from "next/dynamic"
 import { distanceYds } from "@/lib/course/geo"
@@ -32,6 +33,7 @@ const CourseMap = dynamic(() => import("@/components/simulator/CourseMap"), {
 
 export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }: { vm: PlannerVM } & Omit<Props, "baseline">) {
   const {
+    mapTapGuardUntil,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, chipParts,
@@ -100,6 +102,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
       estimatedFrom={estimatedFrom}
       baselineLabel={scoreBaseline.label}
       onPick={(r) => {
+        mapTapGuardUntil.current = Date.now() + MAP_TAP_GUARD_MS // the closing tap must not reach the map
         pickClub(r)
         setSheetOpen(false)
       }}
@@ -150,8 +153,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
       calibratedName={calibratedName}
       source={source}
       onSourceChange={(v) => {
-        setSource(v)
-        setClubChoice("auto")
+        setSource(v) // a picked club not in the new bag goes back to auto (usePlan)
       }}
       handicap={handicap}
       onHandicapChange={setHandicap}
@@ -197,17 +199,21 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
         onZoomChange={(z) => course && saveZoom(course.id, z)}
         holeBearingDeg={holeBearingDeg}
         onBall={(p) => {
+          if (Date.now() < mapTapGuardUntil.current) return
           stopFollowing()
           moveBallTo(p)
           if (!pin) setPlacing("pin") // no hole to take a pin from: the next tap places it
         }}
         onAim={(p) => {
+          if (Date.now() < mapTapGuardUntil.current) return
           setAimManual(p)
         }}
         onPin={(p) => {
+          if (Date.now() < mapTapGuardUntil.current) return
           setPinManual(p)
         }}
         onPickHole={(id) => {
+          if (Date.now() < mapTapGuardUntil.current) return
           const h = holes.find((x) => x.id === id)
           if (h) pickHole(h)
         }}

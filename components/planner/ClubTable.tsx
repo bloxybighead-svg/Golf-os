@@ -57,7 +57,12 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
           {ranking.map((r) => (
             <tr
               key={r.club}
-              onClick={() => onPick(r)}
+              onClick={(e) => {
+                // The sheet closes on this tap: don't let it carry on to the map underneath.
+                e.preventDefault()
+                e.stopPropagation()
+                onPick(r)
+              }}
               className={`cursor-pointer border-b border-fg/[0.04] transition-colors last:border-0 hover:bg-fg/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
                 chosen?.club === r.club ? "bg-accent/10" : ""
               }`}

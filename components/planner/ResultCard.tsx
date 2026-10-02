@@ -64,7 +64,18 @@ export function ResultCard({
   return (
     <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="label-xs">{clubChoice === "auto" || chosen.club === best.club ? "Best club" : "Your pick"}</p>
+        <p className="label-xs">
+          {clubChoice === "auto" || chosen.club === best.club ? (
+            "Best club"
+          ) : (
+            <>
+              Your pick ·{" "}
+              <span className="normal-case tracking-normal">
+                Best: {best.club} (+{(chosen.plan.expectedStrokes - best.plan.expectedStrokes).toFixed(2)})
+              </span>
+            </>
+          )}
+        </p>
         <p className="text-xs text-muted">
           From {fromLabel}
           {hole && !!hole.correctedFields?.length && (

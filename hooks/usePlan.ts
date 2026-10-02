@@ -22,6 +22,7 @@ import type { Club } from "@/lib/golfer/tables"
 import { fillBag } from "@/lib/golfer/bag"
 import type { Baseline } from "@/lib/golfer/baseline"
 import { ALWAYS_SHOWN, LIES } from "@/lib/planner/labels"
+import { chosenPlan, choiceInBag } from "@/lib/planner/clubChoice"
 import { holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import type { CourseHit, NoHazardMap } from "@/lib/planner/storage"
 import { useClubRanking, type RankingRequest } from "@/components/simulator/useClubRanking"
@@ -226,8 +227,17 @@ export function usePlan({
 
   const shownLies = LIES.filter((l) => ALWAYS_SHOWN.includes(l) || ranking.some((r) => r.plan.lieShare[l] >= 0.005))
   const best: OptimizedClubPlan | null = ranking[0] ?? null
-  const chosen: OptimizedClubPlan | null = ranking.find((r) => r.club === clubChoice) ?? best
+  // A picked club keeps showing while a new ranking is worked out (lib/planner/clubChoice.ts).
+  const lastChosen = useRef<OptimizedClubPlan | null>(null)
+  const chosen: OptimizedClubPlan | null = chosenPlan(ranking, clubChoice, lastChosen.current)
+  lastChosen.current = chosen
   const chosenShots = chosen ? clubShots.find((c) => c.club === chosen.club) : undefined
+
+  // A picked club that leaves the bag (or a switch to a source without it) goes back to auto.
+  useEffect(() => {
+    const next = choiceInBag(clubChoice, clubShots.map((c) => c.club))
+    if (next !== clubChoice) setClubChoice(next)
+  }, [clubShots, clubChoice, setClubChoice])
 
   // The chosen club where the aim marker actually points, with every shot: what the dots, "Finishes" and "leaves" describe.
   const chosenLive = useMemo(() => {

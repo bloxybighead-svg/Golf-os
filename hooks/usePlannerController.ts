@@ -17,6 +17,7 @@ import { type PlayView } from "@/components/play/PlayRound"
 import { loadActiveRound, nextUnscored, saveActiveRound, type ActiveRound } from "@/lib/rounds/activeRound"
 import { type Placing } from "@/components/simulator/courseColors"
 import { shortCourseName } from "@/lib/planner/labels"
+import { choiceAfterHolePick } from "@/lib/planner/clubChoice"
 import { DEFAULT_COURSE, DEFAULT_HOLE_REF, loadLastPosition, loadNoHazard, loadZoom, saveLastPosition, updateLastPositionHole, type CourseHit } from "@/lib/planner/storage"
 import { boundsOf, holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import { usePlannerSettings } from "@/hooks/usePlannerSettings"
@@ -69,6 +70,9 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
   const [showLayersMenu, setShowLayersMenu] = useState(false) // map toggles and "Mark an area", behind one button
   const [sheetOpen, setSheetOpen] = useState(false) // phones: club table bottom sheet, collapsed by default
   const layersMenuRef = useRef<HTMLDivElement>(null)
+  // Map taps are ignored briefly after the club sheet closes, so the closing tap can't
+  // land on the map underneath (moving the ball or picking a hole).
+  const mapTapGuardUntil = useRef(0)
   // Rendered through a portal (see below), so its position is tracked in viewport
   // coordinates rather than relying on CSS positioning relative to an ancestor.
   const [layersMenuPos, setLayersMenuPos] = useState<{ top: number; left: number } | null>(null)
@@ -77,7 +81,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
     bounds: null,
     key: "none",
   })
-  const ballState = useBallPosition({ setClubChoice, setFit })
+  const ballState = useBallPosition({ setFit })
   const { ball, setBall, following, gpsAccuracyYds, gpsError, gpsNote, stopFollowing, moveBallTo, toggleFollow } = ballState
 
   // ---------- remembered settings and recent courses (this device only) ----------
@@ -182,7 +186,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
   }
 
   function toggleClub(c: Club) {
-    if (settings.toggleClub(c)) setClubChoice("auto")
+    settings.toggleClub(c) // a picked club that leaves the bag goes back to auto (usePlan)
   }
 
   // Previous/next hole from the title line, wrapping 18 -> 1 and 1 -> 18.
@@ -279,7 +283,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
     setBall(h.line[0])
     setAimManual(null)
     setPinManual(null)
-    setClubChoice("auto")
+    setClubChoice((prev) => choiceAfterHolePick(prev, holeId, h.id)) // the same hole keeps a picked club
     setFit({ bounds: boundsOf([...h.line, holePinFor(h)]), key: `hole-${h.id}` })
     updateLastPositionHole(h.id)
   }
@@ -310,6 +314,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
     : [loadState === "loading" ? "Loading course…" : "Find a course"]
 
   return {
+    mapTapGuardUntil,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, chipParts,

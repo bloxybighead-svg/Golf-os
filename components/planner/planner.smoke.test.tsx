@@ -97,4 +97,37 @@ describe("planner components render (smoke)", () => {
     expect(html).not.toContain("Use best aim") // already at the best aim
     expect(html).not.toContain("At your aim")
   })
+
+  it("ResultCard: a picked club shows as your pick, with the best club and the gap", () => {
+    const html = renderToStaticMarkup(
+      <ResultCard
+        best={fourIron}
+        chosen={threeWood}
+        chosenLive={plan("3-Wood", 4.61, 0.03, 243)}
+        clubChoice="3-Wood"
+        fromLabel="the tee"
+        hole={null}
+        baselineHandicap={10}
+        atBestAim
+        chosenAtAim={4.61}
+        distAim={249}
+        distPin={364}
+        aimToPin={120}
+        aimIsPin={false}
+        avgLeft={118}
+        estimatedFrom={{}}
+        holeQuality={null}
+        geometry={null}
+        onEditHole={() => {}}
+        onStartDraw={() => {}}
+        onConfirmHazard={() => {}}
+        onAimAtBest={() => {}}
+        onBackToBest={() => {}}
+      />
+    )
+    expect(html).toContain("Your pick")
+    expect(html).toContain("Best: 4-Iron (+0.01)")
+    expect(html).toContain("3-Wood")
+    expect(html).toContain("Back to best club")
+  })
 })

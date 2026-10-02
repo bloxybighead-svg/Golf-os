@@ -13,13 +13,7 @@ const YD_PER_M = 1.09361
 
 type Fit = { bounds: [[number, number], [number, number]] | null; key: string }
 
-export function useBallPosition({
-  setClubChoice,
-  setFit,
-}: {
-  setClubChoice: (club: string) => void
-  setFit: (fit: Fit) => void
-}) {
+export function useBallPosition({ setFit }: { setFit: (fit: Fit) => void }) {
   const [ball, setBall] = useState<LatLng | null>(null)
   const [following, setFollowing] = useState(false)
   const [gpsAccuracyYds, setGpsAccuracyYds] = useState<number | null>(null)
@@ -55,11 +49,10 @@ export function useBallPosition({
     }
   }
 
-  // Every ball move asks for the best club again; a club picked to check its
-  // numbers only holds until the ball moves.
+  // A picked club holds through ball moves (GPS follow, taps): only a different
+  // hole, "Back to best club" or the club leaving the bag reset it (lib/planner/clubChoice.ts).
   function moveBallTo(p: LatLng) {
     setBall(p)
-    setClubChoice("auto")
   }
 
   // Keeps the ball on your live GPS position (about every 2.5 s) so the yardages
