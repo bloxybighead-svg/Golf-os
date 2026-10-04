@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import type { ClubPlan, OptimizedClubPlan } from "@/lib/course/plan"
 import { ClubTable } from "./ClubTable"
 import { HoleHeader } from "./HoleHeader"
+import { StrategyToggle } from "./StrategyToggle"
 import { ResultCard } from "./ResultCard"
 
 function plan(club: string, expectedStrokes: number, strokesSe: number, carry: number): ClubPlan {
@@ -56,9 +57,10 @@ describe("planner components render (smoke)", () => {
 
   it("HoleHeader: the title line and hole arrows", () => {
     const html = renderToStaticMarkup(
-      <HoleHeader title="Pebble Beach · Hole 1 · Par 4 · 364" onOpenPicker={() => {}} showArrows onStep={() => {}} holeLabel={(d) => (d === 1 ? "Hole 2" : "Hole 18")} />
+      <HoleHeader title="H1 · P4 · 364" courseName="Pebble Beach" onOpenPicker={() => {}} showArrows onStep={() => {}} holeLabel={(d) => (d === 1 ? "Hole 2" : "Hole 18")} />
     )
-    expect(html).toContain("Pebble Beach · Hole 1 · Par 4 · 364")
+    expect(html).toContain("H1 · P4 · 364") // par and yardage never truncate
+    expect(html).toMatch(/truncate[^>]*>Pebble Beach/) // the course name is the part that does
     expect(html).toContain("Next hole (Hole 2)")
     expect(html).toContain("Previous hole (Hole 18)")
   })
@@ -133,5 +135,19 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("Best: 4-Iron (+0.01)")
     expect(html).toContain("3-Wood")
     expect(html).toContain("Back to best club")
+  })
+
+  it("StrategyToggle: both plays with strokes and penalty share", () => {
+    const html = renderToStaticMarkup(
+      <StrategyToggle
+        options={{ safer: pw, lowest: fourIron, same: false, noSafeOption: false } as never}
+        chosen={fourIron}
+        onPick={() => {}}
+        compact
+      />
+    )
+    expect(html).toContain("Smart play")
+    expect(html).toContain("Go for it")
+    expect(html).toContain("4.60 strokes")
   })
 })
