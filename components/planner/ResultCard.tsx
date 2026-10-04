@@ -28,7 +28,7 @@ export interface ResultCardProps {
   aimToPin: number | null
   aimIsPin: boolean
   avgLeft: number | null
-  estimatedFrom: Record<string, string>
+  estimateNotes: Record<string, string>
   holeQuality: HoleDataQuality | null
   geometry: CourseGeometry | null
   onEditHole: () => void
@@ -57,7 +57,7 @@ export function ResultCard({
   aimToPin,
   aimIsPin,
   avgLeft,
-  estimatedFrom,
+  estimateNotes,
   holeQuality,
   geometry,
   onEditHole,
@@ -173,7 +173,7 @@ export function ResultCard({
           </>
         )}
         .
-        {estimatedFrom[chosen.club] && <> Estimated from your {estimatedFrom[chosen.club]}.</>}
+        {estimateNotes[chosen.club] && <> {estimateNotes[chosen.club]}.</>}
         {chosen.club !== best.club &&
           (isTie(chosen.plan, best.plan) ? (
             <> A tie with the {best.club}: the gap is within the noise of the shot samples.</>

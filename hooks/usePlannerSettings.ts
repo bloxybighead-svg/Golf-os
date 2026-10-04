@@ -8,6 +8,7 @@ import { useEffect, useState } from "react"
 import type { Tendency } from "@/lib/golfer/build"
 import type { Club } from "@/lib/golfer/tables"
 import { CALIBRATED_DEFAULT_BAG, DEFAULT_BAG, normalizeBag } from "@/lib/golfer/bag"
+import type { MyProfile, ShotSource } from "@/lib/planner/types"
 import { ONBOARDED_KEY, SETTINGS_KEY, applyBaselineToDevice, cleanCarries, type Baseline } from "@/lib/golfer/baseline"
 import { COMPARE_AGAINST_EVENT, COMPARE_AGAINST_KEY, readCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
 import { readSpread, SPREAD_EVENT, SPREAD_KEY } from "@/lib/course/spreadSetting"
@@ -17,9 +18,18 @@ import { RECENT_KEY, type CourseHit } from "@/lib/planner/storage"
 const SIDES = ["auto", "straight", "left", "right", "both"]
 const STRENGTHS = ["slight", "moderate", "strong"]
 
-export function usePlannerSettings({ calibrated, baseline }: { calibrated: unknown[] | null; baseline: Baseline | null }) {
+/** A golfer with their own profile starts with the default bag plus every club they have data for. */
+function defaultMineBag(myProfile: MyProfile | null): Club[] {
+  return normalizeBag([...DEFAULT_BAG, ...(myProfile?.fits.map((f) => f.club) ?? [])])
+}
+
+/** Bump when the meaning of the saved "source" changes: older saves are then ignored once, so a golfer with a profile lands on My shots. */
+const SOURCE_VERSION = 2
+
+export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibrated: unknown[] | null; myProfile: MyProfile | null; baseline: Baseline | null }) {
   // --- golfer ---
-  const [source, setSource] = useState<"calibrated" | "handicap">(calibrated ? "calibrated" : "handicap")
+  // Default: the golfer's own shots when they have a profile, else the old public data (?legacy=1), else a handicap estimate.
+  const [source, setSource] = useState<ShotSource>(myProfile ? "mine" : calibrated ? "calibrated" : "handicap")
   const [handicap, setHandicap] = useState(10)
   const [driverCarry, setDriverCarry] = useState("") // yards; blank = handicap average
   const [sevenIronCarry, setSevenIronCarry] = useState("")
@@ -30,11 +40,12 @@ export function usePlannerSettings({ calibrated, baseline }: { calibrated: unkno
   const [showSetupPrompt, setShowSetupPrompt] = useState(false)
   // Which clubs are in the bag, per shot source (the calibrated golfer and a
   // handicap-based one carry different bags). Remembered on this device.
-  const [bags, setBags] = useState<{ calibrated: Club[]; handicap: Club[] }>({
+  const [bags, setBags] = useState<Record<ShotSource, Club[]>>({
+    mine: defaultMineBag(myProfile),
     calibrated: CALIBRATED_DEFAULT_BAG,
     handicap: DEFAULT_BAG,
   })
-  const bag = source === "calibrated" ? bags.calibrated : bags.handicap
+  const bag = bags[source]
 
   // Score against the golfer's handicap (default) or the PGA TOUR -- chosen on You, saved per device.
   const [compareAgainst, setCompareAgainst] = useState<CompareAgainst>("handicap")
@@ -83,16 +94,17 @@ export function usePlannerSettings({ calibrated, baseline }: { calibrated: unkno
     const raw = localStorage.getItem(SETTINGS_KEY)
     if (raw) {
       const v = JSON.parse(raw)
-      if (v.source === "handicap" || (v.source === "calibrated" && calibrated)) setSource(v.source)
+      if (v.sourceV === SOURCE_VERSION && (v.source === "handicap" || (v.source === "mine" && myProfile) || (v.source === "calibrated" && calibrated))) setSource(v.source)
       if (typeof v.handicap === "number") setHandicap(Math.min(36, Math.max(0, v.handicap)))
       if (typeof v.driverCarry === "string") setDriverCarry(v.driverCarry.slice(0, 4))
       if (v.carries && typeof v.carries === "object") setExtraCarries(cleanCarries(v.carries))
       if (typeof v.sevenIronCarry === "string") setSevenIronCarry(v.sevenIronCarry.slice(0, 4))
       if (v.tendency && SIDES.includes(v.tendency.side) && STRENGTHS.includes(v.tendency.strength)) setTendency(v.tendency)
       if (v.bags && typeof v.bags === "object") {
+        const mine = Array.isArray(v.bags.mine) ? normalizeBag(v.bags.mine) : []
         const cal = Array.isArray(v.bags.calibrated) ? normalizeBag(v.bags.calibrated) : []
         const hcp = Array.isArray(v.bags.handicap) ? normalizeBag(v.bags.handicap) : []
-        setBags({ calibrated: cal.length ? cal : CALIBRATED_DEFAULT_BAG, handicap: hcp.length ? hcp : DEFAULT_BAG })
+        setBags({ mine: mine.length ? mine : defaultMineBag(myProfile), calibrated: cal.length ? cal : CALIBRATED_DEFAULT_BAG, handicap: hcp.length ? hcp : DEFAULT_BAG })
       }
     }
     const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")
@@ -108,7 +120,7 @@ export function usePlannerSettings({ calibrated, baseline }: { calibrated: unkno
     try {
       localStorage.setItem(
         SETTINGS_KEY,
-        JSON.stringify({ source, handicap, driverCarry, sevenIronCarry, carries: extraCarries, tendency, bags })
+        JSON.stringify({ source, sourceV: SOURCE_VERSION, handicap, driverCarry, sevenIronCarry, carries: extraCarries, tendency, bags })
       )
     } catch {
       /* storage full or blocked: settings just won't be remembered */
@@ -117,11 +129,11 @@ export function usePlannerSettings({ calibrated, baseline }: { calibrated: unkno
 
   /** Adds or removes a club from the current bag. Returns false when nothing changed (a bag keeps at least one club). */
   function toggleClub(c: Club): boolean {
-    const current = source === "calibrated" ? bags.calibrated : bags.handicap
+    const current = bags[source]
     const has = current.includes(c)
     if (has && current.length === 1) return false // a bag needs at least one club
     const next = normalizeBag(has ? current.filter((x) => x !== c) : [...current, c])
-    setBags((prev) => (source === "calibrated" ? { ...prev, calibrated: next } : { ...prev, handicap: next }))
+    setBags((prev) => ({ ...prev, [source]: next }))
     return true
   }
 

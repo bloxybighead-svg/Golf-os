@@ -38,7 +38,7 @@ describe("planner components render (smoke)", () => {
         shownLies={["green", "fairway", "rough"]}
         best={fourIron}
         chosen={fourIron}
-        estimatedFrom={{ "4-Iron": "5-Iron" }}
+        estimateNotes={{ "4-Iron": "No 4-Iron shots on record: estimated from your 5-Iron" }}
         baselineLabel="10.0 handicap"
         onPick={() => {}}
       />
@@ -80,7 +80,7 @@ describe("planner components render (smoke)", () => {
         aimToPin={188}
         aimIsPin={false}
         avgLeft={187}
-        estimatedFrom={{ "4-Iron": "5-Iron" }}
+        estimateNotes={{ "4-Iron": "No 4-Iron shots on record: estimated from your 5-Iron" }}
         holeQuality={null}
         geometry={null}
         onEditHole={() => {}}
@@ -95,7 +95,7 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("Best club")
     expect(html).toContain("4.60")
     expect(html).toContain("vs a 10.0 handicap")
-    expect(html).toContain("Estimated from your 5-Iron.")
+    expect(html).toContain("No 4-Iron shots on record: estimated from your 5-Iron.")
     expect(html).not.toContain("Use best aim") // already at the best aim
     expect(html).not.toContain("At your aim")
   })
@@ -117,7 +117,7 @@ describe("planner components render (smoke)", () => {
         aimToPin={120}
         aimIsPin={false}
         avgLeft={118}
-        estimatedFrom={{}}
+        estimateNotes={{}}
         holeQuality={null}
         geometry={null}
         onEditHole={() => {}}

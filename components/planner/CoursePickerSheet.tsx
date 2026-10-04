@@ -13,7 +13,7 @@ import { CLUB_CATALOG } from "@/lib/golfer/bag"
 import { shortCourseName } from "@/lib/planner/labels"
 import type { CourseHit } from "@/lib/planner/storage"
 import { TendencyPicker } from "@/components/simulator/TendencyPicker"
-import type { CalibratedClub } from "@/lib/planner/types"
+import type { CalibratedClub, ShotSource } from "@/lib/planner/types"
 
 export interface CourseStats {
   greens: number
@@ -41,8 +41,10 @@ export interface CoursePickerSheetProps {
   recent: CourseHit[]
   calibrated: CalibratedClub[] | null
   calibratedName: string
-  source: "calibrated" | "handicap"
-  onSourceChange: (s: "calibrated" | "handicap") => void
+  /** Sessions behind the golfer's own profile; null when they have none. */
+  mySessions: number | null
+  source: ShotSource
+  onSourceChange: (s: ShotSource) => void
   handicap: number
   onHandicapChange: (h: number) => void
   driverCarry: string
@@ -54,7 +56,7 @@ export interface CoursePickerSheetProps {
   extraCarries: Partial<Record<Club, number>>
   bag: Club[]
   onToggleClub: (c: Club) => void
-  estimatedFrom: Record<string, string>
+  estimateNotes: Record<string, string>
   geometry: CourseGeometry | null
   stats: CourseStats
   hasCourseProblems: boolean
@@ -78,6 +80,7 @@ export function CoursePickerSheet({
   recent,
   calibrated,
   calibratedName,
+  mySessions,
   source,
   onSourceChange,
   handicap,
@@ -91,7 +94,7 @@ export function CoursePickerSheet({
   extraCarries,
   bag,
   onToggleClub,
-  estimatedFrom,
+  estimateNotes,
   geometry,
   stats,
   hasCourseProblems,
@@ -196,14 +199,19 @@ export function CoursePickerSheet({
                   <p className="label-xs">Shots</p>
                   <div className="flex flex-wrap items-end gap-3">
                     <label className="flex flex-col gap-1.5">
-                      <span className="text-xs text-muted">Whose shots</span>
+                      <span className="text-xs text-muted">Shots from</span>
                       <select
                         value={source}
-                        onChange={(e) => onSourceChange(e.target.value as "calibrated" | "handicap")}
+                        onChange={(e) => onSourceChange(e.target.value as ShotSource)}
                         className="h-11 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg md:h-9"
                       >
-                        {calibrated && <option value="calibrated">{calibratedName}</option>}
-                        <option value="handicap">Your clubs</option>
+                        {mySessions != null && (
+                          <option value="mine">
+                            My shots ({mySessions} session{mySessions === 1 ? "" : "s"})
+                          </option>
+                        )}
+                        {calibrated && <option value="calibrated">{calibratedName} (old data)</option>}
+                        <option value="handicap">Handicap estimate</option>
                       </select>
                     </label>
                     {source === "handicap" && (
@@ -288,13 +296,9 @@ export function CoursePickerSheet({
                         )
                       })}
                     </div>
-                    {Object.keys(estimatedFrom).length > 0 && (
+                    {Object.keys(estimateNotes).length > 0 && (
                       <p className="mt-2 text-xs text-muted">
-                        No shots on record for{" "}
-                        {Object.entries(estimatedFrom)
-                          .map(([club, from]) => `${club} (estimated from ${from})`)
-                          .join(", ")}
-                        .
+                        {Object.values(estimateNotes).join(". ")}.
                       </p>
                     )}
                   </div>

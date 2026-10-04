@@ -33,14 +33,14 @@ const CourseMap = dynamic(() => import("@/components/simulator/CourseMap"), {
   loading: () => <div className="flex h-full items-center justify-center text-xs text-muted">Loading map…</div>,
 })
 
-export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }: { vm: PlannerVM } & Omit<Props, "baseline">) {
+export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, trackedHandicap }: { vm: PlannerVM } & Omit<Props, "baseline">) {
   const {
     mapTapGuardUntil,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, chipParts,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
-    deleteZone, distAim, distPin, drawKind, driverCarry, editingHole, estimatedFrom, extraCarries, finishDraw,
+    deleteZone, distAim, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
@@ -77,7 +77,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
         aimToPin={aimToPin}
         aimIsPin={aimIsPin}
         avgLeft={avgLeft}
-        estimatedFrom={estimatedFrom}
+        estimateNotes={estimateNotes}
         holeQuality={holeQuality}
         geometry={geometry}
         onEditHole={() => setEditingHole(true)}
@@ -108,7 +108,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
       shownLies={shownLies}
       best={best}
       chosen={chosen}
-      estimatedFrom={estimatedFrom}
+      estimateNotes={estimateNotes}
       baselineLabel={scoreBaseline.label}
       onPick={(r) => {
         mapTapGuardUntil.current = Date.now() + MAP_TAP_GUARD_MS // the closing tap must not reach the map
@@ -160,6 +160,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
       recent={recent}
       calibrated={calibrated}
       calibratedName={calibratedName}
+      mySessions={myProfile ? myProfile.sessionCount : null}
       source={source}
       onSourceChange={(v) => {
         setSource(v) // a picked club not in the new bag goes back to auto (usePlan)
@@ -175,7 +176,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
       extraCarries={extraCarries}
       bag={bag}
       onToggleClub={toggleClub}
-      estimatedFrom={estimatedFrom}
+      estimateNotes={estimateNotes}
       geometry={geometry}
       stats={stats}
       hasCourseProblems={hasCourseProblems}

@@ -1,20 +1,21 @@
-import { loadCalibratedShots } from "@/lib/supabase/loadCalibratedShots"
+import { loadCalibratedShots, LEGACY_GOLFER_NAME, LEGACY_SOURCE_LABEL } from "@/lib/supabase/loadCalibratedShots"
+import { loadMyProfile } from "@/lib/supabase/loadMyProfile"
 import { createClient } from "@/lib/supabase/server"
 import { CourseMapClient } from "@/components/simulator/CourseMapClient"
 import { cleanCarries, cleanHandicap, type Baseline, type CourseRef } from "@/lib/golfer/baseline"
 
-const GOLFER_NAME = "Dillon Cady"
-const SOURCE_LABEL = "calibrated"
-
-export default async function CoursePage() {
+// ?legacy=1 loads the old public calibrated profile next to the golfer's own, to compare the two
+// until the old data is removed (supabase/shot_data_13c_lockdown.sql). Without it the page never names a golfer.
+export default async function CoursePage({ searchParams }: { searchParams?: { legacy?: string } }) {
   const supabase = createClient()
   // If the stored profile can't be loaded, the page still works with the
   // handicap-based golfer generated in the browser. The signed-in golfer's
   // tracked handicap feeds the tee recommendation, and their setup numbers
   // (golfer_baseline) seed Play the first time it opens on a device. Signed
   // out, both queries simply return nothing (RLS).
-  const [calibrated, { data: latestHandicap }, { data: baselineRow }] = await Promise.all([
-    loadCalibratedShots(GOLFER_NAME, SOURCE_LABEL),
+  const [calibrated, myProfile, { data: latestHandicap }, { data: baselineRow }] = await Promise.all([
+    searchParams?.legacy === "1" ? loadCalibratedShots(LEGACY_GOLFER_NAME, LEGACY_SOURCE_LABEL) : Promise.resolve(null),
+    loadMyProfile(supabase),
     supabase.from("handicap_tracking").select("handicap_index").order("calculation_date", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("golfer_baseline").select("handicap_index, carries, home_course").maybeSingle(),
   ])
@@ -30,7 +31,8 @@ export default async function CoursePage() {
   return (
     <CourseMapClient
       calibrated={calibrated}
-      calibratedName={GOLFER_NAME}
+      calibratedName={LEGACY_GOLFER_NAME}
+      myProfile={myProfile}
       trackedHandicap={latestHandicap ? Number(latestHandicap.handicap_index) : null}
       baseline={baseline}
     />

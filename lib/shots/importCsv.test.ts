@@ -11,6 +11,7 @@ import {
   parseTable,
   parseUpload,
   toIsoDate,
+  type Detected,
   type ImportSettings,
 } from "./importCsv"
 
@@ -27,6 +28,11 @@ const SESSION_SUMMARY = [
   "Shot,Date,Time,Carry,Total,Roll,Offline,Curve,Apex,Spin,Ball Speed,Club Speed,Launch Direction",
   "1,07/01/2026,10:20,251.0,270.0,19.0,12.0 R,14.0 R,95,2500,155.0,108.0,-1.0",
 ].join("\n")
+
+const mappingOf = (d: Detected) => {
+  if (d.kind !== "table") throw new Error("not a table")
+  return d.mapping
+}
 
 const US: ImportSettings = { distanceUnit: "yd", leftIsNegative: true }
 
@@ -72,7 +78,7 @@ describe("header-named tables", () => {
   it("converts metres to yards", () => {
     const { detected, result } = table("Club,Carry (m),Offline (m)\n7i,100,-10")
     expect(detected).toMatchObject({ unitHint: "m" })
-    const m = parseDetected(parseUpload("Club,Carry (m),Offline (m)\n7i,100,-10"), detected, (detected as { mapping: never }).mapping, { distanceUnit: "m", leftIsNegative: true })
+    const m = parseDetected(parseUpload("Club,Carry (m),Offline (m)\n7i,100,-10"), detected, mappingOf(detected), { distanceUnit: "m", leftIsNegative: true })
     expect(m.shots[0].carryYds).toBeCloseTo(100 * YARDS_PER_METRE, 6)
     expect(m.shots[0].offlineYds).toBeCloseTo(-10 * YARDS_PER_METRE, 6)
     expect(result.shots[0].carryYds).toBe(100) // same file read as yards: the unit is the golfer's setting, hinted by the header
@@ -81,7 +87,7 @@ describe("header-named tables", () => {
   it("flips the sign when the file writes left as positive, but never for L/R values", () => {
     const rows = parseUpload("Club,Carry,Offline\n7i,150,4\n7i,150,3 L\n7i,150,3 R")
     const d = detectFormat(rows)
-    const r = parseTable(rows, 0, (d as { mapping: never }).mapping, { distanceUnit: "yd", leftIsNegative: false })
+    const r = parseTable(rows, 0, mappingOf(d), { distanceUnit: "yd", leftIsNegative: false })
     expect(r.shots.map((s) => s.offlineYds)).toEqual([-4, -3, 3])
   })
 

@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { seededSample } from "@/lib/dispersion/stats"
 
+/** The one stored real golfer whose simulated shots were public before session 13c. Only the ?legacy=1 comparison reads them. */
+export const LEGACY_GOLFER_NAME = "Dillon Cady"
+export const LEGACY_SOURCE_LABEL = "calibrated"
+
 export interface CalibratedClubShots {
   club: string
   meanCarryYds: number

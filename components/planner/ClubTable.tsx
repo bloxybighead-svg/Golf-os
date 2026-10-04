@@ -16,13 +16,13 @@ export interface ClubTableProps {
   shownLies: Lie[]
   best: OptimizedClubPlan | null
   chosen: OptimizedClubPlan | null
-  estimatedFrom: Record<string, string>
+  estimateNotes: Record<string, string>
   /** The scoring baseline's label ("PGA TOUR" or "3.0 handicap"). */
   baselineLabel: string
   onPick: (r: OptimizedClubPlan) => void
 }
 
-export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, estimatedFrom, baselineLabel, onPick }: ClubTableProps) {
+export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, estimateNotes, baselineLabel, onPick }: ClubTableProps) {
   return (
     <div
       className={`overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface transition-opacity ${pending ? "opacity-60" : ""}`}
@@ -73,8 +73,8 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
             >
               <td className="whitespace-nowrap px-3 font-semibold text-fg">
                 {r.club}
-                {estimatedFrom[r.club] && (
-                  <span className="ml-1 text-[10px] font-normal text-muted" title={`No ${r.club} shots on record: estimated from your ${estimatedFrom[r.club]}`}>
+                {estimateNotes[r.club] && (
+                  <span className="ml-1 text-[10px] font-normal text-muted" title={estimateNotes[r.club]}>
                     est.
                   </span>
                 )}

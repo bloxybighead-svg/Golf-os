@@ -30,7 +30,7 @@ import { useObTags } from "@/hooks/useObTags"
 import { hasOobBesideLine } from "@/lib/course/obTags"
 import { hasAnswered } from "@/lib/planner/obTagStore"
 
-export function usePlannerController({ calibrated, trackedHandicap, baseline }: Props) {
+export function usePlannerController({ calibrated, myProfile = null, trackedHandicap, baseline }: Props) {
   const { supabase, authUser } = useAuthUser()
 
   // --- course search / loading ---
@@ -42,7 +42,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
   } = geo
 
   // --- golfer (whose shots, bag, carries; saved on this device) ---
-  const settings = usePlannerSettings({ calibrated, baseline })
+  const settings = usePlannerSettings({ calibrated, myProfile, baseline })
   const {
     source, setSource, handicap, setHandicap, driverCarry, setDriverCarry, sevenIronCarry, setSevenIronCarry,
     tendency, setTendency, extraCarries, showSetupPrompt, setShowSetupPrompt, bag, compareAgainst, recent,
@@ -238,6 +238,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
   const obTags = useObTags({ supabase, authUser, course })
   const plan = usePlan({
     calibrated,
+    myProfile,
     source,
     bag,
     handicap,
@@ -267,7 +268,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
   })
   const {
     aim, aimAtBest, aimIsPin, aimToPin, atBestAim, avgLeft, bagDriverCarry, baselineHandicap, best, chosen,
-    chosenAtAim, chosenLive, distAim, distPin, estimatedFrom, fromLabel, holeBearingDeg, holeQuality, labels,
+    chosenAtAim, chosenLive, distAim, distPin, estimateNotes, fromLabel, holeBearingDeg, holeQuality, labels,
     landings, longestCarry, pickClub, pin, planReady, rankState, ranking, rankingPending, rings,
     scoreBaseline, shownLies, stats, troubleCells, optionsNote, obBands, lies,
   } = plan
@@ -332,7 +333,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, chipParts,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
-    deleteZone, distAim, distPin, drawKind, driverCarry, editingHole, estimatedFrom, extraCarries, finishDraw,
+    deleteZone, distAim, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,

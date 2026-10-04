@@ -29,14 +29,17 @@ import { chosenPlan, choiceAfterBallMove, choiceInBag } from "@/lib/planner/club
 import { holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import type { CourseHit, NoHazardMap } from "@/lib/planner/storage"
 import { useClubRanking, type RankingRequest } from "@/components/simulator/useClubRanking"
-import type { CalibratedClub } from "@/lib/planner/types"
+import type { CalibratedClub, MyProfile, ShotSource } from "@/lib/planner/types"
+import { generateMyBag } from "@/lib/golfer/shotProfile"
 
 const DOTS_SHOWN = 400
 const HANDICAP_SHOTS_PER_CLUB = 1000
 
 export interface PlanInputs {
   calibrated: CalibratedClub[] | null
-  source: "calibrated" | "handicap"
+  /** The golfer's own fitted profile (My shots). */
+  myProfile: MyProfile | null
+  source: ShotSource
   bag: Club[]
   handicap: number
   driverCarry: string
@@ -68,6 +71,7 @@ export interface PlanInputs {
 
 export function usePlan({
   calibrated,
+  myProfile,
   source,
   bag,
   handicap,
@@ -102,13 +106,25 @@ export function usePlan({
     () => (source === "calibrated" && calibrated ? fillBag(calibrated, bag) : null),
     [source, calibrated, bag]
   )
-  const estimatedFrom = useMemo(() => {
+  // My shots: fitted clubs from the golfer's profile, thin clubs blended with a
+  // handicap profile, the rest estimated (lib/golfer/shotProfile.ts). The handicap
+  // that blends in is the tracked one, else the setup one, else the device's.
+  const blendHandicap = Math.round(trackedHandicap ?? baseline?.handicapIndex ?? handicap)
+  const myBag = useMemo(
+    () => (source === "mine" && myProfile ? generateMyBag(myProfile.fits, bag, blendHandicap) : null),
+    // The profile object is replaced whenever it is re-fitted.
+    [source, myProfile, bag, blendHandicap]
+  )
+  // Why a club's shots are an estimate, in words, for the "est." marker and the result card.
+  const estimateNotes = useMemo(() => {
+    if (myBag) return myBag.notes
     const m: Record<string, string> = {}
-    for (const c of calibratedBag ?? []) if (c.estimatedFrom) m[c.club] = c.estimatedFrom
+    for (const c of calibratedBag ?? []) if (c.estimatedFrom) m[c.club] = `No ${c.club} shots on record: estimated from your ${c.estimatedFrom}`
     return m
-  }, [calibratedBag])
+  }, [myBag, calibratedBag])
 
   const clubShots: ClubShots[] = useMemo(() => {
+    if (myBag) return myBag.clubs.map((c) => ({ club: c.club, shots: c.shots }))
     if (calibratedBag) {
       return calibratedBag.map((c) => ({ club: c.club, shots: c.shots }))
     }
@@ -131,7 +147,7 @@ export function usePlan({
       by.set(s.club, list)
     }
     return Array.from(by, ([club, shots]) => ({ club, shots }))
-  }, [calibratedBag, handicap, driverCarry, sevenIronCarry, extraCarries, tendency, bag])
+  }, [myBag, calibratedBag, handicap, driverCarry, sevenIronCarry, extraCarries, tendency, bag])
 
   // The bag's driver carry (or its longest club, if there's no driver in the bag)
   // sets the recommended tee length.
@@ -390,7 +406,7 @@ export function usePlan({
     defaultAim,
     distAim,
     distPin,
-    estimatedFrom,
+    estimateNotes,
     fairwayEstimated,
     fromLabel,
     holeBearingDeg,
