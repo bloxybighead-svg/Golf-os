@@ -379,6 +379,16 @@ export const RANK_HOLDOUT_CAP = 600
 /** The ranking sweeps the aim at this step first, then refines at stepYds around the best. SPEED SETTING: cuts 61 aim evaluations to about 28. */
 export const RANK_COARSE_STEP_YDS = 6
 
+/**
+ * A club that finishes less than this share of the distance to the pin can't be the best club (a wedge off a par 5
+ * tee), so it is ranked with a light pass: LIGHT_RANK_SHOT_CAP shots and a LIGHT_RANK_STEP_YDS aim sweep. Its row in
+ * the table is a little rougher, which doesn't matter that far from the pick. SPEED SETTING: about a quarter of the
+ * bag on a long hole.
+ */
+export const LIGHT_RANK_REACH_SHARE = 0.3
+export const LIGHT_RANK_SHOT_CAP = 100
+export const LIGHT_RANK_STEP_YDS = 20
+
 /** Seed for picking which RANKING_SHOT_CAP shots are used, so the ranking repeats. */
 export const RANKING_SAMPLE_SEED = 5
 
@@ -422,6 +432,8 @@ export interface RankOptions {
   shotCap?: number
   /** Overrides RANK_COARSE_STEP_YDS (0 = the full fine sweep). */
   coarseStepYds?: number
+  /** Skip the "at your aim" number (the page computes the chosen club's itself). */
+  skipAtAim?: boolean
 }
 
 /**
@@ -447,11 +459,11 @@ export function rankingShots(club: ClubShots, cap = RANKING_SHOT_CAP): ClubShots
 }
 
 /** The ranking's two sets for a club: the shots the aim is searched on, and the (larger) set it is scored on. */
-export function rankingSplit(club: ClubShots, cap = RANKING_SHOT_CAP): { search: ShotSample[]; confirm: ShotSample[] } {
+export function rankingSplit(club: ClubShots, cap = RANKING_SHOT_CAP, holdoutCap = RANK_HOLDOUT_CAP): { search: ShotSample[]; confirm: ShotSample[] } {
   const { search } = splitShots(rankingShots(club, cap).shots)
   const used = new Set(search)
   const rest = club.shots.filter((s) => !used.has(s))
-  return { search, confirm: (rest.length > 0 ? rest : search).slice(0, RANK_HOLDOUT_CAP) }
+  return { search, confirm: (rest.length > 0 ? rest : search).slice(0, holdoutCap) }
 }
 
 /** Expected strokes at the aim marker on the ranking's held-out shots: the "at your aim" number. */
@@ -462,20 +474,27 @@ export function strokesAtAim(club: ClubShots, ctx: PlanContext, cap = RANKING_SH
 /** Every club at its own best aim, best (lowest held-out expected strokes) first. */
 export function rankClubsOptimized(clubs: ClubShots[], ctx: PlanContext, opts: RankOptions = {}): OptimizedClubPlan[] {
   const cap = opts.shotCap ?? RANKING_SHOT_CAP
+  const toPin = distanceYds(ctx.from, ctx.pin)
   return clubs
     .filter((c) => c.shots.length > 0)
     .map((c) => {
-      const { search, confirm } = rankingSplit(c, cap)
+      let { search, confirm } = rankingSplit(c, cap)
       // How far this club goes (carry + roll) decides where on the centreline its search is centred.
       const reach = evaluateClub({ club: c.club, shots: search }, ctx).meanTotalYds
+      let coarse = opts.coarseStepYds ?? RANK_COARSE_STEP_YDS
+      if (reach < LIGHT_RANK_REACH_SHARE * toPin) {
+        // Hopeless for this shot: a light pass is plenty.
+        ;({ search, confirm } = rankingSplit(c, LIGHT_RANK_SHOT_CAP, LIGHT_RANK_SHOT_CAP))
+        coarse = LIGHT_RANK_STEP_YDS
+      }
       const centre = centerlineAim(opts.line, ctx.from, reach, ctx.pin) ?? ctx.aim
-      const r = bestAimFrom(c, search, confirm, { ...ctx, aim: centre }, opts.maxOffsetYds ?? 60, opts.stepYds ?? 2, opts.coarseStepYds ?? RANK_COARSE_STEP_YDS, false)
+      const r = bestAimFrom(c, search, confirm, { ...ctx, aim: centre }, opts.maxOffsetYds ?? 60, opts.stepYds ?? 2, coarse, false)
       return {
         club: c.club,
         bearingDeg: r.bearingDeg,
         offsetYds: r.offsetYds,
         plan: r.plan,
-        atAimStrokes: strokesAtAim(c, ctx, cap),
+        atAimStrokes: opts.skipAtAim ? r.plan.expectedStrokes : strokesAtAim(c, ctx, cap),
       }
     })
     .sort((a, b) => a.plan.expectedStrokes - b.plan.expectedStrokes)

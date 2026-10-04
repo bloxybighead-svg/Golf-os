@@ -164,7 +164,7 @@ export function createRankHandler(now: () => number = () => performance.now()) {
       }
       valueAt = grid.valueAt
     }
-    const results = rankClubsOptimized(clubs, { ...ctx, valueAt }, { ...msg.opts, line: msg.line })
+    const results = rankClubsOptimized(clubs, { ...ctx, valueAt }, { ...msg.opts, line: msg.line, skipAtAim: true })
     return { id: msg.id, strategy: msg.strategy, results, ms: now() - t0 }
   }
 }
