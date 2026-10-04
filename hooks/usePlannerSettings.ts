@@ -29,7 +29,7 @@ const SOURCE_VERSION = 2
 export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibrated: unknown[] | null; myProfile: MyProfile | null; baseline: Baseline | null }) {
   // --- golfer ---
   // Default: the golfer's own shots when they have a profile, else the old public data (?legacy=1), else a handicap estimate.
-  const [source, setSource] = useState<ShotSource>(myProfile ? "mine" : calibrated ? "calibrated" : "handicap")
+  const [source, setSource] = useState<ShotSource>(myProfile ? "calibrated" : calibrated ? "legacy" : "handicap")
   const [handicap, setHandicap] = useState(10)
   const [driverCarry, setDriverCarry] = useState("") // yards; blank = handicap average
   const [sevenIronCarry, setSevenIronCarry] = useState("")
@@ -41,9 +41,9 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
   // Which clubs are in the bag, per shot source (the calibrated golfer and a
   // handicap-based one carry different bags). Remembered on this device.
   const [bags, setBags] = useState<Record<ShotSource, Club[]>>({
-    mine: defaultMineBag(myProfile),
-    calibrated: CALIBRATED_DEFAULT_BAG,
+    calibrated: defaultMineBag(myProfile),
     handicap: DEFAULT_BAG,
+    legacy: CALIBRATED_DEFAULT_BAG,
   })
   const bag = bags[source]
 
@@ -94,17 +94,17 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     const raw = localStorage.getItem(SETTINGS_KEY)
     if (raw) {
       const v = JSON.parse(raw)
-      if (v.sourceV === SOURCE_VERSION && (v.source === "handicap" || (v.source === "mine" && myProfile) || (v.source === "calibrated" && calibrated))) setSource(v.source)
+      if (v.sourceV === SOURCE_VERSION && (v.source === "handicap" || (v.source === "calibrated" && myProfile) || (v.source === "legacy" && calibrated))) setSource(v.source)
       if (typeof v.handicap === "number") setHandicap(Math.min(36, Math.max(0, v.handicap)))
       if (typeof v.driverCarry === "string") setDriverCarry(v.driverCarry.slice(0, 4))
       if (v.carries && typeof v.carries === "object") setExtraCarries(cleanCarries(v.carries))
       if (typeof v.sevenIronCarry === "string") setSevenIronCarry(v.sevenIronCarry.slice(0, 4))
       if (v.tendency && SIDES.includes(v.tendency.side) && STRENGTHS.includes(v.tendency.strength)) setTendency(v.tendency)
       if (v.bags && typeof v.bags === "object") {
-        const mine = Array.isArray(v.bags.mine) ? normalizeBag(v.bags.mine) : []
-        const cal = Array.isArray(v.bags.calibrated) ? normalizeBag(v.bags.calibrated) : []
+        const mine = Array.isArray(v.bags.calibrated) ? normalizeBag(v.bags.calibrated) : []
         const hcp = Array.isArray(v.bags.handicap) ? normalizeBag(v.bags.handicap) : []
-        setBags({ mine: mine.length ? mine : defaultMineBag(myProfile), calibrated: cal.length ? cal : CALIBRATED_DEFAULT_BAG, handicap: hcp.length ? hcp : DEFAULT_BAG })
+        const old = Array.isArray(v.bags.legacy) ? normalizeBag(v.bags.legacy) : []
+        setBags({ calibrated: mine.length ? mine : defaultMineBag(myProfile), handicap: hcp.length ? hcp : DEFAULT_BAG, legacy: old.length ? old : CALIBRATED_DEFAULT_BAG })
       }
     }
     const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")

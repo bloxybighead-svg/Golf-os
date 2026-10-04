@@ -103,7 +103,7 @@ export function usePlan({
   // Clubs in the bag with no measured shots are estimated from the golfer's
   // nearest measured club (see fillBag); this remembers which, for the UI.
   const calibratedBag = useMemo(
-    () => (source === "calibrated" && calibrated ? fillBag(calibrated, bag) : null),
+    () => (source === "legacy" && calibrated ? fillBag(calibrated, bag) : null),
     [source, calibrated, bag]
   )
   // My shots: fitted clubs from the golfer's profile, thin clubs blended with a
@@ -111,7 +111,7 @@ export function usePlan({
   // that blends in is the tracked one, else the setup one, else the device's.
   const blendHandicap = Math.round(trackedHandicap ?? baseline?.handicapIndex ?? handicap)
   const myBag = useMemo(
-    () => (source === "mine" && myProfile ? generateMyBag(myProfile.fits, bag, blendHandicap) : null),
+    () => (source === "calibrated" && myProfile ? generateMyBag(myProfile.fits, bag, blendHandicap) : null),
     // The profile object is replaced whenever it is re-fitted.
     [source, myProfile, bag, blendHandicap]
   )

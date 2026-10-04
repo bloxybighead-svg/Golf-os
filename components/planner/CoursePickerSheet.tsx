@@ -206,11 +206,11 @@ export function CoursePickerSheet({
                         className="h-11 rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg md:h-9"
                       >
                         {mySessions != null && (
-                          <option value="mine">
+                          <option value="calibrated">
                             My shots ({mySessions} session{mySessions === 1 ? "" : "s"})
                           </option>
                         )}
-                        {calibrated && <option value="calibrated">{calibratedName} (old data)</option>}
+                        {calibrated && <option value="legacy">{calibratedName} (old data)</option>}
                         <option value="handicap">Handicap estimate</option>
                       </select>
                     </label>

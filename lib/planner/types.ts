@@ -3,8 +3,13 @@
 import type { Baseline } from "@/lib/golfer/baseline"
 import type { ClubFit } from "@/lib/golfer/shotProfile"
 
-/** Whose shots the planner uses: the golfer's own fitted profile, the old public Dillon data, or a handicap estimate. */
-export type ShotSource = "mine" | "calibrated" | "handicap"
+/**
+ * Whose shots the planner uses. "calibrated" is the golfer's own measured shots (their fitted
+ * profile): the same token the account sync (golfer_baseline.source) already stores, so it
+ * needs no schema change. "legacy" is the old public Dillon data, offered only with ?legacy=1
+ * and never synced. "handicap" is a handicap estimate.
+ */
+export type ShotSource = "calibrated" | "handicap" | "legacy"
 
 /** The signed-in golfer's fitted profile (shot_profiles) and how many sessions back it. */
 export interface MyProfile {
