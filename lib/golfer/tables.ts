@@ -11,6 +11,13 @@ export interface ClubProfile {
   mean_carry: number
   distance_cv: number
   direction_sd_deg: number
+  // Set only on a profile fitted from a golfer's own shots (calibrate.ts):
+  // start line and curve measured directly instead of split by CLUB_CURVE_SHARE.
+  start_line_bias_deg?: number
+  start_line_sd_deg?: number
+  curve_bias_pct?: number
+  curve_sd_pct?: number
+  curve_carry_slope?: number
 }
 
 export const BAG_ORDER = [
