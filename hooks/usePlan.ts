@@ -15,8 +15,8 @@ import type { UserZone } from "@/lib/course/lies"
 import type { CourseFeature, CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import { aimMarkerFor, evaluateClub, isAtBestAim, simulateLandings, strokesAtAim, type ClubShots, type OptimizedClubPlan } from "@/lib/course/plan"
 import { buildLieMapFrom, type LieInputs } from "@/lib/course/rankRequest"
-import { decidePar, tradeoffText } from "@/lib/course/rankStrategies"
-import { widenShots, type Strategy } from "@/lib/course/strategy"
+import { optionsFor, tradeoffText } from "@/lib/course/rankOptions"
+import { widenShots } from "@/lib/course/strategy"
 import { obBandsFor, type ObBand, type ObTag } from "@/lib/course/obTags"
 import { DEFAULT_BASELINE_HANDICAP, getBaseline, type CompareAgainst } from "@/lib/course/baseline"
 import { seededSample } from "@/lib/dispersion/stats"
@@ -60,9 +60,7 @@ export interface PlanInputs {
   noHazard: NoHazardMap
   showTrouble: boolean
   showRings: boolean
-  /** Par (default) or Go for it. */
-  strategy: Strategy
-  /** Par mode's offline-spread multiplier (You -> Planner). */
+  /** The offline-spread multiplier applied to every club (You -> Planner). */
   onCourseSpread: number
   /** The golfer's OB tags for the current hole (saved per course + hole). */
   obTags: ObTag[]
@@ -94,7 +92,6 @@ export function usePlan({
   noHazard,
   showTrouble,
   showRings,
-  strategy,
   onCourseSpread,
   obTags,
 }: PlanInputs) {
@@ -254,25 +251,17 @@ export function usePlan({
     [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap, onCourseSpread, holeYards]
   )
   const rankState = useClubRanking(lieInputs, clubShots, rankingRequest)
-  // Par: the widened-spread ranking, ordered by Par's rules (pick first). Go for it: the raw ranking by expected strokes.
-  const parDecision = useMemo(() => decidePar(rankState.results ?? []), [rankState.results])
-  const goBest = rankState.goResults?.[0] ?? null
-  const ranking: OptimizedClubPlan[] =
-    strategy === "par"
-      ? parDecision?.ordered ?? []
-      : rankState.goResults ?? [...(rankState.results ?? [])].sort((a, b) => a.plan.expectedStrokes - b.plan.expectedStrokes)
-  const rankingPending = rankState.pending || (strategy === "go" && !rankState.goResults && !!rankState.results)
-  // The card's trade-off between the two strategies (null until both have been ranked, or when they agree).
-  const strategyNote = useMemo(() => {
-    if (!parDecision) return null
-    return {
-      parBest: parDecision.pick,
-      goBest,
-      allOverCap: parDecision.allOverCap,
-      displaced: parDecision.displaced,
-      tradeoff: goBest ? tradeoffText(parDecision.pick, goBest) : null,
-    }
-  }, [parDecision, goBest])
+  // The ranking is by expected strokes, with the spread applied. The card offers two options from it: smart play (the
+  // default: safer, but never far from the lowest strokes) and go for it (the lowest strokes). Smart play goes first,
+  // so "auto" picks it; the golfer taps Go for it (or any club) to change.
+  const rankRaw = rankState.results ?? []
+  const options = useMemo(() => optionsFor(rankRaw), [rankRaw])
+  const ranking: OptimizedClubPlan[] = useMemo(
+    () => (options ? [options.safer, ...rankRaw.filter((r) => r !== options.safer)] : rankRaw),
+    [options, rankRaw]
+  )
+  const rankingPending = rankState.pending
+  const optionsNote = useMemo(() => (options ? { ...options, tradeoff: tradeoffText(options) } : null), [options])
 
   const shownLies = LIES.filter((l) => ALWAYS_SHOWN.includes(l) || ranking.some((r) => r.plan.lieShare[l] >= 0.005))
   const best: OptimizedClubPlan | null = ranking[0] ?? null
@@ -280,8 +269,8 @@ export function usePlan({
   const lastChosen = useRef<OptimizedClubPlan | null>(null)
   const chosen: OptimizedClubPlan | null = chosenPlan(ranking, clubChoice, lastChosen.current)
   lastChosen.current = chosen
-  // Par mode draws and scores the dots with the same widened spread the ranking used.
-  const playShots = useMemo(() => (strategy === "par" ? clubShots.map((c) => widenShots(c, onCourseSpread)) : clubShots), [strategy, clubShots, onCourseSpread])
+  // The dots and "leaves" use the same widened spread the ranking used.
+  const playShots = useMemo(() => clubShots.map((c) => widenShots(c, onCourseSpread)), [clubShots, onCourseSpread])
   const chosenShots = chosen ? playShots.find((c) => c.club === chosen.club) : undefined
 
   // A pick is for this shot: it resets once the ball is carried to the next shot.
@@ -422,7 +411,7 @@ export function usePlan({
     scoreBaseline,
     shownLies,
     startLie,
-    strategyNote,
+    optionsNote,
     obBands,
     allZones,
     stats,

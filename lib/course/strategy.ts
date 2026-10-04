@@ -1,34 +1,42 @@
-// Two ways to play a shot, and every number that separates them.
+// Two options for every shot, from one ranking:
+//  - GO FOR IT: the club with the fewest expected strokes to hole out.
+//  - SMART PLAY (the default): the balance between strokes and safety. Every
+//    club is scored as its expected strokes plus SMART_RISK_WEIGHT per unit of
+//    penalty share (finishing out of bounds, in water or in trees: a drop, a
+//    punch-out or a lost ball), and smart play is the best of those among
+//    clubs that give up no more than SMART_MAX_COST strokes to Go for it.
+//    So it backs off a club or two when the risk is real, and never lays back
+//    far. When Go for it already scores best that way, there is one option.
+// The card shows both and the golfer taps the one that fits how they feel.
+// Both come from the SAME model: shots are scored with the golfer's misses
+// widened to on-course reality (ON_COURSE_SPREAD), so a club's numbers never
+// change between the two options.
 //
-//  - PAR (the default): blow-up risk counts. Any club/aim whose penalty share
-//    (ball stops out of bounds or in water) is over PENALTY_CAP is left out
-//    when at least one option is under it. The rest are ranked by expected
-//    strokes + PENALTY_WEIGHT x penalty share, and a longer club only wins if
-//    it beats a shorter, safer one by LONGER_CLUB_MARGIN. Shots are scored with
-//    the spread widened to on-course reality (ON_COURSE_SPREAD).
-//  - GO FOR IT: pure expected strokes on the raw (launch-monitor) dispersion.
-//
-// Why: expected strokes alone accepts a 7% OB chance for a 0.04-stroke edge,
-// and range data is tighter than the same golfer's rounds. Every tunable number
-// is here, labelled with where it came from. None is measured: they are the
-// golfer-facing judgement calls this feature rests on, so change them here.
+// Every tunable number is here, labelled with where it came from. None is
+// measured: they are the golfer-facing judgement calls this feature rests on.
 
 import type { ClubShots } from "./plan"
 
-/** A club/aim with more than this share of shots out of bounds or in water is dropped in Par mode. ESTIMATE (spec): 1 in 33. */
+/** Penalty share above this is flagged red on the card and in the table, and the card warns when even smart play is above it. ESTIMATE (spec): 1 in 33. */
 export const PENALTY_CAP = 0.03
 
-/** A shorter club only counts as "safer" if its penalty share is lower by at least this (0.5 points). ESTIMATE: below that, "safer" is one ball in 200 shots, i.e. sampling noise, and with no penalty risk anywhere Par must agree with Go for it. */
-export const SAFER_MIN_GAP = 0.005
-
-/** Strokes added per unit penalty share when ranking in Par mode (share is a fraction: 7% adds 0.035). ESTIMATE (spec): the cap and the margin do the real work. */
-export const PENALTY_WEIGHT = 0.5
-
-/** A longer club only beats a shorter, safer one in Par mode if it gains this many strokes after penalty weighting. ESTIMATE (spec): about the sampling noise of a ranking. */
-export const LONGER_CLUB_MARGIN = 0.1
+/**
+ * Strokes smart play adds per unit of penalty share when it weighs safety against strokes (a share is a fraction:
+ * 10% adds 0.15). ESTIMATE: the strokes table already charges the average cost of an out of bounds or recovery shot,
+ * and this is the premium on top for the blow-up (the extra stroke or two of a lost ball, a punch-out that stays in
+ * the trees), which an average hides. 1.5 puts Driver at 23% penalty behind a 3-Wood at 6% unless the Driver is
+ * more than about a quarter stroke better.
+ */
+export const SMART_RISK_WEIGHT = 1.5
 
 /**
- * Par mode multiplies each club's offline spread (start line + curve) by this.
+ * Smart play never gives up more than this many expected strokes to Go for it. ESTIMATE: laying back too far is a
+ * worse plan than the risk it avoids, so the safer option has to stay close.
+ */
+export const SMART_MAX_COST = 0.35
+
+/**
+ * Every club's offline spread (start line + curve) is multiplied by this before scoring.
  * ESTIMATE: range/launch-monitor data is tighter than the same golfer on the
  * course (wind, lies, nerves, no mat). 1.25 is the spec's starting value; the
  * golfer can set 1.0-1.5 on You -> Planner.
@@ -90,35 +98,15 @@ export const OB_LONG_PAST_GREEN_YDS = 25
 /** The "No OB mapped" banner looks this far either side of the hole line for any out-of-bounds ground, yards. ESTIMATE: wider than the fairway and its rough. */
 export const OB_SCAN_HALF_WIDTH_YDS = 60
 
-// ---- Strategy and picking -------------------------------------------------
+// ---- The two options ------------------------------------------------------
 
-export type Strategy = "par" | "go"
-export const DEFAULT_STRATEGY: Strategy = "par"
-
-/** Strategy resets to Par on every NEW hole; re-picking the same hole (a data refresh) keeps it. */
-export function strategyAfterHolePick(prev: Strategy, previousHoleId: string | null, nextHoleId: string): Strategy {
-  return previousHoleId === nextHoleId ? prev : DEFAULT_STRATEGY
-}
-
-/** What the picking rules need to know about a club's plan. */
-export interface PickView {
-  club: string
-  /** Expected strokes to hole out (this shot included). */
-  strokes: number
-  /** Share of shots that stop out of bounds or in water, 0..1. */
-  penalty: number
-  /** How far the average shot finishes (carry + roll). */
-  reach: number
-}
-
-/** Out-of-bounds + water share of a plan's finishing spots. */
-export function penaltyShare(plan: { lieShare: { oob: number; water: number } }): number {
-  return plan.lieShare.oob + plan.lieShare.water
-}
-
-/** Expected strokes plus the Par-mode penalty weighting. */
-export function weighted(v: Pick<PickView, "strokes" | "penalty">): number {
-  return v.strokes + PENALTY_WEIGHT * v.penalty
+/**
+ * Share of a plan's finishing spots that cost a penalty or a punch-out: out of bounds, water and TREES. A ball in
+ * the trees is treated as a drop, a punch-out or a lost ball, not a playable lie, so it counts as risk even though
+ * the strokes table scores it as "recovery".
+ */
+export function penaltyShare(plan: { lieShare: { oob: number; water: number; trees?: number } }): number {
+  return plan.lieShare.oob + plan.lieShare.water + (plan.lieShare.trees ?? 0)
 }
 
 /** Offline spread x `spread` about each club's own mean offline: wider misses, same natural bias. */
@@ -128,46 +116,37 @@ export function widenShots(club: ClubShots, spread: number): ClubShots {
   return { club: club.club, shots: club.shots.map((s) => ({ carryYds: s.carryYds, offlineYds: mean + (s.offlineYds - mean) * spread })) }
 }
 
-export interface ParPick<T> {
-  chosen: T
-  /** True when every option was over the cap: chosen is simply the lowest-penalty one. */
-  allOverCap: boolean
-  /** The longer club that lost to a shorter, safer one on the margin rule (null when nothing was displaced). */
-  displaced: { club: T; gain: number; extraPenalty: number } | null
+export interface Options<T> {
+  /** GO FOR IT: the fewest expected strokes. */
+  lowest: T
+  /** SMART PLAY (the default); the same club as `lowest` when nothing beats it once risk is weighed in. */
+  safer: T
+  /** `lowest` is already the best balance, so there is only one option. */
+  same: boolean
+  /** Even smart play has more than PENALTY_CAP penalty risk: the card warns. */
+  noSafeOption: boolean
+}
+
+/** Expected strokes plus the risk premium. */
+export function balanced(v: { strokes: number; penalty: number }): number {
+  return v.strokes + SMART_RISK_WEIGHT * v.penalty
 }
 
 /**
- * Par mode's pick from every club (each at its own best aim).
- * 1. Drop options over PENALTY_CAP if any is under it; if none is, take the
- *    lowest penalty share (ties: lower weighted strokes).
- * 2. Best weighted strokes among what's left.
- * 3. Tie to the safer club: if a shorter club with clearly less penalty (SAFER_MIN_GAP) is within
- *    LONGER_CLUB_MARGIN of the best (weighted strokes), the closest such club wins.
+ * The two options from a ranking (each club at its own best aim) in any order.
+ * Go for it = fewest strokes. Smart play = the best `balanced` score among the
+ * clubs within SMART_MAX_COST strokes of it (ties: the one with less penalty).
  */
-export function pickPar<T>(options: T[], view: (t: T) => PickView): ParPick<T> | null {
-  if (options.length === 0) return null
-  const v = options.map((o) => ({ o, v: view(o) }))
-  const under = v.filter((x) => x.v.penalty <= PENALTY_CAP)
-  const allOverCap = under.length === 0
-  let pool = under
-  if (allOverCap) {
-    const lowest = Math.min(...v.map((x) => x.v.penalty))
-    pool = v.filter((x) => x.v.penalty - lowest < 1e-9)
-  }
-  const best = pool.reduce((a, b) => (weighted(b.v) < weighted(a.v) ? b : a))
-  if (allOverCap) return { chosen: best.o, allOverCap, displaced: null }
-
-  // Tie goes to the safer club, one step from the best: of the shorter clubs that carry no more penalty risk and are
-  // within LONGER_CLUB_MARGIN of the best score, take the closest in score ("Driver gains 0.04, not worth +6% OB. 3-Wood.").
-  // It does not chain further down the bag: the best club's gain is measured against its nearest safe alternative.
-  const safer = pool.filter((y) => y.v.reach < best.v.reach && best.v.penalty - y.v.penalty >= SAFER_MIN_GAP && weighted(y.v) - weighted(best.v) < LONGER_CLUB_MARGIN)
-  if (safer.length === 0) return { chosen: best.o, allOverCap, displaced: null }
-  const chosen = safer.reduce((a, b) => (weighted(b.v) < weighted(a.v) ? b : a))
-  return {
-    chosen: chosen.o,
-    allOverCap,
-    displaced: { club: best.o, gain: weighted(chosen.v) - weighted(best.v), extraPenalty: best.v.penalty - chosen.v.penalty },
-  }
+export function lowestAndSafer<T>(ranking: T[], view: (t: T) => { strokes: number; penalty: number }): Options<T> | null {
+  if (ranking.length === 0) return null
+  const v = ranking.map((o) => ({ o, ...view(o) }))
+  const lowest = v.reduce((a, b) => (b.strokes < a.strokes ? b : a))
+  const near = v.filter((x) => x.strokes - lowest.strokes <= SMART_MAX_COST + 1e-9)
+  const smart = near.reduce((a, b) => {
+    const d = balanced(b) - balanced(a)
+    return d < -1e-9 || (Math.abs(d) <= 1e-9 && b.penalty < a.penalty) ? b : a
+  })
+  return { lowest: lowest.o, safer: smart.o, same: smart === lowest, noSafeOption: smart.penalty > PENALTY_CAP }
 }
 
 /** "3%" style, whole percent; under half a percent shows "<1%" so a small risk never reads as none. */
@@ -177,9 +156,11 @@ export function pctText(share: number): string {
   return p < 0.5 ? "<1%" : `${Math.round(p)}%`
 }
 
-/** "OB" when out of bounds is the bigger share of the risk, else "water". */
-export function penaltyWord(plan: { lieShare: { oob: number; water: number } }): string {
-  return plan.lieShare.oob >= plan.lieShare.water ? "OB" : "water"
+/** What most of the risk is: "OB", "water" or "trees". */
+export function penaltyWord(plan: { lieShare: { oob: number; water: number; trees?: number } }): string {
+  const { oob, water, trees = 0 } = plan.lieShare
+  if (oob >= water && oob >= trees) return "OB"
+  return water >= trees ? "water" : "trees"
 }
 
 /** The look-ahead grid only covers where a tee shot can finish: from this far from the tee. ESTIMATE: nobody tees off with less than a long iron on a par 5. */

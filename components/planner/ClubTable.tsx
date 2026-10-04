@@ -5,7 +5,7 @@
 import type { Lie } from "@/lib/course/lies"
 import { aimOffsetLabel, isTie, type OptimizedClubPlan } from "@/lib/course/plan"
 import { LIE_LABEL, LIE_SHORT, pct } from "@/lib/planner/labels"
-import { PENALTY_CAP, pctText, penaltyShare, type Strategy } from "@/lib/course/strategy"
+import { PENALTY_CAP, pctText, penaltyShare } from "@/lib/course/strategy"
 
 export interface ClubTableProps {
   ranking: OptimizedClubPlan[]
@@ -20,11 +20,9 @@ export interface ClubTableProps {
   /** The scoring baseline's label ("PGA TOUR" or "3.0 handicap"). */
   baselineLabel: string
   onPick: (r: OptimizedClubPlan) => void
-  /** Par dims the clubs over the penalty cap; Go for it does not. */
-  strategy: Strategy
 }
 
-export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, estimatedFrom, baselineLabel, onPick, strategy }: ClubTableProps) {
+export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, estimatedFrom, baselineLabel, onPick }: ClubTableProps) {
   return (
     <div
       className={`overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface transition-opacity ${pending ? "opacity-60" : ""}`}
@@ -48,7 +46,7 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
                 {LIE_SHORT[l]}
               </th>
             ))}
-            <th className="px-1 py-2.5 text-right font-medium" title="Share of shots out of bounds or in water. Red = over the Par-mode cap">
+            <th className="px-1 py-2.5 text-right font-medium" title="Share of shots out of bounds, in water or in trees (a drop, punch-out or lost ball). Red = over the safe limit">
               Pen
             </th>
             <th
@@ -71,7 +69,7 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
               }}
               className={`cursor-pointer border-b border-fg/[0.04] transition-colors last:border-0 hover:bg-fg/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
                 chosen?.club === r.club ? "bg-accent/10" : ""
-              } ${strategy === "par" && penaltyShare(r.plan) > PENALTY_CAP && chosen?.club !== r.club ? "opacity-60" : ""}`}
+              }`}
             >
               <td className="whitespace-nowrap px-3 font-semibold text-fg">
                 {r.club}

@@ -4,6 +4,7 @@
 // (OpenStreetMap data, ODbL; see the fixture's _attribution). No Supabase.
 
 import fixture from "./__fixtures__/colts-neck-3-6.json"
+import zonesFile from "./__fixtures__/colts-neck-3-6-zones.json"
 import profileFile from "@/lib/golfer/__fixtures__/dillon-fitted-profile.json"
 import { fillBag, CALIBRATED_DEFAULT_BAG, canonicalClub } from "@/lib/golfer/bag"
 import { generateFromFittedProfile, type FittedProfile } from "@/lib/golfer/fitted"
@@ -15,8 +16,8 @@ import { buildLookahead } from "./lookahead"
 import { obZonesFor, type ObTag } from "./obTags"
 import type { CourseFeature, CourseHole } from "./overpass"
 import type { ClubShots, OptimizedClubPlan } from "./plan"
-import { parPick, rankBothStrategies } from "./rankStrategies"
-import { needsLookahead, ON_COURSE_SPREAD, penaltyShare } from "./strategy"
+import { optionsFor, rankWithSpread } from "./rankOptions"
+import { needsLookahead, ON_COURSE_SPREAD, penaltyShare, type Options } from "./strategy"
 import { holePinFor } from "@/lib/planner/geometry"
 
 /** Handicap the regression cases are scored against (Dillon's tracked index is about 3). */
@@ -36,18 +37,21 @@ export function coltsNeckHole(ref: number) {
 }
 
 export interface Case {
-  ranking: ReturnType<typeof rankBothStrategies>
-  pickPar: OptimizedClubPlan | undefined
-  go: OptimizedClubPlan | undefined
+  /** Every club at its own best aim, fewest expected strokes first (the spread applied, long holes look ahead). */
+  ranking: OptimizedClubPlan[]
+  /** Smart play (the default, `safer`) and Go for it (`lowest`). */
+  options: Options<OptimizedClubPlan>
   ms: number
 }
 
 /** Rank the bag from the tee of a Colts Neck hole, as the planner does (estimated fairway corridor, OB tags as zones). */
 export function rankColtsNeck(ref: number, tags: ObTag[], opts: { spread?: number; clubs?: ClubShots[]; lookahead?: boolean } = {}): Case {
   const { hole, features, pin, par, yards } = coltsNeckHole(ref)
-  const quality = assessHoleDataQuality(hole, features, [])
+  // His own hand-drawn marks for these holes (fairways, trees, out of bounds): what the planner has when he plays there.
+  const marks = zonesFile.zones as UserZone[]
+  const quality = assessHoleDataQuality(hole, features, marks)
   const corridor = quality.fairway === "estimated" ? [estimatedFairwayCorridor(hole, pin)] : []
-  const zones: UserZone[] = obZonesFor(hole.line, features, tags)
+  const zones: UserZone[] = [...marks, ...obZonesFor(hole.line, features, tags)]
   const lies = buildLieMap(
     fixture.course as LatLng,
     [...features, ...corridor],
@@ -59,20 +63,20 @@ export function rankColtsNeck(ref: number, tags: ObTag[], opts: { spread?: numbe
   const from = hole.line[0]
   const t0 = performance.now()
   const useLook = opts.lookahead ?? needsLookahead(par, yards)
-  const ranking = rankBothStrategies(opts.clubs ?? dillonBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline }, {
+  const ranking = rankWithSpread(opts.clubs ?? dillonBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline }, {
     spread: opts.spread ?? ON_COURSE_SPREAD,
     line: hole.line,
-    lookahead: useLook ? (strategy, clubs) => buildLookahead({ clubs, strategy, from, pin, line: hole.line, lies, baseline }) : undefined,
+    lookahead: useLook ? (clubs) => buildLookahead({ clubs, from, pin, line: hole.line, lies, baseline }) : undefined,
   })
   const ms = performance.now() - t0
-  return { ranking, pickPar: parPick(ranking.par)?.chosen, go: ranking.go[0], ms }
+  return { ranking, options: optionsFor(ranking) as Options<OptimizedClubPlan>, ms }
 }
 
 export function table(rows: OptimizedClubPlan[]): string {
   return rows
     .map((r) => {
       const left = r.plan.meanTotalYds
-      return `${r.club.padEnd(8)} total ${left.toFixed(0).padStart(3)}  strokes ${r.plan.expectedStrokes.toFixed(3)}  pen ${(penaltyShare(r.plan) * 100).toFixed(1).padStart(4)}% (oob ${(r.plan.lieShare.oob * 100).toFixed(1)} water ${(r.plan.lieShare.water * 100).toFixed(1)})  aim ${r.offsetYds.toFixed(0)}`
+      return `${r.club.padEnd(8)} total ${left.toFixed(0).padStart(3)}  strokes ${r.plan.expectedStrokes.toFixed(3)}  pen ${(penaltyShare(r.plan) * 100).toFixed(1).padStart(4)}% (oob ${(r.plan.lieShare.oob * 100).toFixed(1)} water ${(r.plan.lieShare.water * 100).toFixed(1)} trees ${(r.plan.lieShare.trees * 100).toFixed(1)})  aim ${r.offsetYds.toFixed(0)}`
     })
     .join("\n")
 }

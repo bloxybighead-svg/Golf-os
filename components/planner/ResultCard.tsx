@@ -8,9 +8,7 @@ import type { CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import type { Lie } from "@/lib/course/lies"
 import { boundaryStatus, type ConfirmableHazard, type HoleDataQuality, type SurfaceStatus } from "@/lib/course/dataQuality"
 import { flagsUnmapped, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
-import { PENALTY_CAP, pctText, penaltyShare, penaltyWord, type Strategy } from "@/lib/course/strategy"
-import type { ParDecision } from "@/lib/course/rankStrategies"
-import { StrategyToggle } from "./StrategyToggle"
+import { PENALTY_CAP, pctText, penaltyShare, penaltyWord, type Options } from "@/lib/course/strategy"
 import { pct, STATUS_TITLE } from "@/lib/planner/labels"
 import { Stat } from "./ui"
 
@@ -38,10 +36,10 @@ export interface ResultCardProps {
   onConfirmHazard: (hazard: ConfirmableHazard, value: boolean) => void
   onAimAtBest: (r: OptimizedClubPlan) => void
   onBackToBest: () => void
-  strategy: Strategy
-  onStrategy: (s: Strategy) => void
-  /** Par vs Go for it, from the two rankings (null until Par has been ranked). */
-  note: { allOverCap: boolean; displaced: ParDecision["displaced"]; tradeoff: string | null } | null
+  /** Smart play (the default) and Go for it, from the ranking (null until it exists). */
+  options: (Options<OptimizedClubPlan> & { tradeoff: string | null }) | null
+  /** Taps an option: that club, aimed at its best. */
+  onPickOption: (r: OptimizedClubPlan) => void
 }
 
 export function ResultCard({
@@ -67,21 +65,49 @@ export function ResultCard({
   onConfirmHazard,
   onAimAtBest,
   onBackToBest,
-  strategy,
-  onStrategy,
-  note,
+  options,
+  onPickOption,
 }: ResultCardProps) {
   const penalty = penaltyShare(chosen.plan)
   const overCap = penalty > PENALTY_CAP
   return (
     <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <StrategyToggle strategy={strategy} onChange={onStrategy} />
-        <p className="text-right text-xs tabular-nums text-fg-3" title="Share of shots that finish out of bounds or in water">
-          <span className={`block text-3xl font-semibold leading-none ${overCap ? "text-danger" : "text-fg"}`}>{pctText(penalty)}</span>
-          {penaltyWord(chosen.plan)} / penalty
-        </p>
-      </div>
+      {options && (
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          {(
+            [
+              ["Smart play", options.safer],
+              ["Go for it", options.lowest],
+            ] as const
+          )
+            .filter((_, i) => !(options.same && i === 1))
+            .map(([label, r], i) => {
+            const pen = penaltyShare(r.plan)
+            const selected = chosen.club === r.club && (options.same || i === (chosen.club === options.safer.club ? 0 : 1))
+            return (
+              <button
+                key={label}
+                onClick={() => onPickOption(r)}
+                aria-pressed={selected}
+                className={`rounded-xl border px-3 py-2 text-left transition-colors ${
+                  selected ? "border-accent bg-accent/10" : "border-fg/[0.1] hover:bg-fg/[0.04]"
+                }`}
+              >
+                <span className="block text-xs font-medium text-muted">
+                  {options.same ? "Best play" : label}
+                </span>
+                <span className="block text-base font-semibold text-fg">{r.club}</span>
+                <span className="block text-xs tabular-nums text-fg-3">
+                  {r.plan.expectedStrokes.toFixed(2)} strokes ·{" "}
+                  <span className={pen > PENALTY_CAP ? "font-semibold text-danger" : ""}>
+                    {pctText(pen)} {penaltyWord(r.plan)}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
       <div className="flex items-baseline justify-between gap-2">
         <p className="label-xs">
           {clubChoice === "auto" || chosen.club === best.club ? (
@@ -118,6 +144,9 @@ export function ResultCard({
             {chosen.plan.expectedStrokes.toFixed(2)}
           </span>
           <span className="text-xs text-muted">strokes to hole out</span>
+          <span className={`block text-xs tabular-nums ${overCap ? "font-semibold text-danger" : "text-fg-3"}`} title="Share of shots that finish out of bounds, in water or in trees (a drop, punch-out or lost ball)">
+            {pctText(penalty)} {penaltyWord(chosen.plan)} / penalty
+          </span>
           <span className="block text-[11px] text-muted" title="Change on You, under Planner">
             vs {baselineHandicap == null ? "PGA TOUR" : `a ${baselineHandicap.toFixed(1)} handicap`}
           </span>
@@ -160,18 +189,13 @@ export function ResultCard({
           ))}
       </p>
 
-      {strategy === "par" && note?.allOverCap && (
+      {options?.noSafeOption && (
         <p className="mt-2 text-xs font-semibold text-danger">
-          Every option carries real penalty risk here. Safest: {chosen.club}, {pctText(penalty)} {penaltyWord(chosen.plan)}.
+          Risky hole: even the smart play, {options.safer.club}, has {pctText(penaltyShare(options.safer.plan))}{" "}
+          {penaltyWord(options.safer.plan)} risk.
         </p>
       )}
-      {strategy === "par" && note?.displaced && clubChoice === "auto" && (
-        <p className="mt-2 text-xs text-fg-2">
-          {note.displaced.club.club} gains {note.displaced.gain.toFixed(2)}, not worth +{pctText(note.displaced.extraPenalty)}{" "}
-          {penaltyWord(note.displaced.club.plan)}. {chosen.club}.
-        </p>
-      )}
-      {note?.tradeoff && <p className="mt-2 text-xs text-fg-2">{note.tradeoff}</p>}
+      {options?.tradeoff && <p className="mt-2 text-xs text-fg-2">{options.tradeoff}</p>}
 
       {flagsUnmapped(chosenLive) && (
         <p className="mt-2 text-[11px] text-fg-3">

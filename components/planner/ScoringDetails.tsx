@@ -1,6 +1,6 @@
 // "How this is scored" under the Play planner's card (moved verbatim from CourseMapClient.tsx).
 
-import { LONGER_CLUB_MARGIN, PENALTY_CAP, PENALTY_WEIGHT } from "@/lib/course/strategy"
+import { SMART_MAX_COST, SMART_RISK_WEIGHT } from "@/lib/course/strategy"
 
 export function ScoringDetails({ baselineHandicap, onCourseSpread }: { baselineHandicap: number | null; onCourseSpread: number }) {
   return (
@@ -27,15 +27,16 @@ export function ScoringDetails({ baselineHandicap, onCourseSpread }: { baselineH
           they exist. The extra penalty for bad lies is an estimate.
         </p>
         <p>
-          <strong className="font-medium text-fg-2">Par</strong> (the default, and it resets on every new hole) counts blow-up
-          risk. Any club or aim with more than {Math.round(PENALTY_CAP * 100)}% of its shots out of bounds or in water is
-          left out when something safer exists; the rest rank by expected strokes plus {PENALTY_WEIGHT} per unit of penalty
-          share, and a longer club only beats a shorter, safer one if it gains at least {LONGER_CLUB_MARGIN.toFixed(2)}{" "}
-          strokes. Par also widens your misses to {onCourseSpread.toFixed(2)}x of what the range data shows (change it on
-          You, under Planner). <strong className="font-medium text-fg-2">Go for it</strong> is pure expected strokes on the
-          raw dispersion. On par 5s and par 4s over 440 yd, each tee shot is valued by the best next shot from where it
-          finishes, not by a table that assumes every distance can be played. The cap, weight, margin and spread are
-          estimates, not measurements.
+          The card gives two options from the same ranking. <strong className="font-medium text-fg-2">Go for it</strong> is the
+          club with the fewest expected strokes. <strong className="font-medium text-fg-2">Smart play</strong> (the default)
+          balances strokes against risk: each club&rsquo;s strokes plus {SMART_RISK_WEIGHT} per unit of penalty share, where
+          a penalty is a shot that finishes out of bounds, in water or in the trees (a drop, a punch-out or a lost ball). It
+          never gives up more than {SMART_MAX_COST.toFixed(2)} strokes to Go for it, because laying back too far is a worse
+          plan than the risk it avoids. When Go for it is already the best balance there is just one option. Your misses are
+          widened to {onCourseSpread.toFixed(2)}x of what the range data shows, since range data is tighter than real rounds
+          (change it on You, under Planner). On par 5s and par 4s over 440 yd, each tee shot is valued by the best next shot
+          from where it finishes, not by a table that assumes every distance can be played. The risk weight, the cost limit
+          and the spread are estimates, not measurements.
         </p>
         <p>
           Every club gets its own aim: its search starts on the hole&rsquo;s centre line at the distance that club goes

@@ -27,7 +27,6 @@ import { useZones } from "@/hooks/useZones"
 import { useBallPosition } from "@/hooks/useBallPosition"
 import { usePlan } from "@/hooks/usePlan"
 import { useObTags } from "@/hooks/useObTags"
-import { DEFAULT_STRATEGY, strategyAfterHolePick, type Strategy } from "@/lib/course/strategy"
 import { hasOobBesideLine } from "@/lib/course/obTags"
 import { hasAnswered } from "@/lib/planner/obTagStore"
 
@@ -59,8 +58,6 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
   const [pinManual, setPinManual] = useState<LatLng | null>(null)
   const [placing, setPlacing] = useState<Placing>("ball")
   const [clubChoice, setClubChoice] = useState<string>("auto")
-  // Par (default) or Go for it. A new hole always starts on Par (strategyAfterHolePick).
-  const [strategy, setStrategy] = useState<Strategy>(DEFAULT_STRATEGY)
   const zoneState = useZones({ supabase, authUser, course })
   const {
     zones, noHazard, setNoHazard, localOnlyZones, setLocalOnlyZones, syncingZones, drawKind, setDrawKind,
@@ -265,7 +262,6 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
     noHazard,
     showTrouble,
     showRings,
-    strategy,
     onCourseSpread: settings.onCourseSpread,
     obTags: obTags.tagsFor(holeId),
   })
@@ -273,7 +269,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
     aim, aimAtBest, aimIsPin, aimToPin, atBestAim, avgLeft, bagDriverCarry, baselineHandicap, best, chosen,
     chosenAtAim, chosenLive, distAim, distPin, estimatedFrom, fromLabel, holeBearingDeg, holeQuality, labels,
     landings, longestCarry, pickClub, pin, planReady, rankState, ranking, rankingPending, rings,
-    scoreBaseline, shownLies, stats, troubleCells, strategyNote, obBands, lies,
+    scoreBaseline, shownLies, stats, troubleCells, optionsNote, obBands, lies,
   } = plan
 
   // "No OB mapped on this hole": nothing beside the hole's line counts as out of bounds and the golfer hasn't said.
@@ -301,7 +297,6 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
     setAimManual(null)
     setPinManual(null)
     setClubChoice((prev) => choiceAfterHolePick(prev, holeId, h.id)) // the same hole keeps a picked club
-    setStrategy((prev) => strategyAfterHolePick(prev, holeId, h.id)) // a new hole starts on Par
     setFit({ bounds: boundsOf([...h.line, holePinFor(h)]), key: `hole-${h.id}` })
     updateLastPositionHole(h.id)
   }
@@ -351,7 +346,7 @@ export function usePlannerController({ calibrated, trackedHandicap, baseline }: 
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, syncLocalZonesToAccount, syncingZones, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
-    strategy, setStrategy, strategyNote, obBands, obTags, holeObTags, noObMapped,
+    optionsNote, obBands, obTags, holeObTags, noObMapped,
     onCourseSpread: settings.onCourseSpread,
   }
 }

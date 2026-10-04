@@ -5,18 +5,18 @@
 // tee shot that leaves 330 yd to the pin on a par 5 is valued as if you could
 // just hit it. Here every spot a tee shot can finish gets a value from the best
 // NEXT shot instead: each club (a few samples, its own best aim among a few),
-// played from that spot and scored with the same baseline, penalty cap and
-// strategy rules as the tee shot itself. A tee shot is then worth the average
-// grid value at its finish spots.
+// played from that spot and scored with the same baseline as the tee shot
+// itself; the best club's expected strokes is the spot's value. A tee shot is
+// then worth the average grid value at its finish spots.
 //
-// The grid depends on the hole, pin, map, bag and strategy, not on where the
+// The grid depends on the hole, pin, map and bag, not on where the
 // ball is, so the worker builds it once per hole and reuses it.
 
 import { bearingDeg, distanceYds, fromLocal, toLocal, type LatLng } from "./geo"
 import { projectOnLine } from "./aim"
 import type { Baseline } from "./baseline"
 import type { Lie, LieMap } from "./lies"
-import { evaluateClub, type ClubPlan, type ClubShots, type Landing } from "./plan"
+import { evaluateClub, type ClubShots, type Landing } from "./plan"
 import {
   LOOKAHEAD_AIM_OFFSETS,
   LOOKAHEAD_CELL_YDS,
@@ -27,17 +27,12 @@ import {
   LOOKAHEAD_MIN_TEE_YDS,
   LOOKAHEAD_SAMPLES,
   LOOKAHEAD_SEED,
-  penaltyShare,
-  pickPar,
-  weighted,
-  type Strategy,
 } from "./strategy"
 import { seededSample } from "@/lib/dispersion/stats"
 
 export interface LookaheadArgs {
-  /** The bag, already widened for Par mode where that applies. */
+  /** The bag, with the on-course spread already applied. */
   clubs: ClubShots[]
-  strategy: Strategy
   /** Where the tee shot is hit from (the grid is laid out in local yards around it). */
   from: LatLng
   pin: LatLng
@@ -66,21 +61,15 @@ export function bestNextShot(at: LatLng, lie: Lie, cands: Candidate[], args: Loo
   const d = distanceYds(at, args.pin)
   const nearest = [...cands].sort((a, b) => Math.abs(a.carry - d) - Math.abs(b.carry - d)).slice(0, LOOKAHEAD_MAX_CLUBS)
   const toPin = bearingDeg(at, args.pin)
-  const plans = nearest.map((c) => {
-    let best: ClubPlan | null = null
+  let best = Infinity
+  for (const c of nearest) {
     for (const off of LOOKAHEAD_AIM_OFFSETS) {
       const bearing = (toPin + (Math.atan2(off, Math.max(c.carry, 10)) * 180) / Math.PI + 360) % 360
       const plan = evaluateClub(c.shots, { from: at, aim: args.pin, pin: args.pin, lies: args.lies, startLie: lie, baseline: args.baseline }, bearing)
-      const score = args.strategy === "par" ? weighted({ strokes: plan.expectedStrokes, penalty: penaltyShare(plan) }) : plan.expectedStrokes
-      const bestScore = best ? (args.strategy === "par" ? weighted({ strokes: best.expectedStrokes, penalty: penaltyShare(best) }) : best.expectedStrokes) : Infinity
-      if (score < bestScore) best = plan
+      if (plan.expectedStrokes < best) best = plan.expectedStrokes
     }
-    return best as ClubPlan
-  })
-  if (plans.length === 0) return null
-  if (args.strategy === "go") return Math.min(...plans.map((p) => p.expectedStrokes))
-  const pick = pickPar(plans, (p) => ({ club: p.club, strokes: p.expectedStrokes, penalty: penaltyShare(p), reach: p.meanTotalYds }))
-  return pick ? pick.chosen.expectedStrokes : null
+  }
+  return Number.isFinite(best) ? best : null
 }
 
 export function buildLookahead(args: LookaheadArgs): Lookahead {

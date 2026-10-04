@@ -5,23 +5,19 @@ import { buildLookahead } from "./lookahead"
 import { hasOobBesideLine, obBand, obBandsFor, obZonesFor } from "./obTags"
 import { evaluateClub, type ClubShots, type OptimizedClubPlan } from "./plan"
 import { createRankHandler, rankKey, type LieInputs, type RankMessage } from "./rankRequest"
-import { decidePar, parPick, rankBothStrategies, tradeoffText } from "./rankStrategies"
+import { optionsFor, rankWithSpread, tradeoffText } from "./rankOptions"
 import { dillonBag, rankColtsNeck, table, TEST_HANDICAP } from "./regressionHarness"
 import { getBaseline } from "./baseline"
 import { clampSpread } from "./spreadSetting"
 import {
-  DEFAULT_STRATEGY,
-  LONGER_CLUB_MARGIN,
+  lowestAndSafer,
   needsLookahead,
   OB_MARGIN_YDS,
   ON_COURSE_SPREAD,
   PENALTY_CAP,
-  pickPar,
   penaltyShare,
-  SAFER_MIN_GAP,
-  strategyAfterHolePick,
+  SMART_MAX_COST,
   widenShots,
-  type PickView,
 } from "./strategy"
 import { seededRng } from "@/lib/dispersion/stats"
 import { answerBanner, hasAnswered, loadObTags, rowsToMap, toggleSide, withMargin } from "@/lib/planner/obTagStore"
@@ -30,56 +26,49 @@ import { holesToAskAboutOb } from "@/lib/rounds/obQuestions"
 import { generateFromFittedProfile } from "@/lib/golfer/fitted"
 import profileFile from "@/lib/golfer/__fixtures__/dillon-fitted-profile.json"
 
-const view = (club: string, strokes: number, penalty: number, reach: number): PickView => ({ club, strokes, penalty, reach })
-const pick = (opts: PickView[]) => pickPar(opts, (o) => o)
+const opt = (club: string, strokes: number, penalty: number) => ({ club, strokes, penalty })
+const two = (rows: ReturnType<typeof opt>[]) => lowestAndSafer(rows, (r) => r)
 
-describe("Par mode picking", () => {
-  it("drops every option over the cap when one is under it, even the best by strokes", () => {
-    const r = pick([view("Driver", 4.0, 0.07, 270), view("3-Wood", 4.2, 0.02, 246), view("5-Iron", 4.5, 0, 180)])
-    expect(r?.chosen.club).toBe("3-Wood")
-    expect(r?.allOverCap).toBe(false)
+describe("the two options", () => {
+  it("balances strokes against risk: Driver 23% penalty gives way to the 3-Wood at 6% (the 4-Iron at 1% and 7-Wood at 3% cost more strokes)", () => {
+    const r = two([opt("Driver", 4.43, 0.23), opt("3-Wood", 4.5, 0.06), opt("7-Wood", 4.56, 0.03), opt("4-Iron", 4.6, 0.01)])
+    expect(r?.lowest.club).toBe("Driver")
+    expect(r?.safer.club).toBe("3-Wood")
+    expect(r?.same).toBe(false)
   })
 
-  it("respects the cap exactly: 3% is allowed, 3.5% is not", () => {
-    expect(pick([view("A", 4.0, PENALTY_CAP, 270), view("B", 4.9, 0, 100)])?.chosen.club).toBe("A")
-    expect(pick([view("A", 4.0, 0.035, 270), view("B", 4.9, 0, 100)])?.chosen.club).toBe("B")
+  it("one option when the lowest-strokes club is already the best balance", () => {
+    const r = two([opt("Driver", 4.0, 0.03), opt("3-Wood", 4.1, 0)])
+    expect(r?.same).toBe(true)
+    expect(r?.safer.club).toBe("Driver")
+    expect(r?.noSafeOption).toBe(false)
   })
 
-  it("with nothing under the cap, takes the lowest penalty share and says so", () => {
-    const r = pick([view("Driver", 4.0, 0.09, 270), view("3-Wood", 4.1, 0.05, 246), view("7-Iron", 4.6, 0.06, 160)])
-    expect(r?.chosen.club).toBe("3-Wood")
-    expect(r?.allOverCap).toBe(true)
+  it("never lays back more than the cost limit, even for a big risk cut", () => {
+    const r = two([opt("Driver", 4.0, 0.3), opt("3-Wood", 4.0 + SMART_MAX_COST + 0.05, 0.01), opt("7-Iron", 4.9, 0)])
+    expect(r?.safer.club).toBe("Driver")
+    expect(r?.noSafeOption).toBe(true) // 30% is still a lot of risk: the card warns
   })
 
-  it("a longer club must beat the shorter, safer one by the margin: gains 0.04 loses, gains 0.15 wins", () => {
-    const small = pick([view("Driver", 4.0, 0.025, 270), view("3-Wood", 4.04, 0.0, 246)])
-    expect(small?.chosen.club).toBe("3-Wood")
-    expect(small?.displaced?.club.club).toBe("Driver")
-    expect(small?.displaced?.gain).toBeGreaterThan(0)
-    expect(small?.displaced?.gain).toBeLessThan(LONGER_CLUB_MARGIN)
-    const big = pick([view("Driver", 4.0, 0.025, 270), view("3-Wood", 4.15, 0.0, 246)])
-    expect(big?.chosen.club).toBe("Driver")
-    expect(big?.displaced).toBeNull()
+  it("trees count: the penalty share includes OB, water and trees", () => {
+    expect(penaltyShare({ lieShare: { oob: 0.04, water: 0.01, trees: 0.18 } })).toBeCloseTo(0.23, 10)
+    expect(penaltyShare({ lieShare: { oob: 0.05, water: 0 } })).toBeCloseTo(0.05, 10) // trees absent counts as none
   })
 
-  it("steps down only once: it does not slide on to an even shorter club", () => {
-    const r = pick([view("Driver", 4.0, 0.025, 270), view("3-Wood", 4.05, 0.01, 246), view("5-Iron", 4.09, 0.0, 182)])
-    expect(r?.chosen.club).not.toBe("5-Iron")
+  it("flags a risky hole only when even smart play is over the red line", () => {
+    expect(two([opt("Driver", 4.0, 0.2), opt("3-Wood", 4.1, 0.01)])?.noSafeOption).toBe(false)
+    expect(two([opt("Driver", 4.0, 0.2), opt("3-Wood", 4.1, 0.1)])?.noSafeOption).toBe(true)
   })
 
-  it("with no penalty risk anywhere, Par picks the best club by strokes, same as Go for it", () => {
-    const opts = [view("Driver", 4.0, 0, 270), view("3-Wood", 4.03, 0, 246), view("5-Iron", 4.3, 0, 182)]
-    expect(pick(opts)?.chosen.club).toBe("Driver")
-    expect(SAFER_MIN_GAP).toBeGreaterThan(0)
+  it("with no penalty risk anywhere there is one option: the best by strokes", () => {
+    const r = two([opt("Driver", 4.0, 0), opt("3-Wood", 4.03, 0), opt("5-Iron", 4.3, 0)])
+    expect(r?.same).toBe(true)
+    expect(r?.lowest.club).toBe("Driver")
   })
-})
 
-describe("strategy state", () => {
-  it("starts on Par and resets to Par on every new hole, but keeps a choice on the same hole", () => {
-    expect(DEFAULT_STRATEGY).toBe("par")
-    expect(strategyAfterHolePick("go", "hole-3", "hole-4")).toBe("par")
-    expect(strategyAfterHolePick("go", null, "hole-4")).toBe("par")
-    expect(strategyAfterHolePick("go", "hole-3", "hole-3")).toBe("go")
+  it("a tie in the balance goes to the club with less penalty", () => {
+    const r = two([opt("Driver", 4.15, 0.0), opt("3-Wood", 4.0, 0.1)]) // 4.15 vs 4.0 + 0.15
+    expect(r?.safer.club).toBe("Driver")
   })
 
   it("only par 5s and par 4s over 440 yd look ahead", () => {
@@ -124,7 +113,7 @@ describe("on-course spread", () => {
   })
 
   it("a wider spread raises the penalty share near a boundary", () => {
-    // OB 28 yd right of the aim line: a 12 yd spread rarely reaches it, a 15 yd one more often.
+    // OB 28 yd right of the aim line: a 12 yd spread rarely reaches it, a wider one more often.
     const lies = buildLieMap(ORIGIN, [{ kind: "fairway", ring: box(-30, 0, 30, 400) }], [], [{ id: "ob", lie: "oob", ring: box(28, 0, 200, 400) }])
     const ctx = { from: at(0, 0), aim: at(0, 260), pin: at(0, 400), lies, startLie: "tee" as const }
     const raw = evaluateClub(club, ctx).lieShare.oob
@@ -222,42 +211,44 @@ describe("look-ahead on long holes", () => {
   const holeLine = [at(0, 0), at(0, 560)]
   const base = getBaseline(TEST_HANDICAP)
   const args = { clubs: bag, from: at(0, 0), pin: at(0, 557), line: holeLine, lies, baseline: base }
+  const land = (y: number, lie: "fairway" | "water" = "fairway", x = 0) => ({
+    point: at(x, y),
+    lie,
+    carryPoint: at(x, y),
+    carryLie: lie,
+    totalYds: y,
+    lieSource: "mapped" as const,
+    dropPoint: null,
+  })
 
   it("values the spots a tee shot can finish with the best next shot, and has no opinion on water", () => {
-    const grid = buildLookahead({ ...args, strategy: "go" })
+    const grid = buildLookahead(args)
     expect(grid.cells).toBeGreaterThan(10)
-    const fairwaySpot = { point: at(0, 270), lie: "fairway" as const }
-    const v = grid.valueAt({ ...fairwaySpot, carryPoint: fairwaySpot.point, carryLie: "fairway", totalYds: 270, lieSource: "mapped", dropPoint: null })
+    const v = grid.valueAt(land(270))
     expect(v).not.toBeNull()
     expect(v as number).toBeGreaterThan(2)
     expect(v as number).toBeLessThan(6)
-    const wet = { point: at(-60, 290), lie: "water" as const, carryPoint: at(-60, 290), carryLie: "water" as const, totalYds: 290, lieSource: "mapped" as const, dropPoint: null }
-    expect(grid.valueAt(wet)).toBeNull()
+    expect(grid.valueAt(land(290, "water", -60))).toBeNull()
   })
 
   it("a spot closer to the green is worth no more strokes than one far back", () => {
-    const grid = buildLookahead({ ...args, strategy: "go" })
-    const land = (y: number) => ({ point: at(0, y), lie: "fairway" as const, carryPoint: at(0, y), carryLie: "fairway" as const, totalYds: y, lieSource: "mapped" as const, dropPoint: null })
+    const grid = buildLookahead(args)
     expect(grid.valueAt(land(285)) as number).toBeLessThan(grid.valueAt(land(150)) as number)
   })
 
-  it("the tee shot ranking changes when it looks ahead, and Go for it stays pure", () => {
+  it("the tee shot ranking changes when it looks ahead", () => {
     const ctx = { from: at(0, 0), aim: at(0, 557), pin: at(0, 557), lies, startLie: "tee" as const, baseline: base }
-    const plain = rankBothStrategies(bag, ctx, { spread: 1, line: holeLine })
-    const look = rankBothStrategies(bag, ctx, {
-      spread: 1,
-      line: holeLine,
-      lookahead: (strategy, clubs) => buildLookahead({ ...args, clubs, strategy }),
-    })
+    const plain = rankWithSpread(bag, ctx, { spread: 1, line: holeLine })
+    const look = rankWithSpread(bag, ctx, { spread: 1, line: holeLine, lookahead: (clubs) => buildLookahead({ ...args, clubs }) })
     const d = (r: OptimizedClubPlan[]) => r.find((x) => x.club === "Driver")!.plan.expectedStrokes
-    expect(d(look.go)).not.toBeCloseTo(d(plain.go), 3)
+    expect(d(look)).not.toBeCloseTo(d(plain), 3)
   })
 })
 
-describe("the ranking worker's strategy messages", () => {
+describe("the ranking worker's spread messages", () => {
   const lies = buildLieMap(ORIGIN, [{ kind: "fairway", ring: box(-30, 0, 30, 420) }], [], [{ id: "ob", lie: "oob", ring: box(34, 0, 200, 420) }])
   const inputs: LieInputs = { origin: ORIGIN, features: [{ kind: "fairway", ring: box(-30, 0, 30, 420) }], coast: [], zones: [{ id: "ob", lie: "oob", ring: box(34, 0, 200, 420) }], extras: {} }
-  const rank = (strategy: "par" | "go" | undefined, spread = 1.25): RankMessage => ({
+  const rank = (spread: number | undefined): RankMessage => ({
     type: "rank",
     id: 1,
     liesVersion: 1,
@@ -268,7 +259,6 @@ describe("the ranking worker's strategy messages", () => {
     startLie: "tee",
     line: [at(0, 0), at(0, 420)],
     handicap: 3,
-    strategy,
     spread,
     par: 4,
     yards: 420,
@@ -279,23 +269,21 @@ describe("the ranking worker's strategy messages", () => {
     { club: "5-Iron", shots: cloud(175, 7, 7, 0, 500) },
   ]
 
-  it("answers per strategy, and Par's widened spread shows up as more penalty than Go for it", () => {
+  it("a wider spread shows up as more penalty", () => {
     const handle = createRankHandler()
     handle({ type: "lies", version: 1, inputs })
     handle({ type: "bag", version: 1, clubs })
-    const par = handle(rank("par", 1.5))!
-    const go = handle(rank("go"))!
-    expect(par.strategy).toBe("par")
-    expect(go.strategy).toBe("go")
-    const pen = (r: typeof par) => r.results!.reduce((a, x) => a + penaltyShare(x.plan), 0)
-    expect(pen(par)).toBeGreaterThanOrEqual(pen(go))
+    const narrow = handle(rank(1))!
+    const wide = handle(rank(1.5))!
+    const pen = (r: typeof wide) => r.results!.reduce((a, x) => a + penaltyShare(x.plan), 0)
+    expect(pen(wide)).toBeGreaterThanOrEqual(pen(narrow))
   })
 
-  it("keeps answering the plain way when no strategy is named", () => {
+  it("keeps answering the plain way when no spread is named", () => {
     const handle = createRankHandler()
     handle({ type: "lies", version: 1, inputs })
     handle({ type: "bag", version: 1, clubs })
-    expect(handle(rank(undefined))!.strategy).toBeUndefined()
+    expect(handle(rank(undefined))!.results).toHaveLength(3)
   })
 
   it("the spread is part of what a ranking is keyed on", () => {
@@ -309,19 +297,15 @@ describe("the card's trade-off line", () => {
   const plan = (club: string, strokes: number, oob: number): OptimizedClubPlan =>
     ({ club, bearingDeg: 0, offsetYds: 0, atAimStrokes: strokes, plan: { club, expectedStrokes: strokes, lieShare: { oob, water: 0 } } }) as unknown as OptimizedClubPlan
 
-  it("says what Par play costs and what it saves", () => {
-    expect(tradeoffText(plan("3-Wood", 4.02, 0.01), plan("Driver", 3.97, 0.07))).toBe(
-      "Par play: 3-Wood, 1% penalty, 4.02. Go for it: Driver, 7% penalty, 3.97. Par play costs +0.05 and cuts penalty risk 7% -> 1%."
+  it("says what smart play costs and what it saves", () => {
+    const o = optionsFor([plan("Driver", 4.43, 0.23), plan("4-Iron", 4.58, 0.01)])!
+    expect(tradeoffText(o)).toBe(
+      "Smart play: 4-Iron, 1% penalty, 4.58. Go for it: Driver, 23% penalty, 4.43. Smart play costs +0.15 and cuts penalty risk 23% -> 1%."
     )
   })
 
-  it("is quiet when both strategies agree", () => {
-    expect(tradeoffText(plan("Driver", 4, 0), plan("Driver", 4, 0))).toBeNull()
-  })
-
-  it("orders the table: pick, then the clubs under the cap, then those over it", () => {
-    const d = decidePar([plan("Driver", 4.0, 0.08), plan("3-Wood", 4.1, 0.01), plan("5-Iron", 4.3, 0)] as OptimizedClubPlan[])
-    expect(d?.ordered.map((r) => r.club)).toEqual(["3-Wood", "5-Iron", "Driver"])
+  it("is quiet when there is only one option", () => {
+    expect(tradeoffText(optionsFor([plan("Driver", 4, 0), plan("3-Wood", 4.1, 0)])!)).toBeNull()
   })
 })
 
@@ -363,35 +347,37 @@ describe("fitted profile generator", () => {
   })
 })
 
-describe("Colts Neck regression cases (Dillon's fitted profile, ON_COURSE_SPREAD 1.25)", () => {
-  it("hole 6 (par 5), OB left: Par mode picks the 3-Wood, not the Driver", () => {
-    const c = rankColtsNeck(6, [{ side: "left", marginYds: OB_MARGIN_YDS }])
-    const msg = `Hole 6, OB left: Par picked ${c.pickPar?.club}. Per club (Par ranking):\n${table(c.ranking.par)}`
-    expect(c.pickPar?.club, msg).toBe("3-Wood")
-    expect(c.go?.club).toBe("Driver")
+describe("Colts Neck regression cases (Dillon's fitted profile and his own hand-drawn marks, ON_COURSE_SPREAD 1.25)", () => {
+  it("hole 3 (par 5): Go for it is the Driver at a big penalty share; smart play is the 3-Wood, 7-Wood or 4-Iron and gives up little", () => {
+    const c = rankColtsNeck(3, [])
+    const msg = `Hole 3: smart play ${c.options.safer.club}, go for it ${c.options.lowest.club}. Per club:\n${table(c.ranking)}`
+    expect(c.options.lowest.club, msg).toBe("Driver")
+    expect(penaltyShare(c.options.lowest.plan), msg).toBeGreaterThan(0.15) // he sees about 23%: OB plus trees
+    expect(["3-Wood", "7-Wood", "4-Iron"], msg).toContain(c.options.safer.club)
+    expect(penaltyShare(c.options.safer.plan), msg).toBeLessThan(0.1)
+    expect(c.options.safer.plan.expectedStrokes - c.options.lowest.plan.expectedStrokes, msg).toBeLessThanOrEqual(SMART_MAX_COST)
   })
 
-  // The spec says Par mode must pick the 3-Wood or the 7-Wood here. It does not: the model puts the 4-Iron
-  // (a club estimated from his 5-iron) level with the 3-Wood on strokes and a little safer, so Par picks it.
-  // Kept as the spec wrote it, marked as a known failure instead of forced; flips to a failure (and should be
-  // un-marked) the day the model picks a wood. The per-club numbers print with the failure message.
-  it.fails("hole 3 (par 5), OB right: Par mode picks the 3-Wood or the 7-Wood  [KNOWN: picks 4-Iron]", () => {
+  it("hole 3 with an OB-right tag on top: same shape of answer", () => {
     const c = rankColtsNeck(3, [{ side: "right", marginYds: OB_MARGIN_YDS }])
-    const msg = `Hole 3, OB right: Par picked ${c.pickPar?.club}. Per club (Par ranking):\n${table(c.ranking.par)}`
-    expect(["3-Wood", "7-Wood"], msg).toContain(c.pickPar?.club)
+    const msg = `Hole 3 + OB right: smart play ${c.options.safer.club}, go for it ${c.options.lowest.club}. Per club:\n${table(c.ranking)}`
+    expect(c.options.lowest.club, msg).toBe("Driver")
+    expect(["3-Wood", "7-Wood", "4-Iron"], msg).toContain(c.options.safer.club)
   })
 
-  it("hole 3, OB right: what does hold: Par drops the Driver (over the cap) and the pick is under it, while Go for it takes the Driver", () => {
-    const c = rankColtsNeck(3, [{ side: "right", marginYds: OB_MARGIN_YDS }])
-    const driver = c.ranking.par.find((r) => r.club === "Driver")!
-    expect(penaltyShare(driver.plan)).toBeGreaterThan(PENALTY_CAP)
-    expect(c.pickPar?.club).not.toBe("Driver")
-    expect(penaltyShare(c.pickPar!.plan)).toBeLessThanOrEqual(PENALTY_CAP)
-    expect(c.go?.club).toBe("Driver")
+  it("hole 3: smart play is a wood or the 4-Iron across shot seeds, not an artefact of one sample", () => {
+    for (const seed of [1, 2, 3, 4]) {
+      const c = rankColtsNeck(3, [], { clubs: dillonBag(1000, seed) })
+      expect(["3-Wood", "7-Wood", "4-Iron"], `seed ${seed}\n${table(c.ranking)}`).toContain(c.options.safer.club)
+    }
   })
 
-  it("hole 3 and 6 without the OB tag: Go for it is unchanged by Par's rules (the Driver)", () => {
-    expect(rankColtsNeck(6, []).go?.club).toBe("Driver")
+  it("hole 6 (par 5): smart play never carries more risk than Go for it and never gives up more than the limit", () => {
+    const c = rankColtsNeck(6, [])
+    const msg = `Hole 6: smart play ${c.options.safer.club}, go for it ${c.options.lowest.club}. Per club:\n${table(c.ranking)}`
+    expect(c.options.lowest.club, msg).toBe("Driver")
+    expect(penaltyShare(c.options.safer.plan), msg).toBeLessThanOrEqual(penaltyShare(c.options.lowest.plan))
+    expect(c.options.safer.plan.expectedStrokes - c.options.lowest.plan.expectedStrokes, msg).toBeLessThanOrEqual(SMART_MAX_COST)
   })
 })
 
@@ -406,25 +392,23 @@ describe("counter-case: a long, wide par 4 with minor OB", () => {
     [],
     [{ id: "ob", lie: "oob", ring: box(85, 150, 300, 470) }]
   )
-  it("Driver still wins in Par mode (3-Wood leaves 200+ and the Driver's penalty share is under the cap)", () => {
+  it("Driver is both options: smart play does not lay back (3-Wood leaves 200+, the Driver is under the cap)", () => {
     const base = getBaseline(TEST_HANDICAP)
     const from = at(0, 0)
     const pin = at(0, 470)
-    const line = [from, pin]
-    const bag = dillonBag()
-    const ranking = rankBothStrategies(bag, { from, aim: pin, pin, lies, startLie: "tee", baseline: base }, { spread: ON_COURSE_SPREAD, line })
-    const d = decidePar(ranking.par)!
-    const driver = ranking.par.find((r) => r.club === "Driver")!
-    const wood = ranking.par.find((r) => r.club === "3-Wood")!
-    const msg = `Par picked ${d.pick.club}. Per club (Par ranking):\n${table(ranking.par)}`
+    const ranking = rankWithSpread(dillonBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline: base }, { spread: ON_COURSE_SPREAD, line: [from, pin] })
+    const o = optionsFor(ranking)!
+    const wood = ranking.find((r) => r.club === "3-Wood")!
+    const msg = `Smart play ${o.safer.club}, go for it ${o.lowest.club}. Per club:\n${table(ranking)}`
     expect(distanceYds(from, pin) - wood.plan.meanTotalYds, msg).toBeGreaterThan(200)
-    expect(penaltyShare(driver.plan), msg).toBeLessThanOrEqual(PENALTY_CAP)
-    expect(d.pick.club, msg).toBe("Driver")
+    expect(penaltyShare(o.lowest.plan), msg).toBeLessThanOrEqual(PENALTY_CAP)
+    expect(o.lowest.club, msg).toBe("Driver")
+    expect(o.safer.club, msg).toBe("Driver")
   })
 })
 
 describe("speed", () => {
-  it("ranks a par 5's tee shot for both strategies, with look-ahead, in a reasonable time", () => {
+  it("ranks a par 5's tee shot with look-ahead in a reasonable time", () => {
     const c = rankColtsNeck(3, [{ side: "right", marginYds: OB_MARGIN_YDS }])
     // Desktop budget only; the phone budget is checked by hand (see the session notes). Generous so CI noise can't flake it.
     expect(c.ms).toBeLessThan(3000)
