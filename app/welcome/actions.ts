@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { cleanCarries, cleanHandicap, type CourseRef } from "@/lib/golfer/baseline"
+import { settingsToRow, type PlannerSettings } from "@/lib/golfer/bagSync"
 
 export async function saveBaseline(input: { handicapIndex: unknown; carries: Record<string, unknown>; homeCourse: CourseRef | null }) {
   const supabase = createClient()
@@ -43,4 +44,26 @@ export async function saveBaseline(input: { handicapIndex: unknown; carries: Rec
 
   revalidatePath("/")
   revalidatePath("/you")
+}
+
+/**
+ * Saves the planner's bag and settings to the golfer's existing baseline row
+ * (debounced from the Play screen). Update-only: creating the row is what
+ * setup (/welcome) does, and a row made here would skip it. Returns the row's
+ * new updated_at so the device can stamp its copy with the same time.
+ */
+export async function saveGolferSettings(input: PlannerSettings): Promise<{ updatedAt: string } | null> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const row = settingsToRow(input)
+  const updatedAt = new Date().toISOString()
+  const { data, error } = await supabase
+    .from("golfer_baseline")
+    .update({ ...row, updated_at: updatedAt })
+    .eq("user_id", user.id)
+    .select("user_id")
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) return null // no baseline row yet
+  return { updatedAt }
 }

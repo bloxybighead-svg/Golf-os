@@ -1,6 +1,6 @@
 // Small geometry helpers for the Play planner (moved verbatim from CourseMapClient.tsx).
 
-import { distanceYds, ringCentroid, type LatLng } from "@/lib/course/geo"
+import { distanceYds, lineLengthYds, pointAlongLine, ringCentroid, type LatLng } from "@/lib/course/geo"
 import type { CourseFeature, CourseHole } from "@/lib/course/overpass"
 
 export function boundsOf(points: LatLng[]): [[number, number], [number, number]] | null {
@@ -33,4 +33,28 @@ export function holePinFor(h: CourseHole, features: CourseFeature[]): LatLng {
     }
   }
   return best ?? end
+}
+
+/** A fairway, green or tee polygon counts as part of a hole when its centre is this close to the hole's line. Estimate: fairways are 30-50 yd wide, greens 15-25 yd across. */
+const HOLE_FEATURE_REACH_YDS = 60
+/** The line is checked every this many yards, so a long straight segment can't hide a nearby polygon. */
+const LINE_SAMPLE_YDS = 25
+
+/**
+ * Every point the map should keep in view for a hole: its line, the pin, and
+ * the fairway, green and tee polygons that belong to it (not a neighbouring
+ * hole's fairway that happens to be close).
+ */
+export function holeFitPoints(h: CourseHole, features: CourseFeature[], pin: LatLng): LatLng[] {
+  const samples: LatLng[] = []
+  const total = lineLengthYds(h.line)
+  for (let d = 0; d <= total; d += LINE_SAMPLE_YDS) samples.push(pointAlongLine(h.line, d))
+  samples.push(h.line[h.line.length - 1])
+  const pts: LatLng[] = [...h.line, pin]
+  for (const f of features) {
+    if (f.kind !== "fairway" && f.kind !== "green" && f.kind !== "tee") continue
+    const c = ringCentroid(f.ring)
+    if (samples.some((s) => distanceYds(s, c) <= HOLE_FEATURE_REACH_YDS)) pts.push(...f.ring)
+  }
+  return pts
 }
