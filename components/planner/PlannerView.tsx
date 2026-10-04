@@ -23,6 +23,7 @@ import { ResultCard } from "@/components/planner/ResultCard"
 import { LayersMenu } from "@/components/planner/LayersMenu"
 import { HoleHeader } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
+import { ClubChips } from "@/components/planner/ClubChips"
 import { CoursePickerSheet } from "@/components/planner/CoursePickerSheet"
 import { MapView } from "@/components/planner/MapView"
 
@@ -56,6 +57,8 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
 
   const planCard =
     best && chosen && chosenLive ? (
+      <>
+      <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} />
       <ResultCard
         best={best}
         chosen={chosen}
@@ -83,6 +86,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
           aimAtBest(best)
         }}
       />
+      </>
     ) : null
 
   // No hole lines to stand on: the golfer places the ball and pin by hand.

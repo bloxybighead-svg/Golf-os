@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest"
 import { readFileSync } from "fs"
 import path from "path"
 import type { ClubPlan, OptimizedClubPlan } from "@/lib/course/plan"
-import { choiceAfterHolePick, choiceInBag, chosenPlan } from "./clubChoice"
+import { choiceAfterBallMove, choiceAfterHolePick, choiceInBag, chosenPlan, NEW_SHOT_YDS } from "./clubChoice"
+import { landingPoint } from "@/lib/course/geo"
 
 const plan = (club: string, strokes: number): OptimizedClubPlan => ({
   club,
@@ -43,5 +44,22 @@ describe("a picked club holds", () => {
 
   it("auto shows the best club", () => {
     expect(chosenPlan(ranked, "auto", ranked[2])?.club).toBe("4-Iron")
+  })
+})
+
+describe("a pick is for this shot", () => {
+  const at = { lat: 40.3, lng: -74.0 }
+  const moved = (yds: number) => landingPoint(at, 0, yds, 0)
+  it("survives a 10 yd ball move (GPS jitter, a nudge)", () => {
+    expect(choiceAfterBallMove("3-Wood", at, moved(10))).toBe("3-Wood")
+  })
+  it("resets to auto after a 40 yd move (the next shot)", () => {
+    expect(NEW_SHOT_YDS).toBe(30)
+    expect(choiceAfterBallMove("3-Wood", at, moved(40))).toBe("auto")
+  })
+  it("auto stays auto, and no ball or pickedAt leaves the pick alone", () => {
+    expect(choiceAfterBallMove("auto", at, moved(40))).toBe("auto")
+    expect(choiceAfterBallMove("3-Wood", null, moved(40))).toBe("3-Wood")
+    expect(choiceAfterBallMove("3-Wood", at, null)).toBe("3-Wood")
   })
 })

@@ -5,7 +5,7 @@
 // see components/simulator/useClubRanking.ts), the chosen club, its dots, rings
 // and the map labels (moved verbatim from CourseMapClient.tsx).
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { bearingDeg, distanceYds, type LatLng } from "@/lib/course/geo"
 import { defaultTeeAim } from "@/lib/course/aim"
 import type { StartLie } from "@/lib/course/cost"
@@ -22,7 +22,7 @@ import type { Club } from "@/lib/golfer/tables"
 import { fillBag } from "@/lib/golfer/bag"
 import type { Baseline } from "@/lib/golfer/baseline"
 import { ALWAYS_SHOWN, LIES } from "@/lib/planner/labels"
-import { chosenPlan, choiceInBag } from "@/lib/planner/clubChoice"
+import { chosenPlan, choiceAfterBallMove, choiceInBag } from "@/lib/planner/clubChoice"
 import { holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import type { CourseHit, NoHazardMap } from "@/lib/planner/storage"
 import { useClubRanking, type RankingRequest } from "@/components/simulator/useClubRanking"
@@ -233,6 +233,15 @@ export function usePlan({
   lastChosen.current = chosen
   const chosenShots = chosen ? clubShots.find((c) => c.club === chosen.club) : undefined
 
+  // A pick is for this shot: it resets once the ball is carried to the next shot.
+  const [pickedAt, setPickedAt] = useState<LatLng | null>(null)
+  useEffect(() => {
+    if (clubChoice === "auto") return
+    if (!pickedAt && ball) return setPickedAt(ball)
+    const next = choiceAfterBallMove(clubChoice, pickedAt, ball)
+    if (next !== clubChoice) setClubChoice(next)
+  }, [ball, pickedAt, clubChoice, setClubChoice])
+
   // A picked club that leaves the bag (or a switch to a source without it) goes back to auto.
   useEffect(() => {
     const next = choiceInBag(clubChoice, clubShots.map((c) => c.club))
@@ -258,6 +267,7 @@ export function usePlan({
 
   function pickClub(r: OptimizedClubPlan) {
     setClubChoice(r.club)
+    setPickedAt(ball)
     aimAtBest(r)
   }
 
