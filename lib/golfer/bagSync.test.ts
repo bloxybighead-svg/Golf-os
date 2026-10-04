@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { DEFAULT_BAG } from "./bag"
-import { decideSync, mergeRemote, settingsFromRow, settingsToRow, stampMs, type PlannerSettings } from "./bagSync"
+import { decideSync, mergeRemote, settingsFromRow, settingsToRow, stampMs, type SyncedSettings } from "./bagSync"
 
-const local: PlannerSettings = {
+const local: SyncedSettings = {
   source: "handicap",
   handicap: 10,
   driverCarry: "250",

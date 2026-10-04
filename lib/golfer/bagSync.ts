@@ -17,7 +17,7 @@ const SIDES = ["auto", "straight", "left", "right", "both"]
 const STRENGTHS = ["slight", "moderate", "strong"]
 
 /** The planner's saved settings (the shape kept in localStorage under SETTINGS_KEY). */
-export interface PlannerSettings {
+export interface SyncedSettings {
   source: "calibrated" | "handicap"
   handicap: number
   driverCarry: string
@@ -38,7 +38,7 @@ export interface SettingsRow {
 }
 
 /** What the account holds: any field may be missing (older rows predate the bag columns). */
-export type RemoteSettings = Partial<PlannerSettings>
+export type RemoteSettings = Partial<SyncedSettings>
 
 /** The account's settings from a row; fields the row does not have are left out. */
 export function settingsFromRow(row: SettingsRow): RemoteSettings {
@@ -65,7 +65,7 @@ export function settingsFromRow(row: SettingsRow): RemoteSettings {
 }
 
 /** Settings as golfer_baseline columns (cleaned, ready to write). */
-export function settingsToRow(s: PlannerSettings): Required<Omit<SettingsRow, "updated_at">> {
+export function settingsToRow(s: SyncedSettings): Required<Omit<SettingsRow, "updated_at">> {
   const carries: Record<string, number> = { ...cleanCarries(s.carries as Record<string, unknown>) }
   const driver = Number(s.driverCarry)
   const seven = Number(s.sevenIronCarry)
@@ -103,6 +103,6 @@ export function stampMs(iso: string | null | undefined): number | null {
 }
 
 /** `local` with the account's fields laid over it (fields the account lacks keep their device values). */
-export function mergeRemote(local: PlannerSettings, remote: RemoteSettings): PlannerSettings {
-  return { ...local, ...Object.fromEntries(Object.entries(remote).filter(([, v]) => v !== undefined)) } as PlannerSettings
+export function mergeRemote(local: SyncedSettings, remote: RemoteSettings): SyncedSettings {
+  return { ...local, ...Object.fromEntries(Object.entries(remote).filter(([, v]) => v !== undefined)) } as SyncedSettings
 }

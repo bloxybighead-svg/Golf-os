@@ -4,6 +4,7 @@
 // is what the planner actually reads.
 
 import { DEFAULT_BAG, normalizeBag } from "./bag"
+import type { RemoteSettings } from "./bagSync"
 import { BAG_ORDER, type Club } from "./tables"
 
 export interface CourseRef {
@@ -20,6 +21,8 @@ export interface Baseline {
   handicapIndex: number | null
   carries: Partial<Record<Club, number>>
   homeCourse: CourseRef | null
+  /** The account's planner settings (bag, tendency, source) and when they last changed: what Play syncs against. Absent on the setup screen. */
+  sync?: { settings: RemoteSettings; updatedAt: string | null }
 }
 
 // The planner's device-storage keys (read by CourseMapClient).

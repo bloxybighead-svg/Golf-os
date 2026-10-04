@@ -8,7 +8,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { PlannerProps as Props } from "@/lib/planner/types"
-import { distanceYds, type LatLng } from "@/lib/course/geo"
+import { bearingDeg, distanceYds, type LatLng } from "@/lib/course/geo"
+import type { FitRequest } from "@/lib/planner/orientation"
 import { type ConfirmableHazard } from "@/lib/course/dataQuality"
 import { type CourseHole } from "@/lib/course/overpass"
 import type { Club } from "@/lib/golfer/tables"
@@ -19,7 +20,7 @@ import { type Placing } from "@/components/simulator/courseColors"
 import { shortCourseName } from "@/lib/planner/labels"
 import { choiceAfterHolePick } from "@/lib/planner/clubChoice"
 import { DEFAULT_COURSE, DEFAULT_HOLE_REF, loadLastPosition, loadNoHazard, loadZoom, saveLastPosition, updateLastPositionHole, type CourseHit } from "@/lib/planner/storage"
-import { boundsOf, holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
+import { holeFitPoints, holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import { usePlannerSettings } from "@/hooks/usePlannerSettings"
 import { useAuthUser } from "@/hooks/useAuthUser"
 import { useCourseGeometry, type AutoHole, type OnGeometryApplied } from "@/hooks/useCourseGeometry"
@@ -80,10 +81,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   // coordinates rather than relying on CSS positioning relative to an ancestor.
   const [layersMenuPos, setLayersMenuPos] = useState<{ top: number; left: number } | null>(null)
   const mapWrapRef = useRef<HTMLDivElement>(null)
-  const [fit, setFit] = useState<{ bounds: [[number, number], [number, number]] | null; key: string }>({
-    bounds: null,
-    key: "none",
-  })
+  const [fit, setFit] = useState<FitRequest>({ points: [], key: "none" })
   const ballState = useBallPosition({ setFit })
   const { ball, setBall, following, gpsAccuracyYds, gpsError, gpsNote, stopFollowing, moveBallTo, toggleFollow } = ballState
 
@@ -169,7 +167,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   // state resets, fine since nothing golfer-specific was set yet.
   const applyGeometry: OnGeometryApplied = (g, c, opts) => {
     const pts: LatLng[] = g.holes.flatMap((h) => h.line)
-    setFit({ bounds: boundsOf(pts.length ? pts : [{ lat: c.lat as number, lng: c.lng as number }]), key: `course-${c.id}` })
+    setFit({ points: pts.length ? pts : [{ lat: c.lat as number, lng: c.lng as number }], bearingDeg: null, key: `course-${c.id}` })
     const target = opts?.autoHoleId
       ? g.holes.find((h) => h.id === opts.autoHoleId)
       : opts?.autoHoleRef
@@ -177,7 +175,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
         : opts?.autoFirstHole
           ? g.holes[0]
           : undefined
-    if (target) pickHole(target)
+    if (target) pickHole(target, g.features)
   }
 
   async function fetchGeometry(c: CourseHit, opts?: { force?: boolean } & AutoHole) {
@@ -288,17 +286,15 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     await geo.submitHoleCorrection(input, { supabase, authUser, hole, onApplied: applyGeometry })
   }
 
-  function holePinFor(h: CourseHole): LatLng {
-    return holePinForFeatures(h, geometry?.features ?? [])
-  }
-
-  function pickHole(h: CourseHole) {
+  function pickHole(h: CourseHole, features = geometry?.features ?? []) {
     setHoleId(h.id)
     setBall(h.line[0])
     setAimManual(null)
     setPinManual(null)
     setClubChoice((prev) => choiceAfterHolePick(prev, holeId, h.id)) // the same hole keeps a picked club
-    setFit({ bounds: boundsOf([...h.line, holePinFor(h)]), key: `hole-${h.id}` })
+    // Turn the map so the tee is at the bottom and the green at the top, and frame the hole's line, fairway and green.
+    const pinPoint = holePinForFeatures(h, features)
+    setFit({ points: holeFitPoints(h, features, pinPoint), bearingDeg: bearingDeg(h.line[0], pinPoint), key: `hole-${h.id}` })
     updateLastPositionHole(h.id)
   }
 
@@ -314,24 +310,24 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
 
   const hasCourseProblems = !!geometry && (geometry.scope === "radius" || holes.length === 0 || (holes.length > 0 && stats.greens === 0))
 
-  // The one-line title: "Pebble Beach · Hole 7 · Par 3 · 108". Tapping it opens the course/hole sheet.
+  // The header: "H7 · P3 · 108" (never cut off) and the short course name after it (cut off first). Tapping opens the course/hole sheet.
   const holeYards = hole ? hole.yardageYds ?? (pin ? Math.round(distanceYds(hole.line[0], pin)) : null) : null
-  const chipParts = course
-    ? [
-        shortCourseName(course.name),
-        ...(hole
-          ? [`Hole ${hole.ref ?? "?"}`, ...(hole.par ? [`Par ${hole.par}`] : []), ...(holeYards != null ? [String(holeYards)] : [])]
-          : holes.length > 0
-            ? ["Pick a hole"]
-            : []),
-      ]
-    : [loadState === "loading" ? "Loading course…" : "Find a course"]
+  const holeTitle = !course
+    ? loadState === "loading"
+      ? "Loading course…"
+      : "Find a course"
+    : hole
+      ? [`H${hole.ref ?? "?"}`, ...(hole.par ? [`P${hole.par}`] : []), ...(holeYards != null ? [String(holeYards)] : [])].join(" · ")
+      : holes.length > 0
+        ? "Pick a hole"
+        : shortCourseName(course.name)
+  const headerCourseName = course && hole ? shortCourseName(course.name) : ""
 
   return {
     mapTapGuardUntil,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
-    bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, chipParts,
+    bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
     deleteZone, distAim, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,

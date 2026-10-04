@@ -374,13 +374,10 @@ export function usePlan({
   const avgLeft = pin && chosenLive ? distanceYds(chosenLive.meanRest, pin) : null
 
   const labels = useMemo(() => {
-    const out: { pos: LatLng; text: string }[] = []
-    if (ball && aim && distAim != null && distAim > 3) {
-      out.push({ pos: { lat: (ball.lat + aim.lat) / 2, lng: (ball.lng + aim.lng) / 2 }, text: `${Math.round(distAim)} yd` })
-    }
-    if (aim && pin && aimToPin != null && aimToPin >= 3) {
-      out.push({ pos: { lat: (aim.lat + pin.lat) / 2, lng: (aim.lng + pin.lng) / 2 }, text: `${Math.round(aimToPin)} to pin` })
-    }
+    // Each label belongs on a line; the map slides it off the green and the pin (lib/planner/labelPlacement).
+    const out: { from: LatLng; to: LatLng; text: string }[] = []
+    if (ball && aim && distAim != null && distAim > 3) out.push({ from: ball, to: aim, text: `${Math.round(distAim)} yd` })
+    if (aim && pin && aimToPin != null && aimToPin >= 3) out.push({ from: aim, to: pin, text: `${Math.round(aimToPin)} to pin` })
     return out
   }, [ball, aim, pin, distAim, aimToPin])
   const fromLabel = startLie === "tee" ? "the tee" : startLie === "oob" ? "out of bounds" : `the ${startLie}`

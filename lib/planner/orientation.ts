@@ -104,3 +104,10 @@ export function fitView(
   const zoom = Math.min(opts.maxZoom ?? FIT_MAX_ZOOM, Math.max(opts.minZoom ?? FIT_MIN_ZOOM, snapped))
   return { center, zoom }
 }
+
+/** Asks the map to frame some points. `bearingDeg`: a number = orient that way (tee below, green above), null = north-up, undefined = keep the current rotation. */
+export interface FitRequest {
+  points: LatLng[]
+  bearingDeg?: number | null
+  key: string
+}

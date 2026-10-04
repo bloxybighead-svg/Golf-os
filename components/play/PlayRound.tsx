@@ -47,6 +47,9 @@ interface Props {
   driverCarryYds: number | null
   handicapIndex: number | null
   signedIn: boolean
+  /** "Round saved" note after finishing: held by the parent so it survives this component moving between the dock and the page. */
+  savedNote: boolean
+  onSavedNote: (v: boolean) => void
   /** Whether the golfer has already said anything about OB on this hole of the open course. */
   obAnswered?: (holeNumber: number) => boolean
   /** Saves the answer to "Penalty on hole 7. Was it OB left or right?" as an OB tag for that hole. */
@@ -73,9 +76,8 @@ const INPUT =
  * with the tee's rating and slope already filled in.
  */
 export function PlayRound(props: Props) {
-  const { course, round, onRoundChange, view, onViewChange, onGoToHole, onResume, signedIn } = props
+  const { course, round, onRoundChange, view, onViewChange, onGoToHole, onResume, signedIn, savedNote, onSavedNote: setSavedNote } = props
   const [starting, setStarting] = useState(false)
-  const [savedNote, setSavedNote] = useState(false)
 
   if (!round) {
     return (

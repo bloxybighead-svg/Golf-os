@@ -7,12 +7,15 @@
 
 import type { PlannerProps as Props } from "@/lib/planner/types"
 import type { PlannerVM } from "@/hooks/usePlannerController"
+import { useState } from "react"
 import Link from "next/link"
 import { MAP_TAP_GUARD_MS } from "@/lib/planner/clubChoice"
-import { Loader2, X } from "lucide-react"
+import { ChevronUp, Loader2, X } from "lucide-react"
 import dynamic from "next/dynamic"
 import { distanceYds } from "@/lib/course/geo"
-import { ONBOARDED_KEY } from "@/lib/golfer/baseline"
+import { dismissed as promptDismissed, readPrompt, writePrompt } from "@/lib/planner/setupPrompt"
+import { useIsPhone } from "@/hooks/useIsPhone"
+import { StrategyToggle } from "@/components/planner/StrategyToggle"
 import { EditHoleModal } from "@/components/simulator/EditHoleModal"
 import { TeeLine } from "@/components/simulator/TeeLine"
 import { PlayRound } from "@/components/play/PlayRound"
@@ -38,7 +41,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     mapTapGuardUntil,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
-    bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, chipParts,
+    bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
     deleteZone, distAim, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
@@ -61,7 +64,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     best && chosen && chosenLive ? (
       <>
       {noObMapped && holeId && <ObBanner onAnswer={(a) => void obTags.answer(holeId, a)} />}
-      <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} />
+      <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} className="hidden md:flex -mx-1 mb-2 gap-1.5 px-1 pb-1" />
       <ResultCard
         best={best}
         chosen={chosen}
@@ -90,6 +93,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         }}
         options={optionsNote}
         onPickOption={pickClub}
+        shotsLabel={source === "calibrated" ? "My shots" : source === "legacy" ? `${calibratedName} (old data)` : "Handicap estimate"}
       />
       </>
     ) : null
@@ -204,7 +208,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         pendingPoints={pendingPoints}
         labels={labels}
         placing={placing}
-        fitBounds={fit.bounds}
+        fit={fit}
         fitKey={fit.key}
         initialZoom={initialZoom}
         onZoomChange={(z) => course && saveZoom(course.id, z)}
@@ -246,49 +250,40 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
       </div>
     )
 
-  return (
-    <div className="space-y-3">
+  const phone = useIsPhone()
+  const [savedNote, setSavedNote] = useState(false)
+  const roundSource = bagDriverCarry ?? (longestCarry > 0 ? longestCarry : null)
+
+  // Messages that sit over the top-left of the map, so they never push it down or around.
+  const notices = (
+    <>
       {showSetupPrompt && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-fg/[0.08] bg-surface py-1 pl-3 pr-1 text-sm">
-          <span className="text-fg-2">Plan with your own clubs.</span>
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-white/20 bg-black/70 py-0.5 pl-3 pr-0.5 text-sm text-white">
+          <span>Plan with your own clubs.</span>
           <span className="flex shrink-0 items-center">
-            <Link href="/welcome" className="flex h-11 items-center px-3 font-semibold text-accent hover:underline">
+            <Link href="/welcome" className="flex h-11 items-center px-2 font-semibold text-accent-hi hover:underline">
               Set up
             </Link>
             <button
               onClick={() => {
                 setShowSetupPrompt(false)
-                try {
-                  localStorage.setItem(ONBOARDED_KEY, "dismissed")
-                } catch {
-                  /* it just comes back next visit */
-                }
+                writePrompt(promptDismissed(readPrompt().state)) // collapses to a dot on the You tab
               }}
               aria-label="Dismiss"
-              className="flex h-11 w-11 items-center justify-center text-muted hover:text-fg"
+              className="flex h-11 w-11 items-center justify-center text-white/70 hover:text-white"
             >
               <X size={16} />
             </button>
           </span>
         </div>
       )}
-
-      {/* ---- title: one tappable line that opens the course/hole sheet, plus previous/next hole ---- */}
-      <HoleHeader
-        title={chipParts.join(" · ")}
-        onOpenPicker={() => setPickerOpen(true)}
-        showArrows={holes.length > 1}
-        onStep={stepHole}
-        holeLabel={holeLabel}
-      />
-
       {loadState === "loading" && course && (
-        <p className="flex items-center gap-1.5 text-xs text-muted">
+        <p className="flex w-fit items-center gap-1.5 rounded-md bg-black/70 px-2 py-1 text-xs text-white">
           <Loader2 size={12} className="animate-spin" /> {loadError || "Loading course…"}
         </p>
       )}
       {loadState === "error" && course && (
-        <p className="text-xs text-danger">
+        <p className="rounded-md bg-black/75 px-2 py-1 text-xs text-white">
           {loadError}{" "}
           {loadNeedsSignIn ? (
             <Link href="/login?redirect=%2F" className="font-semibold underline">
@@ -301,40 +296,89 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           )}
         </p>
       )}
-      {loadState === "idle" && loadError && <p className="text-xs text-muted">{loadError}</p>}
+      {loadState === "idle" && loadError && <p className="rounded-md bg-black/70 px-2 py-1 text-xs text-white">{loadError}</p>}
+    </>
+  )
 
-      {course && loadState !== "error" && !roundHere && (
-        <TeeLine
-          courseId={course.id}
-          courseName={course.name}
-          driverCarryYds={bagDriverCarry ?? (longestCarry > 0 ? longestCarry : null)}
-          handicapIndex={source === "handicap" ? handicap : trackedHandicap}
-        />
-      )}
+  // Phones, map showing: tees and Start round, then the two plays (Smart / Go for it) with their penalty
+  // shares, then the club chips with "All clubs" -- one dock at a fixed height above the tab bar, so the map
+  // above it never changes size. Tablets and desktops keep these in the page. Scoring puts it back in the page.
+  const dockClass = scoring
+    ? "space-y-3"
+    : "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[1100] flex h-[9.25rem] flex-col justify-between overflow-hidden rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface px-4 md:static md:z-auto md:block md:h-auto md:space-y-3 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent md:px-0"
+  const rowClass = scoring ? "space-y-3" : "flex h-11 shrink-0 items-center justify-between gap-2 md:h-auto md:flex-wrap md:justify-start md:gap-3"
 
-      {course && loadState !== "error" && hydrated && (
-        <PlayRound
-          course={course}
-          courseHoles={holes}
-          currentHole={hole?.ref ?? null}
-          round={round}
-          onRoundChange={changeRound}
-          view={playView}
-          onViewChange={changePlayView}
-          onGoToHole={goToHoleNumber}
-          onResume={(c, n) => void loadCourse(c, { autoHoleRef: n })}
-          driverCarryYds={bagDriverCarry ?? (longestCarry > 0 ? longestCarry : null)}
-          handicapIndex={source === "handicap" ? handicap : trackedHandicap}
-          signedIn={!!authUser}
-          obAnswered={(n) => {
-            const h = holes.find((x) => x.ref === n)
-            return !!h && (obTags.obTagMap[h.id]?.length ?? 0) > 0
-          }}
-          onObAnswer={(n, side) => {
-            const h = holes.find((x) => x.ref === n)
-            if (h) void obTags.toggleTag(h.id, side)
-          }}
-        />
+  return (
+    <div className="space-y-3 pb-40 md:pb-0">
+      {/* ---- header: "H7 · P3 · 108" and the course name; opens the course/hole sheet ---- */}
+      <HoleHeader
+        title={holeTitle}
+        courseName={headerCourseName}
+        onOpenPicker={() => setPickerOpen(true)}
+        showArrows={holes.length > 1}
+        onStep={stepHole}
+        holeLabel={holeLabel}
+      />
+
+      {course && loadState !== "error" && (
+        <div className={dockClass}>
+          <div className={rowClass}>
+            {!roundHere && (
+              <TeeLine
+                courseId={course.id}
+                courseName={course.name}
+                driverCarryYds={roundSource}
+                handicapIndex={source === "handicap" ? handicap : trackedHandicap}
+                compact={phone && !scoring}
+              />
+            )}
+            {hydrated && (
+              <PlayRound
+                course={course}
+                courseHoles={holes}
+                currentHole={hole?.ref ?? null}
+                round={round}
+                onRoundChange={changeRound}
+                view={playView}
+                onViewChange={changePlayView}
+                onGoToHole={goToHoleNumber}
+                onResume={(c, n) => void loadCourse(c, { autoHoleRef: n })}
+                driverCarryYds={roundSource}
+                handicapIndex={source === "handicap" ? handicap : trackedHandicap}
+                signedIn={!!authUser}
+                savedNote={savedNote}
+                onSavedNote={setSavedNote}
+                obAnswered={(n) => {
+                  const h = holes.find((x) => x.ref === n)
+                  return !!h && (obTags.obTagMap[h.id]?.length ?? 0) > 0
+                }}
+                onObAnswer={(n, side) => {
+                  const h = holes.find((x) => x.ref === n)
+                  if (h) void obTags.toggleTag(h.id, side)
+                }}
+              />
+            )}
+          </div>
+          {!scoring && (
+            <>
+              <div className="h-14 shrink-0 md:hidden">
+                {optionsNote && chosen && <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact />}
+              </div>
+              <div className="flex h-11 shrink-0 items-center gap-2 md:hidden">
+                <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} className="flex min-w-0 flex-1 gap-1.5" />
+                {planReady && ranking.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSheetOpen(true)}
+                    className="flex h-9 shrink-0 items-center gap-1 rounded-full border border-fg/[0.12] px-3 text-sm text-fg-2"
+                  >
+                    All clubs <ChevronUp size={14} />
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {/* Scoring a hole hides the map (kept mounted, so it comes back as it was). */}
@@ -361,6 +405,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           layersMenu={layersMenu}
           gpsError={gpsError}
           gpsNote={gpsNote}
+          notices={notices}
           onUndoDraw={undoDrawPoint}
           onFinishDraw={finishDraw}
           onCancelDraw={cancelDraw}
@@ -394,9 +439,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         </div>
       </div>
 
-      {/* Phones: the club table. Collapsed, a chip above the tab bar; open, a
-          full-screen list (it covers the map, so every club fits without a
-          scroll fighting the map). Picking a club closes it. */}
+      {/* Phones: "All clubs" opens the full club table as a full-screen list (it covers the map, so every
+          club fits without a scroll fighting the map). Picking a club closes it. */}
       {planReady && ranking.length > 0 && !scoring && (
         <ClubSheet open={sheetOpen} onToggle={() => setSheetOpen((v) => !v)} chosen={chosen}>
           {clubTable}

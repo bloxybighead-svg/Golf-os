@@ -9,14 +9,16 @@ export function ClubChips({
   ranking,
   chosen,
   onPick,
+  className = "flex gap-1.5 -mx-1 mb-2 px-1 pb-1",
 }: {
   ranking: OptimizedClubPlan[]
   chosen: OptimizedClubPlan | null
   onPick: (r: OptimizedClubPlan) => void
+  className?: string
 }) {
   if (ranking.length < 2) return null
   return (
-    <div className="-mx-1 mb-2 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Club">
+    <div className={`overflow-x-auto ${className}`} role="group" aria-label="Club">
       {ranking.map((r) => (
         <button
           key={r.club}

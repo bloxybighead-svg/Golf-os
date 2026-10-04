@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
-import { Check, ChevronDown, X } from "lucide-react"
+import { Check, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { courseHandicap, recommendTee, type TeeOption } from "@/lib/tbox/estimate"
 import { neighbourTees, teeChoiceKey as choiceKey, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
 
@@ -14,11 +14,13 @@ interface Props {
   driverCarryYds: number | null
   /** Only used to show each tee's course handicap; the pick itself is by length. */
   handicapIndex: number | null
+  /** Phone dock: one short row (the tee, plus shorter/longer steppers) instead of text buttons. */
+  compact?: boolean
 }
 
 // One line under the title: the recommended tee the moment a course loads, the
 // next longer and shorter tees one tap away, and the full list behind a tap.
-export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex }: Props) {
+export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, compact = false }: Props) {
   const [tees, setTees] = useState<TeeOption[] | null>(null) // null = loading
   const [chosen, setChosen] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
@@ -65,8 +67,8 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex }:
   if (tees === null) return null
   if (!result) {
     return (
-      <p className="text-sm text-fg-3">
-        No tee data for this course.{" "}
+      <p className="truncate text-sm text-fg-3">
+        {compact ? "No tee data." : "No tee data for this course."}{" "}
         <Link href="/you/bag?view=tbox" className="font-semibold text-accent hover:underline">
           Enter tees
         </Link>
@@ -92,19 +94,36 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex }:
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div className={compact ? "flex min-w-0 items-center gap-1" : "flex flex-wrap items-center gap-x-2 gap-y-1"}>
         <button
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
-          className="flex min-h-[44px] items-center gap-1.5 text-sm md:min-h-[32px]"
+          className="flex min-h-[44px] min-w-0 items-center gap-1.5 text-sm md:min-h-[32px]"
         >
-          <span className="text-fg-3">{isBest ? "Play" : "Playing"}</span>
-          <span className="font-semibold text-fg">{selected.name}</span>
-          <span className="text-muted tabular-nums">· {selected.totalYardage.toLocaleString()} yd</span>
-          <ChevronDown size={15} className="text-muted" />
+          <span className="shrink-0 text-fg-3">{isBest ? "Play" : "Playing"}</span>
+          <span className="min-w-0 truncate font-semibold text-fg">{selected.name}</span>
+          <span className="shrink-0 text-muted tabular-nums">· {selected.totalYardage.toLocaleString()}</span>
+          <ChevronDown size={15} className="shrink-0 text-muted" />
         </button>
-        {longer && neighbour(longer, "Longer")}
-        {shorter && neighbour(shorter, "Shorter")}
+        {compact ? (
+          <>
+            {shorter && (
+              <button onClick={() => choose(shorter.name)} aria-label={`Shorter tee: ${shorter.name}`} title={`Shorter: ${shorter.name}`} className="flex h-11 w-9 shrink-0 items-center justify-center text-fg-3">
+                <ChevronLeft size={18} />
+              </button>
+            )}
+            {longer && (
+              <button onClick={() => choose(longer.name)} aria-label={`Longer tee: ${longer.name}`} title={`Longer: ${longer.name}`} className="flex h-11 w-9 shrink-0 items-center justify-center text-fg-3">
+                <ChevronRight size={18} />
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            {longer && neighbour(longer, "Longer")}
+            {shorter && neighbour(shorter, "Shorter")}
+          </>
+        )}
       </div>
 
       {open &&

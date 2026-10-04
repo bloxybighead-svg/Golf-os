@@ -3,6 +3,7 @@ import { loadMyProfile } from "@/lib/supabase/loadMyProfile"
 import { createClient } from "@/lib/supabase/server"
 import { CourseMapClient } from "@/components/simulator/CourseMapClient"
 import { cleanCarries, cleanHandicap, type Baseline, type CourseRef } from "@/lib/golfer/baseline"
+import { settingsFromRow } from "@/lib/golfer/bagSync"
 
 // ?legacy=1 loads the old public calibrated profile next to the golfer's own, to compare the two
 // until the old data is removed (supabase/shot_data_13c_lockdown.sql). Without it the page never names a golfer.
@@ -17,7 +18,7 @@ export default async function CoursePage({ searchParams }: { searchParams?: { le
     searchParams?.legacy === "1" ? loadCalibratedShots(LEGACY_GOLFER_NAME, LEGACY_SOURCE_LABEL) : Promise.resolve(null),
     loadMyProfile(supabase),
     supabase.from("handicap_tracking").select("handicap_index").order("calculation_date", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("golfer_baseline").select("handicap_index, carries, home_course").maybeSingle(),
+    supabase.from("golfer_baseline").select("handicap_index, carries, home_course, source, tendency, bag, updated_at").maybeSingle(),
   ])
 
   const baseline: Baseline | null = baselineRow
@@ -25,6 +26,7 @@ export default async function CoursePage({ searchParams }: { searchParams?: { le
         handicapIndex: cleanHandicap(baselineRow.handicap_index),
         carries: cleanCarries((baselineRow.carries ?? {}) as Record<string, unknown>),
         homeCourse: (baselineRow.home_course ?? null) as CourseRef | null,
+        sync: { settings: settingsFromRow(baselineRow), updatedAt: (baselineRow.updated_at as string | null) ?? null },
       }
     : null
 

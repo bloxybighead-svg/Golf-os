@@ -11,6 +11,7 @@ import { flagsUnmapped, isTie, type ClubPlan, type OptimizedClubPlan } from "@/l
 import { PENALTY_CAP, pctText, penaltyShare, penaltyWord, type Options } from "@/lib/course/strategy"
 import { pct, STATUS_TITLE } from "@/lib/planner/labels"
 import { Stat } from "./ui"
+import { StrategyToggle } from "./StrategyToggle"
 
 export interface ResultCardProps {
   best: OptimizedClubPlan
@@ -38,6 +39,8 @@ export interface ResultCardProps {
   onBackToBest: () => void
   /** Smart play (the default) and Go for it, from the ranking (null until it exists). */
   options: (Options<OptimizedClubPlan> & { tradeoff: string | null }) | null
+  /** Whose shots these are ("My shots", "Handicap estimate"), shown under the baseline line. */
+  shotsLabel?: string
   /** Taps an option: that club, aimed at its best. */
   onPickOption: (r: OptimizedClubPlan) => void
 }
@@ -67,47 +70,13 @@ export function ResultCard({
   onBackToBest,
   options,
   onPickOption,
+  shotsLabel,
 }: ResultCardProps) {
   const penalty = penaltyShare(chosen.plan)
   const overCap = penalty > PENALTY_CAP
   return (
     <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
-      {options && (
-        <div className="mb-3 grid grid-cols-2 gap-2">
-          {(
-            [
-              ["Smart play", options.safer],
-              ["Go for it", options.lowest],
-            ] as const
-          )
-            .filter((_, i) => !(options.same && i === 1))
-            .map(([label, r], i) => {
-            const pen = penaltyShare(r.plan)
-            const selected = chosen.club === r.club && (options.same || i === (chosen.club === options.safer.club ? 0 : 1))
-            return (
-              <button
-                key={label}
-                onClick={() => onPickOption(r)}
-                aria-pressed={selected}
-                className={`rounded-xl border px-3 py-2 text-left transition-colors ${
-                  selected ? "border-accent bg-accent/10" : "border-fg/[0.1] hover:bg-fg/[0.04]"
-                }`}
-              >
-                <span className="block text-xs font-medium text-muted">
-                  {options.same ? "Best play" : label}
-                </span>
-                <span className="block text-base font-semibold text-fg">{r.club}</span>
-                <span className="block text-xs tabular-nums text-fg-3">
-                  {r.plan.expectedStrokes.toFixed(2)} strokes ·{" "}
-                  <span className={pen > PENALTY_CAP ? "font-semibold text-danger" : ""}>
-                    {pctText(pen)} {penaltyWord(r.plan)}
-                  </span>
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {options && <StrategyToggle options={options} chosen={chosen} onPick={onPickOption} className="mb-3 hidden md:grid" />}
       <div className="flex items-baseline justify-between gap-2">
         <p className="label-xs">
           {clubChoice === "auto" || chosen.club === best.club ? (
@@ -150,6 +119,11 @@ export function ResultCard({
           <span className="block text-[11px] text-muted" title="Change on You, under Planner">
             vs {baselineHandicap == null ? "PGA TOUR" : `a ${baselineHandicap.toFixed(1)} handicap`}
           </span>
+          {shotsLabel && (
+            <span className="block text-[11px] text-muted" title="Whose shots the planner uses. Change it in the course sheet, under Shots.">
+              Shots: {shotsLabel}
+            </span>
+          )}
           {!atBestAim && chosenAtAim != null && (
             <span className="block text-xs text-fg-3" title="The same shots, aimed where the marker is now">
               At your aim <span className="font-semibold tabular-nums">{chosenAtAim.toFixed(2)}</span>

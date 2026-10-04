@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { cleanCarries, cleanHandicap, type CourseRef } from "@/lib/golfer/baseline"
-import { settingsToRow, type PlannerSettings } from "@/lib/golfer/bagSync"
+import { settingsToRow, type SyncedSettings } from "@/lib/golfer/bagSync"
 
 export async function saveBaseline(input: { handicapIndex: unknown; carries: Record<string, unknown>; homeCourse: CourseRef | null }) {
   const supabase = createClient()
@@ -52,7 +52,7 @@ export async function saveBaseline(input: { handicapIndex: unknown; carries: Rec
  * setup (/welcome) does, and a row made here would skip it. Returns the row's
  * new updated_at so the device can stamp its copy with the same time.
  */
-export async function saveGolferSettings(input: PlannerSettings): Promise<{ updatedAt: string } | null> {
+export async function saveGolferSettings(input: SyncedSettings): Promise<{ updatedAt: string } | null> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null

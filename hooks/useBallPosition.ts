@@ -7,13 +7,11 @@
 import { useEffect, useRef, useState } from "react"
 import type { LatLng } from "@/lib/course/geo"
 import { EMPTY_TRACK, judgeFix, type GpsFix, type GpsTrack } from "@/lib/course/gps"
-import { boundsOf } from "@/lib/planner/geometry"
+import type { FitRequest } from "@/lib/planner/orientation"
 
 const YD_PER_M = 1.09361
 
-type Fit = { bounds: [[number, number], [number, number]] | null; key: string }
-
-export function useBallPosition({ setFit }: { setFit: (fit: Fit) => void }) {
+export function useBallPosition({ setFit }: { setFit: (fit: FitRequest) => void }) {
   const [ball, setBall] = useState<LatLng | null>(null)
   const [following, setFollowing] = useState(false)
   const [gpsAccuracyYds, setGpsAccuracyYds] = useState<number | null>(null)
@@ -128,7 +126,7 @@ export function useBallPosition({ setFit }: { setFit: (fit: Fit) => void }) {
         setGpsNote("")
         const p = { lat: next.lat, lng: next.lng }
         moveBallTo(p)
-        setFit({ bounds: boundsOf([p, ...(pin ? [pin] : [])]), key: `gps-${Date.now()}` })
+        setFit({ points: [p, ...(pin ? [pin] : [])], key: `gps-${Date.now()}` }) // keeps the map's rotation
       },
       (err) => {
         if (done) return
