@@ -97,39 +97,22 @@ export function generateShots(
     }
 
     // --- direction: start line + curve ---
-    // A profile fitted from the golfer's own shots carries the measured start
-    // line and curve (synthetic_golfer.py: `"start_line_sd_deg" in profile`);
-    // any other profile splits its total direction SD by the club's curve share.
-    const fitted = profile.start_line_sd_deg !== undefined && profile.curve_sd_pct !== undefined
-    let startSdDeg: number
-    let curveSdPct: number
-    let clubBiasDeg = 0
-    let curveBiasPct = 0
-    let slope = DEFAULT_CURVE_CARRY_SLOPE
-    if (fitted) {
-      startSdDeg = profile.start_line_sd_deg as number
-      curveSdPct = profile.curve_sd_pct as number
-      clubBiasDeg = profile.start_line_bias_deg ?? 0
-      curveBiasPct = profile.curve_bias_pct ?? 0
-      slope = profile.curve_carry_slope ?? DEFAULT_CURVE_CARRY_SLOPE
-    } else {
-      const curveShare = CLUB_CURVE_SHARE[club] ?? 0.5
-      const totalSdRad = (profile.direction_sd_deg * Math.PI) / 180
-      startSdDeg = (totalSdRad * Math.sqrt(1.0 - curveShare) * 180) / Math.PI
-      curveSdPct = totalSdRad * Math.sqrt(curveShare)
-    }
+    const curveShare = CLUB_CURVE_SHARE[club] ?? 0.5
+    const totalSdRad = (profile.direction_sd_deg * Math.PI) / 180
+    const startSdDeg = (totalSdRad * Math.sqrt(1.0 - curveShare) * 180) / Math.PI
+    const curveSdPct = totalSdRad * Math.sqrt(curveShare)
 
-    let bias = golferBiasDeg + clubBiasDeg
+    let bias = golferBiasDeg
     if (twoWayMiss) {
       bias = Math.abs(bias) * (rng() < 0.5 ? -1 : 1)
     }
 
     const startLineDeg = randNormal(rng, bias + sessionDirectionDrift, startSdDeg * spread)
-    const curveYds = randNormal(rng, curveBiasPct * carryYds, curveSdPct * carryYds * spread)
+    const curveYds = randNormal(rng, 0, curveSdPct * carryYds * spread)
 
     // --- curve<->carry link (tilts the dispersion ellipse) ---
-    const expectedCurve = curveBiasPct * carryYds
-    carryYds = Math.max(0, carryYds + slope * (curveYds - expectedCurve))
+    const slope = DEFAULT_CURVE_CARRY_SLOPE
+    carryYds = Math.max(0, carryYds + slope * curveYds)
 
     // --- ceiling ---
     const ceiling = meanCarry * MAX_CARRY_RATIO
