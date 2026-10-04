@@ -91,13 +91,22 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
             </>
           )}
         </div>
-        <button
-          onClick={() => setEditingManual((v) => !v)}
-          disabled={!signedIn}
-          className="min-h-[44px] shrink-0 text-xs text-muted transition-colors hover:text-fg disabled:opacity-30 md:min-h-0"
-        >
-          Enter manually
-        </button>
+        {signedIn ? (
+          <button
+            onClick={() => setEditingManual((v) => !v)}
+            className="min-h-[44px] shrink-0 text-xs text-muted transition-colors hover:text-fg md:min-h-0"
+          >
+            Enter manually
+          </button>
+        ) : (
+          // Guests can't save an index; a faded-out button read as broken, so it's a sign-in link.
+          <Link
+            href="/login?redirect=%2Fyou%2Fstats"
+            className="flex min-h-[44px] shrink-0 items-center text-xs font-semibold text-accent hover:underline md:min-h-0"
+          >
+            Sign in to enter
+          </Link>
+        )}
       </div>
 
       {editingManual && (

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import Link from "next/link"
+import { EmptyHint } from "@/components/EmptyHint"
 import { ChevronDown, Plus, TrendingUp, X } from "lucide-react"
 import {
   LineChart, Line, ComposedChart, Bar,
@@ -112,14 +112,12 @@ function milestoneLines(
   })
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
+/** Says what's missing and where to add it. */
+function Empty({ children, action = "Add round" }: { children: React.ReactNode; action?: string }) {
   return (
-    <p className="py-10 text-center text-sm text-fg-3">
-      {children}{" "}
-      <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
-        Add round
-      </Link>
-    </p>
+    <EmptyHint action={action} href="/rounds?new=1" className="py-10 text-center text-sm text-fg-3">
+      {children}
+    </EmptyHint>
   )
 }
 
@@ -278,7 +276,9 @@ export function TrendsPanel({ rounds, milestones }: Props) {
     summary = avgDiff != null ? `Average differential: ${avgDiff.toFixed(1)} across ${diffCount} rated rounds · lower is better` : ""
     caption = `${diffCount} of ${rounds.length} rounds have rating/slope, which a differential needs. Shorter rounds are scaled to 18 holes so every round is on one scale.`
     body = diffCount < 2 ? (
-      <Empty>Needs 2 rated rounds.</Empty>
+      <Empty action="Add a rated round">
+        Needs 2 rounds with a course rating and slope. You have {diffCount}.
+      </Empty>
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={scorePoints} margin={MARGIN}>
@@ -299,7 +299,7 @@ export function TrendsPanel({ rounds, milestones }: Props) {
     summary = puttsAvg != null ? `Average ${puttsAvg.toFixed(2)} putts per hole · last ${Math.min(RECENT, puttsPoints.length)} rounds ${puttsRecent!.toFixed(2)}` : ""
     caption = `Based on ${puttsPoints.length} of ${rounds.length} rounds with putts logged. Per-hole rates so 9- and 18-hole rounds compare directly.`
     body = puttsPoints.length === 0 ? (
-      <Empty>No putts logged yet.</Empty>
+      <Empty action="Add a round with putts">No putts logged yet.</Empty>
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart data={puttsPoints} margin={MARGIN}>
@@ -326,7 +326,7 @@ export function TrendsPanel({ rounds, milestones }: Props) {
     summary = a != null ? `Average ${pct(a)} · last ${Math.min(RECENT, points.length)} rounds ${pct(recent)}` : ""
     caption = `Based on ${points.length} of ${rounds.length} rounds with this data logged.`
     body = points.length === 0 ? (
-      <Empty>No {isFw ? "fairways" : "greens"} logged yet.</Empty>
+      <Empty action="Log a round hole by hole">No {isFw ? "fairways" : "greens"} logged yet.</Empty>
     ) : (
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={points} margin={MARGIN}>

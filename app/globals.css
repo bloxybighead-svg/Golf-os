@@ -10,7 +10,8 @@
  *
  * Every color read on course clears 7:1 against page and surface in both
  * themes (DESIGN.md), except faint, which is only for placeholders and
- * disabled states.
+ * clears WCAG AA (4.5:1) on every surface. lib/theme/contrast.test.ts fails
+ * if any text token drops below AA in either theme.
  *
  * Theme: light by default, dark when the system prefers it, unless the You
  * page's Appearance setting pinned one (html[data-theme]). The dark values are
@@ -37,7 +38,7 @@
   --fg-2: 54 53 47;
   --fg-3: 70 68 63;
   --muted: 80 78 72;
-  --faint: 138 135 127;
+  --faint: 100 97 89;      /* placeholders: AA (4.5:1) on every surface; was 138 135 127 (3.3:1) */
 
   /* Brand and status */
   --accent: 21 96 47;
@@ -87,7 +88,7 @@
     --fg-2: 209 213 219;
     --fg-3: 176 182 192;
     --muted: 156 163 175;
-    --faint: 107 114 128;
+    --faint: 130 137 150;
     --accent: 34 197 94;
     --accent-hi: 74 222 128;
     --on-accent: 0 0 0;
@@ -112,7 +113,7 @@
   --fg-2: 209 213 219;
   --fg-3: 176 182 192;
   --muted: 156 163 175;
-  --faint: 107 114 128;
+  --faint: 130 137 150;
   --accent: 34 197 94;
   --accent-hi: 74 222 128;
   --on-accent: 0 0 0;

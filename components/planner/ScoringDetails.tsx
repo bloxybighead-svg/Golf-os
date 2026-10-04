@@ -2,11 +2,25 @@
 
 import { SMART_MAX_COST, SMART_RISK_WEIGHT } from "@/lib/course/strategy"
 
-export function ScoringDetails({ baselineHandicap, onCourseSpread }: { baselineHandicap: number | null; onCourseSpread: number }) {
+export function ScoringDetails({
+  baselineHandicap,
+  onCourseSpread,
+  onShowIntro,
+}: {
+  baselineHandicap: number | null
+  onCourseSpread: number
+  /** Reopens the first-visit intro. */
+  onShowIntro?: () => void
+}) {
   return (
     <details className="rounded-2xl border border-fg/[0.07] bg-surface px-4 py-3 text-xs leading-relaxed text-fg-3">
       <summary className="cursor-pointer select-none font-medium text-fg-2">How this is scored</summary>
       <div className="mt-2 space-y-2">
+        {onShowIntro && (
+          <button onClick={onShowIntro} className="flex min-h-[44px] items-center text-sm font-semibold text-accent hover:underline md:min-h-0">
+            Show the intro again
+          </button>
+        )}
         <p>
           Every shot is placed on the map and given a lie (green, fairway, rough, bunker, trees, water or out of bounds).
           Its value is the average number of strokes to hole out from that lie and distance, plus one for the shot itself.
@@ -15,10 +29,10 @@ export function ScoringDetails({ baselineHandicap, onCourseSpread }: { baselineH
         </p>
         <p>
           {baselineHandicap == null ? (
-            <>You&rsquo;re comparing against the PGA TOUR (change it on You, under Planner). </>
+            <>You&rsquo;re comparing against the PGA TOUR (change it on You, under Settings). </>
           ) : (
             <>
-              Scored for a {baselineHandicap.toFixed(1)} handicap (change it on You, under Planner).{" "}
+              Scored for a {baselineHandicap.toFixed(1)} handicap (change it on You, under Settings).{" "}
             </>
           )}
           No one publishes amateur tables by lie, so the handicap version adjusts the tour numbers: a bit worse from everywhere

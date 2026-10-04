@@ -5,9 +5,12 @@
 // course picker and the hole-correction dialog. Moved verbatim from
 // CourseMapClient.tsx.
 
+import { useEffect, useState } from "react"
 import type { PlannerProps as Props } from "@/lib/planner/types"
+import { hasSeenIntro, markIntroSeen, shouldShowIntro } from "@/lib/planner/intro"
+import { loadActiveRound } from "@/lib/rounds/activeRound"
+import { IntroCards } from "@/components/planner/IntroCards"
 import type { PlannerVM } from "@/hooks/usePlannerController"
-import { useState } from "react"
 import Link from "next/link"
 import { MAP_TAP_GUARD_MS } from "@/lib/planner/clubChoice"
 import { ChevronUp, Loader2, X } from "lucide-react"
@@ -62,6 +65,18 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     pinPlaysLike, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
   } = vm
+
+  // First-visit intro: decided once, when Play first renders in the browser.
+  // Never mid-round (read straight from storage, not from state that may not
+  // have loaded yet), and skipping or finishing both mark it seen.
+  const [introOpen, setIntroOpen] = useState(false)
+  useEffect(() => {
+    if (shouldShowIntro({ seen: hasSeenIntro(), roundActive: loadActiveRound() != null })) setIntroOpen(true)
+  }, [])
+  function closeIntro() {
+    markIntroSeen()
+    setIntroOpen(false)
+  }
 
   const planCard =
     best && chosen && chosenLive ? (
@@ -127,7 +142,9 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     />
   )
 
-  const scoringDetails = <ScoringDetails baselineHandicap={baselineHandicap} onCourseSpread={vm.onCourseSpread} />
+  const scoringDetails = (
+    <ScoringDetails baselineHandicap={baselineHandicap} onCourseSpread={vm.onCourseSpread} onShowIntro={() => setIntroOpen(true)} />
+  )
 
   const layersMenu = showLayersMenu && layersMenuPos && (
     <LayersMenu
@@ -316,6 +333,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
 
   return (
     <div className="space-y-3 pb-40 md:pb-0">
+      {introOpen && <IntroCards onClose={closeIntro} />}
       {/* ---- header: "H7 · P3 · 108" and the course name; opens the course/hole sheet ---- */}
       <HoleHeader
         title={holeTitle}

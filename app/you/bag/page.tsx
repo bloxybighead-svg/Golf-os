@@ -1,56 +1,38 @@
-import { Suspense } from "react"
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
-import { DispersionSection } from "@/components/bag/DispersionSection"
-import { CompareSection } from "@/components/bag/CompareSection"
-import { CustomGolferSection } from "@/components/bag/CustomGolferSection"
-import { TeeBoxSection } from "@/components/bag/TeeBoxSection"
-import { ShotDataSection } from "@/components/bag/ShotDataSection"
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import { loadMyProfile } from "@/lib/supabase/loadMyProfile"
+import type { CourseRef } from "@/lib/golfer/baseline"
+import type { FittedClub } from "@/lib/you/hub"
+import { MyBag } from "@/components/you/MyBag"
+import { SubPageHeader } from "@/components/you/SubPageHeader"
 
-const VIEWS = [
-  { key: "shots", label: "Shot data" },
-  { key: "dispersion", label: "Misses" },
-  { key: "compare", label: "Compare" },
-  { key: "custom", label: "What if" },
-  { key: "tbox", label: "Tees" },
-] as const
+// Links from before the split: the research tools moved to /you/lab, "Your
+// misses" to /you/bag/misses and "My shot data" to /you/bag/shots.
+const LAB_VIEWS = ["compare", "custom", "tbox"]
 
-type View = (typeof VIEWS)[number]["key"]
+export default async function BagPage({ searchParams }: { searchParams?: { view?: string } }) {
+  const view = searchParams?.view
+  if (view && LAB_VIEWS.includes(view)) redirect(`/you/lab?view=${view}`)
+  if (view === "dispersion") redirect("/you/bag/misses")
+  if (view === "shots") redirect("/you/bag/shots")
 
-// One tool at a time, picked by ?view=. Stacking all four would fetch every
-// simulated shot for every golfer (tens of thousands of rows) on each visit.
-export default function BagPage({ searchParams }: { searchParams?: { view?: string } }) {
-  const view: View = VIEWS.find((v) => v.key === searchParams?.view)?.key ?? "dispersion"
+  const supabase = createClient()
+  const [profile, { data: baseline }] = await Promise.all([
+    loadMyProfile(supabase),
+    supabase.from("golfer_baseline").select("home_course").maybeSingle(),
+  ])
+  const fitted: FittedClub[] | null = profile
+    ? profile.fits.map((f) => ({ club: f.club, meanCarryYds: f.profile.mean_carry, nShots: f.nShots }))
+    : null
 
   return (
     <div className="space-y-5 pt-4">
-      <Link href="/you" className="flex w-fit items-center gap-1.5 text-sm text-muted transition-colors hover:text-fg">
-        <ArrowLeft size={14} />
-        You
-      </Link>
-
-      <div role="group" aria-label="Bag tools" className="grid grid-cols-5 gap-1 rounded-xl border border-fg/[0.06] bg-surface p-1 md:inline-grid">
-        {VIEWS.map(({ key, label }) => (
-          <Link
-            key={key}
-            href={`/you/bag?view=${key}`}
-            aria-current={key === view ? "page" : undefined}
-            className={`rounded-lg px-2 py-2 text-center text-xs font-medium transition-colors md:px-4 ${
-              key === view ? "bg-accent/15 text-accent" : "text-fg-3 hover:bg-fg/[0.05] hover:text-fg"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
-      </div>
-
-      <Suspense key={view} fallback={<p className="py-10 text-center text-sm text-muted">Loading…</p>}>
-        {view === "shots" && <ShotDataSection />}
-        {view === "dispersion" && <DispersionSection />}
-        {view === "compare" && <CompareSection />}
-        {view === "custom" && <CustomGolferSection />}
-        {view === "tbox" && <TeeBoxSection />}
-      </Suspense>
+      <SubPageHeader title="My bag" />
+      <MyBag
+        fitted={fitted}
+        defaultSource={fitted ? "calibrated" : "handicap"}
+        serverHomeCourse={(baseline?.home_course ?? null) as CourseRef | null}
+      />
     </div>
   )
 }

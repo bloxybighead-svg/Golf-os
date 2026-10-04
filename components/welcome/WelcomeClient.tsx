@@ -27,18 +27,22 @@ export function WelcomeClient({
   initial,
   trackedHandicap,
   signedIn,
+  editReturnTo,
 }: {
   initial: Baseline | null
   trackedHandicap: number | null
   signedIn: boolean
+  /** Set when editing an existing bag: the page to go back to after saving. Null for first-time setup. */
+  editReturnTo: string | null
 }) {
   const router = useRouter()
+  const editing = editReturnTo != null
   const [step, setStep] = useState<"numbers" | "rounds">("numbers")
   const [handicap, setHandicap] = useState(initial?.handicapIndex != null ? String(initial.handicapIndex) : "")
   const [carries, setCarries] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries(initial?.carries ?? {}).map(([k, v]) => [k, String(v)]))
   )
-  const [moreClubs, setMoreClubs] = useState(OTHER_CLUBS.some((c) => initial?.carries[c] != null))
+  const [moreClubs, setMoreClubs] = useState(editing || OTHER_CLUBS.some((c) => initial?.carries[c] != null))
   const [home, setHome] = useState<CourseRef | null>(initial?.homeCourse ?? null)
   const [query, setQuery] = useState("")
   const [hits, setHits] = useState<CourseRef[]>([])
@@ -110,6 +114,12 @@ export function WelcomeClient({
       }
       setSaving(false)
     }
+    if (editReturnTo) {
+      // Push first, then refresh, so the page we land on refetches (see AccountCard).
+      router.push(editReturnTo)
+      router.refresh()
+      return
+    }
     setStep("rounds")
   }
 
@@ -161,7 +171,7 @@ export function WelcomeClient({
 
   return (
     <div className="mx-auto max-w-lg space-y-7 pt-4">
-      <h2 className="text-2xl font-bold tracking-tight text-fg">Set up</h2>
+      <h2 className="text-2xl font-bold tracking-tight text-fg">{editing ? "Edit your bag" : "Set up"}</h2>
 
       <section className="space-y-2">
         <p className="label-xs">Handicap</p>
@@ -241,6 +251,11 @@ export function WelcomeClient({
         {saving && <Loader2 size={15} className="animate-spin" />}
         Save
       </button>
+      {editing && (
+        <Link href={editReturnTo} className="flex min-h-[44px] items-center justify-center text-sm font-semibold text-fg-2 hover:text-fg">
+          Cancel
+        </Link>
+      )}
     </div>
   )
 }

@@ -1,10 +1,14 @@
 import { createClient } from "@/lib/supabase/server"
 import { WelcomeClient } from "@/components/welcome/WelcomeClient"
 import { cleanCarries, type Baseline, type CourseRef } from "@/lib/golfer/baseline"
+import { safeReturnPath } from "@/lib/you/hub"
 
 // Setup: handicap, carries and home course, then an offer to add past rounds.
 // Works signed out (saved on this device) and signed in (also saved to the account).
-export default async function WelcomePage() {
+// ?edit=1 reopens it as "Edit your bag" (prefilled; saving returns to ?return=, default My bag).
+export default async function WelcomePage({ searchParams }: { searchParams?: { edit?: string; return?: string } }) {
+  const editing = searchParams?.edit === "1"
+  const returnTo = safeReturnPath(searchParams?.return)
   const supabase = createClient()
   const {
     data: { user },
@@ -29,5 +33,7 @@ export default async function WelcomePage() {
     }
   }
 
-  return <WelcomeClient initial={initial} trackedHandicap={trackedHandicap} signedIn={!!user} />
+  return (
+    <WelcomeClient initial={initial} trackedHandicap={trackedHandicap} signedIn={!!user} editReturnTo={editing ? returnTo : null} />
+  )
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
+import { EmptyHint } from "@/components/EmptyHint"
 import { ChevronDown, Target, Clock, Repeat } from "lucide-react"
 import type { LibraryDrill } from "@/lib/supabase/types"
 import type { CategoryTrend, SgCategory } from "@/lib/sgBenchmarks"
@@ -38,7 +38,7 @@ export function RecommendedDrills({
   const vsHandicap = handicapIndex != null ? `your ${handicapIndex.toFixed(1)} HCP` : "your handicap"
 
   return (
-    <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
+    <div id="recommended-drills" className="scroll-mt-20 rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
       <div className="flex items-center gap-2">
         <Target size={15} className="text-accent" />
         <p className="label-xs">Recommended Drills</p>
@@ -75,12 +75,9 @@ export function RecommendedDrills({
           )}
         </>
       ) : (
-        <p className="mt-3 text-sm text-fg-3">
-          No {label.toLowerCase()} stats yet.{" "}
-          <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
-            Add round
-          </Link>
-        </p>
+        <EmptyHint action="Log a round hole by hole" href="/rounds?new=1" className="mt-3 text-sm text-fg-3">
+          No {label.toLowerCase()} stats yet.
+        </EmptyHint>
       )}
 
       {drills.length === 0 && <p className="mt-4 text-sm text-fg-3">No {label.toLowerCase()} drills in the library yet.</p>}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
+import { EmptyHint } from "@/components/EmptyHint"
 import { ChevronDown } from "lucide-react"
 import type { CategoryTrend } from "@/lib/sgBenchmarks"
 import { qualifierFor } from "@/lib/sgBenchmarks"
@@ -54,12 +54,9 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
     return (
       <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
         <p className="label-xs mb-2">Strengths & Weaknesses</p>
-        <p className="text-sm text-fg-3">
-          Needs rounds with stats.{" "}
-          <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
-            Add round
-          </Link>
-        </p>
+        <EmptyHint action="Log a round hole by hole" href="/rounds?new=1">
+          Needs a round with fairways, greens and putts.
+        </EmptyHint>
       </div>
     )
   }

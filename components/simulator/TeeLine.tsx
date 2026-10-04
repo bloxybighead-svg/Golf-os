@@ -70,7 +70,7 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
     return (
       <p className="truncate text-sm text-fg-3">
         {compact ? "No tee data." : "No tee data for this course."}{" "}
-        <Link href="/you/bag?view=tbox" className="font-semibold text-accent hover:underline">
+        <Link href="/you/lab?view=tbox" className="font-semibold text-accent hover:underline">
           Enter tees
         </Link>
       </p>

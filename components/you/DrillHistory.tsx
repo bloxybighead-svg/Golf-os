@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ChevronDown, History } from "lucide-react"
+import { EmptyHint } from "@/components/EmptyHint"
 import type { SgCategory, UserDrillRun } from "@/lib/supabase/types"
 import { CATEGORY_LABEL } from "@/lib/drillRecommendations"
 
@@ -41,7 +42,9 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
 
       <div className={[expanded ? "block" : "hidden", "md:block"].join(" ")}>
         {runs.length === 0 ? (
-          <p className="mt-3 text-sm text-fg-3">No drills yet. Start one above.</p>
+          <EmptyHint action="Pick a drill" href="#recommended-drills" className="mt-3 text-sm text-fg-3">
+            No drills yet.
+          </EmptyHint>
         ) : (
           <>
             <div className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0">

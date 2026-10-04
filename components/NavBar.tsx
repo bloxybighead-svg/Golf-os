@@ -8,7 +8,7 @@ import { APP_NAME } from "@/lib/brand"
 import { SETUP_PROMPT_EVENT, dotVisible, readPrompt } from "@/lib/planner/setupPrompt"
 
 // Three main tabs. "match" lists extra path prefixes that keep a tab lit:
-// Play is the course planner itself, You covers the bag tools under /you/bag.
+// Play is the course planner itself, You covers everything under /you (stats, practice, bag, settings, lab).
 const NAV_ITEMS = [
   { label: "Play", href: "/", match: [], Icon: MapIcon },
   { label: "Rounds", href: "/rounds", match: ["/rounds"], Icon: Flag },
