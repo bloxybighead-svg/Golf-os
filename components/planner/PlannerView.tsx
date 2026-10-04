@@ -258,10 +258,10 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
   const notices = (
     <>
       {showSetupPrompt && (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-white/20 bg-black/70 py-0.5 pl-3 pr-0.5 text-sm text-white">
+        <div className="flex h-9 items-center justify-between gap-2 rounded-lg border border-white/20 bg-black/70 pl-3 text-sm text-white">
           <span>Plan with your own clubs.</span>
           <span className="flex shrink-0 items-center">
-            <Link href="/welcome" className="flex h-11 items-center px-2 font-semibold text-accent-hi hover:underline">
+            <Link href="/welcome" className="flex h-9 items-center px-2 font-semibold text-accent-hi hover:underline">
               Set up
             </Link>
             <button
@@ -270,7 +270,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
                 writePrompt(promptDismissed(readPrompt().state)) // collapses to a dot on the You tab
               }}
               aria-label="Dismiss"
-              className="flex h-11 w-11 items-center justify-center text-white/70 hover:text-white"
+              className="flex h-9 w-9 items-center justify-center text-white/70 hover:text-white"
             >
               <X size={16} />
             </button>
