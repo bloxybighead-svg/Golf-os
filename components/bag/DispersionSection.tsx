@@ -1,70 +1,35 @@
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
+import { loadBlendHandicap, loadMyProfile } from "@/lib/supabase/loadMyProfile"
+import { generateMyBag } from "@/lib/golfer/shotProfile"
 import { SimulatorClient, type ClubOption, type SimShot } from "@/components/simulator/SimulatorClient"
 
-const GOLFER_NAME = "Dillon Cady"
-const SOURCE_LABEL = "calibrated"
-
+// Where the golfer's own shots land, club by club: generated from their fitted
+// profile (the same shots the planner uses), not read from anyone else's rows.
 export async function DispersionSection() {
   const supabase = createClient()
+  const [profile, handicap] = await Promise.all([loadMyProfile(supabase), loadBlendHandicap(supabase)])
 
-  const { data: profiles, error: profilesError } = await supabase
-    .from("golfer_profiles")
-    .select("id, club, mean_carry_yds")
-    .eq("golfer_name", GOLFER_NAME)
-    .eq("source_label", SOURCE_LABEL)
-    .order("mean_carry_yds", { ascending: false })
-
-  if (profilesError || !profiles || profiles.length === 0) {
+  if (!profile) {
     return (
       <div className="rounded-xl border border-warn/40 bg-warn/10 px-5 py-4 text-sm text-warn">
-        <p className="font-semibold">No golfer profile found</p>
-        <p className="mt-1 text-xs text-warn">
-          Expected a &ldquo;{GOLFER_NAME}&rdquo; / &ldquo;{SOURCE_LABEL}&rdquo; profile in golfer_profiles.
+        <p className="font-semibold">No shot data yet</p>
+        <p className="mt-1 text-xs">
+          Sign in and upload a launch-monitor file, or type in a few shots, on{" "}
+          <Link href="/you/bag?view=shots" className="underline">
+            My shot data
+          </Link>
+          .
         </p>
       </div>
     )
   }
 
-  // Supabase/PostgREST caps a single request at (by default) 1000 rows, so
-  // page through in batches large enough to comfortably cover 2,000+ shots.
-  const profileIds = profiles.map((p) => p.id)
-  const pageSize = 1000
-  const allShotRows: { golfer_profile_id: string; carry_yds: number; offline_yds: number; is_mishit: boolean }[] = []
-  let shotsError: { message: string } | null = null
-  for (let from = 0; ; from += pageSize) {
-    const { data: page, error } = await supabase
-      .from("simulated_shots")
-      .select("golfer_profile_id, carry_yds, offline_yds, is_mishit")
-      .in("golfer_profile_id", profileIds)
-      .order("id") // stable order, or paging can skip and repeat rows
-      .range(from, from + pageSize - 1)
-    if (error) {
-      shotsError = error
-      break
-    }
-    if (!page || page.length === 0) break
-    allShotRows.push(...page)
-    if (page.length < pageSize) break
-  }
-  const shotRows = allShotRows
+  const bag = generateMyBag(profile.fits, profile.fits.map((f) => f.club), handicap)
+  const clubs: ClubOption[] = profile.fits
+    .map((f) => ({ club: f.club as string, meanCarryYds: f.profile.mean_carry }))
+    .sort((a, b) => b.meanCarryYds - a.meanCarryYds)
+  const shots: SimShot[] = bag.clubs.flatMap((c) => c.shots.map((s) => ({ club: c.club, carryYds: s.carryYds, offlineYds: s.offlineYds, isMishit: false })))
 
-  if (shotsError) {
-    return (
-      <div className="rounded-xl border border-warn/40 bg-warn/10 px-5 py-4 text-sm text-warn">
-        <p className="font-semibold">Couldn&rsquo;t load your shots</p>
-        <p className="mt-1 text-xs text-warn">{shotsError.message}</p>
-      </div>
-    )
-  }
-
-  const clubById = new Map(profiles.map((p) => [p.id, p.club]))
-  const clubs: ClubOption[] = profiles.map((p) => ({ club: p.club, meanCarryYds: Number(p.mean_carry_yds) }))
-  const shots: SimShot[] = (shotRows ?? []).map((r) => ({
-    club: clubById.get(r.golfer_profile_id) ?? "unknown",
-    carryYds: Number(r.carry_yds),
-    offlineYds: Number(r.offline_yds),
-    isMishit: r.is_mishit,
-  }))
-
-  return <SimulatorClient clubs={clubs} shots={shots} golferName={GOLFER_NAME} />
+  return <SimulatorClient clubs={clubs} shots={shots} golferName="you" />
 }

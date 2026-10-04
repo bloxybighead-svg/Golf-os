@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { TBoxClient, type KnownCourse } from "@/components/simulator/TBoxClient"
 
-const GOLFER_NAME = "Dillon Cady"
-
 export async function TeeBoxSection() {
   const supabase = createClient()
 
@@ -14,10 +12,8 @@ export async function TeeBoxSection() {
       .not("slope_rating", "is", null)
       .order("date", { ascending: false }),
     supabase
-      .from("golfer_profiles")
-      .select("mean_carry_yds")
-      .eq("golfer_name", GOLFER_NAME)
-      .eq("source_label", "calibrated")
+      .from("shot_profiles")
+      .select("params")
       .eq("club", "Driver")
       .maybeSingle(),
   ])
@@ -40,7 +36,7 @@ export async function TeeBoxSection() {
   return (
     <TBoxClient
       knownCourses={knownCourses}
-      defaultDriverCarryYds={driverProfile ? Number(driverProfile.mean_carry_yds) : undefined}
+      defaultDriverCarryYds={Number.isFinite(Number(driverProfile?.params?.mean_carry)) ? Number(driverProfile?.params?.mean_carry) : undefined}
     />
   )
 }

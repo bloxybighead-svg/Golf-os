@@ -19,3 +19,16 @@ export async function loadMyProfile(supabase: SupabaseClient): Promise<MyProfile
   const version = (rows as ProfileRow[]).reduce((latest, r) => (r.fitted_at && r.fitted_at > latest ? r.fitted_at : latest), "")
   return { fits, sessionCount: sessions?.length ?? Math.max(...fits.map((f) => f.sessionsUsed)), version }
 }
+
+/** Handicap used to blend thin clubs when the golfer has none on file. An estimate: the planner's own default. */
+export const DEFAULT_BLEND_HANDICAP = 10
+
+/** The handicap that thin clubs blend toward: tracked index, else the setup one, else the default. */
+export async function loadBlendHandicap(supabase: SupabaseClient): Promise<number> {
+  const [{ data: tracked }, { data: baseline }] = await Promise.all([
+    supabase.from("handicap_tracking").select("handicap_index").order("calculation_date", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("golfer_baseline").select("handicap_index").maybeSingle(),
+  ])
+  const h = Number(tracked?.handicap_index ?? baseline?.handicap_index)
+  return Number.isFinite(h) ? Math.round(h) : DEFAULT_BLEND_HANDICAP
+}

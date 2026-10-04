@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
-import { CompareClient, type GolferOption, type CompareShot, type RealShot } from "@/components/simulator/CompareClient"
+import { CompareClient, MY_GOLFER_NAME, type GolferOption, type CompareShot, type RealShot } from "@/components/simulator/CompareClient"
+import { loadBlendHandicap, loadMyProfile } from "@/lib/supabase/loadMyProfile"
+import { generateMyBag } from "@/lib/golfer/shotProfile"
+import { supabaseShotDb } from "@/lib/shots/store"
 
 async function fetchAllShots(
   supabase: ReturnType<typeof createClient>,
@@ -27,6 +30,7 @@ export async function CompareSection() {
   const { data: profiles, error: profilesError } = await supabase
     .from("golfer_profiles")
     .select("id, golfer_name, source_label, club, mean_carry_yds")
+    .neq("source", "calibrated") // real golfers' profiles are private; the golfer's own comes from shot_profiles below
     .order("mean_carry_yds", { ascending: false })
 
   if (profilesError || !profiles || profiles.length === 0) {
@@ -40,9 +44,8 @@ export async function CompareSection() {
   const profileIds = profiles.map((p) => p.id)
   const shotRows = await fetchAllShots(supabase, profileIds)
 
-  const { data: realShotRows } = await supabase
-    .from("real_shots")
-    .select("golfer_name, club, carry_yds, offline_yds")
+  // The golfer's own profile, generated the way the planner does it, and their own real shots.
+  const [{ data: auth }, myProfile, handicap] = await Promise.all([supabase.auth.getUser(), loadMyProfile(supabase), loadBlendHandicap(supabase)])
 
   const profileById = new Map(profiles.map((p) => [p.id, p]))
 
@@ -56,6 +59,16 @@ export async function CompareSection() {
     golferKeySet.get(key)!.clubs.push({ club: p.club, meanCarryYds: Number(p.mean_carry_yds) })
   }
   const golfers = Array.from(golferKeySet.values())
+  const mineKey = `${MY_GOLFER_NAME}::my shots`
+  const myBag = myProfile ? generateMyBag(myProfile.fits, myProfile.fits.map((f) => f.club), handicap, 2000) : null
+  if (myProfile) {
+    golfers.unshift({
+      key: mineKey,
+      golferName: MY_GOLFER_NAME,
+      sourceLabel: "my shots",
+      clubs: myProfile.fits.map((f) => ({ club: f.club as string, meanCarryYds: f.profile.mean_carry })).sort((a, b) => b.meanCarryYds - a.meanCarryYds),
+    })
+  }
 
   const shots: CompareShot[] = shotRows.map((r) => {
     const p = profileById.get(r.golfer_profile_id)!
@@ -68,12 +81,14 @@ export async function CompareSection() {
     }
   })
 
-  const realShots: RealShot[] = (realShotRows ?? []).map((r) => ({
-    golferName: r.golfer_name,
-    club: r.club,
-    carryYds: Number(r.carry_yds),
-    offlineYds: Number(r.offline_yds),
-  }))
+  for (const c of myBag?.clubs ?? []) {
+    for (const s of c.shots) shots.push({ golferKey: mineKey, club: c.club, carryYds: s.carryYds, offlineYds: s.offlineYds, isMishit: false })
+  }
+
+  const myShots = auth.user ? await supabaseShotDb(supabase, auth.user.id).listShots() : []
+  const realShots: RealShot[] = myShots
+    .filter((s) => !s.isPartial)
+    .map((s) => ({ golferName: MY_GOLFER_NAME, club: s.club, carryYds: s.carryYds, offlineYds: s.offlineYds }))
 
   return <CompareClient golfers={golfers} shots={shots} realShots={realShots} />
 }

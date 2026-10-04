@@ -35,6 +35,9 @@ interface Props {
   realShots: RealShot[]
 }
 
+/** The signed-in golfer, in the golfer list and on their real shots. */
+export const MY_GOLFER_NAME = "You"
+
 const SAMPLE_SIZES = [500, 1000, 2000] as const
 
 function StatsRow({ label, color, stats }: { label: string; color: string; stats: DispersionStats | null }) {
@@ -62,7 +65,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
   const COLOR_A = c("viz-blue")
   const COLOR_B = c("viz-orange")
   const COLOR_REAL = c("viz-yellow")
-  const defaultA = golfers.find((g) => g.golferName === "Dillon Cady") ?? golfers[0]
+  const defaultA = golfers.find((g) => g.golferName === MY_GOLFER_NAME) ?? golfers[0]
   const defaultB = golfers.find((g) => g.key !== defaultA?.key) ?? golfers[0]
 
   const [golferAKey, setGolferAKey] = useState(defaultA?.key ?? "")
@@ -90,16 +93,16 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
   const sampledA = useMemo(() => seededSample(allA, sampleSize, 1), [allA, sampleSize])
   const sampledB = useMemo(() => seededSample(allB, sampleSize, 2), [allB, sampleSize])
 
-  const dillonHasReal =
-    (golferA?.golferName === "Dillon Cady" || golferB?.golferName === "Dillon Cady") &&
-    realShots.some((r) => r.golferName === "Dillon Cady" && r.club === club)
-  const realForClub = realShots.filter((r) => r.golferName === "Dillon Cady" && r.club === club)
+  const meHasReal =
+    (golferA?.golferName === MY_GOLFER_NAME || golferB?.golferName === MY_GOLFER_NAME) &&
+    realShots.some((r) => r.golferName === MY_GOLFER_NAME && r.club === club)
+  const realForClub = realShots.filter((r) => r.golferName === MY_GOLFER_NAME && r.club === club)
 
   const series: OverlaySeries[] = []
   if (golferA) series.push({ key: "A", label: `${golferA.golferName} (${golferA.sourceLabel})`, color: COLOR_A, shots: sampledA })
   if (golferB) series.push({ key: "B", label: `${golferB.golferName} (${golferB.sourceLabel})`, color: COLOR_B, shots: sampledB })
-  if (showRealShots && dillonHasReal) {
-    series.push({ key: "real", label: "Dillon (real shots)", color: COLOR_REAL, shots: realForClub, markerShape: "cross", markerRadius: 3.5 })
+  if (showRealShots && meHasReal) {
+    series.push({ key: "real", label: "Your real shots", color: COLOR_REAL, shots: realForClub, markerShape: "cross", markerRadius: 3.5 })
   }
 
   const allVisiblePoints = series.flatMap((s) => s.shots)
@@ -190,10 +193,10 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
             type="checkbox"
             checked={showRealShots}
             onChange={(e) => setShowRealShots(e.target.checked)}
-            disabled={!dillonHasReal}
+            disabled={!meHasReal}
           />
-          Show Dillon&rsquo;s real shots for this club
-          {!dillonHasReal && <span className="text-muted">(no real data for this club/golfer combo)</span>}
+          Show your real shots for this club
+          {!meHasReal && <span className="text-muted">(no real data for this club/golfer combo)</span>}
         </label>
       </div>
 
@@ -219,7 +222,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
               <tbody>
                 <StatsRow label={golferA ? `${golferA.golferName} (${golferA.sourceLabel})` : "A"} color={COLOR_A} stats={statsA} />
                 <StatsRow label={golferB ? `${golferB.golferName} (${golferB.sourceLabel})` : "B"} color={COLOR_B} stats={statsB} />
-                {showRealShots && dillonHasReal && <StatsRow label="Dillon (real)" color={COLOR_REAL} stats={statsReal} />}
+                {showRealShots && meHasReal && <StatsRow label="Your real shots" color={COLOR_REAL} stats={statsReal} />}
               </tbody>
             </table>
           </div>

@@ -5,8 +5,10 @@ import { DispersionSection } from "@/components/bag/DispersionSection"
 import { CompareSection } from "@/components/bag/CompareSection"
 import { CustomGolferSection } from "@/components/bag/CustomGolferSection"
 import { TeeBoxSection } from "@/components/bag/TeeBoxSection"
+import { ShotDataSection } from "@/components/bag/ShotDataSection"
 
 const VIEWS = [
+  { key: "shots", label: "Shot data" },
   { key: "dispersion", label: "Misses" },
   { key: "compare", label: "Compare" },
   { key: "custom", label: "What if" },
@@ -27,7 +29,7 @@ export default function BagPage({ searchParams }: { searchParams?: { view?: stri
         You
       </Link>
 
-      <div role="group" aria-label="Bag tools" className="grid grid-cols-4 gap-1 rounded-xl border border-fg/[0.06] bg-surface p-1 md:inline-grid">
+      <div role="group" aria-label="Bag tools" className="grid grid-cols-5 gap-1 rounded-xl border border-fg/[0.06] bg-surface p-1 md:inline-grid">
         {VIEWS.map(({ key, label }) => (
           <Link
             key={key}
@@ -43,6 +45,7 @@ export default function BagPage({ searchParams }: { searchParams?: { view?: stri
       </div>
 
       <Suspense key={view} fallback={<p className="py-10 text-center text-sm text-muted">Loading…</p>}>
+        {view === "shots" && <ShotDataSection />}
         {view === "dispersion" && <DispersionSection />}
         {view === "compare" && <CompareSection />}
         {view === "custom" && <CustomGolferSection />}
