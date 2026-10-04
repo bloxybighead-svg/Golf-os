@@ -24,6 +24,7 @@ import { LayersMenu } from "@/components/planner/LayersMenu"
 import { HoleHeader } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
 import { ClubChips } from "@/components/planner/ClubChips"
+import { ObBanner } from "@/components/planner/ObBanner"
 import { CoursePickerSheet } from "@/components/planner/CoursePickerSheet"
 import { MapView } from "@/components/planner/MapView"
 
@@ -47,6 +48,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
     placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
     refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, setAimManual,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
+    strategy, setStrategy, strategyNote, obBands, obTags, holeObTags, noObMapped,
     setLocalOnlyZones, setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
     setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowSetupPrompt, setShowTrouble,
     setShowZones, setSource, setTendency, sevenIronCarry, sheetOpen, showCarry, showLayersMenu, showMarks,
@@ -58,6 +60,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
   const planCard =
     best && chosen && chosenLive ? (
       <>
+      {noObMapped && holeId && <ObBanner onAnswer={(a) => void obTags.answer(holeId, a)} />}
       <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} />
       <ResultCard
         best={best}
@@ -85,6 +88,9 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
           setClubChoice("auto")
           aimAtBest(best)
         }}
+        strategy={strategy}
+        onStrategy={setStrategy}
+        note={strategyNote}
       />
       </>
     ) : null
@@ -105,6 +111,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
       chosen={chosen}
       estimatedFrom={estimatedFrom}
       baselineLabel={scoreBaseline.label}
+      strategy={strategy}
       onPick={(r) => {
         mapTapGuardUntil.current = Date.now() + MAP_TAP_GUARD_MS // the closing tap must not reach the map
         pickClub(r)
@@ -113,7 +120,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
     />
   )
 
-  const scoringDetails = <ScoringDetails baselineHandicap={baselineHandicap} />
+  const scoringDetails = <ScoringDetails baselineHandicap={baselineHandicap} onCourseSpread={vm.onCourseSpread} />
 
   const layersMenu = showLayersMenu && layersMenuPos && (
     <LayersMenu
@@ -193,6 +200,7 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
         cells={troubleCells}
         rings={rings}
         zones={showZones ? zones : []}
+        obEdges={obBands.map((b) => b.edge)}
         drawKind={drawKind}
         pendingPoints={pendingPoints}
         labels={labels}
@@ -319,6 +327,14 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
           driverCarryYds={bagDriverCarry ?? (longestCarry > 0 ? longestCarry : null)}
           handicapIndex={source === "handicap" ? handicap : trackedHandicap}
           signedIn={!!authUser}
+          obAnswered={(n) => {
+            const h = holes.find((x) => x.ref === n)
+            return !!h && (obTags.obTagMap[h.id]?.length ?? 0) > 0
+          }}
+          onObAnswer={(n, side) => {
+            const h = holes.find((x) => x.ref === n)
+            if (h) void obTags.toggleTag(h.id, side)
+          }}
         />
       )}
 
@@ -399,6 +415,9 @@ export function PlannerView({ vm, calibrated, calibratedName, trackedHandicap }:
           submitting={correctionSubmitting}
           onClose={() => setEditingHole(false)}
           onSubmit={submitHoleCorrection}
+          obTags={holeObTags}
+          onToggleOb={(side) => holeId && void obTags.toggleTag(holeId, side)}
+          onObMargin={(m) => holeId && void obTags.setMargin(holeId, m)}
         />
       )}
       {correctionNote && (

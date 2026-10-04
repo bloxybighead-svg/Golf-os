@@ -87,7 +87,8 @@ async function saveHoles(supabase: Supabase, roundId: string, userId: string, ho
   if (!holes) return
   const { error } = await supabase
     .from("round_holes")
-    .insert(holes.map((h) => ({ ...h, round_id: roundId, user_id: userId })))
+    // penalty_shot is only sent when it has a value, so saving works before supabase/round_holes_penalty_shot.sql is applied.
+    .insert(holes.map(({ penalty_shot, ...h }) => ({ ...h, ...(penalty_shot ? { penalty_shot } : {}), round_id: roundId, user_id: userId })))
   if (error) throw new Error(error.message)
 }
 
@@ -205,11 +206,23 @@ export async function getRoundHoles(roundId: string): Promise<HoleEntry[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from("round_holes")
-    .select("hole_number, par, strokes, fairway_hit, fairway_miss_side, green_hit, green_miss_side, putts, penalty, stroke_index")
+    .select("*") // includes penalty_shot once its migration is applied; naming it would break editing before that
     .eq("round_id", roundId)
     .order("hole_number")
   if (error) throw new Error(error.message)
-  return (data ?? []) as HoleEntry[]
+  return (data ?? []).map((r): HoleEntry => ({
+    hole_number: r.hole_number,
+    par: r.par,
+    strokes: r.strokes,
+    fairway_hit: r.fairway_hit,
+    fairway_miss_side: r.fairway_miss_side,
+    green_hit: r.green_hit,
+    green_miss_side: r.green_miss_side,
+    putts: r.putts,
+    penalty: r.penalty,
+    penalty_shot: r.penalty_shot ?? null,
+    stroke_index: r.stroke_index,
+  }))
 }
 
 /**

@@ -8,6 +8,9 @@ import type { CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import type { Lie } from "@/lib/course/lies"
 import { boundaryStatus, type ConfirmableHazard, type HoleDataQuality, type SurfaceStatus } from "@/lib/course/dataQuality"
 import { flagsUnmapped, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
+import { PENALTY_CAP, pctText, penaltyShare, penaltyWord, type Strategy } from "@/lib/course/strategy"
+import type { ParDecision } from "@/lib/course/rankStrategies"
+import { StrategyToggle } from "./StrategyToggle"
 import { pct, STATUS_TITLE } from "@/lib/planner/labels"
 import { Stat } from "./ui"
 
@@ -35,6 +38,10 @@ export interface ResultCardProps {
   onConfirmHazard: (hazard: ConfirmableHazard, value: boolean) => void
   onAimAtBest: (r: OptimizedClubPlan) => void
   onBackToBest: () => void
+  strategy: Strategy
+  onStrategy: (s: Strategy) => void
+  /** Par vs Go for it, from the two rankings (null until Par has been ranked). */
+  note: { allOverCap: boolean; displaced: ParDecision["displaced"]; tradeoff: string | null } | null
 }
 
 export function ResultCard({
@@ -60,9 +67,21 @@ export function ResultCard({
   onConfirmHazard,
   onAimAtBest,
   onBackToBest,
+  strategy,
+  onStrategy,
+  note,
 }: ResultCardProps) {
+  const penalty = penaltyShare(chosen.plan)
+  const overCap = penalty > PENALTY_CAP
   return (
     <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <StrategyToggle strategy={strategy} onChange={onStrategy} />
+        <p className="text-right text-xs tabular-nums text-fg-3" title="Share of shots that finish out of bounds or in water">
+          <span className={`block text-3xl font-semibold leading-none ${overCap ? "text-danger" : "text-fg"}`}>{pctText(penalty)}</span>
+          {penaltyWord(chosen.plan)} / penalty
+        </p>
+      </div>
       <div className="flex items-baseline justify-between gap-2">
         <p className="label-xs">
           {clubChoice === "auto" || chosen.club === best.club ? (
@@ -140,6 +159,19 @@ export function ResultCard({
             </>
           ))}
       </p>
+
+      {strategy === "par" && note?.allOverCap && (
+        <p className="mt-2 text-xs font-semibold text-danger">
+          Every option carries real penalty risk here. Safest: {chosen.club}, {pctText(penalty)} {penaltyWord(chosen.plan)}.
+        </p>
+      )}
+      {strategy === "par" && note?.displaced && clubChoice === "auto" && (
+        <p className="mt-2 text-xs text-fg-2">
+          {note.displaced.club.club} gains {note.displaced.gain.toFixed(2)}, not worth +{pctText(note.displaced.extraPenalty)}{" "}
+          {penaltyWord(note.displaced.club.plan)}. {chosen.club}.
+        </p>
+      )}
+      {note?.tradeoff && <p className="mt-2 text-xs text-fg-2">{note.tradeoff}</p>}
 
       {flagsUnmapped(chosenLive) && (
         <p className="mt-2 text-[11px] text-fg-3">

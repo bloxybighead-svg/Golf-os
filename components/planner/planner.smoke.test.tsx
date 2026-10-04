@@ -41,6 +41,7 @@ describe("planner components render (smoke)", () => {
         estimatedFrom={{ "4-Iron": "5-Iron" }}
         baselineLabel="10.0 handicap"
         onPick={() => {}}
+        strategy="go"
       />
     )
     expect(html).toContain('data-rank-ms="190"')
@@ -88,6 +89,9 @@ describe("planner components render (smoke)", () => {
         onConfirmHazard={() => {}}
         onAimAtBest={() => {}}
         onBackToBest={() => {}}
+        strategy="go"
+        onStrategy={() => {}}
+        note={null}
       />
     )
     expect(html).toContain("Best club")
@@ -123,6 +127,9 @@ describe("planner components render (smoke)", () => {
         onConfirmHazard={() => {}}
         onAimAtBest={() => {}}
         onBackToBest={() => {}}
+        strategy="go"
+        onStrategy={() => {}}
+        note={null}
       />
     )
     expect(html).toContain("Your pick")

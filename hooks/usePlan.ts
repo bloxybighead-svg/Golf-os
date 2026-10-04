@@ -15,6 +15,9 @@ import type { UserZone } from "@/lib/course/lies"
 import type { CourseFeature, CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import { aimMarkerFor, evaluateClub, isAtBestAim, simulateLandings, strokesAtAim, type ClubShots, type OptimizedClubPlan } from "@/lib/course/plan"
 import { buildLieMapFrom, type LieInputs } from "@/lib/course/rankRequest"
+import { decidePar, tradeoffText } from "@/lib/course/rankStrategies"
+import { widenShots, type Strategy } from "@/lib/course/strategy"
+import { obBandsFor, type ObBand, type ObTag } from "@/lib/course/obTags"
 import { DEFAULT_BASELINE_HANDICAP, getBaseline, type CompareAgainst } from "@/lib/course/baseline"
 import { seededSample } from "@/lib/dispersion/stats"
 import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
@@ -57,6 +60,12 @@ export interface PlanInputs {
   noHazard: NoHazardMap
   showTrouble: boolean
   showRings: boolean
+  /** Par (default) or Go for it. */
+  strategy: Strategy
+  /** Par mode's offline-spread multiplier (You -> Planner). */
+  onCourseSpread: number
+  /** The golfer's OB tags for the current hole (saved per course + hole). */
+  obTags: ObTag[]
 }
 
 export function usePlan({
@@ -85,6 +94,9 @@ export function usePlan({
   noHazard,
   showTrouble,
   showRings,
+  strategy,
+  onCourseSpread,
+  obTags,
 }: PlanInputs) {
   // ---------- golfer shots ----------
   // Clubs in the bag with no measured shots are estimated from the golfer's
@@ -184,6 +196,13 @@ export function usePlan({
     [hole, geometry, fairwayEstimated]
   )
 
+  // OB the map doesn't have: the golfer's "OB left / right / long" tags for this hole become out-of-bounds zones.
+  const obBands: ObBand[] = useMemo(
+    () => (hole && obTags.length > 0 ? obBandsFor(hole.line, geometry?.features ?? [], obTags) : []),
+    [hole, geometry, obTags]
+  )
+  const allZones = useMemo(() => (obBands.length > 0 ? [...zones, ...obBands.map((b) => b.zone)] : zones), [zones, obBands])
+
   // What the lie map is built from -- also sent to the club-ranking worker, which builds its own copy.
   const lieInputs: LieInputs | null = useMemo(() => {
     if (course?.lat == null || course.lng == null) return null
@@ -191,10 +210,10 @@ export function usePlan({
       origin: { lat: course.lat, lng: course.lng },
       features: [...(geometry?.features ?? []), ...(corridor ? [corridor] : [])],
       coast: geometry?.coast ?? [],
-      zones,
+      zones: allZones,
       extras: { boundary: geometry?.boundary ?? null, lines: geometry?.lines ?? [] },
     }
-  }, [course, geometry, zones, corridor])
+  }, [course, geometry, allZones, corridor])
   const lies = useMemo(() => (lieInputs ? buildLieMapFrom(lieInputs) : null), [lieInputs])
 
   // Where the ball is lying: the tee uses the tour tee-shot baseline, anything else its mapped lie.
@@ -214,16 +233,46 @@ export function usePlan({
     compareAgainst === "tour" ? null : trackedHandicap ?? baseline?.handicapIndex ?? (Number.isFinite(handicap) ? handicap : DEFAULT_BASELINE_HANDICAP)
   const scoreBaseline = getBaseline(baselineHandicap)
 
+  // Long holes (par 5s, par 4s over 440 yd) value the tee shot by what it leaves for the next one.
+  const holeYards = hole && pin ? hole.yardageYds ?? Math.round(distanceYds(hole.line[0], pin)) : null
   const rankingRequest: RankingRequest | null = useMemo(
     () =>
       ball && pin && defaultAim
-        ? { holeId, from: ball, aim: defaultAim, pin, startLie, line: hole?.line ?? null, handicap: baselineHandicap }
+        ? {
+            holeId,
+            from: ball,
+            aim: defaultAim,
+            pin,
+            startLie,
+            line: hole?.line ?? null,
+            handicap: baselineHandicap,
+            spread: onCourseSpread,
+            par: hole?.par ?? null,
+            yards: holeYards,
+          }
         : null,
-    [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap]
+    [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap, onCourseSpread, holeYards]
   )
   const rankState = useClubRanking(lieInputs, clubShots, rankingRequest)
-  const ranking: OptimizedClubPlan[] = rankState.results ?? []
-  const rankingPending = rankState.pending
+  // Par: the widened-spread ranking, ordered by Par's rules (pick first). Go for it: the raw ranking by expected strokes.
+  const parDecision = useMemo(() => decidePar(rankState.results ?? []), [rankState.results])
+  const goBest = rankState.goResults?.[0] ?? null
+  const ranking: OptimizedClubPlan[] =
+    strategy === "par"
+      ? parDecision?.ordered ?? []
+      : rankState.goResults ?? [...(rankState.results ?? [])].sort((a, b) => a.plan.expectedStrokes - b.plan.expectedStrokes)
+  const rankingPending = rankState.pending || (strategy === "go" && !rankState.goResults && !!rankState.results)
+  // The card's trade-off between the two strategies (null until both have been ranked, or when they agree).
+  const strategyNote = useMemo(() => {
+    if (!parDecision) return null
+    return {
+      parBest: parDecision.pick,
+      goBest,
+      allOverCap: parDecision.allOverCap,
+      displaced: parDecision.displaced,
+      tradeoff: goBest ? tradeoffText(parDecision.pick, goBest) : null,
+    }
+  }, [parDecision, goBest])
 
   const shownLies = LIES.filter((l) => ALWAYS_SHOWN.includes(l) || ranking.some((r) => r.plan.lieShare[l] >= 0.005))
   const best: OptimizedClubPlan | null = ranking[0] ?? null
@@ -231,7 +280,9 @@ export function usePlan({
   const lastChosen = useRef<OptimizedClubPlan | null>(null)
   const chosen: OptimizedClubPlan | null = chosenPlan(ranking, clubChoice, lastChosen.current)
   lastChosen.current = chosen
-  const chosenShots = chosen ? clubShots.find((c) => c.club === chosen.club) : undefined
+  // Par mode draws and scores the dots with the same widened spread the ranking used.
+  const playShots = useMemo(() => (strategy === "par" ? clubShots.map((c) => widenShots(c, onCourseSpread)) : clubShots), [strategy, clubShots, onCourseSpread])
+  const chosenShots = chosen ? playShots.find((c) => c.club === chosen.club) : undefined
 
   // A pick is for this shot: it resets once the ball is carried to the next shot.
   const [pickedAt, setPickedAt] = useState<LatLng | null>(null)
@@ -371,6 +422,9 @@ export function usePlan({
     scoreBaseline,
     shownLies,
     startLie,
+    strategyNote,
+    obBands,
+    allZones,
     stats,
     troubleCells,
   }

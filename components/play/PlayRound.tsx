@@ -26,6 +26,7 @@ import { recommendTee, type TeeOption } from "@/lib/tbox/estimate"
 import { teeChoiceKey, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
 import { createRound } from "@/app/rounds/actions"
 import { Choice, HolePad } from "@/components/rounds/HolePad"
+import { holesToAskAboutOb } from "@/lib/rounds/obQuestions"
 
 export type PlayView = "map" | "score"
 
@@ -46,6 +47,10 @@ interface Props {
   driverCarryYds: number | null
   handicapIndex: number | null
   signedIn: boolean
+  /** Whether the golfer has already said anything about OB on this hole of the open course. */
+  obAnswered?: (holeNumber: number) => boolean
+  /** Saves the answer to "Penalty on hole 7. Was it OB left or right?" as an OB tag for that hole. */
+  onObAnswer?: (holeNumber: number, side: "left" | "right") => void
 }
 
 function relLabel(n: number) {
@@ -380,8 +385,12 @@ function ScorePanel({
   onGoToHole,
   onViewChange,
   signedIn,
+  obAnswered,
+  onObAnswer,
   onSaved,
 }: Props & { round: ActiveRound; onSaved: () => void }) {
+  // Tee-shot penalties to ask about once the round is saved (hole numbers); null = not asking.
+  const [asking, setAsking] = useState<number[] | null>(null)
   const order = round.holes.map((h) => h.hole_number)
   // The hole being scored follows the map while the map is on a hole of this
   // round; its own state covers courses whose map data is missing a hole.
@@ -437,7 +446,9 @@ function ScorePanel({
           tee_name: round.teeName,
           holes: await withStrokeIndexes(round.course.id, scored),
         })
-        onSaved()
+        const questions = onObAnswer ? holesToAskAboutOb(scored, obAnswered ?? (() => false)) : []
+        if (questions.length > 0) setAsking(questions)
+        else onSaved()
       } catch (e) {
         setError(e instanceof Error ? e.message : "Couldn't save the round.")
       }
@@ -461,6 +472,35 @@ function ScorePanel({
       ))}
     </dl>
   )
+
+  // One question per tee-shot penalty, asked once the round is saved.
+  if (asking && asking.length > 0) {
+    const n = asking[0]
+    const next = () => (asking.length > 1 ? setAsking(asking.slice(1)) : onSaved())
+    return (
+      <div className="mx-auto max-w-lg space-y-4">
+        <p className="label-xs">Round saved</p>
+        <p className="text-lg font-semibold text-fg">Penalty on hole {n}. Was it OB left or right?</p>
+        <div className="flex flex-wrap gap-2">
+          {(["left", "right"] as const).map((side) => (
+            <button
+              key={side}
+              onClick={() => {
+                onObAnswer?.(n, side)
+                next()
+              }}
+              className="h-11 min-w-24 rounded-lg border border-fg/[0.12] px-4 text-sm font-semibold capitalize text-fg hover:bg-fg/[0.04]"
+            >
+              {side}
+            </button>
+          ))}
+          <button onClick={next} className="h-11 rounded-lg px-4 text-sm text-fg-3 hover:text-fg">
+            Not OB
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (finishing) {
     const differential = scored.length > 0 ? calcDifferential(summary.score, parseFloat(rating), parseFloat(slope), scored.length) : null

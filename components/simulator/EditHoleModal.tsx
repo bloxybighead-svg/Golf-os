@@ -5,6 +5,8 @@ import { X } from "lucide-react"
 import type { LatLng } from "@/lib/course/geo"
 import { validateCorrection, type CorrectionInput } from "@/lib/course/corrections"
 import type { CourseHole } from "@/lib/course/overpass"
+import type { ObSide, ObTag } from "@/lib/course/obTags"
+import { ObTagEditor } from "@/components/planner/ObTagEditor"
 
 export interface HoleCorrectionSubmission {
   par?: number
@@ -25,6 +27,9 @@ export function EditHoleModal({
   submitting,
   onClose,
   onSubmit,
+  obTags,
+  onToggleOb,
+  onObMargin,
 }: {
   hole: CourseHole
   /** Straight tee-to-green distance from the mapped line, shown as a starting point when no yardage has been corrected yet. */
@@ -34,6 +39,10 @@ export function EditHoleModal({
   submitting: boolean
   onClose: () => void
   onSubmit: (input: HoleCorrectionSubmission) => void
+  /** This hole's OB tags (just for you, applied at once) and how to change them. Omit to hide the section. */
+  obTags?: ObTag[]
+  onToggleOb?: (side: ObSide) => void
+  onObMargin?: (yds: number) => void
 }) {
   const [par, setPar] = useState(hole.par ?? 4)
   const [teeLat, setTeeLat] = useState(hole.line[0].lat.toFixed(6))
@@ -86,6 +95,12 @@ export function EditHoleModal({
         <p className="mt-1 text-xs text-muted">
           Corrections are shared with every golfer who loads this course, not just you.
         </p>
+
+        {obTags && onToggleOb && onObMargin && (
+          <div className="mt-3">
+            <ObTagEditor tags={obTags} onToggle={onToggleOb} onMargin={onObMargin} />
+          </div>
+        )}
 
         <div className="mt-3 space-y-3">
           <label className="flex flex-col gap-1">

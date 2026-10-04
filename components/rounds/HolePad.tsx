@@ -1,6 +1,6 @@
 "use client"
 
-import type { GreenMiss, HoleEntry } from "@/lib/rounds/holes"
+import { PENALTY_SHOTS, type GreenMiss, type HoleEntry, type PenaltyShot } from "@/lib/rounds/holes"
 
 /** One tap target: 44px, filled with the accent when chosen. */
 export function Choice({
@@ -32,6 +32,8 @@ export function Choice({
     </button>
   )
 }
+
+const PENALTY_SHOT_LABEL: Record<PenaltyShot, string> = { tee: "Tee", approach: "Approach", other: "Other" }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -194,9 +196,29 @@ export function HolePad({ hole, onChange }: { hole: HoleEntry; onChange: (patch:
         </div>
       </Row>
 
-      <Choice selected={hole.penalty} onClick={() => onChange({ penalty: !hole.penalty })} className="px-4">
+      <Choice
+        selected={hole.penalty}
+        onClick={() => onChange({ penalty: !hole.penalty, penalty_shot: null })}
+        className="px-4"
+      >
         Penalty
       </Choice>
+      {hole.penalty && (
+        <Row label="Penalty on">
+          <div className="flex flex-wrap gap-2">
+            {PENALTY_SHOTS.map((shot) => (
+              <Choice
+                key={shot}
+                selected={hole.penalty_shot === shot}
+                onClick={() => onChange({ penalty_shot: hole.penalty_shot === shot ? null : shot })}
+                className="px-4"
+              >
+                {PENALTY_SHOT_LABEL[shot]}
+              </Choice>
+            ))}
+          </div>
+        </Row>
+      )}
     </div>
   )
 }

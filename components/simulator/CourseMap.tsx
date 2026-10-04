@@ -69,6 +69,8 @@ interface Props {
   cells: { sw: LatLng; ne: LatLng; color: string; opacity: number }[]
   rings: LatLng[][]
   zones: UserZone[]
+  /** Where the golfer's OB tags put the stakes: solid red lines. */
+  obEdges?: LatLng[][]
   /** Hand-marking mode: while set, taps add vertices instead of moving ball/aim/pin. */
   drawKind: Lie | null
   pendingPoints: LatLng[]
@@ -359,7 +361,11 @@ export default function CourseMap(props: Props) {
         interactive: false,
       }).addTo(g)
     }
-  }, [props.zones])
+    // OB the golfer tagged on this hole: the stakes as a solid red line.
+    for (const edge of props.obEdges ?? []) {
+      if (edge.length >= 2) L.polyline(edge.map(ll), { color: readColor("lie-oob"), weight: 3, opacity: 0.95, interactive: false }).addTo(g)
+    }
+  }, [props.zones, props.obEdges])
 
   // Live preview while hand-marking a new zone: vertex dots, joining lines, and a
   // dashed closing edge back to the first point once there are enough to close.

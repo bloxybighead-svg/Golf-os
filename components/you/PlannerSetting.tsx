@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { readCompareAgainst, saveCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
+import { readSpread, saveSpread } from "@/lib/course/spreadSetting"
+import { ON_COURSE_SPREAD, SPREAD_MAX, SPREAD_MIN, SPREAD_STEP } from "@/lib/course/strategy"
 
 const OPTIONS: { value: CompareAgainst; label: string }[] = [
   { value: "handicap", label: "My handicap" },
@@ -13,6 +15,9 @@ export function PlannerSetting() {
   // Saved in the browser only, so nothing is highlighted until mount (same as Appearance).
   const [choice, setChoice] = useState<CompareAgainst | null>(null)
   useEffect(() => setChoice(readCompareAgainst()), [])
+  const [spread, setSpread] = useState<number | null>(null)
+  useEffect(() => setSpread(readSpread()), [])
+  const shownSpread = spread ?? ON_COURSE_SPREAD
 
   function choose(next: CompareAgainst) {
     saveCompareAgainst(next)
@@ -40,6 +45,29 @@ export function PlannerSetting() {
             </button>
           )
         })}
+      </div>
+      <div className="w-full">
+        <label htmlFor="on-course-spread" className="flex items-baseline justify-between text-xs text-fg-2">
+          <span>On-course spread</span>
+          <span className="tabular-nums font-semibold text-fg">{shownSpread.toFixed(2)}x</span>
+        </label>
+        <input
+          id="on-course-spread"
+          type="range"
+          min={SPREAD_MIN}
+          max={SPREAD_MAX}
+          step={SPREAD_STEP}
+          value={shownSpread}
+          onChange={(e) => {
+            const v = Number(e.target.value)
+            setSpread(v)
+            saveSpread(v)
+          }}
+          className="mt-2 w-full accent-accent"
+        />
+        <p className="mt-1 text-xs text-muted">
+          Range data is tighter than real rounds. Raise this if your misses on the course are wider than the app shows.
+        </p>
       </div>
     </div>
   )

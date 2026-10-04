@@ -10,6 +10,8 @@ import type { Club } from "@/lib/golfer/tables"
 import { CALIBRATED_DEFAULT_BAG, DEFAULT_BAG, normalizeBag } from "@/lib/golfer/bag"
 import { ONBOARDED_KEY, SETTINGS_KEY, applyBaselineToDevice, cleanCarries, type Baseline } from "@/lib/golfer/baseline"
 import { COMPARE_AGAINST_EVENT, COMPARE_AGAINST_KEY, readCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
+import { readSpread, SPREAD_EVENT, SPREAD_KEY } from "@/lib/course/spreadSetting"
+import { ON_COURSE_SPREAD } from "@/lib/course/strategy"
 import { RECENT_KEY, type CourseHit } from "@/lib/planner/storage"
 
 const SIDES = ["auto", "straight", "left", "right", "both"]
@@ -46,6 +48,21 @@ export function usePlannerSettings({ calibrated, baseline }: { calibrated: unkno
     window.addEventListener("storage", onStorage)
     return () => {
       window.removeEventListener(COMPARE_AGAINST_EVENT, sync)
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [])
+  // How much wider Par mode makes the golfer's misses (You -> Planner), saved per device.
+  const [onCourseSpread, setOnCourseSpread] = useState(ON_COURSE_SPREAD)
+  useEffect(() => {
+    const sync = () => setOnCourseSpread(readSpread())
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === SPREAD_KEY) sync()
+    }
+    sync()
+    window.addEventListener(SPREAD_EVENT, sync)
+    window.addEventListener("storage", onStorage)
+    return () => {
+      window.removeEventListener(SPREAD_EVENT, sync)
       window.removeEventListener("storage", onStorage)
     }
   }, [])
@@ -137,6 +154,7 @@ export function usePlannerSettings({ calibrated, baseline }: { calibrated: unkno
     bags,
     bag,
     compareAgainst,
+    onCourseSpread,
     recent,
     hydrated,
     loadFromDevice,

@@ -1,6 +1,8 @@
 // "How this is scored" under the Play planner's card (moved verbatim from CourseMapClient.tsx).
 
-export function ScoringDetails({ baselineHandicap }: { baselineHandicap: number | null }) {
+import { LONGER_CLUB_MARGIN, PENALTY_CAP, PENALTY_WEIGHT } from "@/lib/course/strategy"
+
+export function ScoringDetails({ baselineHandicap, onCourseSpread }: { baselineHandicap: number | null; onCourseSpread: number }) {
   return (
     <details className="rounded-2xl border border-fg/[0.07] bg-surface px-4 py-3 text-xs leading-relaxed text-fg-3">
       <summary className="cursor-pointer select-none font-medium text-fg-2">How this is scored</summary>
@@ -23,6 +25,17 @@ export function ScoringDetails({ baselineHandicap }: { baselineHandicap: number 
           (sized so a par-72 round adds up to 72 plus your handicap), a bigger penalty for rough, sand and trees, and
           putting from a given distance as hard as a pro&rsquo;s from farther away, using Broadie&rsquo;s amateur figures where
           they exist. The extra penalty for bad lies is an estimate.
+        </p>
+        <p>
+          <strong className="font-medium text-fg-2">Par</strong> (the default, and it resets on every new hole) counts blow-up
+          risk. Any club or aim with more than {Math.round(PENALTY_CAP * 100)}% of its shots out of bounds or in water is
+          left out when something safer exists; the rest rank by expected strokes plus {PENALTY_WEIGHT} per unit of penalty
+          share, and a longer club only beats a shorter, safer one if it gains at least {LONGER_CLUB_MARGIN.toFixed(2)}{" "}
+          strokes. Par also widens your misses to {onCourseSpread.toFixed(2)}x of what the range data shows (change it on
+          You, under Planner). <strong className="font-medium text-fg-2">Go for it</strong> is pure expected strokes on the
+          raw dispersion. On par 5s and par 4s over 440 yd, each tee shot is valued by the best next shot from where it
+          finishes, not by a table that assumes every distance can be played. The cap, weight, margin and spread are
+          estimates, not measurements.
         </p>
         <p>
           Every club gets its own aim: its search starts on the hole&rsquo;s centre line at the distance that club goes

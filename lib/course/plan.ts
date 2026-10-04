@@ -63,6 +63,12 @@ export interface PlanContext {
   startLie?: StartLie
   /** What strokes to hole out are measured against (baseline.ts): a handicap, or the PGA TOUR (default). */
   baseline?: Baseline
+  /**
+   * Look-ahead (lookahead.ts): the expected strokes still to play from where a
+   * shot stops, valued by the best NEXT shot instead of the baseline table.
+   * Null = no opinion (water, out of bounds, off the grid): the baseline decides.
+   */
+  valueAt?: (landing: Landing) => number | null
 }
 
 export interface Landing {
@@ -172,7 +178,8 @@ function scoreLandings(
   from: LatLng,
   pin: LatLng,
   startLie: StartLie,
-  baseline: Baseline
+  baseline: Baseline,
+  valueAt?: (landing: Landing) => number | null
 ): ClubPlan {
   const lieShare: Record<Lie, number> = { water: 0, oob: 0, bunker: 0, green: 0, fairway: 0, trees: 0, rough: 0 }
   const originDist = distanceYds(from, pin)
@@ -188,7 +195,8 @@ function scoreLandings(
     lieShare[l.lie] += 1
     if (l.lieSource === "inferred") inferred += 1
     const dropDist = l.dropPoint ? distanceYds(l.dropPoint, pin) : undefined
-    const shot = 1 + baseline.expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin, dropDist)
+    const ahead = valueAt ? valueAt(l) : null
+    const shot = 1 + (ahead ?? baseline.expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin, dropDist))
     strokes += shot
     perShot.push(shot)
     carry += shots[i].carryYds
@@ -219,7 +227,7 @@ function scoreLandings(
 export function evaluateClub(club: ClubShots, ctx: PlanContext, aimBearingOverride?: number): ClubPlan {
   const bearing = aimBearingOverride ?? bearingDeg(ctx.from, ctx.aim)
   const landings = simulateLandings(club.club, club.shots, ctx.from, bearing, ctx.lies)
-  return scoreLandings(club.club, club.shots, landings, ctx.from, ctx.pin, ctx.startLie ?? "fairway", ctx.baseline ?? TOUR_BASELINE)
+  return scoreLandings(club.club, club.shots, landings, ctx.from, ctx.pin, ctx.startLie ?? "fairway", ctx.baseline ?? TOUR_BASELINE, ctx.valueAt)
 }
 
 /** Every club, best (lowest expected strokes) first. */
@@ -273,33 +281,73 @@ export function splitShots(shots: ShotSample[]): { search: ShotSample[]; holdout
  */
 export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 60, stepYds = 2): AimResult {
   const { search, holdout } = splitShots(club.shots)
+  return bestAimFrom(club, search, holdout.length > 0 ? holdout : search, ctx, maxOffsetYds, stepYds)
+}
+
+/**
+ * bestAim with the two halves given: the aim is searched on `search`, then the
+ * winner (and the original aim) are scored on `confirm`, which the search never
+ * touched. `coarseStepYds` (the ranking's speed setting) sweeps the full range
+ * at that step first and then only the neighbourhood of the best at `stepYds`.
+ */
+export function bestAimFrom(
+  club: ClubShots,
+  search: ShotSample[],
+  confirm: ShotSample[],
+  ctx: PlanContext,
+  maxOffsetYds = 60,
+  stepYds = 2,
+  coarseStepYds?: number,
+  withBaseline = true
+): AimResult {
   const searchClub: ClubShots = { club: club.club, shots: search }
-  const confirmClub: ClubShots = { club: club.club, shots: holdout.length > 0 ? holdout : search }
+  const confirmClub: ClubShots = { club: club.club, shots: confirm }
 
   const baseBearing = bearingDeg(ctx.from, ctx.aim)
   const meanCarryYds = club.shots.reduce((sum, s) => sum + s.carryYds, 0) / Math.max(club.shots.length, 1)
   const dist = Math.max(meanCarryYds, 10)
-  let winner: { offsetYds: number; bearingDeg: number } | null = null
+  const bearingFor = (off: number) => (baseBearing + (Math.atan2(off, dist) * 180) / Math.PI + 360) % 360
+  const tried = new Map<number, number>()
+  const strokesAt = (off: number) => {
+    let v = tried.get(off)
+    if (v === undefined) {
+      v = evaluateClub(searchClub, ctx, bearingFor(off)).expectedStrokes
+      tried.set(off, v)
+    }
+    return v
+  }
+  let winnerOff = 0
   let winnerStrokes = Infinity
   // Search outward from 0 (not left-to-right) so a tie -- e.g. everywhere past
   // some point is equally plain rough -- keeps the smallest, least-disruptive
   // offset instead of arbitrarily locking onto the search's farthest edge.
-  const offsets: number[] = [0]
-  for (let d = stepYds; d <= maxOffsetYds; d += stepYds) offsets.push(-d, d)
-  for (const off of offsets) {
-    const bearing = (baseBearing + (Math.atan2(off, dist) * 180) / Math.PI + 360) % 360
-    const strokes = evaluateClub(searchClub, ctx, bearing).expectedStrokes
-    if (strokes < winnerStrokes) {
-      winnerStrokes = strokes
-      winner = { offsetYds: off, bearingDeg: bearing }
+  const sweep = (offsets: number[]) => {
+    for (const off of offsets) {
+      const strokes = strokesAt(off)
+      if (strokes < winnerStrokes) {
+        winnerStrokes = strokes
+        winnerOff = off
+      }
     }
   }
-  const w = winner as { offsetYds: number; bearingDeg: number }
+  const outward = (step: number, centre = 0, reach = maxOffsetYds): number[] => {
+    const out: number[] = centre === 0 ? [0] : []
+    for (let d = step; d <= reach; d += step) out.push(centre - d, centre + d)
+    return out.filter((o) => Math.abs(o) <= maxOffsetYds)
+  }
+  if (coarseStepYds && coarseStepYds > stepYds) {
+    sweep(outward(coarseStepYds))
+    const c = winnerOff
+    sweep(outward(stepYds, c, coarseStepYds - stepYds)) // the gaps either side of the coarse winner
+  } else {
+    sweep(outward(stepYds))
+  }
   return {
-    offsetYds: w.offsetYds,
-    bearingDeg: w.bearingDeg,
-    plan: evaluateClub(confirmClub, ctx, w.bearingDeg),
-    baselineStrokes: evaluateClub(confirmClub, ctx, baseBearing).expectedStrokes,
+    offsetYds: winnerOff,
+    bearingDeg: bearingFor(winnerOff),
+    plan: evaluateClub(confirmClub, ctx, bearingFor(winnerOff)),
+    // The ranking never shows it, so it skips this (a whole extra scoring of the held-out shots).
+    baselineStrokes: withBaseline ? evaluateClub(confirmClub, ctx, baseBearing).expectedStrokes : NaN,
   }
 }
 
@@ -318,6 +366,18 @@ export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 60, st
  * for it. The dots and the card still use every shot.
  */
 export const RANKING_SHOT_CAP = 400
+
+/**
+ * Shots the winning aim is scored on (the held-out half). The aim is SEARCHED on
+ * half of RANKING_SHOT_CAP shots, but scoring one aim is cheap, so it is scored
+ * on every OTHER shot the club has, up to this many. Why: Par mode's cap is 3%,
+ * which is 6 shots of 200 -- one ball more or less flips a club in or out of it.
+ * With ~800 shots the share is good to about half a point. SPEED SETTING.
+ */
+export const RANK_HOLDOUT_CAP = 600
+
+/** The ranking sweeps the aim at this step first, then refines at stepYds around the best. SPEED SETTING: cuts 61 aim evaluations to about 28. */
+export const RANK_COARSE_STEP_YDS = 6
 
 /** Seed for picking which RANKING_SHOT_CAP shots are used, so the ranking repeats. */
 export const RANKING_SAMPLE_SEED = 5
@@ -360,6 +420,8 @@ export interface RankOptions {
   maxOffsetYds?: number
   stepYds?: number
   shotCap?: number
+  /** Overrides RANK_COARSE_STEP_YDS (0 = the full fine sweep). */
+  coarseStepYds?: number
 }
 
 /**
@@ -384,10 +446,17 @@ export function rankingShots(club: ClubShots, cap = RANKING_SHOT_CAP): ClubShots
   return club.shots.length > cap ? { club: club.club, shots: seededSample(club.shots, cap, RANKING_SAMPLE_SEED) } : club
 }
 
-/** Expected strokes at the aim marker on the held-out half of the ranking shots: the "at your aim" number. */
+/** The ranking's two sets for a club: the shots the aim is searched on, and the (larger) set it is scored on. */
+export function rankingSplit(club: ClubShots, cap = RANKING_SHOT_CAP): { search: ShotSample[]; confirm: ShotSample[] } {
+  const { search } = splitShots(rankingShots(club, cap).shots)
+  const used = new Set(search)
+  const rest = club.shots.filter((s) => !used.has(s))
+  return { search, confirm: (rest.length > 0 ? rest : search).slice(0, RANK_HOLDOUT_CAP) }
+}
+
+/** Expected strokes at the aim marker on the ranking's held-out shots: the "at your aim" number. */
 export function strokesAtAim(club: ClubShots, ctx: PlanContext, cap = RANKING_SHOT_CAP): number {
-  const { search, holdout } = splitShots(rankingShots(club, cap).shots)
-  return evaluateClub({ club: club.club, shots: holdout.length > 0 ? holdout : search }, ctx).expectedStrokes
+  return evaluateClub({ club: club.club, shots: rankingSplit(club, cap).confirm }, ctx).expectedStrokes
 }
 
 /** Every club at its own best aim, best (lowest held-out expected strokes) first. */
@@ -396,11 +465,11 @@ export function rankClubsOptimized(clubs: ClubShots[], ctx: PlanContext, opts: R
   return clubs
     .filter((c) => c.shots.length > 0)
     .map((c) => {
-      const shots = rankingShots(c, cap)
+      const { search, confirm } = rankingSplit(c, cap)
       // How far this club goes (carry + roll) decides where on the centreline its search is centred.
-      const reach = evaluateClub(shots, ctx).meanTotalYds
+      const reach = evaluateClub({ club: c.club, shots: search }, ctx).meanTotalYds
       const centre = centerlineAim(opts.line, ctx.from, reach, ctx.pin) ?? ctx.aim
-      const r = bestAim(shots, { ...ctx, aim: centre }, opts.maxOffsetYds ?? 60, opts.stepYds ?? 2)
+      const r = bestAimFrom(c, search, confirm, { ...ctx, aim: centre }, opts.maxOffsetYds ?? 60, opts.stepYds ?? 2, opts.coarseStepYds ?? RANK_COARSE_STEP_YDS, false)
       return {
         club: c.club,
         bearingDeg: r.bearingDeg,
