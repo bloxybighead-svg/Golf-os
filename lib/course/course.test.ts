@@ -4,7 +4,7 @@ import { buildLieMap } from "./lies"
 import { parseOverpass, type OverpassElement } from "./overpass"
 import { expectedFromStart, expectedStrokesRemaining, tourExpected, tourPutting } from "./cost"
 import { bestAim, rankClubs } from "./plan"
-import { applyCorrections, validateCorrection, type CorrectionRow } from "./corrections"
+import { applyCorrections, pickConsensus, validateCorrection, type ConsensusGroup, type CorrectionRow } from "./corrections"
 import type { CourseGeometry, CourseHole } from "./overpass"
 
 const ORIGIN = { lat: 36.5685, lng: -121.949 }
@@ -624,21 +624,103 @@ describe("course corrections", () => {
     expect(out.holes[0].correctedFields).toEqual(expect.arrayContaining(["yardage", "handicap"]))
   })
 
-  it("validates par, coordinates, yardage and stroke index", () => {
-    const center = ORIGIN
-    expect(validateCorrection({ par: 2 }, center).par).toBeTruthy()
-    expect(validateCorrection({ par: 4 }, center).par).toBeUndefined()
-    expect(validateCorrection({ teeLat: 200 }, center).teeLat).toBeTruthy()
-    expect(validateCorrection({ yardageYds: 30 }, center).yardageYds).toBeTruthy()
-    expect(validateCorrection({ yardageYds: 410 }, center).yardageYds).toBeUndefined()
-    expect(validateCorrection({ strokeIndex: 0 }, center).strokeIndex).toBeTruthy()
-    expect(validateCorrection({ strokeIndex: 19 }, center).strokeIndex).toBeTruthy()
-    expect(validateCorrection({ strokeIndex: 7 }, center).strokeIndex).toBeUndefined()
+  it("passes good values", () => {
+    const nearby = fromLocal(ORIGIN, { x: 60, y: 60 }) // ~85 yd away
+    const errors = validateCorrection(
+      { par: 4, teeLat: nearby.lat, teeLng: nearby.lng, yardageYds: 410, strokeIndex: 7, reason: "Par 4, not Par 3" },
+      ORIGIN
+    )
+    expect(errors).toEqual({})
+    expect(validateCorrection({}, ORIGIN)).toEqual({})
   })
 
-  it("rejects a tee point far enough away to be a likely typo", () => {
-    const farAway = fromLocal(ORIGIN, { x: 0, y: 200_000 }) // ~115 miles
-    const errors = validateCorrection({ teeLat: farAway.lat, teeLng: farAway.lng }, ORIGIN)
-    expect(errors.teeLat).toBeTruthy()
+  it("rejects par outside 3-6 or not a whole number", () => {
+    expect(validateCorrection({ par: 9 }, ORIGIN).par).toBeTruthy()
+    expect(validateCorrection({ par: 2 }, ORIGIN).par).toBeTruthy()
+    expect(validateCorrection({ par: 4.5 }, ORIGIN).par).toBeTruthy()
+    expect(validateCorrection({ par: NaN }, ORIGIN).par).toBeTruthy()
+    for (const par of [3, 4, 5, 6]) expect(validateCorrection({ par }, ORIGIN).par).toBeUndefined()
+  })
+
+  it("rejects stroke index outside 1-18 or not a whole number", () => {
+    expect(validateCorrection({ strokeIndex: 0 }, ORIGIN).strokeIndex).toBeTruthy()
+    expect(validateCorrection({ strokeIndex: 19 }, ORIGIN).strokeIndex).toBeTruthy()
+    expect(validateCorrection({ strokeIndex: 2.5 }, ORIGIN).strokeIndex).toBeTruthy()
+    expect(validateCorrection({ strokeIndex: 1 }, ORIGIN).strokeIndex).toBeUndefined()
+    expect(validateCorrection({ strokeIndex: 18 }, ORIGIN).strokeIndex).toBeUndefined()
+  })
+
+  it("rejects yardage outside 50-700", () => {
+    expect(validateCorrection({ yardageYds: 49 }, ORIGIN).yardageYds).toBeTruthy()
+    expect(validateCorrection({ yardageYds: 701 }, ORIGIN).yardageYds).toBeTruthy()
+    expect(validateCorrection({ yardageYds: 50 }, ORIGIN).yardageYds).toBeUndefined()
+    expect(validateCorrection({ yardageYds: 700 }, ORIGIN).yardageYds).toBeUndefined()
+  })
+
+  it("rejects a tee 2 miles from the current tee, accepts one within 150 yards", () => {
+    const twoMiles = fromLocal(ORIGIN, { x: 0, y: 2 * 1760 })
+    const far = validateCorrection({ teeLat: twoMiles.lat, teeLng: twoMiles.lng }, ORIGIN)
+    expect(far.teeLat).toBeTruthy()
+    expect(far.teeLng).toBeTruthy()
+    const near = fromLocal(ORIGIN, { x: 0, y: 140 })
+    expect(validateCorrection({ teeLat: near.lat, teeLng: near.lng }, ORIGIN)).toEqual({})
+    const justOver = fromLocal(ORIGIN, { x: 0, y: 160 })
+    expect(validateCorrection({ teeLat: justOver.lat, teeLng: justOver.lng }, ORIGIN).teeLat).toBeTruthy()
+  })
+
+  it("checks a lone tee coordinate against the current tee's other coordinate", () => {
+    const far = fromLocal(ORIGIN, { x: 0, y: 5000 })
+    expect(validateCorrection({ teeLat: far.lat }, ORIGIN).teeLat).toBeTruthy()
+  })
+
+  it("rejects out-of-range coordinates and a reason over 200 characters", () => {
+    expect(validateCorrection({ teeLat: 200 }, ORIGIN).teeLat).toBeTruthy()
+    expect(validateCorrection({ teeLng: -181 }, ORIGIN).teeLng).toBeTruthy()
+    expect(validateCorrection({ reason: "x".repeat(200) }, ORIGIN).reason).toBeUndefined()
+    expect(validateCorrection({ reason: "x".repeat(201) }, ORIGIN).reason).toBeTruthy()
+  })
+})
+
+describe("pickConsensus", () => {
+  const group = (over: Partial<ConsensusGroup> = {}): ConsensusGroup => ({
+    hole_id: "way/1",
+    field_name: "par",
+    corrected_value: "4",
+    voters: 2,
+    last_at: "2026-10-01T00:00:00Z",
+    ...over,
+  })
+
+  it("applies a value only when 2+ distinct golfers agree", () => {
+    expect(pickConsensus([group({ voters: 1 })])).toEqual([])
+    expect(pickConsensus([group({ voters: 2 })])).toEqual([{ hole_id: "way/1", field_name: "par", corrected_value: "4" }])
+  })
+
+  it("cannot be lowered below 2 by the caller", () => {
+    expect(pickConsensus([group({ voters: 1 })], 1)).toEqual([])
+  })
+
+  it("keeps fields and holes separate", () => {
+    const out = pickConsensus([
+      group(),
+      group({ field_name: "yardage", corrected_value: "410" }),
+      group({ hole_id: "way/2", corrected_value: "5", voters: 3 }),
+    ])
+    expect(out).toHaveLength(3)
+  })
+
+  it("when two values both qualify, the most-agreed one wins, then the latest", () => {
+    const most = pickConsensus([group({ corrected_value: "4", voters: 2 }), group({ corrected_value: "5", voters: 3 })])
+    expect(most).toEqual([{ hole_id: "way/1", field_name: "par", corrected_value: "5" }])
+    const latest = pickConsensus([
+      group({ corrected_value: "4", last_at: "2026-10-01T00:00:00Z" }),
+      group({ corrected_value: "5", last_at: "2026-10-03T00:00:00Z" }),
+    ])
+    expect(latest[0].corrected_value).toBe("5")
+  })
+
+  it("ignores a value that only one golfer submitted even if a different one is confirmed", () => {
+    const out = pickConsensus([group({ corrected_value: "4", voters: 2 }), group({ corrected_value: "6", voters: 1 })])
+    expect(out).toEqual([{ hole_id: "way/1", field_name: "par", corrected_value: "4" }])
   })
 })

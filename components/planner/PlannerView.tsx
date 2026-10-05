@@ -479,7 +479,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         <EditHoleModal
           hole={hole}
           defaultYardageYds={distanceYds(hole.line[0], hole.line[hole.line.length - 1])}
-          courseCenter={{ lat: course.lat, lng: course.lng }}
           signedIn={!!authUser}
           submitting={correctionSubmitting}
           onClose={() => setEditingHole(false)}

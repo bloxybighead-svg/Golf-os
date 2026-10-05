@@ -2,8 +2,7 @@
 
 import { useState } from "react"
 import { X } from "lucide-react"
-import type { LatLng } from "@/lib/course/geo"
-import { validateCorrection, type CorrectionInput } from "@/lib/course/corrections"
+import { MAX_REASON_LENGTH, validateCorrection, type CorrectionInput } from "@/lib/course/corrections"
 import type { CourseHole } from "@/lib/course/overpass"
 import type { ObSide, ObTag } from "@/lib/course/obTags"
 import { ObTagEditor } from "@/components/planner/ObTagEditor"
@@ -22,7 +21,6 @@ const PARS = [3, 4, 5, 6]
 export function EditHoleModal({
   hole,
   defaultYardageYds,
-  courseCenter,
   signedIn,
   submitting,
   onClose,
@@ -34,7 +32,6 @@ export function EditHoleModal({
   hole: CourseHole
   /** Straight tee-to-green distance from the mapped line, shown as a starting point when no yardage has been corrected yet. */
   defaultYardageYds: number
-  courseCenter: LatLng
   signedIn: boolean
   submitting: boolean
   onClose: () => void
@@ -62,8 +59,9 @@ export function EditHoleModal({
     teeLng: Number.isFinite(parsedTeeLng) ? parsedTeeLng : undefined,
     yardageYds: Number.isFinite(parsedYardage) ? parsedYardage : undefined,
     strokeIndex: parsedStrokeIndex,
+    reason,
   }
-  const errors = validateCorrection(input, courseCenter)
+  const errors = validateCorrection(input, hole.line[0])
   const hasErrors = Object.keys(errors).length > 0
 
   function submit() {
@@ -171,9 +169,11 @@ export function EditHoleModal({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
+              maxLength={MAX_REASON_LENGTH}
               placeholder="e.g. Par 4, not Par 3"
               className="resize-none rounded-lg border border-fg/[0.08] bg-page px-3 py-1.5 text-sm text-fg placeholder:text-faint"
             />
+            {errors.reason && <span className="text-[11px] text-danger">{errors.reason}</span>}
           </label>
         </div>
 

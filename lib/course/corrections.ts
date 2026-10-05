@@ -12,11 +12,14 @@ export interface CorrectionRow {
 }
 
 const VALID_PARS = new Set([3, 4, 5, 6])
-// A generous sanity ceiling, not a real course limit -- long par 5s can run past 600 yards
-// (the spec's own "50-600+" wording), this just catches an obvious typo like an extra digit.
-const MIN_YARDAGE = 50
-const MAX_YARDAGE = 800
-const COURSE_RADIUS_YDS = 50 * 1760 // ~50 miles, the spec's own "rough check to catch typos"
+// Sanity bounds, not course rules: they stop typos and vandalism, not unusual-but-real holes.
+export const MIN_YARDAGE = 50
+export const MAX_YARDAGE = 700
+export const MAX_TEE_MOVE_YDS = 150 // a corrected tee must stay this close to the hole's current tee
+export const MAX_REASON_LENGTH = 200
+// A correction applies for everyone only once this many DIFFERENT golfers submit the same value.
+// (The database function course_corrections_consensus enforces the same floor of 2.)
+export const CONSENSUS_MIN_USERS = 2
 
 export interface CorrectionInput {
   par?: number
@@ -24,33 +27,65 @@ export interface CorrectionInput {
   teeLng?: number
   yardageYds?: number
   strokeIndex?: number
+  reason?: string
 }
 
-/** Field-by-field validation errors, keyed the same as CorrectionInput. Empty object = all valid. */
-export function validateCorrection(input: CorrectionInput, courseCenter: LatLng): Partial<Record<keyof CorrectionInput, string>> {
+const isInt = (n: number) => Number.isInteger(n)
+
+/** Field-by-field validation errors, keyed the same as CorrectionInput. Empty object = all valid.
+ * `currentTee` is the hole's tee as it stands now; a corrected tee must be within MAX_TEE_MOVE_YDS of it. */
+export function validateCorrection(input: CorrectionInput, currentTee: LatLng): Partial<Record<keyof CorrectionInput, string>> {
   const errors: Partial<Record<keyof CorrectionInput, string>> = {}
-  if (input.par != null && !VALID_PARS.has(input.par)) {
+  if (input.par != null && !(isInt(input.par) && VALID_PARS.has(input.par))) {
     errors.par = "Par must be 3, 4, 5, or 6."
   }
-  if (input.teeLat != null && Math.abs(input.teeLat) > 90) {
+  if (input.teeLat != null && !(Number.isFinite(input.teeLat) && Math.abs(input.teeLat) <= 90)) {
     errors.teeLat = "Latitude must be between -90 and 90."
   }
-  if (input.teeLng != null && Math.abs(input.teeLng) > 180) {
+  if (input.teeLng != null && !(Number.isFinite(input.teeLng) && Math.abs(input.teeLng) <= 180)) {
     errors.teeLng = "Longitude must be between -180 and 180."
   }
-  if (input.teeLat != null && input.teeLng != null && !errors.teeLat && !errors.teeLng) {
-    const d = distanceYds(courseCenter, { lat: input.teeLat, lng: input.teeLng })
-    if (d > COURSE_RADIUS_YDS) {
-      errors.teeLat = errors.teeLng = "That's too far from this course -- check for a typo."
+  if ((input.teeLat != null || input.teeLng != null) && !errors.teeLat && !errors.teeLng) {
+    const moved = { lat: input.teeLat ?? currentTee.lat, lng: input.teeLng ?? currentTee.lng }
+    if (distanceYds(currentTee, moved) > MAX_TEE_MOVE_YDS) {
+      const msg = `The tee can move at most ${MAX_TEE_MOVE_YDS} yards from where it is now.`
+      if (input.teeLat != null) errors.teeLat = msg
+      if (input.teeLng != null) errors.teeLng = msg
     }
   }
-  if (input.yardageYds != null && (input.yardageYds < MIN_YARDAGE || input.yardageYds > MAX_YARDAGE)) {
+  if (input.yardageYds != null && !(Number.isFinite(input.yardageYds) && input.yardageYds >= MIN_YARDAGE && input.yardageYds <= MAX_YARDAGE)) {
     errors.yardageYds = `Yardage should be between ${MIN_YARDAGE} and ${MAX_YARDAGE}.`
   }
-  if (input.strokeIndex != null && (!Number.isInteger(input.strokeIndex) || input.strokeIndex < 1 || input.strokeIndex > 18)) {
+  if (input.strokeIndex != null && !(isInt(input.strokeIndex) && input.strokeIndex >= 1 && input.strokeIndex <= 18)) {
     errors.strokeIndex = "Handicap (stroke index) must be a whole number from 1 to 18."
   }
+  if (input.reason != null && input.reason.length > MAX_REASON_LENGTH) {
+    errors.reason = `Keep the reason under ${MAX_REASON_LENGTH} characters.`
+  }
   return errors
+}
+
+/** One (hole, field, value) that some number of distinct golfers submitted, as returned by
+ * the course_corrections_consensus database function. */
+export interface ConsensusGroup {
+  hole_id: string
+  field_name: CorrectableField
+  corrected_value: string
+  voters: number
+  last_at: string
+}
+
+/** The value to apply for everyone, per (hole, field): only groups with at least `minUsers`
+ * distinct voters count; if several values qualify, the most-agreed one wins, then the latest. */
+export function pickConsensus(groups: ConsensusGroup[], minUsers = CONSENSUS_MIN_USERS): CorrectionRow[] {
+  const best = new Map<string, ConsensusGroup>()
+  for (const g of groups) {
+    if (g.voters < Math.max(minUsers, CONSENSUS_MIN_USERS)) continue
+    const key = `${g.hole_id}|${g.field_name}`
+    const cur = best.get(key)
+    if (!cur || g.voters > cur.voters || (g.voters === cur.voters && g.last_at > cur.last_at)) best.set(key, g)
+  }
+  return Array.from(best.values()).map((g) => ({ hole_id: g.hole_id, field_name: g.field_name, corrected_value: g.corrected_value }))
 }
 
 /** Applies corrections on top of freshly-fetched or cached geometry. Read-time, not

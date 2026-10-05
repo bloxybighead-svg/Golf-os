@@ -6,8 +6,10 @@
 // data arrives (framing the map, standing on a hole) is the caller's `onApplied`,
 // passed at call time so it sees exactly what it did before the split.
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { createClient } from "@/lib/supabase/client"
+import { applyCorrections, type CorrectionRow } from "@/lib/course/corrections"
+import { submitCorrection } from "@/app/courses/correction-actions"
 import { GEOMETRY_VERSION, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { COURSE_CACHE_MAX_AGE_MS, type CourseHit } from "@/lib/planner/storage"
 import type { HoleCorrectionSubmission } from "@/components/simulator/EditHoleModal"
@@ -17,14 +19,21 @@ import type { AuthUser } from "./useAuthUser"
 export type AutoHole = { autoHoleId?: string; autoHoleRef?: number; autoFirstHole?: boolean }
 export type OnGeometryApplied = (g: CourseGeometry, c: CourseHit, opts?: { force?: boolean } & AutoHole) => void
 
-export function useCourseGeometry() {
+export function useCourseGeometry({ supabase, authUser }: { supabase: ReturnType<typeof createClient>; authUser: AuthUser | null }) {
   // --- course search / loading ---
   const [query, setQuery] = useState("")
   const [hits, setHits] = useState<CourseHit[]>([])
   const [searching, setSearching] = useState(false)
   const [searched, setSearched] = useState(false)
   const [course, setCourse] = useState<CourseHit | null>(null)
-  const [geometry, setGeometry] = useState<CourseGeometry | null>(null)
+  const [sharedGeometry, setGeometry] = useState<CourseGeometry | null>(null)
+  // This golfer's own corrections for the current course. Applied on top of the shared geometry
+  // (which only carries corrections 2+ golfers agree on), so a lone correction affects only them.
+  const [myCorrections, setMyCorrections] = useState<CorrectionRow[]>([])
+  const geometry = useMemo(
+    () => (sharedGeometry && myCorrections.length > 0 ? applyCorrections(sharedGeometry, myCorrections) : sharedGeometry),
+    [sharedGeometry, myCorrections]
+  )
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">("idle")
   const [loadError, setLoadError] = useState("")
   const [refreshing, setRefreshing] = useState(false) // "Refresh course data": refetches geometry only, leaves ball/aim/pin alone
@@ -35,6 +44,26 @@ export function useCourseGeometry() {
   // The last load was refused because it needs a signed-in golfer (a course not cached yet).
   const [loadNeedsSignIn, setLoadNeedsSignIn] = useState(false)
   const [searchError, setSearchError] = useState("")
+
+  // ---------- this golfer's own corrections ----------
+  // Fetched in the browser (owner-only table, so RLS returns just this user's rows) rather than
+  // in the geometry route, which keeps that public, CDN-cached response free of per-user data.
+  const courseId = course?.id
+  useEffect(() => {
+    setMyCorrections([])
+    if (!courseId || !authUser) return
+    let cancelled = false
+    void supabase
+      .from("course_corrections")
+      .select("hole_id, field_name, corrected_value")
+      .eq("course_key", `ogapi:${courseId}`)
+      .then(({ data, error }) => {
+        if (!cancelled && !error && data) setMyCorrections(data as CorrectionRow[])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [courseId, authUser?.id, supabase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- course search ----------
   useEffect(() => {
@@ -169,60 +198,34 @@ export function useCourseGeometry() {
     }
   }
 
-  // Corrections are global (course_key, hole_id, field_name), not per-user -- any
-  // signed-in golfer can submit or overwrite one, so this is a plain upsert, not
-  // scoped to the current account's own rows the way zones are.
+  // Saved through the submitCorrection server action (validated against the course data, written
+  // with this golfer's own session). It applies to this golfer straight away; everyone else only
+  // sees it once another golfer submits the same value. No geometry refetch: that would re-download
+  // the whole course from OpenStreetMap and use one of the golfer's hourly loads for nothing.
   async function submitHoleCorrection(
     input: HoleCorrectionSubmission,
-    ctx: { supabase: ReturnType<typeof createClient>; authUser: AuthUser | null; hole: CourseHole | null; onApplied: OnGeometryApplied }
+    ctx: { hole: CourseHole | null }
   ) {
-    const { authUser, hole } = ctx
+    const { hole } = ctx
     if (!authUser || !course || !hole) return
-    const rows: { course_key: string; hole_id: string; field_name: string; original_value: string | null; corrected_value: string; reason: string | null; user_id: string }[] = []
-    const add = (field: string, original: string | null, corrected: number | undefined) => {
-      if (corrected == null) return
-      rows.push({
-        course_key: `ogapi:${course.id}`,
-        hole_id: hole.id,
-        field_name: field,
-        original_value: original,
-        corrected_value: String(corrected),
-        reason: input.reason || null,
-        user_id: authUser.id,
-      })
-    }
-    add("par", hole.par != null ? String(hole.par) : null, input.par)
-    add("tee_lat", String(hole.line[0].lat), input.teeLat)
-    add("tee_lng", String(hole.line[0].lng), input.teeLng)
-    add("yardage", hole.yardageYds != null ? String(hole.yardageYds) : null, input.yardageYds)
-    add("handicap", hole.strokeIndex != null ? String(hole.strokeIndex) : null, input.strokeIndex)
-    if (rows.length === 0) {
-      setEditingHole(false)
-      return
-    }
     setCorrectionSubmitting(true)
     try {
-      // Update-then-insert instead of upsert: ON CONFLICT DO UPDATE needs SELECT on user_id,
-      // which is deliberately not readable (it would reveal who submitted a correction).
-      let error: unknown = null
-      for (const row of rows) {
-        const { course_key, hole_id, field_name, ...values } = row
-        const upd = await ctx.supabase
-          .from("course_corrections")
-          .update(values)
-          .match({ course_key, hole_id, field_name })
-          .select("hole_id")
-        if (upd.error) { error = upd.error; break }
-        if (upd.data && upd.data.length > 0) continue
-        const ins = await ctx.supabase.from("course_corrections").insert(row)
-        if (ins.error) { error = ins.error; break }
-      }
-      if (!error) {
-        setEditingHole(false)
-        setCorrectionNote("Correction submitted. This will help other golfers.")
+      const res = await submitCorrection({ courseId: course.id, holeId: hole.id, ...input, reason: input.reason || undefined })
+      if (!res.ok) {
+        setCorrectionNote(res.error)
         setTimeout(() => setCorrectionNote(null), 5000)
-        await fetchGeometry(course, { force: true }, ctx.onApplied) // see the fix immediately, not after a manual reload
+        return
       }
+      setMyCorrections((prev) => {
+        const replaced = new Set(res.saved.map((r) => `${r.hole_id}|${r.field_name}`))
+        return [...prev.filter((r) => !replaced.has(`${r.hole_id}|${r.field_name}`)), ...res.saved]
+      })
+      setEditingHole(false)
+      setCorrectionNote("Saved for you. It applies for everyone once another golfer confirms it.")
+      setTimeout(() => setCorrectionNote(null), 5000)
+    } catch {
+      setCorrectionNote("Could not save the correction. Try again.")
+      setTimeout(() => setCorrectionNote(null), 5000)
     } finally {
       setCorrectionSubmitting(false)
     }

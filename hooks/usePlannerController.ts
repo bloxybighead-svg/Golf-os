@@ -40,7 +40,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const { supabase, authUser } = useAuthUser()
 
   // --- course search / loading ---
-  const geo = useCourseGeometry()
+  const geo = useCourseGeometry({ supabase, authUser })
   const {
     query, setQuery, hits, setHits, searching, searched, course, setCourse, geometry, setGeometry, loadState,
     setLoadState, loadError, setLoadError, refreshing, initialZoom, setInitialZoom, editingHole,
@@ -313,7 +313,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   }
 
   async function submitHoleCorrection(input: HoleCorrectionSubmission) {
-    await geo.submitHoleCorrection(input, { supabase, authUser, hole, onApplied: applyGeometry })
+    await geo.submitHoleCorrection(input, { hole })
   }
 
   function pickHole(h: CourseHole, features = geometry?.features ?? []) {
