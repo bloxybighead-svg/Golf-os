@@ -202,7 +202,21 @@ export function useCourseGeometry() {
     }
     setCorrectionSubmitting(true)
     try {
-      const { error } = await ctx.supabase.from("course_corrections").upsert(rows, { onConflict: "course_key,hole_id,field_name" })
+      // Update-then-insert instead of upsert: ON CONFLICT DO UPDATE needs SELECT on user_id,
+      // which is deliberately not readable (it would reveal who submitted a correction).
+      let error: unknown = null
+      for (const row of rows) {
+        const { course_key, hole_id, field_name, ...values } = row
+        const upd = await ctx.supabase
+          .from("course_corrections")
+          .update(values)
+          .match({ course_key, hole_id, field_name })
+          .select("hole_id")
+        if (upd.error) { error = upd.error; break }
+        if (upd.data && upd.data.length > 0) continue
+        const ins = await ctx.supabase.from("course_corrections").insert(row)
+        if (ins.error) { error = ins.error; break }
+      }
       if (!error) {
         setEditingHole(false)
         setCorrectionNote("Correction submitted. This will help other golfers.")
