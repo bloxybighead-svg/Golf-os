@@ -7,7 +7,15 @@ import { blankHoles, type HoleEntry } from "./holes"
 
 export const ACTIVE_ROUND_KEY = "golfos.activeRound.v1"
 
+/** Tells the rest of the app (the update toast) that a round started, changed or ended. */
+export const ACTIVE_ROUND_EVENT = "golfos:activeRound"
+
 export interface ActiveRound {
+  /**
+   * Made on the phone when the round starts (a UUID), before any network call. It becomes
+   * rounds.id, so a round that is sent twice after a dropped connection is still one round.
+   */
+  id: string
   course: CourseRef
   date: string // local YYYY-MM-DD the round started
   teeName: string | null
@@ -61,6 +69,17 @@ export function ratingForHoles(courseRating18: number, holesPlayed: number): num
   return Math.round(courseRating18 * (Math.min(holesPlayed, 18) / 18) * 10) / 10
 }
 
+/** A new round's identity. crypto.randomUUID needs a secure page (https or localhost), which the installed app always is. */
+export function newRoundId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID()
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const h = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+}
+
 /** The next hole to score: the first one without a score, or null when all are in. */
 export function nextUnscored(round: ActiveRound): number | null {
   return round.holes.find((h) => h.strokes == null)?.hole_number ?? null
@@ -69,7 +88,9 @@ export function nextUnscored(round: ActiveRound): number | null {
 export function loadActiveRound(): ActiveRound | null {
   try {
     const r = JSON.parse(localStorage.getItem(ACTIVE_ROUND_KEY) ?? "null") as ActiveRound | null
-    return r && typeof r.course?.id === "string" && Array.isArray(r.holes) && r.holes.length > 0 ? r : null
+    if (!r || typeof r.course?.id !== "string" || !Array.isArray(r.holes) || r.holes.length === 0) return null
+    // A round started before rounds had ids gets one now (and keeps it: the next save writes it back).
+    return typeof r.id === "string" && r.id ? r : { ...r, id: newRoundId() }
   } catch {
     return null
   }
@@ -82,4 +103,5 @@ export function saveActiveRound(round: ActiveRound | null): void {
   } catch {
     // Private mode or full storage: the round lasts as long as the page does.
   }
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(ACTIVE_ROUND_EVENT))
 }

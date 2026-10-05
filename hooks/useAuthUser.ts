@@ -17,15 +17,27 @@ export function useAuthUser() {
   // just to this browser.
   useEffect(() => {
     const supabase = supabaseRef.current!
-    supabase.auth.getUser().then(({ data }) => {
-      setAuthUser(data.user ? { id: data.user.id, email: data.user.email ?? null } : null)
+    // The saved session answers at once and works with no signal, so an offline golfer is
+    // still "signed in" (and can finish and queue a round). getUser then checks it with the
+    // server; only a real refusal signs them out, never a dead connection.
+    let cancelled = false
+    supabase.auth.getSession().then(({ data }) => {
+      if (!cancelled && data.session?.user) setAuthUser({ id: data.session.user.id, email: data.session.user.email ?? null })
+    })
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (cancelled) return
+      if (data.user) setAuthUser({ id: data.user.id, email: data.user.email ?? null })
+      else if (!error || error.status === 401 || error.status === 403 || error.name === "AuthSessionMissingError") setAuthUser(null)
     })
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthUser(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null)
     })
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [])
 
   return { supabase: supabaseRef.current, authUser }

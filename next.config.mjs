@@ -1,3 +1,18 @@
+import { randomUUID } from "node:crypto"
+import withSerwistInit from "@serwist/next"
+
+// Service worker (app/sw.ts -> public/sw.js). Off in `next dev` so it cannot fight hot reload;
+// registered by components/pwa/OfflineProvider.tsx so the app can show "Update available".
+const withSerwist = withSerwistInit({
+  swSrc: "app/sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV === "development",
+  register: false,
+  reloadOnOnline: false,
+  // The offline page must be saved at install time; a new revision each build refreshes it.
+  additionalPrecacheEntries: [{ url: "/offline", revision: randomUUID() }],
+})
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Pages retired by the three-tab nav (Play, Rounds, You); keep old links working.
@@ -22,4 +37,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

@@ -33,3 +33,9 @@ next-env.d.ts
 # python simulator generated artifacts
 shot-pattern-simulator/output/
 __pycache__/
+
+# service worker build output (Serwist)
+/public/sw.js
+/public/sw.js.map
+/public/swe-worker-*.js
+/public/swe-worker-*.js.map

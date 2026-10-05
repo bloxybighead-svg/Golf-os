@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LogOut, User } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { forgetEverythingOffline } from "@/lib/offline/snapshots"
 
 // Account lives on the You tab now that the top bar carries only the wordmark.
 export function AccountCard({ email }: { email: string | null }) {
@@ -15,6 +16,7 @@ export function AccountCard({ email }: { email: string | null }) {
     setSigningOut(true)
     const supabase = createClient()
     await supabase.auth.signOut()
+    await forgetEverythingOffline() // the next golfer on this phone must not see this one's saved pages and shots
     // Order matters: push first so the destination route becomes "current",
     // then refresh so THAT route's server-rendered content is what gets
     // refetched -- refreshing before push can invalidate the wrong route if

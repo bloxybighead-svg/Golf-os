@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import NavBar from "@/components/NavBar";
 import { SignInBanner } from "@/components/auth/SignInBanner";
+import { OfflineProvider } from "@/components/pwa/OfflineProvider";
 import { createClient } from "@/lib/supabase/server";
 import { APP_NAME, BRAND } from "@/lib/brand";
 import { THEME_STORAGE_KEY } from "@/lib/theme/preference";
@@ -49,6 +50,7 @@ export default async function RootLayout({
         />
       </head>
       <body>
+        <OfflineProvider />
         <NavBar />
         <main className="mx-auto max-w-[1280px] px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-6 md:pt-20 md:pb-16">
           <SignInBanner signedIn={!!session} />

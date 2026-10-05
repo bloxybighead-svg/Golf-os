@@ -1,5 +1,6 @@
 "use client"
 
+import { fetchWithSnapshot, snapshotKeys } from "@/lib/offline/snapshots"
 import { useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
@@ -33,9 +34,9 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
     } catch {
       setChosen(null)
     }
-    fetch(`/api/courses/${courseId}/tees`)
-      .then((r) => (r.ok ? r.json() : { tees: [] }))
-      .then((d) => !cancelled && setTees(teeOptionsFrom((d.tees ?? []) as OpenGolfApiTee[])))
+    // The tees saved at Start round answer when there is no signal.
+    fetchWithSnapshot<{ tees?: OpenGolfApiTee[] }>(`/api/courses/${courseId}/tees`, snapshotKeys.tees(courseId))
+      .then((d) => !cancelled && setTees(teeOptionsFrom((d?.tees ?? []) as OpenGolfApiTee[])))
       .catch(() => !cancelled && setTees([]))
     return () => {
       cancelled = true

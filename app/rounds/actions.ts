@@ -14,6 +14,13 @@ type Supabase = ReturnType<typeof createClient>
 // computed here from the hole-by-hole taps; without, it's a score-only round
 // (e.g. a past round added for the handicap) and those stats stay empty.
 export interface RoundInput {
+  /**
+   * Made on the device when the round starts (a UUID), so the round has an
+   * identity before any network call. createRound saves with it as an upsert:
+   * sending the same round twice (a retry after a dropped connection) updates
+   * the one row instead of adding a second. Absent for rounds typed into the form.
+   */
+  id?: string
   date: string
   course_name: string
   is_competitive: boolean
@@ -36,7 +43,7 @@ const STAT_COLUMNS = [
 ] as const
 type StatColumn = (typeof STAT_COLUMNS)[number]
 type RoundCounts = { score: number; par: number; holes_played: number } & Partial<Record<StatColumn, number | null>>
-type RoundRow = Omit<RoundInput, "holes" | "score" | "par" | "holes_played" | "course_id" | "tee_name"> &
+type RoundRow = Omit<RoundInput, "id" | "holes" | "score" | "par" | "holes_played" | "course_id" | "tee_name"> &
   RoundCounts & { course_id: string | null; tee_name: string | null }
 
 /**
@@ -80,16 +87,34 @@ function buildRound(input: RoundInput): { row: RoundRow; holes: ScoredHole[] | n
   return { row: { ...base, ...counts }, holes }
 }
 
-/** Replaces a round's holes (none for score only). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+/**
+ * Replaces a round's holes (none for score only). An upsert on the table's
+ * unique (round_id, hole_number), then the holes no longer in the round are
+ * removed, so saving the same holes twice leaves exactly one row per hole.
+ * penalty_shot is always sent (null when there was none) so an upsert clears an
+ * old value; it needs supabase/round_holes_penalty_shot.sql, applied 2026-10-04.
+ */
 async function saveHoles(supabase: Supabase, roundId: string, userId: string, holes: ScoredHole[] | null) {
-  const { error: delError } = await supabase.from("round_holes").delete().eq("round_id", roundId)
-  if (delError) throw new Error(delError.message)
-  if (!holes) return
+  if (!holes || holes.length === 0) {
+    const { error: delError } = await supabase.from("round_holes").delete().eq("round_id", roundId)
+    if (delError) throw new Error(delError.message)
+    return
+  }
   const { error } = await supabase
     .from("round_holes")
-    // penalty_shot is only sent when it has a value, so saving works before supabase/round_holes_penalty_shot.sql is applied.
-    .insert(holes.map(({ penalty_shot, ...h }) => ({ ...h, ...(penalty_shot ? { penalty_shot } : {}), round_id: roundId, user_id: userId })))
+    .upsert(
+      holes.map((h) => ({ ...h, penalty_shot: h.penalty_shot ?? null, round_id: roundId, user_id: userId })),
+      { onConflict: "round_id,hole_number" }
+    )
   if (error) throw new Error(error.message)
+  const { error: delError } = await supabase
+    .from("round_holes")
+    .delete()
+    .eq("round_id", roundId)
+    .not("hole_number", "in", `(${holes.map((h) => h.hole_number).join(",")})`)
+  if (delError) throw new Error(delError.message)
 }
 
 // Delete-then-reinsert (never updated in place) so an edited round's SG
@@ -144,6 +169,12 @@ export async function createRound(input: RoundInput) {
   if (!user) throw new Error("Sign in to save rounds.")
   const { row, holes } = buildRound(input)
 
+  // A round sent before (same id) keeps the handicap snapshot it already has.
+  const id = typeof input.id === "string" && UUID.test(input.id) ? input.id : null
+  const { data: existing } = id
+    ? await supabase.from("rounds").select("id, handicap_index").eq("id", id).maybeSingle()
+    : { data: null }
+
   // Snapshot the golfer's most recently tracked handicap onto the round, so
   // its progression can be plotted later even as the tracked index moves on.
   const { data: latestHandicap } = await supabase
@@ -152,11 +183,16 @@ export async function createRound(input: RoundInput) {
     .order("calculation_date", { ascending: false })
     .limit(1)
     .maybeSingle()
-  const handicapIndex = latestHandicap?.handicap_index ?? null
+  const handicapIndex = existing ? existing.handicap_index : latestHandicap?.handicap_index ?? null
 
-  const { data: inserted, error } = await supabase
-    .from("rounds")
-    .insert({ ...row, handicap_index: handicapIndex, user_id: user.id })
+  // With an id this is an upsert. Row-level security applies to its update half
+  // too (update policy: auth.uid() = user_id), so an id that belongs to another
+  // account is refused rather than overwritten.
+  const rows = supabase.from("rounds")
+  const { data: inserted, error } = await (id
+    ? rows.upsert({ ...row, id, handicap_index: handicapIndex, user_id: user.id }, { onConflict: "id" })
+    : rows.insert({ ...row, handicap_index: handicapIndex, user_id: user.id })
+  )
     .select("*")
     .single()
   if (error) throw new Error(error.message)
@@ -164,8 +200,8 @@ export async function createRound(input: RoundInput) {
   try {
     await saveHoles(supabase, inserted.id, user.id, holes)
   } catch (e) {
-    // No half-saved rounds: a round whose holes didn't save isn't kept.
-    await supabase.from("rounds").delete().eq("id", inserted.id)
+    // No half-saved rounds: a round whose holes didn't save isn't kept (a retry sends it again).
+    if (!existing) await supabase.from("rounds").delete().eq("id", inserted.id)
     throw e
   }
   await saveRoundAnalysis(supabase, inserted.id, user.id, inserted as Round, handicapIndex)

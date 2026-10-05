@@ -38,6 +38,7 @@ const CourseMap = dynamic(() => import("@/components/simulator/CourseMap"), {
 
 export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, trackedHandicap }: { vm: PlannerVM } & Omit<Props, "baseline">) {
   const {
+    offlineReport,
     mapTapGuardUntil,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
@@ -346,6 +347,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
                 driverCarryYds={roundSource}
                 handicapIndex={source === "handicap" ? handicap : trackedHandicap}
                 signedIn={!!authUser}
+                userId={authUser?.id ?? null}
+                offlineReport={offlineReport}
                 savedNote={savedNote}
                 onSavedNote={setSavedNote}
                 obAnswered={(n) => {

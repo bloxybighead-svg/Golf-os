@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { describeOrder, holesFor, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "./activeRound"
+import { describeOrder, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "./activeRound"
 
 describe("playOrder", () => {
   it("plays 18 from the first", () => {
@@ -50,5 +50,15 @@ describe("nextUnscored", () => {
     holes[1].strokes = 5
     holes[2].strokes = 3
     expect(nextUnscored(round)).toBeNull()
+  })
+})
+
+describe("newRoundId", () => {
+  // The same shape createRound (app/rounds/actions.ts) accepts as rounds.id.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  it("makes a UUID the server accepts, and a different one each time", () => {
+    const ids = Array.from({ length: 50 }, () => newRoundId())
+    expect(ids.every((id) => UUID.test(id))).toBe(true)
+    expect(new Set(ids).size).toBe(50)
   })
 })

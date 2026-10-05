@@ -134,6 +134,9 @@ interface Props {
 
 const ll = (p: LatLng): L.LatLngTuple => [p.lat, p.lng]
 
+/** Failed tile loads in a row before the "Satellite needs signal" note shows. An estimate: one or two can be a blip. */
+const TILE_FAILURES_BEFORE_NOTE = 3
+
 type MarkerKind = "ball" | "aim" | "pin"
 
 // Real glyphs rather than lettered dots: a white ball with a shadow ring, a
@@ -210,6 +213,7 @@ export default function CourseMap(props: Props) {
   // A rotation the golfer chose on a hole, kept for that hole until they re-center.
   const rotMemory = useRef(new Map<string, number>())
   const [rotation, setRotationState] = useState(0)
+  const [satelliteDown, setSatelliteDown] = useState(false) // tiles are failing or the phone is offline
   const [viewDirty, setViewDirty] = useState(false) // the golfer moved the view off the auto fit
   const [zoomTick, setZoomTick] = useState(0) // bumps on every zoom: labels re-place, the zoom buttons re-check their limits
 
@@ -270,6 +274,7 @@ export default function CourseMap(props: Props) {
 
   // Create the map once.
   useEffect(() => {
+    let removeNetListeners = () => {}
     if (!containerRef.current || !wrapRef.current || mapRef.current) return
     const wrap = wrapRef.current
     // Wheel-zoom is off so scrolling the page over the map does not hijack it; Ctrl/Cmd + wheel zooms
@@ -289,10 +294,34 @@ export default function CourseMap(props: Props) {
       ll(props.center),
       props.initialZoom ?? 16
     )
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    // Satellite tiles are only ever fetched live and never stored (Esri's World Imagery terms do not
+    // allow offline copies). With no signal they fail; the course shapes are vector layers drawn on top,
+    // so they keep working on a plain background, with a note saying why the picture is gone.
+    const tiles = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       maxNativeZoom: 19,
       maxZoom: 19,
     }).addTo(map)
+    let tileFailures = 0
+    tiles.on("tileerror", () => {
+      tileFailures += 1
+      if (tileFailures >= TILE_FAILURES_BEFORE_NOTE) setSatelliteDown(true)
+    })
+    tiles.on("tileload", () => {
+      tileFailures = 0
+      setSatelliteDown(false)
+    })
+    const onOffline = () => setSatelliteDown(true)
+    const onOnline = () => {
+      tileFailures = 0
+      tiles.redraw() // try the tiles again; the note clears when one loads
+    }
+    window.addEventListener("offline", onOffline)
+    window.addEventListener("online", onOnline)
+    if (!navigator.onLine) setSatelliteDown(true)
+    removeNetListeners = () => {
+      window.removeEventListener("offline", onOffline)
+      window.removeEventListener("online", onOnline)
+    }
 
     // Taps and drags through the rotation (see the note at the top of the file).
     const originalToContainerPoint = map.mouseEventToContainerPoint.bind(map)
@@ -408,6 +437,7 @@ export default function CourseMap(props: Props) {
     }
     mapRef.current = map
     return () => {
+      removeNetListeners()
       ro.disconnect()
       wrap.removeEventListener("wheel", onWheel)
       wrap.removeEventListener("touchstart", onTouchStart)
@@ -663,7 +693,16 @@ export default function CourseMap(props: Props) {
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden">
-      <div ref={containerRef} className="absolute inset-0" style={{ cursor: props.drawKind ? "crosshair" : undefined }} />
+      <div
+        ref={containerRef}
+        className="absolute inset-0"
+        style={{ cursor: props.drawKind ? "crosshair" : undefined, background: satelliteDown ? "rgb(var(--surface-3))" : undefined }}
+      />
+      {satelliteDown && (
+        <p role="status" className="pointer-events-none absolute bottom-6 left-2 z-[1050] max-w-[60%] rounded-lg bg-page/90 px-2.5 py-1.5 text-xs text-fg-2">
+          Satellite needs signal. Course shapes still work.
+        </p>
+      )}
       {props.holeBearingDeg != null && <CompassOverlay rotationDeg={rotation} />}
       <div className="absolute bottom-6 right-2 z-[1050] flex flex-col gap-2">
         {viewDirty && (

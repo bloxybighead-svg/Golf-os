@@ -30,6 +30,11 @@ import { usePlan } from "@/hooks/usePlan"
 import { useObTags } from "@/hooks/useObTags"
 import { hasOobBesideLine } from "@/lib/course/obTags"
 import { hasAnswered } from "@/lib/planner/obTagStore"
+import { kvDelete, kvGet, kvSet } from "@/lib/offline/db"
+import { prefetchForRound, type PrefetchReport } from "@/lib/offline/snapshots"
+
+/** The round in progress, copied into IndexedDB on every tap (localStorage has it too; this one survives more). */
+const ACTIVE_ROUND_IDB_KEY = "activeRound"
 
 export function usePlannerController({ calibrated, myProfile = null, trackedHandicap, baseline }: Props) {
   const { supabase, authUser } = useAuthUser()
@@ -99,6 +104,16 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
       // A round in progress wins: reopening mid-round lands back on its course.
       const active = loadActiveRound()
       setRound(active)
+      if (active) void kvSet(ACTIVE_ROUND_IDB_KEY, active)
+      // localStorage lost it (cleared, evicted)? The IndexedDB copy brings the round back.
+      else
+        void kvGet<ActiveRound>(ACTIVE_ROUND_IDB_KEY).then((saved) => {
+          const r = saved?.value
+          if (r && typeof r.id === "string" && Array.isArray(r.holes) && r.holes.length > 0 && !loadActiveRound()) {
+            setRound(r)
+            saveActiveRound(r)
+          }
+        })
       const last = loadLastPosition()
       if (active && last?.course.id !== active.course.id) {
         void loadCourse(active.course, { autoHoleRef: nextUnscored(active) ?? active.startHole })
@@ -214,6 +229,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   function changeRound(next: ActiveRound | null) {
     setRound(next)
     saveActiveRound(next)
+    void (next ? kvSet(ACTIVE_ROUND_IDB_KEY, next) : kvDelete(ACTIVE_ROUND_IDB_KEY))
   }
   function changePlayView(v: PlayView) {
     setPlayView(v)
@@ -231,6 +247,18 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const hole: CourseHole | null = holes.find((h) => h.id === holeId) ?? null
   // The round in progress, when it's at the course that's open.
   const roundHere = round && course && round.course.id === course.id ? round : null
+
+  // Start round: save what the planner needs for this course while there is signal (once per round per page load).
+  const prefetchedFor = useRef<string | null>(null)
+  const [offlineReport, setOfflineReport] = useState<PrefetchReport | null>(null)
+  useEffect(() => {
+    if (!roundHere || !geometry || prefetchedFor.current === roundHere.id) return
+    prefetchedFor.current = roundHere.id
+    void prefetchForRound({ courseId: roundHere.course.id, geometry }).then(setOfflineReport)
+  }, [roundHere, geometry])
+  useEffect(() => {
+    if (!round) setOfflineReport(null)
+  }, [round])
   const scoring = !!roundHere && playView === "score"
 
   const obTags = useObTags({ supabase, authUser, course })
@@ -325,6 +353,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
 
   return {
     mapTapGuardUntil,
+    offlineReport,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,

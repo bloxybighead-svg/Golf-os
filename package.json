@@ -10,14 +10,17 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@serwist/next": "^9.5.13",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.44.2",
+    "idb": "^8.0.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.22.0",
     "next": "^14.2.35",
     "react": "^18",
     "react-dom": "^18",
-    "recharts": "^3.9.1"
+    "recharts": "^3.9.1",
+    "serwist": "^9.5.13"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.22",

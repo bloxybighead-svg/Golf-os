@@ -33,6 +33,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Skip static assets and the PWA icon/manifest files; everything else runs through.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/|icon.svg|apple-icon.png|manifest.webmanifest).*)"],
+  // Skip static assets and the PWA icon/manifest/service-worker files; everything else runs through.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/|icon.svg|apple-icon.png|manifest.webmanifest|sw.js|swe-worker).*)"],
 }

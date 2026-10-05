@@ -11,6 +11,7 @@ import type { createClient } from "@/lib/supabase/client"
 import { GEOMETRY_VERSION, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { COURSE_CACHE_MAX_AGE_MS, type CourseHit } from "@/lib/planner/storage"
 import type { HoleCorrectionSubmission } from "@/components/simulator/EditHoleModal"
+import { loadCourseGeometry, saveCourseGeometry } from "@/lib/offline/snapshots"
 import type { AuthUser } from "./useAuthUser"
 
 export type AutoHole = { autoHoleId?: string; autoHoleRef?: number; autoFirstHole?: boolean }
@@ -74,6 +75,8 @@ export function useCourseGeometry() {
   async function fetchGeometry(c: CourseHit, opts: ({ force?: boolean } & AutoHole) | undefined, onApplied: OnGeometryApplied) {
     const cacheKey = `golfos.course.${c.id}.v${GEOMETRY_VERSION}`
     const apply = (g: CourseGeometry) => {
+      // Also kept in IndexedDB (roomier than localStorage, and what the offline round reads).
+      if (g.scope === "course-area") void saveCourseGeometry(c.id, g)
       setGeometry(g)
       setLoadError("")
       setLoadState("idle")
@@ -97,6 +100,15 @@ export function useCourseGeometry() {
         }
       } catch {
         /* ignore unreadable saved data */
+      }
+    }
+    // No signal at all: go straight to the copy saved on this phone instead of waiting out three failed tries.
+    if (!opts?.force && !navigator.onLine) {
+      const saved = stale ?? (await loadCourseGeometry(c.id))
+      if (saved) {
+        apply({ ...saved, coast: saved.coast ?? [] })
+        setLoadError("Offline: showing the copy saved on this phone.")
+        return
       }
     }
     setLoadState("loading")
@@ -134,6 +146,12 @@ export function useCourseGeometry() {
     }
     if (stale) {
       apply(stale)
+      setLoadError("Showing the copy saved on this phone (couldn't refresh it).")
+      return
+    }
+    const savedOffline = await loadCourseGeometry(c.id)
+    if (savedOffline) {
+      apply({ ...savedOffline, coast: savedOffline.coast ?? [] })
       setLoadError("Showing the copy saved on this phone (couldn't refresh it).")
       return
     }

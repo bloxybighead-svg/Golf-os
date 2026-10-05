@@ -11,9 +11,9 @@ import type { Scorecard } from "@/lib/courses/scorecard"
 /** Adds each hole's stroke index from the course's scorecard (for net double bogey), when the hole has none. */
 async function withStrokeIndexes<T extends { hole_number: number; stroke_index?: number | null }>(courseId: string, holes: T[]): Promise<T[]> {
   try {
-    const res = await fetch(`/api/courses/${encodeURIComponent(courseId)}/scorecard`)
-    if (!res.ok) return holes
-    const card = (await res.json()) as Scorecard
+    // The scorecard saved at Start round answers when there is no signal.
+    const card = await fetchWithSnapshot<Scorecard>(`/api/courses/${encodeURIComponent(courseId)}/scorecard`, snapshotKeys.scorecard(courseId))
+    if (!card) return holes
     const si = new Map(card.holes.map((h) => [h.number, h.strokeIndex]))
     return holes.map((h) => (h.stroke_index != null ? h : { ...h, stroke_index: si.get(h.hole_number) ?? null }))
   } catch {
@@ -21,12 +21,16 @@ async function withStrokeIndexes<T extends { hole_number: number; stroke_index?:
   }
 }
 import { summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
-import { describeOrder, holesFor, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
+import { describeOrder, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
 import { recommendTee, type TeeOption } from "@/lib/tbox/estimate"
 import { teeChoiceKey, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
 import { createRound } from "@/app/rounds/actions"
 import { Choice, HolePad } from "@/components/rounds/HolePad"
 import { holesToAskAboutOb } from "@/lib/rounds/obQuestions"
+import { fetchWithSnapshot, snapshotKeys, type PrefetchReport } from "@/lib/offline/snapshots"
+import { queueJob } from "@/lib/offline/outbox"
+import { ROUND_JOB, type RoundPayload } from "@/lib/offline/jobs"
+import { SyncStatus } from "@/components/pwa/SyncStatus"
 
 export type PlayView = "map" | "score"
 
@@ -47,6 +51,10 @@ interface Props {
   driverCarryYds: number | null
   handicapIndex: number | null
   signedIn: boolean
+  /** The signed-in account's id: a finished round is queued under it and only ever sent to that account. */
+  userId: string | null
+  /** What Start round saved for offline use (null until it has run). */
+  offlineReport?: PrefetchReport | null
   /** "Round saved" note after finishing: held by the parent so it survives this component moving between the dock and the page. */
   savedNote: boolean
   onSavedNote: (v: boolean) => void
@@ -95,6 +103,7 @@ export function PlayRound(props: Props) {
           {savedNote && (
             <p className="text-sm text-fg-2">
               Round saved.{" "}
+              <SyncStatus className="mr-2" />
               <Link href="/rounds" className="font-semibold text-accent hover:underline">
                 View rounds
               </Link>
@@ -158,6 +167,14 @@ export function PlayRound(props: Props) {
         </p>
       </div>
 
+      {props.offlineReport && (
+        <p className={`text-xs ${props.offlineReport.failed.length > 0 ? "text-warn" : "text-fg-3"}`}>
+          {props.offlineReport.failed.length > 0
+            ? `Not saved for offline: ${props.offlineReport.failed.join(", ")}. Start with signal to save them.`
+            : "Saved for offline: course map, tees, your shots."}
+        </p>
+      )}
+
       {view === "score" && (
         <ScorePanel
           {...props}
@@ -198,11 +215,10 @@ function StartRoundSheet({
 
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/courses/${course.id}/tees`)
-      .then((r) => (r.ok ? r.json() : { tees: [] }))
+    fetchWithSnapshot<{ tees?: OpenGolfApiTee[] }>(`/api/courses/${course.id}/tees`, snapshotKeys.tees(course.id))
       .then((d) => {
         if (cancelled) return
-        const options = teeOptionsFrom((d.tees ?? []) as OpenGolfApiTee[])
+        const options = teeOptionsFrom((d?.tees ?? []) as OpenGolfApiTee[])
         setTees(options)
         if (options.length === 0) return
         // The tee already picked for this course, else the best fit for the bag.
@@ -245,6 +261,7 @@ function StartRoundSheet({
       }
     }
     onStart({
+      id: newRoundId(), // the round's identity from now on (becomes rounds.id)
       course,
       date: localToday(),
       teeName: tee?.name ?? null,
@@ -387,6 +404,7 @@ function ScorePanel({
   onGoToHole,
   onViewChange,
   signedIn,
+  userId,
   obAnswered,
   onObAnswer,
   onSaved,
@@ -436,7 +454,8 @@ function ScorePanel({
     setError("")
     startTransition(async () => {
       try {
-        await createRound({
+        const input = {
+          id: round.id,
           date: round.date,
           course_name: round.course.name,
           is_competitive: false,
@@ -447,7 +466,12 @@ function ScorePanel({
           course_id: round.course.id,
           tee_name: round.teeName,
           holes: await withStrokeIndexes(round.course.id, scored),
-        })
+        }
+        // Saved on the phone first, then sent whenever there is signal (components/pwa/OfflineProvider).
+        // Sending it again is safe: the id makes it an upsert. Only if IndexedDB is unusable is it sent directly.
+        const payload: RoundPayload = { userId: userId ?? "", input }
+        const queued = userId ? await queueJob({ key: round.id, kind: ROUND_JOB, payload }) : false
+        if (!queued) await createRound(input)
         const questions = onObAnswer ? holesToAskAboutOb(scored, obAnswered ?? (() => false)) : []
         if (questions.length > 0) setAsking(questions)
         else onSaved()

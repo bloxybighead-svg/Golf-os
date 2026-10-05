@@ -2005,6 +2005,65 @@ Handicapping (usga.org/handicapping/roh): 5.1a, 5.1b, 5.2a, 5.2b, 3.1b,
   exceptional score reduction (5.9), PCC (5.6), real 9-hole ratings, the
   planner's own inline course search not switched to CourseSearch.
 
+### Offline play (2026-10-05, session 15)
+
+Play keeps working through dead zones once a round has started. No planner
+math or layout changed. No SQL: round_holes already had UNIQUE (round_id,
+hole_number) (verified live) and rounds.id is the dedupe key.
+
+- Service worker: Serwist (`@serwist/next`; next-pwa is unmaintained).
+  `app/sw.ts` -> `public/sw.js` (gitignored, built by `next build`, off in
+  `next dev`). Precaches JS/CSS/icons + `/offline`; pages are NetworkFirst
+  (4 s) with the last copy as fallback (cache `golfos-pages`). It never
+  touches /api, Supabase or any cross-origin request, so **satellite tiles
+  are never stored** (Esri World Imagery terms forbid offline copies; OSM's
+  tile policy bans offline use too, though the app only uses OSM as data).
+  Registered by `components/pwa/OfflineProvider.tsx`, which also shows the
+  "Update available" toast (hidden during a round; tap-only reload, the
+  worker waits instead of skipping waiting) and runs the sync flush.
+- With no signal the map shows the vector course layers on a plain
+  background + "Satellite needs signal. Course shapes still work."
+  Follow-up: check whether a public-domain US imagery source (USGS National
+  Map / NAIP) could be cached legally.
+- Start round saves for offline (`lib/offline/snapshots.ts prefetchForRound`,
+  once per round per page load): course map (corrections already applied;
+  IndexedDB, also written on every geometry load, newest 8 courses), tees,
+  scorecard, and the Play page itself (which carries the golfer's
+  shot_profiles, setup and bag as server props). Zones and OB tags are read
+  from the localStorage mirrors the hooks already keep; useObTags now also
+  writes the merged remote+local tags to that mirror. Shots are generated in
+  the browser, so the ranking runs offline (checked with the server stopped).
+- Rounds: the round gets a UUID (`ActiveRound.id`) at Start round. Every tap
+  is in localStorage + IndexedDB (`activeRound`). **Hole scores are not sent
+  mid-round**: a half round in `rounds` would count toward the handicap.
+  Finish queues ONE outbox job keyed by the round id (`lib/offline/` :
+  syncQueue.ts pure + tested, db.ts IndexedDB, outbox.ts); the flush calls
+  `createRound`, which is now an upsert on that id (and round_holes an upsert
+  on (round_id, hole_number), then deletes holes no longer in the round,
+  `penalty_shot` always sent). Retry with backoff 5 s x2 up to 5 min, +-25%
+  jitter, parked after 12 tries or a permanent error; temporary failure
+  stops the flush so order holds. Each job carries its owner's user id and is
+  only sent while that account is signed in; signing out clears saved copies
+  and cached pages but NOT the outbox. OB tag edits made offline queue the
+  same way. RLS checked live in a rolled-back transaction: a retry leaves one
+  round and one hole row; another account's upsert onto that id is refused.
+- Status line (`components/pwa/SyncStatus.tsx`): "Saved on phone · will sync"
+  / "Synced". Plain text, not a filled pill (DESIGN.md: no pills).
+- useAuthUser now trusts the saved session first (works offline); only a
+  real 401/403 signs out.
+- Not done / follow-ups: zones drawn offline stay on the phone (no queue for
+  `course_zones` yet); a round's validation error shows as "couldn't sync"
+  rather than inline; the Rounds page does not list a queued round until it
+  syncs; zones/OB mirror in localStorage is shared by every account on a
+  device (pre-existing).
+- Test by hand: Chrome DevTools -> Application -> Service Workers (should
+  be "activated and is running"), start a round on Play, then tick Offline
+  (Network tab) and reload: Play opens, the map shows shapes on a plain
+  background, ranking works, scoring works. Finish the round offline ->
+  "Saved on phone · will sync"; untick Offline -> "Synced" and the round is
+  on Rounds once. iPhone: Safari -> Share -> Add to Home Screen, open it
+  with signal, Start round, then Airplane Mode and reopen from the icon.
+
 ### Code health: planner split, API rate limits (2026-10-01, session 14)
 
 Dillon's spec called this "Session 13". No planner numbers or layout changed:
