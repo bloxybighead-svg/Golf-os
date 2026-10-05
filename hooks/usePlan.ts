@@ -15,6 +15,10 @@ import type { UserZone } from "@/lib/course/lies"
 import type { CourseFeature, CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import { aimMarkerFor, evaluateClub, isAtBestAim, simulateLandings, strokesAtAim, type ClubShots, type OptimizedClubPlan } from "@/lib/course/plan"
 import { buildLieMapFrom, type LieInputs } from "@/lib/course/rankRequest"
+import { conditionsKey, hasEffect, playsLike, playsLikeBreakdown, type PlaysLike, type ShotConditions } from "@/lib/course/playsLike"
+import { useHoleElevation } from "@/hooks/useHoleElevation"
+import { usePlaysLikeSetting } from "@/hooks/usePlaysLikeSetting"
+import { useWind } from "@/hooks/useWind"
 import { optionsFor, tradeoffText } from "@/lib/course/rankOptions"
 import { widenShots } from "@/lib/course/strategy"
 import { obBandsFor, type ObBand, type ObTag } from "@/lib/course/obTags"
@@ -67,6 +71,8 @@ export interface PlanInputs {
   onCourseSpread: number
   /** The golfer's OB tags for the current hole (saved per course + hole). */
   obTags: ObTag[]
+  /** A round is being played: the wind is refreshed every 15 minutes. */
+  roundActive: boolean
 }
 
 export function usePlan({
@@ -98,6 +104,7 @@ export function usePlan({
   showRings,
   onCourseSpread,
   obTags,
+  roundActive,
 }: PlanInputs) {
   // ---------- golfer shots ----------
   // Clubs in the bag with no measured shots are estimated from the golfer's
@@ -191,6 +198,20 @@ export function usePlan({
   // fixed direction, not wherever the golfer currently stands.
   const holeBearingDeg = useMemo(() => (hole && pin ? bearingDeg(hole.line[0], pin) : null), [hole, pin])
 
+  // ---------- plays like: ground height and wind ----------
+  // Applied to every sampled shot inside the simulation (lib/course/playsLike.ts), so the club ranking, the
+  // aim search and the penalty shares include it. Switched off (or with no wind and no ground heights) the
+  // plan is exactly the still-air, level-ground one.
+  const [playsLikeOn, setPlaysLikeOn] = usePlaysLikeSetting()
+  const elevation = useHoleElevation(course?.id ?? null, holeId, hole?.line ?? null)
+  const wind = useWind({ courseId: course?.id ?? null, center: course?.lat != null && course.lng != null ? { lat: course.lat, lng: course.lng } : null, roundActive })
+  const conditions: ShotConditions | null = useMemo(() => {
+    if (!playsLikeOn) return null
+    const c: ShotConditions = { wind: wind.wind, elevation }
+    return hasEffect(c) ? c : null
+  }, [playsLikeOn, wind.wind, elevation])
+  const conditionsId = conditionsKey(conditions)
+
   // ---------- planning ----------
   // What's actually mapped for the CURRENT hole vs. hand-drawn vs. missing --
   // drives both the data-quality badge and the fairway fallback below.
@@ -262,9 +283,12 @@ export function usePlan({
             spread: onCourseSpread,
             par: hole?.par ?? null,
             yards: holeYards,
+            conditions,
+            conditionsKey: conditionsId,
           }
         : null,
-    [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap, onCourseSpread, holeYards]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap, onCourseSpread, holeYards, conditionsId]
   )
   const rankState = useClubRanking(lieInputs, clubShots, rankingRequest)
   // The ranking is by expected strokes, with the spread applied. The card offers two options from it: smart play (the
@@ -307,13 +331,13 @@ export function usePlan({
   // The chosen club where the aim marker actually points, with every shot: what the dots, "Finishes" and "leaves" describe.
   const chosenLive = useMemo(() => {
     if (!chosenShots || !ball || !aim || !pin || !lies) return null
-    return evaluateClub(chosenShots, { from: ball, aim, pin, lies, startLie, baseline: scoreBaseline })
-  }, [chosenShots, ball, aim, pin, lies, startLie, scoreBaseline])
+    return evaluateClub(chosenShots, { from: ball, aim, pin, lies, startLie, baseline: scoreBaseline, conditions })
+  }, [chosenShots, ball, aim, pin, lies, startLie, scoreBaseline, conditions])
   // The ranking's own held-out shots at the aim marker: the "At your aim" number.
   const chosenAtAim = useMemo(() => {
     if (!chosenShots || !ball || !aim || !pin || !lies) return null
-    return strokesAtAim(chosenShots, { from: ball, aim, pin, lies, startLie, baseline: scoreBaseline })
-  }, [chosenShots, ball, aim, pin, lies, startLie, scoreBaseline])
+    return strokesAtAim(chosenShots, { from: ball, aim, pin, lies, startLie, baseline: scoreBaseline, conditions })
+  }, [chosenShots, ball, aim, pin, lies, startLie, scoreBaseline, conditions])
   const atBestAim = !!chosen && !!ball && !!aim && isAtBestAim(ball, aim, chosen)
 
   function aimAtBest(r: OptimizedClubPlan) {
@@ -341,8 +365,8 @@ export function usePlan({
 
   const landings = useMemo(() => {
     if (!chosenShots || !ball || !aim || !lies) return []
-    return simulateLandings(chosenShots.club, seededSample(chosenShots.shots, DOTS_SHOWN, 3), ball, bearingDeg(ball, aim), lies)
-  }, [chosenShots, ball, aim, lies])
+    return simulateLandings(chosenShots.club, seededSample(chosenShots.shots, DOTS_SHOWN, 3), ball, bearingDeg(ball, aim), lies, undefined, conditions)
+  }, [chosenShots, ball, aim, lies, conditions])
 
   // Trouble map: what each spot around the hole costs compared with a fairway lie.
   const troubleCells = useMemo(() => {
@@ -367,6 +391,12 @@ export function usePlan({
   }, [geometry])
 
   const distPin = ball && pin ? distanceYds(ball, pin) : null
+  // The distance to the pin as it plays for the chosen club: height change and wind (null when neither applies).
+  const pinPlaysLike: (PlaysLike & { breakdown: string }) | null = useMemo(() => {
+    if (!ball || !pin || !chosen || !conditions) return null
+    const p = playsLike(distanceYds(ball, pin), ball, pin, bearingDeg(ball, pin), chosen.club, conditions)
+    return p ? { ...p, breakdown: playsLikeBreakdown(p) } : null
+  }, [ball, pin, chosen, conditions])
   const distAim = ball && aim ? distanceYds(ball, aim) : null
   const aimToPin = aim && pin ? distanceYds(aim, pin) : null
   const aimIsPin = aimToPin != null && aimToPin < 3
@@ -425,6 +455,11 @@ export function usePlan({
     shownLies,
     startLie,
     optionsNote,
+    pinPlaysLike,
+    wind,
+    playsLikeOn,
+    setPlaysLikeOn,
+    hasElevation: !!elevation,
     obBands,
     allZones,
     stats,

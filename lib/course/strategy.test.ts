@@ -216,6 +216,7 @@ describe("look-ahead on long holes", () => {
     lie,
     carryPoint: at(x, y),
     carryLie: lie,
+    carryYds: y,
     totalYds: y,
     lieSource: "mapped" as const,
     dropPoint: null,

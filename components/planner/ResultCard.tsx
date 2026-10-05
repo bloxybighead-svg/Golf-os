@@ -7,6 +7,7 @@ import { AlertTriangle, Check, X } from "lucide-react"
 import type { CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import type { Lie } from "@/lib/course/lies"
 import { boundaryStatus, type ConfirmableHazard, type HoleDataQuality, type SurfaceStatus } from "@/lib/course/dataQuality"
+import type { PlaysLike } from "@/lib/course/playsLike"
 import { flagsUnmapped, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
 import { PENALTY_CAP, pctText, penaltyShare, penaltyWord, type Options } from "@/lib/course/strategy"
 import { pct, STATUS_TITLE } from "@/lib/planner/labels"
@@ -43,6 +44,8 @@ export interface ResultCardProps {
   shotsLabel?: string
   /** Taps an option: that club, aimed at its best. */
   onPickOption: (r: OptimizedClubPlan) => void
+  /** The distance to the pin as it plays for the chosen club (height change, wind), with its breakdown; null when neither applies. */
+  pinPlaysLike?: (PlaysLike & { breakdown: string }) | null
 }
 
 export function ResultCard({
@@ -71,6 +74,7 @@ export function ResultCard({
   options,
   onPickOption,
   shotsLabel,
+  pinPlaysLike = null,
 }: ResultCardProps) {
   const penalty = penaltyShare(chosen.plan)
   const overCap = penalty > PENALTY_CAP
@@ -135,8 +139,9 @@ export function ResultCard({
       <dl className="mt-4 grid grid-cols-3 divide-x divide-fg/[0.08] border-y border-fg/[0.08] py-2 text-center">
         <Stat label="Aim line" value={distAim != null ? Math.round(distAim) : null} />
         <Stat label={aimIsPin ? "Aim is pin" : "Aim to pin"} value={aimIsPin ? 0 : aimToPin != null ? Math.round(aimToPin) : null} />
-        <Stat label="To pin" value={distPin != null ? Math.round(distPin) : null} />
+        <Stat label="To pin" value={distPin != null ? Math.round(distPin) : null} plays={pinPlaysLike && distPin != null ? Math.round(pinPlaysLike.playsYds) : null} />
       </dl>
+      {pinPlaysLike?.breakdown && <p className="mt-1 text-[11px] text-fg-3 tabular-nums">{pinPlaysLike.breakdown}</p>}
 
       <p className="mt-2 text-xs text-fg-3">
         Finishes ~<span className="tabular-nums">{Math.round(chosenLive.meanTotalYds)}</span> yd (carry{" "}

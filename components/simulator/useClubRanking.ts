@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import type { LatLng } from "@/lib/course/geo"
 import type { StartLie } from "@/lib/course/cost"
 import type { ClubShots, OptimizedClubPlan } from "@/lib/course/plan"
+import type { ShotConditions } from "@/lib/course/playsLike"
 import {
   createRankHandler,
   LruCache,
@@ -39,6 +40,9 @@ export interface RankingRequest {
   /** The hole's par and yardage: long holes look one shot ahead from the tee. */
   par: number | null
   yards: number | null
+  /** Wind and ground height (null = still air, level ground) and the key that tells a changed one apart. */
+  conditions: ShotConditions | null
+  conditionsKey: string
 }
 
 export interface ClubRanking {

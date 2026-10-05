@@ -28,6 +28,7 @@ import { HoleHeader } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
 import { ClubChips } from "@/components/planner/ClubChips"
 import { ObBanner } from "@/components/planner/ObBanner"
+import { WindControl } from "@/components/planner/WindControl"
 import { CoursePickerSheet } from "@/components/planner/CoursePickerSheet"
 import { MapView } from "@/components/planner/MapView"
 
@@ -59,6 +60,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, syncLocalZonesToAccount, syncingZones, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
+    pinPlaysLike, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
   } = vm
 
   const planCard =
@@ -95,7 +97,9 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         options={optionsNote}
         onPickOption={pickClub}
         shotsLabel={source === "calibrated" ? "My shots" : source === "legacy" ? `${calibratedName} (old data)` : "Handicap estimate"}
+        pinPlaysLike={pinPlaysLike}
       />
+      <WindControl wind={wind} holeBearingDeg={holeBearingDeg} playsLikeOn={playsLikeOn} onPlaysLikeChange={setPlaysLikeOn} hasElevation={hasElevation} />
       </>
     ) : null
 
@@ -214,6 +218,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         initialZoom={initialZoom}
         onZoomChange={(z) => course && saveZoom(course.id, z)}
         holeBearingDeg={holeBearingDeg}
+        wind={playsLikeOn ? wind.wind : null}
         onBall={(p) => {
           if (Date.now() < mapTapGuardUntil.current) return
           stopFollowing()

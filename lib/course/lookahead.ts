@@ -16,6 +16,7 @@ import { bearingDeg, distanceYds, fromLocal, toLocal, type LatLng } from "./geo"
 import { projectOnLine } from "./aim"
 import type { Baseline } from "./baseline"
 import type { Lie, LieMap } from "./lies"
+import type { ShotConditions } from "./playsLike"
 import { evaluateClub, type ClubShots, type Landing } from "./plan"
 import {
   LOOKAHEAD_AIM_OFFSETS,
@@ -40,6 +41,8 @@ export interface LookaheadArgs {
   line: LatLng[]
   lies: LieMap
   baseline: Baseline
+  /** Wind and ground height for the next shot too (playsLike.ts). */
+  conditions?: ShotConditions | null
 }
 
 export interface Lookahead {
@@ -65,7 +68,7 @@ export function bestNextShot(at: LatLng, lie: Lie, cands: Candidate[], args: Loo
   for (const c of nearest) {
     for (const off of LOOKAHEAD_AIM_OFFSETS) {
       const bearing = (toPin + (Math.atan2(off, Math.max(c.carry, 10)) * 180) / Math.PI + 360) % 360
-      const plan = evaluateClub(c.shots, { from: at, aim: args.pin, pin: args.pin, lies: args.lies, startLie: lie, baseline: args.baseline }, bearing)
+      const plan = evaluateClub(c.shots, { from: at, aim: args.pin, pin: args.pin, lies: args.lies, startLie: lie, baseline: args.baseline, conditions: args.conditions }, bearing)
       if (plan.expectedStrokes < best) best = plan.expectedStrokes
     }
   }

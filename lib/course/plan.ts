@@ -16,6 +16,7 @@ import type { StartLie } from "./cost"
 import { TOUR_BASELINE, type Baseline } from "./baseline"
 import type { Lie, LieMap, LieSource } from "./lies"
 import { rollToRest, rollYds } from "./roll"
+import { adjustShot, type ShotConditions } from "./playsLike"
 import { seededRng, seededSample } from "@/lib/dispersion/stats"
 
 export interface ShotSample {
@@ -69,6 +70,11 @@ export interface PlanContext {
    * Null = no opinion (water, out of bounds, off the grid): the baseline decides.
    */
   valueAt?: (landing: Landing) => number | null
+  /**
+   * Wind and ground height (playsLike.ts), applied to every sampled shot before it lands, so the ranking, the aim
+   * search and the penalty shares all include "plays like". Absent = still air, level ground (the plain simulation).
+   */
+  conditions?: ShotConditions | null
 }
 
 export interface Landing {
@@ -78,6 +84,8 @@ export interface Landing {
   /** Where it first came down. */
   carryPoint: LatLng
   carryLie: Lie
+  /** How far it carried, after wind and ground height (the sampled carry when there are none). */
+  carryYds: number
   /** Carry plus the roll it actually ran (less when a hazard stopped it). */
   totalYds: number
   /** Whether the lie where it stops is mapped or guessed. */
@@ -150,12 +158,15 @@ export function simulateLandings(
   from: LatLng,
   aimBearing: number,
   lies: LieMap,
-  rng: () => number = seededRng(ROLL_SEED)
+  rng: () => number = seededRng(ROLL_SEED),
+  conditions?: ShotConditions | null
 ): Landing[] {
-  return shots.map((s) => {
+  return shots.map((raw) => {
+    // Wind and ground height change what the sampled shot really does (identity with none).
+    const s = adjustShot(club, raw.carryYds, raw.offlineYds, from, aimBearing, conditions)
     const carryPoint = landingPoint(from, aimBearing, s.carryYds, s.offlineYds)
     const carry = lies.classify(carryPoint)
-    const roll = rollYds(club, carry.lie, s.carryYds, rng)
+    const roll = rollYds(club, carry.lie, s.carryYds, rng, s.rollScale)
     // It runs on in the direction it was travelling: from the golfer to where it came down.
     const rest = rollToRest(carryPoint, carry.lie, bearingDeg(from, carryPoint), roll, lies)
     const lieSource = rest.rolledYds > 0 ? lies.classify(rest.point).source : carry.source
@@ -164,6 +175,7 @@ export function simulateLandings(
       lie: rest.lie,
       carryPoint,
       carryLie: carry.lie,
+      carryYds: s.carryYds,
       totalYds: s.carryYds + rest.rolledYds,
       lieSource,
       dropPoint: rest.lie === "water" ? waterEntryPoint(from, carryPoint, rest.point, lies) : null,
@@ -173,7 +185,6 @@ export function simulateLandings(
 
 function scoreLandings(
   club: string,
-  shots: ShotSample[],
   landings: Landing[],
   from: LatLng,
   pin: LatLng,
@@ -191,7 +202,7 @@ function scoreLandings(
   let lng = 0
   let inferred = 0
   const perShot: number[] = []
-  landings.forEach((l, i) => {
+  landings.forEach((l) => {
     lieShare[l.lie] += 1
     if (l.lieSource === "inferred") inferred += 1
     const dropDist = l.dropPoint ? distanceYds(l.dropPoint, pin) : undefined
@@ -199,7 +210,7 @@ function scoreLandings(
     const shot = 1 + (ahead ?? baseline.expectedStrokesRemaining(l.lie, distanceYds(l.point, pin), origin, dropDist))
     strokes += shot
     perShot.push(shot)
-    carry += shots[i].carryYds
+    carry += l.carryYds
     total += l.totalYds
     lat += l.point.lat
     lng += l.point.lng
@@ -226,8 +237,8 @@ function scoreLandings(
 
 export function evaluateClub(club: ClubShots, ctx: PlanContext, aimBearingOverride?: number): ClubPlan {
   const bearing = aimBearingOverride ?? bearingDeg(ctx.from, ctx.aim)
-  const landings = simulateLandings(club.club, club.shots, ctx.from, bearing, ctx.lies)
-  return scoreLandings(club.club, club.shots, landings, ctx.from, ctx.pin, ctx.startLie ?? "fairway", ctx.baseline ?? TOUR_BASELINE, ctx.valueAt)
+  const landings = simulateLandings(club.club, club.shots, ctx.from, bearing, ctx.lies, undefined, ctx.conditions)
+  return scoreLandings(club.club, landings, ctx.from, ctx.pin, ctx.startLie ?? "fairway", ctx.baseline ?? TOUR_BASELINE, ctx.valueAt)
 }
 
 /** Every club, best (lowest expected strokes) first. */

@@ -67,9 +67,10 @@ export function clubGroup(club: string): ClubGroup {
  * pass the seeded generator so results repeat. It's drawn for every shot,
  * rolling or not, so each shot keeps the same draw whatever it lands on.
  */
-export function rollYds(club: string, landingLie: Lie, carryYds: number, rng: () => number): number {
+export function rollYds(club: string, landingLie: Lie, carryYds: number, rng: () => number, rollScale = 1): number {
   const spread = 1 + ROLL_SPREAD * (2 * rng() - 1)
-  const roll = BASE_ROLL_YDS[clubGroup(club)] * LIE_ROLL_FACTOR[landingLie] * spread
+  // rollScale: wind and slope (playsLike.ts); 1 = still air, level ground.
+  const roll = BASE_ROLL_YDS[clubGroup(club)] * LIE_ROLL_FACTOR[landingLie] * spread * rollScale
   return Math.max(0, Math.min(roll, Math.max(0, carryYds) * MAX_ROLL_SHARE_OF_CARRY))
 }
 

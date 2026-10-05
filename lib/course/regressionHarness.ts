@@ -18,6 +18,7 @@ import type { CourseFeature, CourseHole } from "./overpass"
 import type { ClubShots, OptimizedClubPlan } from "./plan"
 import { optionsFor, rankWithSpread } from "./rankOptions"
 import { needsLookahead, ON_COURSE_SPREAD, penaltyShare, type Options } from "./strategy"
+import type { ShotConditions } from "./playsLike"
 import { holePinFor } from "@/lib/planner/geometry"
 
 /** Handicap the regression cases are scored against (Dillon's tracked index is about 3). */
@@ -45,7 +46,7 @@ export interface Case {
 }
 
 /** Rank the bag from the tee of a Colts Neck hole, as the planner does (estimated fairway corridor, OB tags as zones). */
-export function rankColtsNeck(ref: number, tags: ObTag[], opts: { spread?: number; clubs?: ClubShots[]; lookahead?: boolean } = {}): Case {
+export function rankColtsNeck(ref: number, tags: ObTag[], opts: { spread?: number; clubs?: ClubShots[]; lookahead?: boolean; conditions?: ShotConditions | null } = {}): Case {
   const { hole, features, pin, par, yards } = coltsNeckHole(ref)
   // His own hand-drawn marks for these holes (fairways, trees, out of bounds): what the planner has when he plays there.
   const marks = zonesFile.zones as UserZone[]
@@ -63,10 +64,10 @@ export function rankColtsNeck(ref: number, tags: ObTag[], opts: { spread?: numbe
   const from = hole.line[0]
   const t0 = performance.now()
   const useLook = opts.lookahead ?? needsLookahead(par, yards)
-  const ranking = rankWithSpread(opts.clubs ?? dillonBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline }, {
+  const ranking = rankWithSpread(opts.clubs ?? dillonBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline, conditions: opts.conditions }, {
     spread: opts.spread ?? ON_COURSE_SPREAD,
     line: hole.line,
-    lookahead: useLook ? (clubs) => buildLookahead({ clubs, from, pin, line: hole.line, lies, baseline }) : undefined,
+    lookahead: useLook ? (clubs) => buildLookahead({ clubs, from, pin, line: hole.line, lies, baseline, conditions: opts.conditions }) : undefined,
   })
   const ms = performance.now() - t0
   return { ranking, options: optionsFor(ranking) as Options<OptimizedClubPlan>, ms }

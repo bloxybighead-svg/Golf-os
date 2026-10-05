@@ -16,6 +16,8 @@ export const RATE_LIMITS = {
   tees: { max: 30, windowSeconds: 60 },
   /** A course's scorecard (tees + holes): per IP. */
   scorecard: { max: 30, windowSeconds: 60 },
+  /** Ground heights fetched fresh from USGS / Open-Meteo (a cache miss): per IP. A hole is one request, so this is generous. */
+  elevation: { max: 20, windowSeconds: 60 },
   /** Course map data fetched fresh from OpenStreetMap (a cache miss or a refresh): per signed-in user. */
   geometryMiss: { max: 10, windowSeconds: 3600 },
 } as const

@@ -291,12 +291,14 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     showRings,
     onCourseSpread: settings.onCourseSpread,
     obTags: obTags.tagsFor(holeId),
+    roundActive: !!roundHere,
   })
   const {
     aim, aimAtBest, aimIsPin, aimToPin, atBestAim, avgLeft, bagDriverCarry, baselineHandicap, best, chosen,
     chosenAtAim, chosenLive, distAim, distPin, estimateNotes, fromLabel, holeBearingDeg, holeQuality, labels,
     landings, longestCarry, pickClub, pin, planReady, rankState, ranking, rankingPending, rings,
     scoreBaseline, shownLies, stats, troubleCells, optionsNote, obBands, lies,
+    pinPlaysLike, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
   } = plan
 
   // "No OB mapped on this hole": nothing beside the hole's line counts as out of bounds and the golfer hasn't said.
@@ -373,6 +375,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     stopFollowing, submitHoleCorrection, syncLocalZonesToAccount, syncingZones, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     optionsNote, obBands, obTags, holeObTags, noObMapped,
+    pinPlaysLike, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
     onCourseSpread: settings.onCourseSpread,
   }
 }

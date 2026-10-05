@@ -13,6 +13,7 @@ import { rankClubsOptimized, type ClubShots, type OptimizedClubPlan, type RankOp
 import { getBaseline } from "./baseline"
 import { buildLookahead, type Lookahead } from "./lookahead"
 import { needsLookahead, widenShots } from "./strategy"
+import { conditionsKey, type ShotConditions } from "./playsLike"
 
 /** Everything buildLieMap needs, as plain data that survives postMessage. */
 export interface LieInputs {
@@ -46,6 +47,8 @@ export type RankMessage =
       /** The hole's par and yardage, which decide whether the tee shot looks ahead. */
       par?: number | null
       yards?: number | null
+      /** Wind and ground height (playsLike.ts); absent or null = still air, level ground. */
+      conditions?: ShotConditions | null
       opts?: Omit<RankOptions, "line">
     }
 
@@ -76,9 +79,11 @@ export function rankKey(k: {
   handicap?: number | null
   /** The offline-spread multiplier. */
   spread?: number
+  /** conditionsKey() of the wind and ground height the ranking was made for. */
+  conditionsKey?: string
 }): string {
   const pt = (p: LatLng) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`
-  return [k.liesVersion, k.bagVersion, k.holeId ?? "-", k.startLie, pt(k.from), pt(k.pin), k.handicap ?? "tour", k.spread ?? "-"].join("|")
+  return [k.liesVersion, k.bagVersion, k.holeId ?? "-", k.startLie, pt(k.from), pt(k.pin), k.handicap ?? "tour", k.spread ?? "-", k.conditionsKey ?? "-"].join("|")
 }
 
 /** A small least-recently-used cache. */
@@ -132,7 +137,8 @@ export function createRankHandler(now: () => number = () => performance.now()) {
     }
     const t0 = now()
     const baseline = getBaseline(msg.handicap ?? null)
-    const ctx = { from: msg.from, aim: msg.aim, pin: msg.pin, lies: lies.map, startLie: msg.startLie, baseline }
+    const conditions = msg.conditions ?? null
+    const ctx = { from: msg.from, aim: msg.aim, pin: msg.pin, lies: lies.map, startLie: msg.startLie, baseline, conditions }
     if (msg.spread === undefined) {
       const results = rankClubsOptimized(bag.clubs, ctx, { ...msg.opts, line: msg.line })
       return { id: msg.id, results, ms: now() - t0 }
@@ -146,10 +152,10 @@ export function createRankHandler(now: () => number = () => performance.now()) {
     }
     let valueAt: Lookahead["valueAt"] | undefined
     if (msg.startLie === "tee" && msg.line && msg.line.length >= 2 && needsLookahead(msg.par, msg.yards)) {
-      const gk = [msg.spread, lies.version, bag.version, msg.handicap ?? "tour", msg.from.lat, msg.from.lng, msg.pin.lat, msg.pin.lng].join("|")
+      const gk = [msg.spread, lies.version, bag.version, msg.handicap ?? "tour", conditionsKey(conditions), msg.from.lat, msg.from.lng, msg.pin.lat, msg.pin.lng].join("|")
       let grid = grids.get(gk)
       if (!grid) {
-        grid = buildLookahead({ clubs, from: msg.from, pin: msg.pin, line: msg.line, lies: lies.map, baseline })
+        grid = buildLookahead({ clubs, from: msg.from, pin: msg.pin, line: msg.line, lies: lies.map, baseline, conditions })
         grids.set(gk, grid)
       }
       valueAt = grid.valueAt
