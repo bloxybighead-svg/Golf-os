@@ -178,7 +178,7 @@ export function useCourseGeometry() {
   ) {
     const { authUser, hole } = ctx
     if (!authUser || !course || !hole) return
-    const rows: { course_key: string; hole_id: string; field_name: string; original_value: string | null; corrected_value: string; reason: string | null; user_id: string; submitted_by: string | null }[] = []
+    const rows: { course_key: string; hole_id: string; field_name: string; original_value: string | null; corrected_value: string; reason: string | null; user_id: string }[] = []
     const add = (field: string, original: string | null, corrected: number | undefined) => {
       if (corrected == null) return
       rows.push({
@@ -189,7 +189,6 @@ export function useCourseGeometry() {
         corrected_value: String(corrected),
         reason: input.reason || null,
         user_id: authUser.id,
-        submitted_by: authUser.email,
       })
     }
     add("par", hole.par != null ? String(hole.par) : null, input.par)

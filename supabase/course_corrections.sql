@@ -14,7 +14,7 @@
 create table if not exists public.course_corrections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  submitted_by text,                    -- denormalized email for display, set server-side from the session
+  -- submitted_by (email) was dropped by course_corrections_privacy.sql: public SELECT leaked it.
   course_key text not null,             -- same key as course_geometry.course_key ("ogapi:<id>")
   hole_id text not null,                -- CourseHole.id
   field_name text not null check (field_name in ('par', 'tee_lat', 'tee_lng', 'yardage', 'handicap')),
