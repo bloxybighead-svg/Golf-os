@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
+import { decideCacheWrite } from "@/lib/course/cachePolicy"
 import { applyCorrections } from "@/lib/course/corrections"
+import { getCourseLocation } from "@/lib/courses/lookup"
 import { courseKey, readCachedGeometry, writeCachedGeometry } from "@/lib/supabase/courseCache"
 import { readCorrections } from "@/lib/supabase/courseCorrections"
 import { createClient } from "@/lib/supabase/server"
@@ -82,9 +84,8 @@ export async function GET(req: NextRequest) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
     return NextResponse.json({ error: "lat and lng are required" }, { status: 400 })
   }
-  const qLat = Math.round(lat * 1e4) / 1e4
-  const qLng = Math.round(lng * 1e4) / 1e4
-  const dbKey = courseKey(req.nextUrl.searchParams.get("id"))
+  const rawId = req.nextUrl.searchParams.get("id")
+  const dbKey = courseKey(rawId)
   // "Refresh course data": skip every cache layer and re-fetch from OpenStreetMap, then
   // overwrite whatever was cached so the NEXT normal load (no force) picks up the refresh.
   const force = req.nextUrl.searchParams.get("force") === "1"
@@ -120,6 +121,16 @@ export async function GET(req: NextRequest) {
     )
   }
 
+  // The cache is shared by every user, so what gets stored under a course id must have been fetched
+  // at that course's REAL location. With an id, look the location up on the server and ignore the
+  // browser's lat/lng/name; if that fails, still answer from the browser's position but never cache it.
+  const serverLoc = dbKey && rawId ? await getCourseLocation(rawId) : null
+  const useLat = serverLoc ? serverLoc.lat : lat
+  const useLng = serverLoc ? serverLoc.lng : lng
+  const useName = serverLoc ? serverLoc.name ?? name : name
+  const qLat = Math.round(useLat * 1e4) / 1e4
+  const qLng = Math.round(useLng * 1e4) / 1e4
+
   const deadline = Date.now() + 52000
   let geometry = null
   // A query that FAILS (server busy) is reported as 502 so the client retries;
@@ -130,7 +141,7 @@ export async function GET(req: NextRequest) {
 
   const boundaries = await runQuery(boundaryQuery(qLat, qLng, BOUNDARY_SEARCH_RADIUS_M), deadline)
   if (!boundaries) return busy()
-  const chosen = pickBoundary(parseBoundaries(boundaries), qLat, qLng, name)
+  const chosen = pickBoundary(parseBoundaries(boundaries), qLat, qLng, useName)
   if (chosen) {
     const idEls = await runQuery(courseWayIdsQuery(chosen), deadline)
     if (!idEls) return busy()
@@ -160,11 +171,20 @@ export async function GET(req: NextRequest) {
     geometry = parseOverpass(els, "radius")
   }
   let writeStatus = "not-attempted"
-  if (geometry.scope === "course-area") {
-    // Only persist plausible single courses (9 or 18 holes): a boundary that
-    // swallows several courses would otherwise be saved and served as wrong data.
-    const plausible = geometry.holes.length === 9 || geometry.holes.length === 18
-    if (dbKey && plausible) writeStatus = await writeCachedGeometry(dbKey, { name, lat: qLat, lng: qLng }, geometry)
+  const decision = decideCacheWrite({
+    hasId: dbKey != null,
+    server: serverLoc,
+    client: { lat, lng },
+    holes: geometry.holes.length,
+    scope: geometry.scope,
+  })
+  if (!dbKey) {
+    // radius search: never cached
+  } else if (decision.write) {
+    writeStatus = await writeCachedGeometry(dbKey, { name: useName, lat: qLat, lng: qLng }, geometry)
+  } else if (decision.reason !== "not-course-area" && decision.reason !== "implausible-hole-count") {
+    // Worth a log line: a lookup failure is an outage, a far-off client position is a poisoning attempt.
+    console.warn(`course geometry not cached for ${dbKey}: ${decision.reason}`)
   }
   return NextResponse.json(withCorrections(geometry), {
     headers: { "Cache-Control": CDN, "X-Course-Cache": writeStatus === "stored" ? "miss-stored" : "miss",
