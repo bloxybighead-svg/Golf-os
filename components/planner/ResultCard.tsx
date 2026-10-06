@@ -8,7 +8,7 @@ import type { CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import type { Lie } from "@/lib/course/lies"
 import { boundaryStatus, type ConfirmableHazard, type HoleDataQuality, type SurfaceStatus } from "@/lib/course/dataQuality"
 import type { PlaysLike } from "@/lib/course/playsLike"
-import { flagsUnmapped, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
+import { flagsUnmapped, isLowConfidence, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
 import { PENALTY_CAP, pctText, penaltyShare, penaltyWord, type Options } from "@/lib/course/strategy"
 import { pct, STATUS_TITLE } from "@/lib/planner/labels"
 import { Stat } from "./ui"
@@ -176,7 +176,21 @@ export function ResultCard({
       )}
       {options?.tradeoff && <p className="mt-2 text-xs text-fg-2">{options.tradeoff}</p>}
 
-      {flagsUnmapped(chosenLive) && (
+      {isLowConfidence(chosen.plan) ? (
+        <p className="mt-2 text-xs text-fg-2" data-testid="unmapped-warning">
+          <span className="font-semibold text-warn">{pct(chosen.plan.unmappedShare)}</span> of this pattern is on unmapped ground. Check the
+          map, mark{" "}
+          <button onClick={() => onStartDraw("trees")} className="font-semibold text-accent hover:underline">
+            trees
+          </button>
+          /
+          <button onClick={() => onStartDraw("oob")} className="font-semibold text-accent hover:underline">
+            OB
+          </button>{" "}
+          if needed.
+        </p>
+      ) : (
+        flagsUnmapped(chosenLive) && (
         <p className="mt-2 text-[11px] text-fg-3">
           <span className="font-semibold text-warn">{pct(chosenLive.unmappedShare)}</span> of shots landed on unmapped ground.
           Draw{" "}
@@ -189,6 +203,7 @@ export function ResultCard({
           </button>{" "}
           to sharpen this.
         </p>
+        )
       )}
 
       {holeQuality && (

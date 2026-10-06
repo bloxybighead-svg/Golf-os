@@ -150,4 +150,54 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("Go for it")
     expect(html).toContain("4.60 strokes")
   })
+
+  it("unmapped warning: above 25% the recommendation stays and a warning line sits under it", () => {
+    const render = (share: number) => {
+      const p: OptimizedClubPlan = { ...fourIron, plan: { ...fourIron.plan, unmappedShare: share } }
+      return renderToStaticMarkup(
+        <ResultCard
+          best={p}
+          chosen={p}
+          chosenLive={p.plan}
+          clubChoice="auto"
+          fromLabel="the tee"
+          hole={null}
+          baselineHandicap={10}
+          atBestAim
+          chosenAtAim={4.6}
+          distAim={190}
+          distPin={364}
+          aimToPin={188}
+          aimIsPin={false}
+          avgLeft={187}
+          estimateNotes={{}}
+          holeQuality={null}
+          geometry={null}
+          onEditHole={() => {}}
+          onStartDraw={() => {}}
+          onConfirmHazard={() => {}}
+          onAimAtBest={() => {}}
+          onBackToBest={() => {}}
+          options={null}
+          onPickOption={() => {}}
+        />
+      )
+    }
+    const warned = render(0.47)
+    expect(warned).toContain("Best club")
+    expect(warned).toContain("4.60")
+    expect(warned).toContain("47%")
+    expect(warned).toContain("of this pattern is on unmapped ground")
+    expect(warned).toContain("Check the")
+    expect(render(0.25)).not.toContain("of this pattern is on unmapped ground")
+    expect(render(0.26)).toContain("of this pattern is on unmapped ground")
+  })
+
+  it("StrategyToggle: flags the chosen play when much of it is on unmapped ground", () => {
+    const html = renderToStaticMarkup(
+      <StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true, noSafeOption: false } as never} chosen={fourIron} onPick={() => {}} compact unmappedWarning={0.54} />
+    )
+    expect(html).toContain("Best play")
+    expect(html).toContain("54% unmapped")
+  })
 })

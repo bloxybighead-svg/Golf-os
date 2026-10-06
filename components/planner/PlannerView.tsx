@@ -26,6 +26,7 @@ import { saveZoom } from "@/lib/planner/storage"
 import { ScoringDetails } from "@/components/planner/ScoringDetails"
 import { ClubTable } from "@/components/planner/ClubTable"
 import { ResultCard } from "@/components/planner/ResultCard"
+import { isLowConfidence } from "@/lib/course/plan"
 import { LayersMenu } from "@/components/planner/LayersMenu"
 import { HoleHeader } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
@@ -388,7 +389,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           {!scoring && (
             <>
               <div className="h-14 shrink-0 md:hidden">
-                {optionsNote && chosen && <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact />}
+                {optionsNote && chosen && <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} />}
               </div>
               <div className="flex h-11 shrink-0 items-center gap-2 md:hidden">
                 <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} className="flex min-w-0 flex-1 gap-1.5" />

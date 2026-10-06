@@ -13,6 +13,7 @@ export function StrategyToggle({
   onPick,
   className = "",
   compact = false,
+  unmappedWarning = null,
 }: {
   options: Options<OptimizedClubPlan>
   chosen: OptimizedClubPlan
@@ -20,6 +21,8 @@ export function StrategyToggle({
   className?: string
   /** Phone dock: one tight row each, no club name above the label. */
   compact?: boolean
+  /** Share (0 to 1) of the chosen club's pattern on unmapped ground when it is over the advisory line; flags that card. */
+  unmappedWarning?: number | null
 }) {
   return (
     <div className={`grid grid-cols-2 gap-2 ${className}`}>
@@ -42,7 +45,14 @@ export function StrategyToggle({
                 selected ? "border-accent bg-accent/10" : "border-fg/[0.1] hover:bg-fg/[0.04]"
               }`}
             >
-              <span className="block text-xs font-medium text-muted">{options.same ? "Best play" : label}</span>
+              <span className="block text-xs font-medium text-muted">{options.same ? "Best play" : label}
+                {unmappedWarning != null && chosen.club === r.club && (
+                  <span className="font-semibold text-warn" title="Much of this pattern lands on unmapped ground. Check the map below.">
+                    {" "}
+                    · {Math.round(unmappedWarning * 100)}% unmapped
+                  </span>
+                )}
+              </span>
               <span className={`block font-semibold text-fg ${compact ? "text-sm leading-tight" : "text-base"}`}>{r.club}</span>
               <span className="block text-xs tabular-nums text-fg-3">
                 {r.plan.expectedStrokes.toFixed(2)} strokes ·{" "}

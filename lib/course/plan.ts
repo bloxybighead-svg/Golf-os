@@ -106,6 +106,20 @@ export function flagsUnmapped(plan: Pick<ClubPlan, "unmappedShare">): boolean {
   return plan.unmappedShare > UNMAPPED_NOTE_SHARE
 }
 
+/**
+ * Above this share of a club's shots stopping on unmapped ground, the planner
+ * adds an advisory line under the recommendation (it never hides it, and
+ * unmapped ground still scores as plain rough: where a fairway is untraced,
+ * the unmapped ground IS the fairway, see lies.ts). A judgement call: a
+ * quarter of the pattern on guessed ground is worth a second look at the map.
+ */
+export const UNMAPPED_LOW_CONFIDENCE = 0.25
+
+/** True when too much of a club's pattern is on unmapped ground for a confident recommendation. */
+export function isLowConfidence(plan: Pick<ClubPlan, "unmappedShare">): boolean {
+  return plan.unmappedShare > UNMAPPED_LOW_CONFIDENCE
+}
+
 /** Step size, yards, when walking back along a shot to find where it went into the water. */
 const WATER_ENTRY_STEP_YDS = 5
 /** Halvings after that step brackets the water's edge: 5 yd / 2^4 = about a third of a yard. */
