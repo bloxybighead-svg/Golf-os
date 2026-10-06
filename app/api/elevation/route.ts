@@ -3,7 +3,7 @@ import { ELEVATION_MAX_POINTS, samePoints } from "@/lib/course/elevation"
 import { lookupElevations } from "@/lib/course/elevationSources"
 import { courseKey } from "@/lib/supabase/courseCache"
 import { readCachedElevation, writeCachedElevation } from "@/lib/supabase/elevationCache"
-import { clientIp, hitRateLimit, rateLimitBucket, RATE_LIMITS, tooManyRequests } from "@/lib/supabase/rateLimit"
+import { clientIp, hitRateLimit, rateLimitBucket, RATE_LIMITS, rateLimitedResponse } from "@/lib/supabase/rateLimit"
 
 // Ground height in feet for up to ELEVATION_MAX_POINTS points. USGS EPQS where it
 // covers (US), Open-Meteo elsewhere. With a courseId and holeId the answer is kept in
@@ -43,8 +43,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (!(await hitRateLimit("elevation", rateLimitBucket("elevation", { ip: clientIp(req.headers) })))) {
-    return tooManyRequests("Too many elevation lookups. Holes already looked up still work; try again in a minute.", RATE_LIMITS.elevation.windowSeconds)
+  const limit = await hitRateLimit("elevation", rateLimitBucket("elevation", { ip: clientIp(req.headers) }))
+  if (!limit.allowed) {
+    return rateLimitedResponse(limit, "Too many elevation lookups. Holes already looked up still work; try again in a minute.", RATE_LIMITS.elevation.windowSeconds)
   }
   const found = await lookupElevations(points)
   if (!found) return NextResponse.json({ error: "Elevation service is busy, try again in a moment." }, { status: 502 })

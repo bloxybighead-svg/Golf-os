@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { clientIp, hitRateLimit, rateLimitBucket, tooManyRequests } from "@/lib/supabase/rateLimit"
+import { clientIp, hitRateLimit, rateLimitBucket, rateLimitedResponse } from "@/lib/supabase/rateLimit"
 
 // Proxies OpenGolfAPI's course search so the browser never talks to a
 // third-party host directly (keeps it server-controlled, avoids CORS).
@@ -11,9 +11,8 @@ export async function GET(req: NextRequest) {
   if (!q || q.length < 2) {
     return NextResponse.json({ courses: [] })
   }
-  if (!(await hitRateLimit("search", rateLimitBucket("search", { ip: clientIp(req.headers) })))) {
-    return tooManyRequests("Too many course searches. Try again in a minute.", 60)
-  }
+  const limit = await hitRateLimit("search", rateLimitBucket("search", { ip: clientIp(req.headers) }))
+  if (!limit.allowed) return rateLimitedResponse(limit, "Too many course searches. Try again in a minute.", 60)
 
   const res = await fetch(`${OPENGOLFAPI_BASE}/courses/search?q=${encodeURIComponent(q)}`, {
     next: { revalidate: 3600 },

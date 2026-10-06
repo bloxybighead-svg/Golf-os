@@ -5,7 +5,7 @@ import { getCourseLocation } from "@/lib/courses/lookup"
 import { courseKey, readCachedGeometry, writeCachedGeometry } from "@/lib/supabase/courseCache"
 import { readCorrections } from "@/lib/supabase/courseCorrections"
 import { createClient } from "@/lib/supabase/server"
-import { hitRateLimit, rateLimitBucket, RATE_LIMITS, tooManyRequests } from "@/lib/supabase/rateLimit"
+import { hitRateLimit, rateLimitBucket, RATE_LIMITS, rateLimitedResponse } from "@/lib/supabase/rateLimit"
 import {
   boundaryGeometryQuery,
   boundaryQuery,
@@ -114,8 +114,10 @@ export async function GET(req: NextRequest) {
       { status: 401, headers: { "Cache-Control": "no-store" } }
     )
   }
-  if (!(await hitRateLimit("geometryMiss", rateLimitBucket("geometryMiss", { userId: user.id })))) {
-    return tooManyRequests(
+  const limit = await hitRateLimit("geometryMiss", rateLimitBucket("geometryMiss", { userId: user.id }))
+  if (!limit.allowed) {
+    return rateLimitedResponse(
+      limit,
       `You've loaded ${RATE_LIMITS.geometryMiss.max} new courses in the last hour. Courses already loaded still work; try a new one again later.`,
       RATE_LIMITS.geometryMiss.windowSeconds
     )
