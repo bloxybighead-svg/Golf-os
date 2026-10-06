@@ -13,8 +13,22 @@ const withSerwist = withSerwistInit({
   additionalPrecacheEntries: [{ url: "/offline", revision: randomUUID() }],
 })
 
+// Security headers on every response (pages and /api). The Content-Security-Policy needs a
+// per-request nonce, so middleware.ts sets it (policy in lib/security/csp.ts).
+const securityHeaders = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // The planner's Follow-GPS needs geolocation for our own origin only.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+]
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: "/(.*)", headers: securityHeaders }]
+  },
   // Pages retired by the three-tab nav (Play, Rounds, You); keep old links working.
   async redirects() {
     return [

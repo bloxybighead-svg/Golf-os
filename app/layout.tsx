@@ -4,7 +4,7 @@ import { SignInBanner } from "@/components/auth/SignInBanner";
 import { OfflineProvider } from "@/components/pwa/OfflineProvider";
 import { createClient } from "@/lib/supabase/server";
 import { APP_NAME, BRAND } from "@/lib/brand";
-import { THEME_STORAGE_KEY } from "@/lib/theme/preference";
+import { THEME_INIT_SCRIPT } from "@/lib/theme/themeScript";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -45,7 +45,7 @@ export default async function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("${THEME_STORAGE_KEY}");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`,
+            __html: THEME_INIT_SCRIPT,
           }}
         />
       </head>
