@@ -1,5 +1,6 @@
 // Shown when a page is opened with no signal and this phone has never saved it.
-export const dynamic = "force-static"
+// Dynamic (not static) so middleware can stamp this page's inline scripts with a CSP nonce; the service worker saves the response, nonce and CSP header included.
+export const dynamic = "force-dynamic"
 
 export default function OfflinePage() {
   return (
