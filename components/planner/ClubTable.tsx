@@ -5,7 +5,7 @@
 import type { Lie } from "@/lib/course/lies"
 import { aimOffsetLabel, isTie, type OptimizedClubPlan } from "@/lib/course/plan"
 import { LIE_LABEL, LIE_SHORT, pct } from "@/lib/planner/labels"
-import { PENALTY_CAP, pctText, penaltyShare } from "@/lib/course/strategy"
+import { SMART_MAX_PENALTY_RATE, pctText, penaltyShare } from "@/lib/course/strategy"
 
 export interface ClubTableProps {
   ranking: OptimizedClubPlan[]
@@ -20,9 +20,11 @@ export interface ClubTableProps {
   /** The scoring baseline's label ("PGA TOUR" or "3.0 handicap"). */
   baselineLabel: string
   onPick: (r: OptimizedClubPlan) => void
+  /** Smart play is on: clubs over the penalty limit are dimmed and tagged. Go for it has no limit. */
+  smartMode?: boolean
 }
 
-export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, estimateNotes, baselineLabel, onPick }: ClubTableProps) {
+export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, estimateNotes, baselineLabel, onPick, smartMode = false }: ClubTableProps) {
   return (
     <div
       className={`overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface transition-opacity ${pending ? "opacity-60" : ""}`}
@@ -58,7 +60,9 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
           </tr>
         </thead>
         <tbody>
-          {ranking.map((r) => (
+          {ranking.map((r) => {
+          const over = smartMode && penaltyShare(r.plan) > SMART_MAX_PENALTY_RATE
+          return (
             <tr
               key={r.club}
               onClick={(e) => {
@@ -69,10 +73,15 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
               }}
               className={`cursor-pointer border-b border-fg/[0.04] transition-colors last:border-0 hover:bg-fg/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
                 chosen?.club === r.club ? "bg-accent/10" : ""
-              }`}
+              } ${over ? "opacity-60" : ""}`}
             >
               <td className="whitespace-nowrap px-3 font-semibold text-fg">
                 {r.club}
+                {over && (
+                  <span className="ml-1 text-[10px] font-normal text-danger" title={`Over the ${Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty limit Smart play allows`}>
+                    over {Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty
+                  </span>
+                )}
                 {estimateNotes[r.club] && (
                   <span className="ml-1 text-[10px] font-normal text-muted" title={estimateNotes[r.club]}>
                     est.
@@ -87,7 +96,7 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
                   {pct(r.plan.lieShare[l])}
                 </td>
               ))}
-              <td className={`px-1 text-right ${penaltyShare(r.plan) > PENALTY_CAP ? "font-semibold text-danger" : "text-fg-3"}`}>
+              <td className={`px-1 text-right ${penaltyShare(r.plan) > SMART_MAX_PENALTY_RATE ? "font-semibold text-danger" : "text-fg-3"}`}>
                 {pctText(penaltyShare(r.plan))}
               </td>
               <td className="whitespace-nowrap px-3 text-right font-semibold text-fg">
@@ -99,7 +108,8 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
                     })()}
               </td>
             </tr>
-          ))}
+          )
+          })}
         </tbody>
       </table>
     </div>

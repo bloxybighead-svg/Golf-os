@@ -296,7 +296,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const {
     aim, aimAtBest, aimIsPin, aimToPin, atBestAim, avgLeft, bagDriverCarry, baselineHandicap, best, chosen,
     chosenAtAim, chosenLive, distAim, distPin, estimateNotes, fromLabel, holeBearingDeg, holeQuality, labels,
-    landings, longestCarry, pickClub, pin, planReady, rankState, ranking, rankingPending, rings,
+    landings, longestCarry, pickClub, pin, planReady, rankState, strategyMode, ranking, rankingPending, rings,
     scoreBaseline, shownLies, stats, troubleCells, optionsNote, obBands, lies,
     pinPlaysLike, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
   } = plan
@@ -374,7 +374,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, syncLocalZonesToAccount, syncingZones, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
-    optionsNote, obBands, obTags, holeObTags, noObMapped,
+    optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
     pinPlaysLike, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
     onCourseSpread: settings.onCourseSpread,
   }

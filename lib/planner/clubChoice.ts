@@ -10,6 +10,23 @@ import type { LatLng } from "@/lib/course/geo"
 
 export type ClubChoice = "auto" | string
 
+/** A choice made in Go for it mode is stored as "go:<club>"; a plain club name (or "auto") is Smart play. */
+export const GO_PREFIX = "go:"
+
+export function choiceMode(choice: ClubChoice): "smart" | "go" {
+  return choice.startsWith(GO_PREFIX) ? "go" : "smart"
+}
+
+/** The club a choice names ("auto" stays "auto"). */
+export function choiceClub(choice: ClubChoice): string {
+  return choice.startsWith(GO_PREFIX) ? choice.slice(GO_PREFIX.length) : choice
+}
+
+/** The choice for tapping a row of the given option. */
+export function choiceFor(r: { club: string; strategy?: "smart" | "go" }): ClubChoice {
+  return r.strategy === "go" ? GO_PREFIX + r.club : r.club
+}
+
 /** After picking a hole: a different hole starts on "auto"; the same hole keeps the pick. */
 export function choiceAfterHolePick(choice: ClubChoice, currentHoleId: string | null, nextHoleId: string): ClubChoice {
   return nextHoleId === currentHoleId ? choice : "auto"
@@ -18,7 +35,7 @@ export function choiceAfterHolePick(choice: ClubChoice, currentHoleId: string | 
 /** A picked club that is no longer in the bag (or the shot source changed) goes back to "auto". */
 export function choiceInBag(choice: ClubChoice, clubsInBag: string[]): ClubChoice {
   if (choice === "auto" || clubsInBag.length === 0) return choice
-  return clubsInBag.includes(choice) ? choice : "auto"
+  return clubsInBag.includes(choiceClub(choice)) ? choice : "auto"
 }
 
 /**
@@ -33,7 +50,8 @@ export function chosenPlan(
 ): OptimizedClubPlan | null {
   const best = ranking[0] ?? null
   if (choice === "auto") return best
-  return ranking.find((r) => r.club === choice) ?? (previous?.club === choice ? previous : best)
+  const club = choiceClub(choice)
+  return ranking.find((r) => r.club === club) ?? (previous?.club === club ? previous : best)
 }
 
 /** How long map taps are ignored after the club sheet closes, so the closing tap can't land on the map. */
