@@ -15,6 +15,7 @@ import { projectOnLine } from "./aim"
 import type { StartLie } from "./cost"
 import { TOUR_BASELINE, type Baseline } from "./baseline"
 import type { Lie, LieMap, LieSource } from "./lies"
+import { penaltyShare } from "./strategy"
 import { rollToRest, rollYds } from "./roll"
 import { adjustShot, type ShotConditions } from "./playsLike"
 import { seededRng, seededSample } from "@/lib/dispersion/stats"
@@ -268,6 +269,19 @@ export interface AimResult {
   bearingDeg: number
   plan: ClubPlan
   baselineStrokes: number // same club, aimed at the original aim point
+  /** Only when a `maxPenalty` was given: the best aim that keeps the penalty share under it (see SafeAim). */
+  safe?: SafeAim
+}
+
+/**
+ * The aim Smart play uses for a club: among the aims tried, the fewest strokes whose penalty share (OB + water +
+ * trees) is within the limit; when none is, the lowest penalty share (ties: fewer strokes). Searched on the
+ * search half and scored on the held-out half, like the strokes-best aim.
+ */
+export interface SafeAim {
+  offsetYds: number
+  bearingDeg: number
+  plan: ClubPlan
 }
 
 /** Deterministic disjoint split (even/odd index) -- no shuffle needed since the
@@ -304,9 +318,9 @@ export function splitShots(shots: ShotSample[]): { search: ShotSample[]; holdout
  * onto. Using the club's own mean carry as the radius instead ties the
  * search's yard range to where its shots actually land.
  */
-export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 60, stepYds = 2): AimResult {
+export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 60, stepYds = 2, maxPenalty?: number): AimResult {
   const { search, holdout } = splitShots(club.shots)
-  return bestAimFrom(club, search, holdout.length > 0 ? holdout : search, ctx, maxOffsetYds, stepYds)
+  return bestAimFrom(club, search, holdout.length > 0 ? holdout : search, ctx, maxOffsetYds, stepYds, undefined, true, maxPenalty)
 }
 
 /**
@@ -323,7 +337,8 @@ export function bestAimFrom(
   maxOffsetYds = 60,
   stepYds = 2,
   coarseStepYds?: number,
-  withBaseline = true
+  withBaseline = true,
+  maxPenalty?: number
 ): AimResult {
   const searchClub: ClubShots = { club: club.club, shots: search }
   const confirmClub: ClubShots = { club: club.club, shots: confirm }
@@ -332,28 +347,44 @@ export function bestAimFrom(
   const meanCarryYds = club.shots.reduce((sum, s) => sum + s.carryYds, 0) / Math.max(club.shots.length, 1)
   const dist = Math.max(meanCarryYds, 10)
   const bearingFor = (off: number) => (baseBearing + (Math.atan2(off, dist) * 180) / Math.PI + 360) % 360
-  const tried = new Map<number, number>()
-  const strokesAt = (off: number) => {
+  const tried = new Map<number, { strokes: number; penalty: number }>()
+  const scoreAt = (off: number) => {
     let v = tried.get(off)
     if (v === undefined) {
-      v = evaluateClub(searchClub, ctx, bearingFor(off)).expectedStrokes
+      const plan = evaluateClub(searchClub, ctx, bearingFor(off))
+      v = { strokes: plan.expectedStrokes, penalty: penaltyShare(plan) }
       tried.set(off, v)
     }
     return v
   }
-  let winnerOff = 0
-  let winnerStrokes = Infinity
-  // Search outward from 0 (not left-to-right) so a tie -- e.g. everywhere past
-  // some point is equally plain rough -- keeps the smallest, least-disruptive
-  // offset instead of arbitrarily locking onto the search's farthest edge.
-  const sweep = (offsets: number[]) => {
-    for (const off of offsets) {
-      const strokes = strokesAt(off)
-      if (strokes < winnerStrokes) {
-        winnerStrokes = strokes
-        winnerOff = off
+  // Fewest strokes; a tie keeps the smaller (less disruptive) offset.
+  const strokesBetter = (a: number, b: number) => {
+    const d = scoreAt(a).strokes - scoreAt(b).strokes
+    return d < -1e-12 || (Math.abs(d) <= 1e-12 && Math.abs(a) < Math.abs(b))
+  }
+  // Smart play's order: under the limit beats over it; both under, fewer strokes; both over, lower penalty then strokes.
+  const safeBetter = (a: number, b: number) => {
+    const pa = scoreAt(a)
+    const pb = scoreAt(b)
+    const ea = pa.penalty <= maxPenalty!
+    const eb = pb.penalty <= maxPenalty!
+    if (ea !== eb) return ea
+    if (!ea && Math.abs(pa.penalty - pb.penalty) > 1e-12) return pa.penalty < pb.penalty
+    return strokesBetter(a, b)
+  }
+  const pickBest = (better: (a: number, b: number) => boolean) => {
+    let best = 0
+    let seen = false
+    for (const off of Array.from(tried.keys())) {
+      if (!seen || better(off, best)) {
+        best = off
+        seen = true
       }
     }
+    return best
+  }
+  const sweep = (offsets: number[]) => {
+    for (const off of offsets) scoreAt(off)
   }
   const outward = (step: number, centre = 0, reach = maxOffsetYds): number[] => {
     const out: number[] = centre === 0 ? [0] : []
@@ -362,15 +393,29 @@ export function bestAimFrom(
   }
   if (coarseStepYds && coarseStepYds > stepYds) {
     sweep(outward(coarseStepYds))
-    const c = winnerOff
-    sweep(outward(stepYds, c, coarseStepYds - stepYds)) // the gaps either side of the coarse winner
+    // The gaps either side of each coarse winner (the strokes-best aim, and Smart play's when there is a limit).
+    const centres = new Set([pickBest(strokesBetter)])
+    if (maxPenalty != null) centres.add(pickBest(safeBetter))
+    for (const c of Array.from(centres)) sweep(outward(stepYds, c, coarseStepYds - stepYds))
   } else {
     sweep(outward(stepYds))
+  }
+  const winnerOff = pickBest(strokesBetter)
+  const plan = evaluateClub(confirmClub, ctx, bearingFor(winnerOff))
+  let safe: SafeAim | undefined
+  if (maxPenalty != null) {
+    const off = pickBest(safeBetter)
+    safe = {
+      offsetYds: off,
+      bearingDeg: bearingFor(off),
+      plan: off === winnerOff ? plan : evaluateClub(confirmClub, ctx, bearingFor(off)),
+    }
   }
   return {
     offsetYds: winnerOff,
     bearingDeg: bearingFor(winnerOff),
-    plan: evaluateClub(confirmClub, ctx, bearingFor(winnerOff)),
+    plan,
+    safe,
     // The ranking never shows it, so it skips this (a whole extra scoring of the held-out shots).
     baselineStrokes: withBaseline ? evaluateClub(confirmClub, ctx, baseBearing).expectedStrokes : NaN,
   }
@@ -447,9 +492,15 @@ export interface OptimizedClubPlan {
   plan: ClubPlan
   /** The same held-out shots, aimed at the aim marker instead, for comparison. */
   atAimStrokes: number
+  /** Smart play's aim for this club when the ranking was given a `maxPenalty` (same as the above when that is already safe). */
+  safe?: SafeAim
+  /** Which option this row is: Smart play's aim or Go for it's. Set by lib/course/rankOptions.ts. */
+  strategy?: "smart" | "go"
 }
 
 export interface RankOptions {
+  /** Smart play's penalty limit: also finds each club's best aim that keeps OB + water + trees at or under this share. */
+  maxPenalty?: number
   /** The hole's centreline (tee to green). Without it each club's search centres on ctx.aim. */
   line?: LatLng[] | null
   maxOffsetYds?: number
@@ -513,12 +564,13 @@ export function rankClubsOptimized(clubs: ClubShots[], ctx: PlanContext, opts: R
         coarse = LIGHT_RANK_STEP_YDS
       }
       const centre = centerlineAim(opts.line, ctx.from, reach, ctx.pin) ?? ctx.aim
-      const r = bestAimFrom(c, search, confirm, { ...ctx, aim: centre }, opts.maxOffsetYds ?? 60, opts.stepYds ?? 2, coarse, false)
+      const r = bestAimFrom(c, search, confirm, { ...ctx, aim: centre }, opts.maxOffsetYds ?? 60, opts.stepYds ?? 2, coarse, false, opts.maxPenalty)
       return {
         club: c.club,
         bearingDeg: r.bearingDeg,
         offsetYds: r.offsetYds,
         plan: r.plan,
+        safe: r.safe,
         atAimStrokes: opts.skipAtAim ? r.plan.expectedStrokes : strokesAtAim(c, ctx, cap),
       }
     })

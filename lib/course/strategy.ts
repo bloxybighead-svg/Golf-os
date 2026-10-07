@@ -1,39 +1,29 @@
 // Two options for every shot, from one ranking:
-//  - GO FOR IT: the club with the fewest expected strokes to hole out.
-//  - SMART PLAY (the default): the balance between strokes and safety. Every
-//    club is scored as its expected strokes plus SMART_RISK_WEIGHT per unit of
-//    penalty share (finishing out of bounds, in water or in trees: a drop, a
-//    punch-out or a lost ball), and smart play is the best of those among
-//    clubs that give up no more than SMART_MAX_COST strokes to Go for it.
-//    So it backs off a club or two when the risk is real, and never lays back
-//    far. When Go for it already scores best that way, there is one option.
+//  - GO FOR IT: the club with the fewest expected strokes to hole out, at its
+//    own best aim. No safety limit.
+//  - SMART PLAY (the default): a safe, set-up-for-par play. Out of bounds,
+//    water and trees (a drop, a punch-out or a lost ball) are weighted
+//    heavily: any club + aim whose penalty share is above SMART_MAX_PENALTY_RATE
+//    is not eligible. Each club is first aimed away from the trouble (the aim
+//    search keeps the penalty share under the limit where some aim can), and
+//    smart play is the fewest strokes among the eligible clubs. If no club can
+//    get under the limit it is the one with the LOWEST penalty share (ties:
+//    fewer strokes) and the card says so.
 // The card shows both and the golfer taps the one that fits how they feel.
 // Both come from the SAME model: shots are scored with the golfer's misses
 // widened to on-course reality (ON_COURSE_SPREAD), so a club's numbers never
-// change between the two options.
+// change between the two options, only the aim it is played at.
 //
 // Every tunable number is here, labelled with where it came from. None is
 // measured: they are the golfer-facing judgement calls this feature rests on.
 
 import type { ClubShots } from "./plan"
 
-/** Penalty share above this is flagged red on the card and in the table, and the card warns when even smart play is above it. ESTIMATE (spec): 1 in 33. */
-export const PENALTY_CAP = 0.03
-
 /**
- * Strokes smart play adds per unit of penalty share when it weighs safety against strokes (a share is a fraction:
- * 10% adds 0.15). ESTIMATE: the strokes table already charges the average cost of an out of bounds or recovery shot,
- * and this is the premium on top for the blow-up (the extra stroke or two of a lost ball, a punch-out that stays in
- * the trees), which an average hides. 1.5 puts Driver at 23% penalty behind a 3-Wood at 6% unless the Driver is
- * more than about a quarter stroke better.
+ * Smart play's penalty limit: a club + aim with more than this share of shots out of bounds, in water or in trees
+ * is not eligible. Also the line the card and table flag in red. ESTIMATE (spec): 1 in 25.
  */
-export const SMART_RISK_WEIGHT = 1.5
-
-/**
- * Smart play never gives up more than this many expected strokes to Go for it. ESTIMATE: laying back too far is a
- * worse plan than the risk it avoids, so the safer option has to stay close.
- */
-export const SMART_MAX_COST = 0.35
+export const SMART_MAX_PENALTY_RATE = 0.04
 
 /**
  * Every club's offline spread (start line + curve) is multiplied by this before scoring.
@@ -119,34 +109,35 @@ export function widenShots(club: ClubShots, spread: number): ClubShots {
 export interface Options<T> {
   /** GO FOR IT: the fewest expected strokes. */
   lowest: T
-  /** SMART PLAY (the default); the same club as `lowest` when nothing beats it once risk is weighed in. */
+  /** SMART PLAY (the default): the fewest strokes among the options within SMART_MAX_PENALTY_RATE, else the lowest penalty. */
   safer: T
-  /** `lowest` is already the best balance, so there is only one option. */
+  /** Smart play and Go for it are the same play (same club, same aim), so there is only one option. */
   same: boolean
-  /** Even smart play has more than PENALTY_CAP penalty risk: the card warns. */
+  /** No club keeps the penalty share within SMART_MAX_PENALTY_RATE: smart play is the lowest-risk play and the card says so. */
   noSafeOption: boolean
 }
 
-/** Expected strokes plus the risk premium. */
-export function balanced(v: { strokes: number; penalty: number }): number {
-  return v.strokes + SMART_RISK_WEIGHT * v.penalty
-}
-
 /**
- * The two options from a ranking (each club at its own best aim) in any order.
- * Go for it = fewest strokes. Smart play = the best `balanced` score among the
- * clubs within SMART_MAX_COST strokes of it (ties: the one with less penalty).
+ * The two options. `ranking` is every club at its strokes-best aim (Go for it); `smartRanking` is every club at its
+ * Smart-play aim (the same clubs, aimed away from trouble) and defaults to `ranking`.
+ * Go for it = fewest strokes. Smart play = fewest strokes among those with penalty <= SMART_MAX_PENALTY_RATE; if
+ * there are none, the lowest penalty (ties: fewest strokes).
  */
-export function lowestAndSafer<T>(ranking: T[], view: (t: T) => { strokes: number; penalty: number }): Options<T> | null {
-  if (ranking.length === 0) return null
-  const v = ranking.map((o) => ({ o, ...view(o) }))
-  const lowest = v.reduce((a, b) => (b.strokes < a.strokes ? b : a))
-  const near = v.filter((x) => x.strokes - lowest.strokes <= SMART_MAX_COST + 1e-9)
-  const smart = near.reduce((a, b) => {
-    const d = balanced(b) - balanced(a)
-    return d < -1e-9 || (Math.abs(d) <= 1e-9 && b.penalty < a.penalty) ? b : a
-  })
-  return { lowest: lowest.o, safer: smart.o, same: smart === lowest, noSafeOption: smart.penalty > PENALTY_CAP }
+export function lowestAndSafer<T>(
+  ranking: T[],
+  view: (t: T) => { strokes: number; penalty: number },
+  smartRanking: T[] = ranking,
+  sameChoice: (a: T, b: T) => boolean = (a, b) => a === b
+): Options<T> | null {
+  if (ranking.length === 0 || smartRanking.length === 0) return null
+  const go = ranking.map((o) => ({ o, ...view(o) })).reduce((a, b) => (b.strokes < a.strokes ? b : a))
+  const sm = smartRanking.map((o) => ({ o, ...view(o) }))
+  const eligible = sm.filter((x) => x.penalty <= SMART_MAX_PENALTY_RATE + 1e-9)
+  const smart =
+    eligible.length > 0
+      ? eligible.reduce((a, b) => (b.strokes < a.strokes ? b : a))
+      : sm.reduce((a, b) => (b.penalty < a.penalty - 1e-9 || (Math.abs(b.penalty - a.penalty) <= 1e-9 && b.strokes < a.strokes) ? b : a))
+  return { lowest: go.o, safer: smart.o, same: sameChoice(smart.o, go.o), noSafeOption: eligible.length === 0 }
 }
 
 /** "3%" style, whole percent; under half a percent shows "<1%" so a small risk never reads as none. */

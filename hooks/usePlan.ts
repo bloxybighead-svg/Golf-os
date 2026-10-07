@@ -19,7 +19,7 @@ import { conditionsKey, hasEffect, playsLike, playsLikeBreakdown, type PlaysLike
 import { useHoleElevation } from "@/hooks/useHoleElevation"
 import { usePlaysLikeSetting } from "@/hooks/usePlaysLikeSetting"
 import { useWind } from "@/hooks/useWind"
-import { optionsFor, tradeoffText } from "@/lib/course/rankOptions"
+import { goRows, optionsFor, smartRows, tradeoffText } from "@/lib/course/rankOptions"
 import { widenShots } from "@/lib/course/strategy"
 import { obBandsFor, type ObBand, type ObTag } from "@/lib/course/obTags"
 import { DEFAULT_BASELINE_HANDICAP, getBaseline, type CompareAgainst } from "@/lib/course/baseline"
@@ -29,7 +29,7 @@ import type { Club } from "@/lib/golfer/tables"
 import { fillBag } from "@/lib/golfer/bag"
 import type { Baseline } from "@/lib/golfer/baseline"
 import { ALWAYS_SHOWN, LIES } from "@/lib/planner/labels"
-import { chosenPlan, choiceAfterBallMove, choiceInBag } from "@/lib/planner/clubChoice"
+import { chosenPlan, choiceAfterBallMove, choiceClub, choiceFor, choiceInBag, choiceMode } from "@/lib/planner/clubChoice"
 import { holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import type { CourseHit, NoHazardMap } from "@/lib/planner/storage"
 import { useClubRanking, type RankingRequest } from "@/components/simulator/useClubRanking"
@@ -296,10 +296,14 @@ export function usePlan({
   // so "auto" picks it; the golfer taps Go for it (or any club) to change.
   const rankRaw = rankState.results ?? []
   const options = useMemo(() => optionsFor(rankRaw), [rankRaw])
-  const ranking: OptimizedClubPlan[] = useMemo(
-    () => (options ? [options.safer, ...rankRaw.filter((r) => r !== options.safer)] : rankRaw),
-    [options, rankRaw]
-  )
+  // Smart play (the default) shows every club at its safe aim, best first; Go for it shows every club at its
+  // strokes-best aim. Which one is on is part of the club choice (lib/planner/clubChoice.ts).
+  const strategyMode = choiceMode(clubChoice)
+  const ranking: OptimizedClubPlan[] = useMemo(() => {
+    if (!options) return rankRaw
+    if (strategyMode === "go") return [options.lowest, ...goRows(rankRaw).filter((r) => r.club !== options.lowest.club)]
+    return [options.safer, ...smartRows(rankRaw).filter((r) => r.club !== options.safer.club)]
+  }, [options, rankRaw, strategyMode])
   const rankingPending = rankState.pending
   const optionsNote = useMemo(() => (options ? { ...options, tradeoff: tradeoffText(options) } : null), [options])
 
@@ -346,7 +350,7 @@ export function usePlan({
   }
 
   function pickClub(r: OptimizedClubPlan) {
-    setClubChoice(r.club)
+    setClubChoice(choiceFor(r))
     setPickedAt(ball)
     aimAtBest(r)
   }
@@ -358,7 +362,7 @@ export function usePlan({
   useEffect(() => {
     if (!rankState.key || appliedRankingKey.current === rankState.key) return
     appliedRankingKey.current = rankState.key
-    const target = ranking.find((r) => r.club === clubChoice) ?? ranking[0]
+    const target = ranking.find((r) => r.club === choiceClub(clubChoice)) ?? ranking[0]
     if (target) aimAtBest(target)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rankState.key])
@@ -454,6 +458,7 @@ export function usePlan({
     scoreBaseline,
     shownLies,
     startLie,
+    strategyMode,
     optionsNote,
     pinPlaysLike,
     wind,

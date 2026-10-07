@@ -9,6 +9,7 @@ import type { LatLng } from "./geo"
 import { buildLieMap, type LieMap, type LieMapExtras, type UserZone } from "./lies"
 import type { StartLie } from "./cost"
 import type { CourseFeature } from "./overpass"
+import { SMART_MAX_PENALTY_RATE } from "./strategy"
 import { rankClubsOptimized, type ClubShots, type OptimizedClubPlan, type RankOptions } from "./plan"
 import { getBaseline } from "./baseline"
 import { buildLookahead, type Lookahead } from "./lookahead"
@@ -140,7 +141,7 @@ export function createRankHandler(now: () => number = () => performance.now()) {
     const conditions = msg.conditions ?? null
     const ctx = { from: msg.from, aim: msg.aim, pin: msg.pin, lies: lies.map, startLie: msg.startLie, baseline, conditions }
     if (msg.spread === undefined) {
-      const results = rankClubsOptimized(bag.clubs, ctx, { ...msg.opts, line: msg.line })
+      const results = rankClubsOptimized(bag.clubs, ctx, { maxPenalty: SMART_MAX_PENALTY_RATE, ...msg.opts, line: msg.line })
       return { id: msg.id, results, ms: now() - t0 }
     }
 
@@ -160,7 +161,7 @@ export function createRankHandler(now: () => number = () => performance.now()) {
       }
       valueAt = grid.valueAt
     }
-    const results = rankClubsOptimized(clubs, { ...ctx, valueAt }, { ...msg.opts, line: msg.line, skipAtAim: true })
+    const results = rankClubsOptimized(clubs, { ...ctx, valueAt }, { maxPenalty: SMART_MAX_PENALTY_RATE, ...msg.opts, line: msg.line, skipAtAim: true })
     return { id: msg.id, results, ms: now() - t0 }
   }
 }

@@ -1,3 +1,4 @@
+import { SMART_MAX_PENALTY_RATE } from "./strategy"
 import { describe, expect, it } from "vitest"
 import {
   getBaseline,
@@ -128,7 +129,7 @@ describe("handicap vs tour", () => {
     const tour = handle({ ...req, handicap: null })!.results!
     const ten = handle({ ...req, id: 2, handicap: 10 })!.results!
     const lies = buildLieMap(O, inputs.features)
-    expect(ten).toEqual(rankClubsOptimized(clubs, { from: O, aim: pin, pin, lies, startLie: "fairway", baseline: getBaseline(10) }, { line: null }))
+    expect(ten).toEqual(rankClubsOptimized(clubs, { from: O, aim: pin, pin, lies, startLie: "fairway", baseline: getBaseline(10) }, { line: null, maxPenalty: SMART_MAX_PENALTY_RATE }))
     expect(ten[0].plan.expectedStrokes).toBeGreaterThan(tour[0].plan.expectedStrokes)
   })
 

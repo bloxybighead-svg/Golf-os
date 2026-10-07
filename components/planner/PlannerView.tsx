@@ -57,7 +57,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
     refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, setAimManual,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
-    optionsNote, obBands, obTags, holeObTags, noObMapped,
+    optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
     setLocalOnlyZones, setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
     setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowSetupPrompt, setShowTrouble,
     setShowZones, setSource, setTendency, sevenIronCarry, sheetOpen, showCarry, showLayersMenu, showMarks,
@@ -135,6 +135,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
       chosen={chosen}
       estimateNotes={estimateNotes}
       baselineLabel={scoreBaseline.label}
+      smartMode={strategyMode === "smart"}
       onPick={(r) => {
         mapTapGuardUntil.current = Date.now() + MAP_TAP_GUARD_MS // the closing tap must not reach the map
         pickClub(r)

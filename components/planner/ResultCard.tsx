@@ -9,7 +9,7 @@ import type { Lie } from "@/lib/course/lies"
 import { boundaryStatus, type ConfirmableHazard, type HoleDataQuality, type SurfaceStatus } from "@/lib/course/dataQuality"
 import type { PlaysLike } from "@/lib/course/playsLike"
 import { flagsUnmapped, isLowConfidence, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
-import { PENALTY_CAP, pctText, penaltyShare, penaltyWord, type Options } from "@/lib/course/strategy"
+import { SMART_MAX_PENALTY_RATE, pctText, penaltyShare, penaltyWord, type Options } from "@/lib/course/strategy"
 import { pct, STATUS_TITLE } from "@/lib/planner/labels"
 import { Stat } from "./ui"
 import { StrategyToggle } from "./StrategyToggle"
@@ -77,7 +77,7 @@ export function ResultCard({
   pinPlaysLike = null,
 }: ResultCardProps) {
   const penalty = penaltyShare(chosen.plan)
-  const overCap = penalty > PENALTY_CAP
+  const overCap = penalty > SMART_MAX_PENALTY_RATE
   return (
     <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
       {options && <StrategyToggle options={options} chosen={chosen} onPick={onPickOption} className="mb-3 hidden md:grid" />}
@@ -168,10 +168,9 @@ export function ResultCard({
           ))}
       </p>
 
-      {options?.noSafeOption && (
+      {options?.noSafeOption && chosen.strategy !== "go" && (
         <p className="mt-2 text-xs font-semibold text-danger">
-          Risky hole: even the smart play, {options.safer.club}, has {pctText(penaltyShare(options.safer.plan))}{" "}
-          {penaltyWord(options.safer.plan)} risk.
+          No club keeps penalty risk under {Math.round(SMART_MAX_PENALTY_RATE * 100)}% here. This is the lowest-risk play.
         </p>
       )}
       {options?.tradeoff && <p className="mt-2 text-xs text-fg-2">{options.tradeoff}</p>}

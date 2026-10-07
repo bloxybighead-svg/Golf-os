@@ -1,6 +1,6 @@
 // "How this is scored" under the Play planner's card (moved verbatim from CourseMapClient.tsx).
 
-import { SMART_MAX_COST, SMART_RISK_WEIGHT } from "@/lib/course/strategy"
+import { SMART_MAX_PENALTY_RATE } from "@/lib/course/strategy"
 
 export function ScoringDetails({
   baselineHandicap,
@@ -43,13 +43,14 @@ export function ScoringDetails({
         <p>
           The card gives two options from the same ranking. <strong className="font-medium text-fg-2">Go for it</strong> is the
           club with the fewest expected strokes. <strong className="font-medium text-fg-2">Smart play</strong> (the default)
-          balances strokes against risk: each club&rsquo;s strokes plus {SMART_RISK_WEIGHT} per unit of penalty share, where
-          a penalty is a shot that finishes out of bounds, in water or in the trees (a drop, a punch-out or a lost ball). It
-          never gives up more than {SMART_MAX_COST.toFixed(2)} strokes to Go for it, because laying back too far is a worse
-          plan than the risk it avoids. When Go for it is already the best balance there is just one option. Your misses are
+          is the safe, set-up-for-par play: a club and aim are only allowed if no more than {Math.round(SMART_MAX_PENALTY_RATE * 100)}%
+          of shots finish out of bounds, in water or in the trees (a drop, a punch-out or a lost ball). Each club is
+          aimed away from the trouble first, and Smart play is the fewest strokes among those that qualify. When none
+          does, it is the lowest-risk club. Go for it has no limit. When both are the same play there is just one
+          option. Your misses are
           widened to {onCourseSpread.toFixed(2)}x of what the range data shows, since range data is tighter than real rounds
           (change it on You, under Planner). On par 5s and par 4s over 440 yd, each tee shot is valued by the best next shot
-          from where it finishes, not by a table that assumes every distance can be played. The risk weight, the cost limit
+          from where it finishes, not by a table that assumes every distance can be played. The penalty limit
           and the spread are estimates, not measurements.
         </p>
         <p>

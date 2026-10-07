@@ -1,3 +1,4 @@
+import { SMART_MAX_PENALTY_RATE } from "./strategy"
 import { describe, expect, it } from "vitest"
 import { distanceYds, fromLocal, toLocal, type LatLng } from "./geo"
 import { buildLieMap } from "./lies"
@@ -180,7 +181,7 @@ describe("the ranking worker", () => {
     post(rank)
     expect(replies).toHaveLength(1)
     expect(replies[0].id).toBe(7)
-    const direct = rankClubsOptimized(clubs, { ...tee, aim: pin }, { line })
+    const direct = rankClubsOptimized(clubs, { ...tee, aim: pin }, { line, maxPenalty: SMART_MAX_PENALTY_RATE })
     expect(replies[0].results).toEqual(direct)
   })
 

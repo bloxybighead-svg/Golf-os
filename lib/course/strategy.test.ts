@@ -3,7 +3,7 @@ import { distanceYds, fromLocal, type LatLng } from "./geo"
 import { buildLieMap } from "./lies"
 import { buildLookahead } from "./lookahead"
 import { hasOobBesideLine, obBand, obBandsFor, obZonesFor } from "./obTags"
-import { evaluateClub, type ClubShots, type OptimizedClubPlan } from "./plan"
+import { bestAim, evaluateClub, type ClubShots, type OptimizedClubPlan } from "./plan"
 import { createRankHandler, rankKey, type LieInputs, type RankMessage } from "./rankRequest"
 import { optionsFor, rankWithSpread, tradeoffText } from "./rankOptions"
 import { dillonBag, rankColtsNeck, table, TEST_HANDICAP } from "./regressionHarness"
@@ -14,9 +14,8 @@ import {
   needsLookahead,
   OB_MARGIN_YDS,
   ON_COURSE_SPREAD,
-  PENALTY_CAP,
   penaltyShare,
-  SMART_MAX_COST,
+  SMART_MAX_PENALTY_RATE,
   widenShots,
 } from "./strategy"
 import { seededRng } from "@/lib/dispersion/stats"
@@ -30,24 +29,42 @@ const opt = (club: string, strokes: number, penalty: number) => ({ club, strokes
 const two = (rows: ReturnType<typeof opt>[]) => lowestAndSafer(rows, (r) => r)
 
 describe("the two options", () => {
-  it("balances strokes against risk: Driver 23% penalty gives way to the 3-Wood at 6% (the 4-Iron at 1% and 7-Wood at 3% cost more strokes)", () => {
-    const r = two([opt("Driver", 4.43, 0.23), opt("3-Wood", 4.5, 0.06), opt("7-Wood", 4.56, 0.03), opt("4-Iron", 4.6, 0.01)])
-    expect(r?.lowest.club).toBe("Driver")
-    expect(r?.safer.club).toBe("3-Wood")
+  it("Smart: a club with lower strokes but 9% penalty loses to a club with slightly higher strokes and 2% penalty", () => {
+    const r = two([opt("3-Wood", 4.4, 0.09), opt("5-Wood", 4.45, 0.02), opt("4-Iron", 4.7, 0.0)])
+    expect(r?.safer.club).toBe("5-Wood")
     expect(r?.same).toBe(false)
-  })
-
-  it("one option when the lowest-strokes club is already the best balance", () => {
-    const r = two([opt("Driver", 4.0, 0.03), opt("3-Wood", 4.1, 0)])
-    expect(r?.same).toBe(true)
-    expect(r?.safer.club).toBe("Driver")
     expect(r?.noSafeOption).toBe(false)
   })
 
-  it("never lays back more than the cost limit, even for a big risk cut", () => {
-    const r = two([opt("Driver", 4.0, 0.3), opt("3-Wood", 4.0 + SMART_MAX_COST + 0.05, 0.01), opt("7-Iron", 4.9, 0)])
+  it("Go for it: the same case picks the 9% club (pure expected strokes, no limit)", () => {
+    const r = two([opt("3-Wood", 4.4, 0.09), opt("5-Wood", 4.45, 0.02), opt("4-Iron", 4.7, 0.0)])
+    expect(r?.lowest.club).toBe("3-Wood")
+  })
+
+  it("Smart: when every club is over 4%, it picks the lowest penalty and says no club is safe", () => {
+    const r = two([opt("Driver", 4.0, 0.2), opt("3-Wood", 4.1, 0.09), opt("5-Iron", 4.3, 0.06)])
+    expect(r?.safer.club).toBe("5-Iron")
+    expect(r?.noSafeOption).toBe(true)
+    expect(r?.lowest.club).toBe("Driver")
+  })
+
+  it("Smart: with equal lowest penalty (all over the limit) the fewer strokes wins", () => {
+    const r = two([opt("Driver", 4.2, 0.06), opt("3-Wood", 4.1, 0.06)])
+    expect(r?.safer.club).toBe("3-Wood")
+  })
+
+  it("the limit is 4%: exactly 4% is eligible, a hair over is not", () => {
+    expect(SMART_MAX_PENALTY_RATE).toBe(0.04)
+    expect(two([opt("Driver", 4.0, 0.04), opt("3-Wood", 4.1, 0)])?.safer.club).toBe("Driver")
+    expect(two([opt("Driver", 4.0, 0.041), opt("3-Wood", 4.1, 0)])?.safer.club).toBe("3-Wood")
+  })
+
+  it("Smart plays each club at its own safe aim, a separate list from Go for it's aims", () => {
+    // The Driver is 9% at its strokes-best aim but 3% if aimed away: Smart keeps the Driver (the aim moves, not the club).
+    const r = lowestAndSafer([opt("Driver", 4.0, 0.09), opt("3-Wood", 4.1, 0.01)], (x) => x, [opt("Driver", 4.03, 0.03), opt("3-Wood", 4.1, 0.01)], (a, b) => a.club === b.club && a.strokes === b.strokes)
     expect(r?.safer.club).toBe("Driver")
-    expect(r?.noSafeOption).toBe(true) // 30% is still a lot of risk: the card warns
+    expect(r?.safer.penalty).toBe(0.03)
+    expect(r?.same).toBe(false) // same club, different aim: two options
   })
 
   it("trees count: the penalty share includes OB, water and trees", () => {
@@ -55,20 +72,10 @@ describe("the two options", () => {
     expect(penaltyShare({ lieShare: { oob: 0.05, water: 0 } })).toBeCloseTo(0.05, 10) // trees absent counts as none
   })
 
-  it("flags a risky hole only when even smart play is over the red line", () => {
-    expect(two([opt("Driver", 4.0, 0.2), opt("3-Wood", 4.1, 0.01)])?.noSafeOption).toBe(false)
-    expect(two([opt("Driver", 4.0, 0.2), opt("3-Wood", 4.1, 0.1)])?.noSafeOption).toBe(true)
-  })
-
   it("with no penalty risk anywhere there is one option: the best by strokes", () => {
     const r = two([opt("Driver", 4.0, 0), opt("3-Wood", 4.03, 0), opt("5-Iron", 4.3, 0)])
     expect(r?.same).toBe(true)
     expect(r?.lowest.club).toBe("Driver")
-  })
-
-  it("a tie in the balance goes to the club with less penalty", () => {
-    const r = two([opt("Driver", 4.15, 0.0), opt("3-Wood", 4.0, 0.1)]) // 4.15 vs 4.0 + 0.15
-    expect(r?.safer.club).toBe("Driver")
   })
 
   it("only par 5s and par 4s over 440 yd look ahead", () => {
@@ -356,7 +363,6 @@ describe("Colts Neck regression cases (Dillon's fitted profile and his own hand-
     expect(penaltyShare(c.options.lowest.plan), msg).toBeGreaterThan(0.15) // he sees about 23%: OB plus trees
     expect(["3-Wood", "7-Wood", "4-Iron"], msg).toContain(c.options.safer.club)
     expect(penaltyShare(c.options.safer.plan), msg).toBeLessThan(0.1)
-    expect(c.options.safer.plan.expectedStrokes - c.options.lowest.plan.expectedStrokes, msg).toBeLessThanOrEqual(SMART_MAX_COST)
   })
 
   it("hole 3 with an OB-right tag on top: same shape of answer", () => {
@@ -378,7 +384,6 @@ describe("Colts Neck regression cases (Dillon's fitted profile and his own hand-
     const msg = `Hole 6: smart play ${c.options.safer.club}, go for it ${c.options.lowest.club}. Per club:\n${table(c.ranking)}`
     expect(c.options.lowest.club, msg).toBe("Driver")
     expect(penaltyShare(c.options.safer.plan), msg).toBeLessThanOrEqual(penaltyShare(c.options.lowest.plan))
-    expect(c.options.safer.plan.expectedStrokes - c.options.lowest.plan.expectedStrokes, msg).toBeLessThanOrEqual(SMART_MAX_COST)
   })
 })
 
@@ -402,9 +407,39 @@ describe("counter-case: a long, wide par 4 with minor OB", () => {
     const wood = ranking.find((r) => r.club === "3-Wood")!
     const msg = `Smart play ${o.safer.club}, go for it ${o.lowest.club}. Per club:\n${table(ranking)}`
     expect(distanceYds(from, pin) - wood.plan.meanTotalYds, msg).toBeGreaterThan(200)
-    expect(penaltyShare(o.lowest.plan), msg).toBeLessThanOrEqual(PENALTY_CAP)
+    expect(penaltyShare(o.lowest.plan), msg).toBeLessThanOrEqual(SMART_MAX_PENALTY_RATE)
     expect(o.lowest.club, msg).toBe("Driver")
     expect(o.safer.club, msg).toBe("Driver")
+  })
+})
+
+describe("aiming away from trouble (Smart play's aim search)", () => {
+  // Fairway 60 wide with OB starting 22 yd right of the line: the plain-strokes aim is not necessarily safe.
+  const lies = buildLieMap(
+    ORIGIN,
+    [
+      { kind: "fairway", ring: box(-30, 0, 30, 470) },
+      { kind: "green", ring: box(-15, 455, 15, 485) },
+    ],
+    [],
+    [{ id: "ob", lie: "oob", ring: box(22, 150, 300, 470) }]
+  )
+  const from = at(0, 0)
+  const pin = at(0, 470)
+  const ctx = { from, aim: pin, pin, lies, startLie: "tee" as const, baseline: getBaseline(TEST_HANDICAP) }
+  const driver = widenShots(dillonBag().find((c) => c.club === "Driver")!, ON_COURSE_SPREAD)
+
+  it("with a limit, the aim search finds an aim at or under it where one exists, and never has more penalty than the strokes-best aim", () => {
+    const r = bestAim(driver, ctx, 60, 2, SMART_MAX_PENALTY_RATE)
+    expect(r.safe).toBeDefined()
+    expect(penaltyShare(r.safe!.plan)).toBeLessThanOrEqual(penaltyShare(r.plan) + 1e-9)
+    // The safe aim moves away from the OB side (left, negative) of the strokes-best one.
+    expect(r.safe!.offsetYds).toBeLessThanOrEqual(r.offsetYds)
+    expect(penaltyShare(r.safe!.plan)).toBeLessThan(0.1)
+  })
+
+  it("without a limit there is no safe aim (Go for it's search is unchanged)", () => {
+    expect(bestAim(driver, ctx).safe).toBeUndefined()
   })
 })
 
