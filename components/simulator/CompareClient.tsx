@@ -85,11 +85,14 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
   const [selectedClub, setSelectedClub] = useState(commonClubs[0]?.club ?? "")
   const club = commonClubs.some((c) => c.club === selectedClub) ? selectedClub : commonClubs[0]?.club ?? ""
 
-  const shotsFor = (golferKey: string, clubName: string) =>
-    shots.filter((s) => s.golferKey === golferKey && s.club === clubName)
-
-  const allA = golferA ? shotsFor(golferA.key, club) : []
-  const allB = golferB ? shotsFor(golferB.key, club) : []
+  const allA = useMemo(
+    () => (golferA ? shots.filter((s) => s.golferKey === golferA.key && s.club === club) : []),
+    [shots, golferA, club],
+  )
+  const allB = useMemo(
+    () => (golferB ? shots.filter((s) => s.golferKey === golferB.key && s.club === club) : []),
+    [shots, golferB, club],
+  )
   const sampledA = useMemo(() => seededSample(allA, sampleSize, 1), [allA, sampleSize])
   const sampledB = useMemo(() => seededSample(allB, sampleSize, 2), [allB, sampleSize])
 

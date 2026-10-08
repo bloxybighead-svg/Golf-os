@@ -94,7 +94,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         </div>
 
         {session.primary_goal && (
-          <p className="mt-3 text-sm italic text-muted">"{session.primary_goal}"</p>
+          <p className="mt-3 text-sm italic text-muted">&ldquo;{session.primary_goal}&rdquo;</p>
         )}
 
         {/* Meta chips */}

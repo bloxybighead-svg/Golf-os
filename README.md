@@ -1,5 +1,7 @@
 # Golf OS — Shot Pattern Simulator
 
+[![CI](https://github.com/bloxybighead-svg/Golf-os/actions/workflows/ci.yml/badge.svg)](https://github.com/bloxybighead-svg/Golf-os/actions/workflows/ci.yml)
+
 Golfers consistently underestimate how widely they miss, and then make course-management decisions (which club, where to aim, which tees to play) based on the shot they *hoped* to hit rather than the pattern they actually produce. Fixing that with data requires thousands of shots per player, which no amateur will ever log.
 
 This project is a **shot-dispersion simulator** that generates statistically realistic synthetic shot data, validated against a golfer's real launch-monitor data, so dispersion analytics, tee-box recommendations, and aim-point optimization can be built and tested before real users have logged a single shot. It lives inside **Golf OS**, a Next.js + Supabase golf-tracking app (see [the original app](#the-golf-os-app) below).

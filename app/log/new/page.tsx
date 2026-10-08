@@ -398,7 +398,7 @@ export default function NewSessionPage() {
               </button>
             </div>
             {primaryGoal && (
-              <p className="mt-1.5 text-xs text-accent-hi">"{primaryGoal}"</p>
+              <p className="mt-1.5 text-xs text-accent-hi">&ldquo;{primaryGoal}&rdquo;</p>
             )}
           </div>
 
@@ -492,7 +492,7 @@ export default function NewSessionPage() {
           <div className="rounded-md border border-line bg-surface-2 px-4 py-3 space-y-1 text-xs text-muted">
             <p>{date} · {sessionType}</p>
             <p>{blocks.length} block{blocks.length !== 1 ? "s" : ""} · {totalDuration} min</p>
-            {primaryGoal && <p className="text-accent-hi">"{primaryGoal}"</p>}
+            {primaryGoal && <p className="text-accent-hi">&ldquo;{primaryGoal}&rdquo;</p>}
           </div>
 
           {saveError && (

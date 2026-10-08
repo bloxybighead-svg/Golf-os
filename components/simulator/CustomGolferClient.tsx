@@ -32,7 +32,6 @@ export function CustomGolferClient() {
   }, [carryRows])
 
   const shots = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _ = generation // dependency: regenerate only when the button is clicked
     return generateCustomGolferShots({ handicapIndex, knownCarries, tendency }, nShots, seed)
     // eslint-disable-next-line react-hooks/exhaustive-deps
