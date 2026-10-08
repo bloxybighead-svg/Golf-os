@@ -10,9 +10,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { normalizeClubName } from "@/lib/golfer/clubNames"
 import { fitProfiles, fitToRow, type ClubFit, type ProfileRow } from "@/lib/golfer/shotProfile"
+import { withIndoorDefault } from "./temperature"
 import type { NewSession, ParsedShot, SessionMeta, StoredShot } from "./types"
 
-export type SessionPatch = Partial<Pick<SessionMeta, "label" | "date" | "environment" | "surface" | "excluded">>
+export type SessionPatch = Partial<Pick<SessionMeta, "label" | "date" | "environment" | "surface" | "excluded" | "temperatureF">>
 
 export interface ShotDb {
   listSessions(): Promise<SessionMeta[]>
@@ -34,8 +35,9 @@ export async function refit(db: ShotDb, now: Date = new Date()): Promise<ClubFit
   return fits
 }
 
-export async function saveSession(db: ShotDb, session: NewSession, shots: ParsedShot[]): Promise<ClubFit[]> {
+export async function saveSession(db: ShotDb, newSession: NewSession, shots: ParsedShot[]): Promise<ClubFit[]> {
   if (shots.length === 0) throw new Error("There are no shots to save.")
+  const session = withIndoorDefault(newSession)
   const id = await db.insertSession(session)
   try {
     await db.insertShots(id, session, shots)
@@ -85,7 +87,7 @@ export function supabaseShotDb(supabase: SupabaseClient, userId: string): ShotDb
     async listSessions() {
       const { data, error } = await supabase
         .from("shot_sessions")
-        .select("id, label, session_date, environment, surface, excluded")
+        .select("id, label, session_date, environment, surface, excluded, temperature_f")
         .order("session_date", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
       fail(error, "Couldn't load your sessions")
@@ -96,6 +98,7 @@ export function supabaseShotDb(supabase: SupabaseClient, userId: string): ShotDb
         environment: r.environment as SessionMeta["environment"],
         surface: r.surface as SessionMeta["surface"],
         excluded: r.excluded as boolean,
+        temperatureF: r.temperature_f == null ? null : Number(r.temperature_f),
       }))
     },
 
@@ -147,7 +150,7 @@ export function supabaseShotDb(supabase: SupabaseClient, userId: string): ShotDb
     async insertSession(s) {
       const { data, error } = await supabase
         .from("shot_sessions")
-        .insert({ user_id: userId, label: s.label, session_date: s.date, environment: s.environment, surface: s.surface })
+        .insert({ user_id: userId, label: s.label, session_date: s.date, environment: s.environment, surface: s.surface, temperature_f: s.temperatureF ?? null })
         .select("id")
         .single()
       fail(error, "Couldn't save the session")
@@ -179,6 +182,7 @@ export function supabaseShotDb(supabase: SupabaseClient, userId: string): ShotDb
       if (patch.environment !== undefined) row.environment = patch.environment
       if (patch.surface !== undefined) row.surface = patch.surface
       if (patch.excluded !== undefined) row.excluded = patch.excluded
+      if (patch.temperatureF !== undefined) row.temperature_f = patch.temperatureF
       fail((await supabase.from("shot_sessions").update(row).eq("id", id)).error, "Couldn't update the session")
     },
 

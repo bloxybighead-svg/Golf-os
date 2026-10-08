@@ -1,15 +1,18 @@
 "use client"
 
-// Wind under the result card: what is blowing (automatic reading, or the golfer's
-// own setting), a speed slider 0-30 mph, a dial for where it comes from relative to
-// the hole, and the "Plays like" switch. The arithmetic is in lib/course/wind.ts.
+// Wind and air temperature under the result card: what is blowing (automatic
+// reading, or the golfer's own setting), a speed slider 0-30 mph, a dial for where
+// it comes from relative to the hole, a temperature field in degrees F with -10 and
+// +10 buttons, and the "Plays like" switch. The arithmetic is in lib/course/wind.ts.
 
 import { useRef, useState } from "react"
 import type { WindState } from "@/hooks/useWind"
-import { describeWind, relativeToHole, timeLabel, WIND_MAX_MPH, WIND_MIN_MPH } from "@/lib/course/wind"
+import { clampTemperature, describeWind, relativeToHole, TEMP_MAX_F, TEMP_MIN_F, timeLabel, WIND_MAX_MPH, WIND_MIN_MPH } from "@/lib/course/wind"
 
 const DIAL = 96
 const KEY_STEP_DEG = 15
+/** What the -10 and +10 buttons move the temperature by, degrees F. */
+const TEMP_STEP_F = 10
 
 export interface WindControlProps {
   wind: WindState
@@ -30,6 +33,8 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
 
   const summary = wind.wind ? describeWind(wind.wind, holeBearingDeg) : "No wind reading"
   const source = wind.source === "manual" ? "set by you" : wind.source === "auto" ? "automatic" : ""
+  const temp = wind.temperature
+  const tempSource = temp.source === "manual" ? "set by you" : temp.source === "auto" ? "automatic" : ""
   const time = wind.at != null && (wind.labelTime || wind.source === "manual") ? ` · ${wind.labelTime ? "last reading " : ""}${timeLabel(wind.at)}` : ""
 
   return (
@@ -47,6 +52,10 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
               </span>
             )}
           </p>
+          <p className="truncate text-sm text-fg tabular-nums">
+            {temp.temperatureF != null ? `${temp.temperatureF}°F` : "No temperature reading"}
+            {tempSource && <span className="text-xs text-muted">{` · ${tempSource}`}</span>}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -54,7 +63,7 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
             role="switch"
             aria-checked={playsLikeOn}
             onClick={() => onPlaysLikeChange(!playsLikeOn)}
-            title="Plays like: change the plan for wind and the height change to the target"
+            title="Plays like: change the plan for wind, air temperature and the height change to the target"
             className={`h-9 rounded-lg border px-3 text-xs font-semibold ${playsLikeOn ? "border-accent text-accent" : "border-fg/[0.08] text-fg-3"}`}
           >
             Plays like {playsLikeOn ? "on" : "off"}
@@ -100,8 +109,52 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
               </button>
             )}
           </div>
+          <TemperatureField wind={wind} />
         </div>
       )}
+    </div>
+  )
+}
+
+// Air temperature in degrees F: type it, or step it by 10. Warmer air carries the ball farther, colder air shorter.
+function TemperatureField({ wind }: { wind: WindState }) {
+  const current = wind.temperature.temperatureF
+  const [draft, setDraft] = useState<string | null>(null)
+  const step = (d: number) => wind.setManualTemperature((current ?? 70) + d)
+  const commit = () => {
+    if (draft != null && draft.trim() !== "" && Number.isFinite(Number(draft))) wind.setManualTemperature(clampTemperature(Number(draft)))
+    setDraft(null)
+  }
+  return (
+    <div className="w-full space-y-1">
+      <p className="text-xs text-fg-3">Temperature</p>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => step(-TEMP_STEP_F)} disabled={(current ?? 70) - TEMP_STEP_F < TEMP_MIN_F} aria-label="10 degrees colder" className="h-11 w-14 rounded-lg border border-fg/[0.08] text-sm font-semibold text-fg-2 hover:text-fg disabled:opacity-40 md:h-9">
+          -10
+        </button>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={TEMP_MIN_F}
+          max={TEMP_MAX_F}
+          aria-label="Air temperature in degrees Fahrenheit"
+          value={draft ?? (current != null ? String(current) : "")}
+          placeholder="°F"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === "Enter" && commit()}
+          className="h-11 w-20 rounded-lg border border-fg/[0.08] bg-page px-3 text-center text-sm text-fg tabular-nums md:h-9"
+        />
+        <span className="text-xs text-fg-3">°F</span>
+        <button type="button" onClick={() => step(TEMP_STEP_F)} disabled={(current ?? 70) + TEMP_STEP_F > TEMP_MAX_F} aria-label="10 degrees warmer" className="h-11 w-14 rounded-lg border border-fg/[0.08] text-sm font-semibold text-fg-2 hover:text-fg disabled:opacity-40 md:h-9">
+          +10
+        </button>
+        {wind.temperature.source === "manual" && (
+          <button type="button" onClick={wind.clearManualTemperature} className="h-9 rounded-lg border border-fg/[0.08] px-3 text-xs font-semibold text-accent hover:bg-accent/10">
+            Back to automatic
+          </button>
+        )}
+      </div>
     </div>
   )
 }

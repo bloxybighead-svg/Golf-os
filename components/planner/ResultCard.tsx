@@ -8,6 +8,8 @@ import type { CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import type { Lie } from "@/lib/course/lies"
 import { boundaryStatus, type ConfirmableHazard, type HoleDataQuality, type SurfaceStatus } from "@/lib/course/dataQuality"
 import type { PlaysLike } from "@/lib/course/playsLike"
+
+const COLD_BALL_TIP = "Cold day: keep your ball in your pocket between shots. A cold ball loses far more distance than cold air."
 import { flagsUnmapped, isLowConfidence, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
 import { SMART_MAX_PENALTY_RATE, pctText, penaltyShare, penaltyWord, type Options } from "@/lib/course/strategy"
 import { pct, STATUS_TITLE } from "@/lib/planner/labels"
@@ -46,6 +48,8 @@ export interface ResultCardProps {
   onPickOption: (r: OptimizedClubPlan) => void
   /** The distance to the pin as it plays for the chosen club (height change, wind), with its breakdown; null when neither applies. */
   pinPlaysLike?: (PlaysLike & { breakdown: string }) | null
+  /** The air is under COLD_TIP_BELOW_F: show the cold-ball tip. */
+  coldTip?: boolean
 }
 
 export function ResultCard({
@@ -75,6 +79,7 @@ export function ResultCard({
   onPickOption,
   shotsLabel,
   pinPlaysLike = null,
+  coldTip = false,
 }: ResultCardProps) {
   const penalty = penaltyShare(chosen.plan)
   const overCap = penalty > SMART_MAX_PENALTY_RATE
@@ -142,6 +147,7 @@ export function ResultCard({
         <Stat label="To pin" value={distPin != null ? Math.round(distPin) : null} plays={pinPlaysLike && distPin != null ? Math.round(pinPlaysLike.playsYds) : null} />
       </dl>
       {pinPlaysLike?.breakdown && <p className="mt-1 text-[11px] text-fg-3 tabular-nums">{pinPlaysLike.breakdown}</p>}
+      {coldTip && <p className="mt-1 text-[11px] text-fg-3">{COLD_BALL_TIP}</p>}
 
       <p className="mt-2 text-xs text-fg-3">
         Finishes ~<span className="tabular-nums">{Math.round(chosenLive.meanTotalYds)}</span> yd (carry{" "}

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { fitFromRow, type ClubFit, type ProfileRow } from "@/lib/golfer/shotProfile"
 import type { MyProfile } from "@/lib/planner/types"
+import { baselineTemperatureF } from "@/lib/shots/temperature"
 
 /**
  * The signed-in golfer's own fitted profile (shot_profiles) and how many of
@@ -15,9 +16,30 @@ export async function loadMyProfile(supabase: SupabaseClient): Promise<MyProfile
     return f ? [f] : []
   })
   if (fits.length === 0) return null
-  const { data: sessions } = await supabase.from("shot_sessions").select("id").eq("excluded", false)
+  const { data: sessions } = await supabase.from("shot_sessions").select("id, temperature_f").eq("excluded", false)
   const version = (rows as ProfileRow[]).reduce((latest, r) => (r.fitted_at && r.fitted_at > latest ? r.fitted_at : latest), "")
-  return { fits, sessionCount: sessions?.length ?? Math.max(...fits.map((f) => f.sessionsUsed)), version }
+  return {
+    fits,
+    sessionCount: sessions?.length ?? Math.max(...fits.map((f) => f.sessionsUsed)),
+    version,
+    baselineTemperatureF: await loadBaselineTemperature(supabase, sessions ?? []),
+  }
+}
+
+/**
+ * The profile's baseline temperature: the shot-count-weighted average temperature over the included sessions that
+ * have one (70 F when none do). Only sessions with a temperature need a shot count, so this is a handful of cheap
+ * count queries, not a download of every shot. Partial swings are not counted, as in the fit.
+ */
+async function loadBaselineTemperature(supabase: SupabaseClient, sessions: { id: unknown; temperature_f: unknown }[]): Promise<number> {
+  const withTemp = sessions.filter((s) => s.temperature_f != null && Number.isFinite(Number(s.temperature_f)))
+  const entries = await Promise.all(
+    withTemp.map(async (s) => {
+      const { count } = await supabase.from("real_shots").select("id", { count: "exact", head: true }).eq("session_id", s.id as string).eq("is_partial", false)
+      return { temperatureF: Number(s.temperature_f), shotCount: count ?? 0 }
+    })
+  )
+  return baselineTemperatureF(entries)
 }
 
 /** Handicap used to blend thin clubs when the golfer has none on file. An estimate: the planner's own default. */

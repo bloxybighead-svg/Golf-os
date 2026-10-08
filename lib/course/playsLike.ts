@@ -1,7 +1,8 @@
-// "Plays like": what elevation change and wind do to a shot. Carry is measured on
+// "Plays like": what elevation change, wind and air temperature do to a shot. Carry is measured on
 // a launch monitor, in still air on level ground; on the course the same swing
 // goes farther downhill or downwind, shorter uphill or into the wind, and a
-// crosswind pushes it sideways. Applied to every sampled shot inside the
+// crosswind pushes it sideways. Cold air is denser, so the ball carries shorter;
+// hot air carries farther. Applied to every sampled shot inside the
 // simulation (plan.ts simulateLandings), so the club ranking, the aim search
 // and the penalty shares all see it.
 //
@@ -9,8 +10,10 @@
 // "1 yard per 3 feet" elevation rule, a percent of carry per mph of wind), not
 // measured for this golfer or this app. Treat them as starting points to tune.
 //
-// With no wind and no elevation, adjustShot returns the shot untouched, so a
-// still, flat plan reproduces the plain simulation exactly.
+// With no wind, no elevation and a temperature within TEMP_MIN_DIFF_F of the
+// one the golfer's carries were measured at, adjustShot returns the shot
+// untouched, so a still, flat, matching-temperature plan reproduces the plain
+// simulation exactly.
 
 import { landingPoint, type LatLng } from "./geo"
 import { elevationAt, type ElevationField } from "./elevation"
@@ -25,6 +28,43 @@ export interface Wind {
 export interface ShotConditions {
   wind: Wind | null
   elevation: ElevationField | null
+  /** Air temperature now, degrees F. null = no adjustment. */
+  temperatureF: number | null
+  /** The temperature the golfer's carries were measured at, degrees F (DEFAULT_BASELINE_TEMP_F when absent). */
+  baselineF?: number
+}
+
+// ---- Air temperature ------------------------------------------------------------
+
+/**
+ * Share of carry gained per 10 degrees F of warming (lost per 10 degrees of cooling), the same for every club.
+ * ESTIMATE from published figures: TrackMan puts it at about 1.33-1.66 yd per 10 F (a TrackMan 9-iron carries up
+ * to 7 yd farther at 95 F than at 55 F), and Titleist at about 1.5% per 20 F. 1% per 10 F sits at the strong end
+ * of those: about 1.5 yd for a 150 yd carry. Hot and cold are symmetric.
+ */
+export const TEMP_CARRY_PER_10F = 0.01
+
+/** The temperature never changes a carry by more than this share, however far it is from the baseline. A safety limit (0.06 is a 60 F gap). */
+export const TEMP_MAX_CARRY_SHARE = 0.06
+
+/** Temperature gaps smaller than this, degrees F, count as matching the baseline, so a matching temperature reproduces the plain simulation exactly (same rule as LEVEL_FT). */
+export const TEMP_MIN_DIFF_F = 2
+
+/** The temperature carries are taken to be measured at when the golfer hasn't said: handicap estimates and synthetic profiles. A typical mild day. */
+export const DEFAULT_BASELINE_TEMP_F = 70
+
+/** Cold-day advice shows under this temperature, degrees F. ESTIMATE: a ball's compression clearly stiffens below the mid 40s. */
+export const COLD_TIP_BELOW_F = 45
+
+/**
+ * Signed share of carry the temperature adds (negative = cold, shorter): TEMP_CARRY_PER_10F per 10 F from the
+ * baseline, limited to +-TEMP_MAX_CARRY_SHARE. Zero with no reading or a gap under TEMP_MIN_DIFF_F.
+ */
+export function temperatureCarryShare(temperatureF: number | null | undefined, baselineF: number = DEFAULT_BASELINE_TEMP_F): number {
+  if (temperatureF == null || !Number.isFinite(temperatureF) || !Number.isFinite(baselineF)) return 0
+  const diff = temperatureF - baselineF
+  if (Math.abs(diff) < TEMP_MIN_DIFF_F) return 0
+  return Math.max(-TEMP_MAX_CARRY_SHARE, Math.min(TEMP_MAX_CARRY_SHARE, (TEMP_CARRY_PER_10F * diff) / 10))
 }
 
 // ---- Elevation ---------------------------------------------------------------
@@ -122,7 +162,7 @@ export function crosswindDriftYds(club: string, carryYds: number, crossRightMph:
 
 /** Whether these conditions change anything at all. */
 export function hasEffect(c: ShotConditions | null | undefined): c is ShotConditions {
-  return !!c && ((!!c.wind && c.wind.speedMph > 0) || !!c.elevation)
+  return !!c && ((!!c.wind && c.wind.speedMph > 0) || !!c.elevation || temperatureCarryShare(c.temperatureF, c.baselineF) !== 0)
 }
 
 /** A height difference with float noise taken out: anything under LEVEL_FT is zero. */
@@ -140,17 +180,20 @@ export interface ShotAdjustment {
 }
 
 /**
- * The carry, offline and rollout a sampled shot really gets: wind first (a
- * share of the carry and a sideways drift), then the ground height where it
+ * The carry, offline and rollout a sampled shot really gets: the air
+ * temperature first (a share of the carry), then the wind on that carry (a
+ * share of it and a sideways drift), then the ground height where it
  * comes down (1 yd per ELEVATION_FT_PER_YD feet). `bearing` is the direction the
  * golfer aims. Untouched when nothing applies.
  */
 export function adjustShot(club: string, carryYds: number, offlineYds: number, from: LatLng, bearing: number, c: ShotConditions | null | undefined): ShotAdjustment {
   if (!hasEffect(c)) return { carryYds, offlineYds, rollScale: 1 }
+  const tempShare = temperatureCarryShare(c.temperatureF, c.baselineF)
+  const warmCarry = tempShare === 0 ? carryYds : carryYds * (1 + tempShare)
   const { headMph, crossRightMph } = windComponents(c.wind, bearing)
   const share = windCarryShare(club, headMph)
-  const windCarry = share === 0 ? carryYds : carryYds * (1 - share)
-  const offline = crossRightMph === 0 ? offlineYds : offlineYds + crosswindDriftYds(club, carryYds, crossRightMph)
+  const windCarry = share === 0 ? warmCarry : warmCarry * (1 - share)
+  const offline = crossRightMph === 0 ? offlineYds : offlineYds + crosswindDriftYds(club, warmCarry, crossRightMph)
 
   let carry = windCarry
   let landing: LatLng | null = null
@@ -190,6 +233,10 @@ export interface PlaysLike {
   elevationYds: number
   /** Yards added (headwind) or taken off (tailwind) for the wind. */
   windYds: number
+  /** Yards added (cold air) or taken off (warm air) for the temperature; 0 when it matches the baseline. */
+  temperatureYds: number
+  /** The air temperature, degrees F, when it changes the shot; null otherwise. For the label only. */
+  temperatureF: number | null
   /** Crosswind component, mph, right positive (wind from the left); 0 with no wind. For the label only. */
   crossRightMph: number
 }
@@ -197,8 +244,9 @@ export interface PlaysLike {
 /**
  * The distance to a target as it plays for `club`: the flat, still-air carry
  * that would cover it. The inverse of adjustShot's carry rule, so the card and
- * the simulation agree: actual = c(1 - wind share) - rise/3, so
- * c = (d + rise/3) / (1 - wind share). Null when there is nothing to adjust.
+ * the simulation agree: actual = c(1 + temp share)(1 - wind share) - rise/3, so
+ * c = (d + rise/3) / ((1 - wind share)(1 + temp share)). Null when there is
+ * nothing to adjust.
  */
 export function playsLike(
   distYds: number,
@@ -218,16 +266,26 @@ export function playsLike(
     if (a != null && b != null) riseFt = level(b - a)
   }
   const elevationYds = riseFt / ELEVATION_FT_PER_YD
-  const needed = (distYds + elevationYds) / (1 - share)
-  return { playsYds: needed, elevationYds, windYds: needed - distYds - elevationYds, crossRightMph }
+  const tempShare = temperatureCarryShare(c.temperatureF, c.baselineF)
+  const windNeeded = (distYds + elevationYds) / (1 - share)
+  const needed = windNeeded / (1 + tempShare)
+  return {
+    playsYds: needed,
+    elevationYds,
+    windYds: windNeeded - distYds - elevationYds,
+    temperatureYds: needed - windNeeded,
+    temperatureF: tempShare === 0 ? null : (c.temperatureF as number),
+    crossRightMph,
+  }
 }
 
-/** "-8 downhill, -4 wind helping, 6 mph from the left": only the parts that matter (half a yard or more). */
+/** "-8 downhill, -4 wind helping, +4 cold (48°F), 6 mph from the left": only the parts that matter (half a yard or more). */
 export function playsLikeBreakdown(p: PlaysLike): string {
   const parts: string[] = []
   const sign = (n: number) => `${n < 0 ? "-" : "+"}${Math.abs(Math.round(n))}`
   if (Math.abs(p.elevationYds) >= 0.5) parts.push(`${sign(p.elevationYds)} ${p.elevationYds < 0 ? "downhill" : "uphill"}`)
   if (Math.abs(p.windYds) >= 0.5) parts.push(`${sign(p.windYds)} wind ${p.windYds < 0 ? "helping" : "into you"}`)
+  if (p.temperatureF != null && Math.abs(p.temperatureYds) >= 0.5) parts.push(`${sign(p.temperatureYds)} ${p.temperatureYds > 0 ? "cold" : "warm"} (${Math.round(p.temperatureF)}°F)`)
   if (Math.abs(p.crossRightMph) >= 1) parts.push(`${Math.round(Math.abs(p.crossRightMph))} mph from the ${p.crossRightMph > 0 ? "left" : "right"}`)
   return parts.join(", ")
 }
@@ -236,5 +294,7 @@ export function playsLikeBreakdown(p: PlaysLike): string {
 export function conditionsKey(c: ShotConditions | null | undefined): string {
   if (!hasEffect(c)) return "-"
   const w = c.wind && c.wind.speedMph > 0 ? `${Math.round(c.wind.speedMph)}@${Math.round(c.wind.fromDeg)}` : "calm"
-  return `${w}|${c.elevation?.id ?? "flat"}`
+  const share = temperatureCarryShare(c.temperatureF, c.baselineF)
+  const t = share === 0 ? "" : `|${Math.round(c.temperatureF as number)}F/${Math.round(c.baselineF ?? DEFAULT_BASELINE_TEMP_F)}F`
+  return `${w}|${c.elevation?.id ?? "flat"}${t}`
 }

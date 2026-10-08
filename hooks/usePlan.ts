@@ -15,7 +15,7 @@ import type { UserZone } from "@/lib/course/lies"
 import type { CourseFeature, CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import { aimMarkerFor, evaluateClub, isAtBestAim, simulateLandings, strokesAtAim, type ClubShots, type OptimizedClubPlan } from "@/lib/course/plan"
 import { buildLieMapFrom, type LieInputs } from "@/lib/course/rankRequest"
-import { conditionsKey, hasEffect, playsLike, playsLikeBreakdown, type PlaysLike, type ShotConditions } from "@/lib/course/playsLike"
+import { COLD_TIP_BELOW_F, conditionsKey, DEFAULT_BASELINE_TEMP_F, hasEffect, playsLike, playsLikeBreakdown, type PlaysLike, type ShotConditions } from "@/lib/course/playsLike"
 import { useHoleElevation } from "@/hooks/useHoleElevation"
 import { usePlaysLikeSetting } from "@/hooks/usePlaysLikeSetting"
 import { useWind } from "@/hooks/useWind"
@@ -205,11 +205,15 @@ export function usePlan({
   const [playsLikeOn, setPlaysLikeOn] = usePlaysLikeSetting()
   const elevation = useHoleElevation(course?.id ?? null, holeId, hole?.line ?? null)
   const wind = useWind({ courseId: course?.id ?? null, center: course?.lat != null && course.lng != null ? { lat: course.lat, lng: course.lng } : null, roundActive })
+  // Today's air temperature is adjusted against the temperature the golfer's carries were measured at: their
+  // sessions' average on My shots, 70 F for a handicap estimate or the old public data.
+  const temperatureF = wind.temperature.temperatureF
+  const baselineF = source === "calibrated" && myProfile ? myProfile.baselineTemperatureF : DEFAULT_BASELINE_TEMP_F
   const conditions: ShotConditions | null = useMemo(() => {
     if (!playsLikeOn) return null
-    const c: ShotConditions = { wind: wind.wind, elevation }
+    const c: ShotConditions = { wind: wind.wind, elevation, temperatureF, baselineF }
     return hasEffect(c) ? c : null
-  }, [playsLikeOn, wind.wind, elevation])
+  }, [playsLikeOn, wind.wind, elevation, temperatureF, baselineF])
   const conditionsId = conditionsKey(conditions)
 
   // ---------- planning ----------
@@ -395,7 +399,7 @@ export function usePlan({
   }, [geometry])
 
   const distPin = ball && pin ? distanceYds(ball, pin) : null
-  // The distance to the pin as it plays for the chosen club: height change and wind (null when neither applies).
+  // The distance to the pin as it plays for the chosen club: height change, wind and temperature (null when none applies).
   const pinPlaysLike: (PlaysLike & { breakdown: string }) | null = useMemo(() => {
     if (!ball || !pin || !chosen || !conditions) return null
     const p = playsLike(distanceYds(ball, pin), ball, pin, bearingDeg(ball, pin), chosen.club, conditions)
@@ -461,6 +465,7 @@ export function usePlan({
     strategyMode,
     optionsNote,
     pinPlaysLike,
+    coldTip: temperatureF != null && temperatureF < COLD_TIP_BELOW_F,
     wind,
     playsLikeOn,
     setPlaysLikeOn,
