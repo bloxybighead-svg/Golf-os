@@ -25,7 +25,7 @@ export default function LoginForm() {
 
   // Straight to setup the first time an account signs in (no baseline saved yet),
   // otherwise wherever they were headed.
-  async function afterSignIn(supabase: ReturnType<typeof createClient>) {
+  async function afterSignIn(supabase: Awaited<ReturnType<typeof createClient>>) {
     const { data } = await supabase.from("golfer_baseline").select("user_id").maybeSingle()
     router.replace(data ? redirectTo : "/welcome")
     router.refresh()

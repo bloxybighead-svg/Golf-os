@@ -4,7 +4,7 @@ import { supabaseShotDb } from "@/lib/shots/store"
 import { ShotDataClient } from "@/components/shots/ShotDataClient"
 
 export async function ShotDataSection() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

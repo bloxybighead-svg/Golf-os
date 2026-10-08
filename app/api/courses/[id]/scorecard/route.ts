@@ -8,7 +8,8 @@ import { clientIp, hitRateLimit, rateLimitBucket, rateLimitedResponse } from "@/
 // Free, keyless, ODbL-licensed: https://opengolfapi.org/
 const OPENGOLFAPI_BASE = "https://api.opengolfapi.org/api/v1"
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const limit = await hitRateLimit("scorecard", rateLimitBucket("scorecard", { ip: clientIp(req.headers) }))
   if (!limit.allowed) return rateLimitedResponse(limit, "Too many scorecard lookups. Try again in a minute.", 60)
   const res = await fetch(`${OPENGOLFAPI_BASE}/courses/${encodeURIComponent(params.id)}`, {

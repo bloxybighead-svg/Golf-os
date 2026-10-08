@@ -3,12 +3,13 @@ import { RoundsClient } from "@/components/rounds/RoundsClient"
 import { RoundsSummary } from "@/components/rounds/RoundsSummary"
 import type { Round } from "@/lib/supabase/types"
 
-export default async function RoundsPage({
-  searchParams,
-}: {
-  searchParams?: { new?: string }
-}) {
-  const supabase = createClient()
+export default async function RoundsPage(
+  props: {
+    searchParams?: Promise<{ new?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data, error } = await supabase

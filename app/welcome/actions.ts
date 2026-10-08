@@ -6,7 +6,7 @@ import { cleanCarries, cleanHandicap, type CourseRef } from "@/lib/golfer/baseli
 import { settingsToRow, type SyncedSettings } from "@/lib/golfer/bagSync"
 
 export async function saveBaseline(input: { handicapIndex: unknown; carries: Record<string, unknown>; homeCourse: CourseRef | null }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to save your baseline.")
 
@@ -53,7 +53,7 @@ export async function saveBaseline(input: { handicapIndex: unknown; carries: Rec
  * new updated_at so the device can stamp its copy with the same time.
  */
 export async function saveGolferSettings(input: SyncedSettings): Promise<{ updatedAt: string } | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
   const row = settingsToRow(input)

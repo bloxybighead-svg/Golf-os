@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client"
 export type AuthUser = { id: string; email: string | null }
 
 export function useAuthUser() {
-  const supabaseRef = useRef<ReturnType<typeof createClient>>()
+  const supabaseRef = useRef<Awaited<ReturnType<typeof createClient>>>(undefined)
   if (!supabaseRef.current) supabaseRef.current = createClient()
   const [authUser, setAuthUser] = useState<AuthUser | null>(null)
 

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { TBoxClient, type KnownCourse } from "@/components/simulator/TBoxClient"
 
 export async function TeeBoxSection() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const [{ data: rounds }, { data: driverProfile }] = await Promise.all([
     supabase

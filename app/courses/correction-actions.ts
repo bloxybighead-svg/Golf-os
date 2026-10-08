@@ -26,7 +26,7 @@ export type SubmitCorrectionResult =
   | { ok: false; error: string }
 
 export async function submitCorrection(input: SubmitCorrectionInput): Promise<SubmitCorrectionResult> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

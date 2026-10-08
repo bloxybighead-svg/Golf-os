@@ -12,7 +12,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // A short hub: four rows, each with the one number worth seeing without opening it.
 // The detail lives on /you/stats, /you/practice, /you/bag and /you/settings.
 export default async function YouPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const since = new Date(Date.now() - PRACTICE_WINDOW_DAYS * DAY_MS).toISOString()
 

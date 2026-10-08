@@ -7,8 +7,9 @@ import { settingsFromRow } from "@/lib/golfer/bagSync"
 
 // ?legacy=1 loads the old public calibrated profile next to the golfer's own, to compare the two
 // until the old data is removed (supabase/shot_data_13c_lockdown.sql). Without it the page never names a golfer.
-export default async function CoursePage({ searchParams }: { searchParams?: { legacy?: string } }) {
-  const supabase = createClient()
+export default async function CoursePage(props: { searchParams?: Promise<{ legacy?: string }> }) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient()
   // If the stored profile can't be loaded, the page still works with the
   // handicap-based golfer generated in the browser. The signed-in golfer's
   // tracked handicap feeds the tee recommendation, and their setup numbers

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 
 /** Logs the start of a recommended drill; returns the new run's id so it can be completed later. */
 export async function startDrill(drillId: string): Promise<string> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to log drills.")
   const { data, error } = await supabase
@@ -19,7 +19,7 @@ export async function startDrill(drillId: string): Promise<string> {
 }
 
 export async function completeDrill(runId: string, repsCompleted: number | null, notes: string | null) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to log drills.")
   if (repsCompleted != null && (!Number.isInteger(repsCompleted) || repsCompleted < 0)) {

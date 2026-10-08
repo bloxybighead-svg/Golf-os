@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 // The calculated index updates itself whenever a round is saved
 // (lib/supabase/syncHandicap.ts); this is the manual override, e.g. an official GHIN number.
 export async function saveManualHandicap(index: number, notes: string | null) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to save a handicap.")
   if (!Number.isFinite(index)) throw new Error("Enter a valid handicap index.")

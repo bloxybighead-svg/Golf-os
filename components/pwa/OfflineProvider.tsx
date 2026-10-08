@@ -20,7 +20,7 @@ const FLUSH_TICK_MS = 30_000
 const WRONG_ACCOUNT = "Sign in to the account this was saved from to sync it."
 
 /** The signed-in user's id from the saved session, or null. Throws (a retry, not "signed out") when there is no connection. */
-async function currentUserId(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+async function currentUserId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
   if (!navigator.onLine) throw new TypeError("offline")
   const { data } = await supabase.auth.getSession()
   return data.session?.user.id ?? null
