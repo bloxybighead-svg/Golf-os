@@ -7,6 +7,7 @@
 import { useEffect } from "react"
 import { createRound } from "@/app/rounds/actions"
 import { createClient } from "@/lib/supabase/client"
+import { runStartupCleanup } from "@/lib/offline/cleanup"
 import { OUTBOX_EVENT, flushOutbox, releaseParked, type Sender } from "@/lib/offline/outbox"
 import { OBTAGS_JOB, ROUND_JOB, type ObTagsPayload, type RoundPayload } from "@/lib/offline/jobs"
 import { cleanTags } from "@/lib/planner/obTagStore"
@@ -30,6 +31,7 @@ export function OfflineProvider() {
 
   useEffect(() => {
     const supabase = createClient()
+    void runStartupCleanup() // old golfos.course.* copies filled localStorage; IndexedDB is the only course cache now
 
     const senders: Record<"round" | "obTags", Sender> = {
       [ROUND_JOB]: async (job) => {
