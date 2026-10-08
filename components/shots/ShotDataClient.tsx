@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client"
 import { badgeFor, fitFromRow, generateMyBag, summarizeClubs, type ProfileRow } from "@/lib/golfer/shotProfile"
 import { DEFAULT_BLEND_HANDICAP } from "@/lib/supabase/loadMyProfile"
 import { deleteAllShotData, deleteSession, profilesAreStale, refit, saveSession, supabaseShotDb, updateSession, type SessionPatch } from "@/lib/shots/store"
+import { baselineFromSessions, INDOOR_TEMP_F, parseSessionTemperature, SESSION_TEMP_MAX_F, SESSION_TEMP_MIN_F } from "@/lib/shots/temperature"
 import type { NewSession, ParsedShot, SessionMeta, StoredShot } from "@/lib/shots/types"
 import { ImportFlow } from "./ImportFlow"
 import { ManualEntry } from "./ManualEntry"
@@ -71,6 +72,8 @@ export function ShotDataClient({ userId, initial }: { userId: string; initial: S
   const fitByClub = new Map(fits.map((f) => [f.club as string, f]))
   const summary = useMemo(() => summarizeClubs(data.sessions, data.shots), [data.sessions, data.shots])
   const usedSessions = data.sessions.filter((s) => !s.excluded)
+  const baselineF = useMemo(() => baselineFromSessions(data.sessions, data.shots), [data.sessions, data.shots])
+  const anyTemperature = usedSessions.some((s) => s.temperatureF != null)
   const selected = summary.find((s) => s.club === club) ?? summary[0]
 
   const countBySession = useMemo(() => {
@@ -236,7 +239,10 @@ export function ShotDataClient({ userId, initial }: { userId: string; initial: S
                         {s.date ?? "no date"} · {c?.n ?? 0} shots · {c ? Array.from(c.clubs).join(", ") : "no clubs"}
                       </p>
                     </div>
-                    <select className={`${INPUT} w-28`} value={s.environment} disabled={busy} onChange={(e) => patch(s.id, { environment: e.target.value as SessionMeta["environment"] })} aria-label="Indoor or outdoor">
+                    <select className={`${INPUT} w-28`} value={s.environment} disabled={busy} onChange={(e) => {
+                        const environment = e.target.value as SessionMeta["environment"]
+                        patch(s.id, environment === "indoor" && s.temperatureF == null ? { environment, temperatureF: INDOOR_TEMP_F } : { environment })
+                      }} aria-label="Indoor or outdoor">
                       <option value="outdoor">Outdoor</option>
                       <option value="indoor">Indoor</option>
                     </select>
@@ -244,6 +250,25 @@ export function ShotDataClient({ userId, initial }: { userId: string; initial: S
                       <option value="grass">Grass</option>
                       <option value="mat">Mat</option>
                     </select>
+                    <label className="flex items-center gap-1 text-xs text-muted">
+                      <input
+                        key={`${s.id}-${s.temperatureF ?? ""}`}
+                        className={`${INPUT} w-20`}
+                        type="number"
+                        inputMode="decimal"
+                        min={SESSION_TEMP_MIN_F}
+                        max={SESSION_TEMP_MAX_F}
+                        defaultValue={s.temperatureF ?? ""}
+                        placeholder="°F"
+                        disabled={busy}
+                        aria-label="Temperature in degrees Fahrenheit"
+                        onBlur={(e) => {
+                          const t = parseSessionTemperature(e.target.value)
+                          if (t !== (s.temperatureF ?? null)) patch(s.id, { temperatureF: t })
+                        }}
+                      />
+                      °F
+                    </label>
                     <button
                       type="button"
                       className={`${BUTTON} text-danger`}
@@ -259,6 +284,11 @@ export function ShotDataClient({ userId, initial }: { userId: string; initial: S
               })}
             </ul>
             <p className="mt-2 text-xs text-muted">{usedSessions.length} of {data.sessions.length} sessions are in your profile.</p>
+            <p className="mt-1 text-xs text-muted">
+              {anyTemperature
+                ? `Your carries were measured at about ${Math.round(baselineF)}°F (the average of your sessions with a temperature, by shot count). The planner adds or takes off yards when the day is warmer or colder than that.`
+                : "Add a temperature to a session (indoor sessions count as 70°F) and the planner adjusts for a warmer or colder day. Until then it assumes 70°F."}
+            </p>
           </>
         )}
       </section>

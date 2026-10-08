@@ -15,6 +15,8 @@ export interface SessionMeta {
   surface: Surface
   /** A golfer-excluded session never reaches the fit. */
   excluded: boolean
+  /** Air temperature the shots were hit at, degrees F; null/absent when unknown. Sets the profile's baseline temperature. */
+  temperatureF?: number | null
 }
 
 export type NewSession = Omit<SessionMeta, "id" | "excluded">

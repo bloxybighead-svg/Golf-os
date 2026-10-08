@@ -1,6 +1,6 @@
 "use client"
 
-// The planner's wind: the current reading for the course (refreshed every
+// The planner's wind and air temperature: the current reading for the course (refreshed every
 // WIND_REFRESH_MS during a round), the golfer's manual setting, and which one
 // applies (lib/course/wind.ts resolveWind: manual always wins). With no signal
 // it keeps using the last saved reading and says when it was taken.
@@ -10,33 +10,45 @@ import type { LatLng } from "@/lib/course/geo"
 import {
   absoluteFromHole,
   clampSpeed,
+  clampTemperature,
   parseWindResponse,
+  resolveTemperature,
   resolveWind,
   roundWind,
   windUrl,
   WIND_REFRESH_MS,
+  type ManualTemperature,
   type ManualWind,
+  type ResolvedTemperature,
   type ResolvedWind,
   type WindReading,
 } from "@/lib/course/wind"
-import { readAutoWind, readManualWind, saveAutoWind, saveManualWind } from "@/lib/course/windStore"
+import { readAutoWind, readManualTemperature, readManualWind, saveAutoWind, saveManualTemperature, saveManualWind } from "@/lib/course/windStore"
 
 export interface WindState extends ResolvedWind {
   /** Sets the manual wind: speed 0-30 mph, and the direction as it is on the dial, relative to the hole (0 = into you). */
   setManual: (speedMph: number, relDeg: number, holeBearingDeg: number) => void
   /** Back to the automatic reading. */
   clearManual: () => void
+  /** The air temperature in degrees F, and where it came from. */
+  temperature: ResolvedTemperature
+  /** Sets the temperature by hand, degrees F (kept within -20 to 120). */
+  setManualTemperature: (temperatureF: number) => void
+  /** Back to the automatic reading. */
+  clearManualTemperature: () => void
 }
 
 export function useWind({ courseId, center, roundActive }: { courseId: string | null; center: LatLng | null; roundActive: boolean }): WindState {
   const [auto, setAuto] = useState<WindReading | null>(null)
   const [manual, setManualState] = useState<ManualWind | null>(null)
+  const [manualTemp, setManualTempState] = useState<ManualTemperature | null>(null)
   const [failed, setFailed] = useState(false)
   const [now, setNow] = useState(() => Date.now())
 
   // The saved copies (this device) load after mount.
   useEffect(() => {
     setManualState(readManualWind())
+    setManualTempState(readManualTemperature())
   }, [])
   useEffect(() => {
     setAuto(courseId ? readAutoWind(courseId) : null)
@@ -96,10 +108,21 @@ export function useWind({ courseId, center, roundActive }: { courseId: string | 
     setManualState(null)
   }, [])
 
+  const setManualTemperature = useCallback((temperatureF: number) => {
+    const t: ManualTemperature = { temperatureF: clampTemperature(temperatureF), at: Date.now() }
+    saveManualTemperature(t)
+    setManualTempState(t)
+  }, [])
+  const clearManualTemperature = useCallback(() => {
+    saveManualTemperature(null)
+    setManualTempState(null)
+  }, [])
+
   const resolved = useMemo(() => resolveWind(manual, auto, now, failed), [manual, auto, now, failed])
   // Keep the wind object's identity while its numbers are the same, so a re-render never re-ranks.
   const key = resolved.wind ? `${resolved.wind.speedMph}@${resolved.wind.fromDeg}` : "-"
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stable = useMemo(() => resolved, [key, resolved.source, resolved.at, resolved.labelTime])
-  return { ...stable, setManual, clearManual }
+  const temperature = useMemo(() => resolveTemperature(manualTemp, auto, now), [manualTemp, auto, now])
+  return { ...stable, setManual, clearManual, temperature, setManualTemperature, clearManualTemperature }
 }

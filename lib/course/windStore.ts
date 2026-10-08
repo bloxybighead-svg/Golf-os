@@ -3,10 +3,11 @@
 // golfer's manual setting, and the plays-like on/off switch. localStorage, every
 // call safe where it is blocked.
 
-import { WIND_MAX_AGE_MS, type ManualWind, type WindReading } from "./wind"
+import { clampTemperature, WIND_MAX_AGE_MS, type ManualTemperature, type ManualWind, type WindReading } from "./wind"
 
 export const WIND_AUTO_KEY = "golfos.windAuto.v1"
 export const WIND_MANUAL_KEY = "golfos.windManual.v1"
+export const TEMP_MANUAL_KEY = "golfos.tempManual.v1"
 export const PLAYS_LIKE_KEY = "golfos.playsLike.v1"
 /** Fired on window when plays-like is switched in this tab. */
 export const PLAYS_LIKE_EVENT = "golfos:plays-like"
@@ -17,7 +18,7 @@ const MAX_COURSES = 8
 type AutoMap = Record<string, WindReading>
 
 function isReading(v: unknown): v is WindReading {
-  const r = v as WindReading | null
+  const r = v as Partial<WindReading> | null
   return !!r && Number.isFinite(r.speedMph) && Number.isFinite(r.fromDeg) && Number.isFinite(r.at)
 }
 
@@ -27,7 +28,10 @@ export function parseAutoMap(raw: string | null, now: number): AutoMap {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>
     const out: AutoMap = {}
-    for (const [k, v] of Object.entries(parsed)) if (isReading(v) && now - v.at <= WIND_MAX_AGE_MS) out[k] = v
+    // Readings saved before temperature was added have none: null, no adjustment.
+    for (const [k, v] of Object.entries(parsed)) {
+      if (isReading(v) && now - v.at <= WIND_MAX_AGE_MS) out[k] = { ...v, temperatureF: Number.isFinite(v.temperatureF) ? (v.temperatureF as number) : null }
+    }
     return out
   } catch {
     return {}
@@ -67,6 +71,25 @@ export function saveManualWind(w: ManualWind | null): void {
   try {
     if (w) localStorage.setItem(WIND_MANUAL_KEY, JSON.stringify(w))
     else localStorage.removeItem(WIND_MANUAL_KEY)
+  } catch {
+    /* the choice just won't stick */
+  }
+}
+
+export function readManualTemperature(): ManualTemperature | null {
+  try {
+    const raw = localStorage.getItem(TEMP_MANUAL_KEY)
+    const v = raw ? (JSON.parse(raw) as Partial<ManualTemperature> | null) : null
+    return v && Number.isFinite(v.temperatureF) && Number.isFinite(v.at) ? { temperatureF: clampTemperature(v.temperatureF as number), at: v.at as number } : null
+  } catch {
+    return null
+  }
+}
+
+export function saveManualTemperature(t: ManualTemperature | null): void {
+  try {
+    if (t) localStorage.setItem(TEMP_MANUAL_KEY, JSON.stringify(t))
+    else localStorage.removeItem(TEMP_MANUAL_KEY)
   } catch {
     /* the choice just won't stick */
   }

@@ -64,7 +64,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, syncLocalZonesToAccount, syncingZones, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
-    pinPlaysLike, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
+    pinPlaysLike, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
   } = vm
 
   // First-visit intro: decided once, when Play first renders in the browser.
@@ -114,6 +114,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         onPickOption={pickClub}
         shotsLabel={source === "calibrated" ? "My shots" : source === "legacy" ? `${calibratedName} (old data)` : "Handicap estimate"}
         pinPlaysLike={pinPlaysLike}
+        coldTip={coldTip}
       />
       <WindControl wind={wind} holeBearingDeg={holeBearingDeg} playsLikeOn={playsLikeOn} onPlaysLikeChange={setPlaysLikeOn} hasElevation={hasElevation} />
       </>

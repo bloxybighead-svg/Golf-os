@@ -17,6 +17,8 @@ export interface MyProfile {
   sessionCount: number
   /** Latest fit time: changes whenever the profile is re-fitted. */
   version: string
+  /** The temperature the shots were measured at, degrees F: the shot-count-weighted average over the included sessions that have one, else 70. */
+  baselineTemperatureF: number
 }
 
 export interface CalibratedClub {

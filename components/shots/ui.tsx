@@ -1,6 +1,7 @@
 "use client"
 
 import type { Badge } from "@/lib/golfer/shotProfile"
+import { parseSessionTemperature, SESSION_TEMP_MAX_F, SESSION_TEMP_MIN_F, withIndoorDefault } from "@/lib/shots/temperature"
 import type { NewSession } from "@/lib/shots/types"
 
 export const INPUT = "h-11 rounded-lg border border-fg/[0.08] bg-page px-3 text-sm text-fg md:h-9"
@@ -23,7 +24,7 @@ export function BadgePill({ badge }: { badge: Badge }) {
   )
 }
 
-/** Label, date, indoor/outdoor and mat/grass: what a session is, shared by upload and manual entry. */
+/** Label, date, indoor/outdoor, mat/grass and temperature: what a session is, shared by upload and manual entry. */
 export function SessionFields({ value, onChange }: { value: NewSession; onChange: (v: NewSession) => void }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
@@ -38,7 +39,7 @@ export function SessionFields({ value, onChange }: { value: NewSession; onChange
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1.5">
           <span className="text-xs text-muted">Where</span>
-          <select className={INPUT} value={value.environment} onChange={(e) => onChange({ ...value, environment: e.target.value as NewSession["environment"] })}>
+          <select className={INPUT} value={value.environment} onChange={(e) => onChange(withIndoorDefault({ ...value, environment: e.target.value as NewSession["environment"] }))}>
             <option value="outdoor">Outdoor</option>
             <option value="indoor">Indoor</option>
           </select>
@@ -51,6 +52,19 @@ export function SessionFields({ value, onChange }: { value: NewSession; onChange
           </select>
         </label>
       </div>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs text-muted">Temperature (°F, optional)</span>
+        <input
+          className={INPUT}
+          type="number"
+          inputMode="decimal"
+          min={SESSION_TEMP_MIN_F}
+          max={SESSION_TEMP_MAX_F}
+          value={value.temperatureF ?? ""}
+          placeholder={value.environment === "indoor" ? "70" : "e.g. 65"}
+          onChange={(e) => onChange({ ...value, temperatureF: parseSessionTemperature(e.target.value) })}
+        />
+      </label>
     </div>
   )
 }

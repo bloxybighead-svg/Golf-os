@@ -1,13 +1,24 @@
-// Wind for the planner: the current reading from Open-Meteo (free, no key), a
-// manual override the golfer sets, and which of the two the planner uses.
-// Manual always wins. Pure logic: fetching and storage are in hooks/useWind.ts.
+// Wind and air temperature for the planner: the current reading from Open-Meteo
+// (free, no key, one request for both), a manual override the golfer sets for
+// each, and which of the two the planner uses. Manual always wins. Pure logic: fetching and storage are in hooks/useWind.ts.
 
 import type { Wind } from "./playsLike"
 
-/** A wind reading and when it was taken (ms since 1970). */
+/** A weather reading (wind, plus the air temperature in degrees F, null when the service didn't give one) and when it was taken (ms since 1970). */
 export interface WindReading extends Wind {
   at: number
+  temperatureF: number | null
 }
+
+/** The golfer's own air temperature, degrees F. */
+export interface ManualTemperature {
+  temperatureF: number
+  at: number
+}
+
+/** The temperature field's range, degrees F (the same limits as shot_sessions.temperature_f). */
+export const TEMP_MIN_F = -20
+export const TEMP_MAX_F = 120
 
 /** The golfer's own setting. Direction is stored as a compass bearing the wind blows FROM, so it stays right when the hole changes. */
 export interface ManualWind extends Wind {
@@ -35,30 +46,38 @@ export function roundWind(w: Wind): Wind {
   return { speedMph: Math.round(w.speedMph), fromDeg: ((Math.round(w.fromDeg / 5) * 5) % 360 + 360) % 360 }
 }
 
+export function clampTemperature(f: number): number {
+  if (!Number.isFinite(f)) return 70
+  return Math.min(TEMP_MAX_F, Math.max(TEMP_MIN_F, Math.round(f)))
+}
+
 export function clampSpeed(mph: number): number {
   if (!Number.isFinite(mph)) return 0
   return Math.min(WIND_MAX_MPH, Math.max(WIND_MIN_MPH, Math.round(mph)))
 }
 
-/** Open-Meteo's forecast API, asking for the current 10 m wind in mph. */
+/** Open-Meteo's forecast API, asking for the current 10 m wind in mph and the 2 m air temperature in degrees F, in the one request. */
 export function windUrl(lat: number, lng: number): string {
   const q = new URLSearchParams({
     latitude: lat.toFixed(4),
     longitude: lng.toFixed(4),
-    current: "wind_speed_10m,wind_direction_10m",
+    current: "wind_speed_10m,wind_direction_10m,temperature_2m",
     wind_speed_unit: "mph",
+    temperature_unit: "fahrenheit",
   })
   return `https://api.open-meteo.com/v1/forecast?${q.toString()}`
 }
 
 /** The reading in an Open-Meteo response, or null when it isn't there or isn't numbers. */
 export function parseWindResponse(json: unknown, now: number): WindReading | null {
-  const cur = (json as { current?: { wind_speed_10m?: unknown; wind_direction_10m?: unknown } } | null)?.current
+  const cur = (json as { current?: { wind_speed_10m?: unknown; wind_direction_10m?: unknown; temperature_2m?: unknown } } | null)?.current
   const speed = cur?.wind_speed_10m
   const dir = cur?.wind_direction_10m
   if (typeof speed !== "number" || typeof dir !== "number" || !Number.isFinite(speed) || !Number.isFinite(dir)) return null
   const w = roundWind({ speedMph: Math.min(speed, 99), fromDeg: dir })
-  return { ...w, at: now }
+  const t = cur?.temperature_2m
+  const temperatureF = typeof t === "number" && Number.isFinite(t) && t >= TEMP_MIN_F && t <= TEMP_MAX_F ? Math.round(t) : null
+  return { ...w, at: now, temperatureF }
 }
 
 export type WindSource = "manual" | "auto" | "none"
@@ -90,6 +109,22 @@ export function resolveWind(manual: ManualWind | null, auto: WindReading | null,
     }
   }
   return { wind: null, source: "none", at: null, labelTime: false }
+}
+
+export interface ResolvedTemperature {
+  temperatureF: number | null
+  source: WindSource
+  at: number | null
+}
+
+/**
+ * The air temperature the planner uses: the manual setting if there is a fresh one (it lapses like the manual
+ * wind), else the last automatic reading if it is not too old and has a temperature, else none.
+ */
+export function resolveTemperature(manual: ManualTemperature | null, auto: WindReading | null, now: number): ResolvedTemperature {
+  if (manual && now - manual.at <= MANUAL_WIND_MAX_AGE_MS) return { temperatureF: manual.temperatureF, source: "manual", at: manual.at }
+  if (auto && auto.temperatureF != null && now - auto.at <= WIND_MAX_AGE_MS) return { temperatureF: auto.temperatureF, source: "auto", at: auto.at }
+  return { temperatureF: null, source: "none", at: null }
 }
 
 /** "2:14 pm" in the device's own clock. */
