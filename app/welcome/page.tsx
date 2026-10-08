@@ -6,10 +6,11 @@ import { safeReturnPath } from "@/lib/you/hub"
 // Setup: handicap, carries and home course, then an offer to add past rounds.
 // Works signed out (saved on this device) and signed in (also saved to the account).
 // ?edit=1 reopens it as "Edit your bag" (prefilled; saving returns to ?return=, default My bag).
-export default async function WelcomePage({ searchParams }: { searchParams?: { edit?: string; return?: string } }) {
+export default async function WelcomePage(props: { searchParams?: Promise<{ edit?: string; return?: string }> }) {
+  const searchParams = await props.searchParams;
   const editing = searchParams?.edit === "1"
   const returnTo = safeReturnPath(searchParams?.return)
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

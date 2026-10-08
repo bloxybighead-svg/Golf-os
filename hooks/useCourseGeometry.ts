@@ -19,7 +19,7 @@ import type { AuthUser } from "./useAuthUser"
 export type AutoHole = { autoHoleId?: string; autoHoleRef?: number; autoFirstHole?: boolean }
 export type OnGeometryApplied = (g: CourseGeometry, c: CourseHit, opts?: { force?: boolean } & AutoHole) => void
 
-export function useCourseGeometry({ supabase, authUser }: { supabase: ReturnType<typeof createClient>; authUser: AuthUser | null }) {
+export function useCourseGeometry({ supabase, authUser }: { supabase: Awaited<ReturnType<typeof createClient>>; authUser: AuthUser | null }) {
   // --- course search / loading ---
   const [query, setQuery] = useState("")
   const [hits, setHits] = useState<CourseHit[]>([])

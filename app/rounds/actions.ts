@@ -7,7 +7,7 @@ import { computeUserSg, handicapBracketRange } from "@/lib/sgBenchmarks"
 import { cleanHoles, summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
 import type { Round } from "@/lib/supabase/types"
 
-type Supabase = ReturnType<typeof createClient>
+type Supabase = Awaited<ReturnType<typeof createClient>>
 
 // What the round form sends. With `holes`, everything countable (score, par,
 // holes played, fairways/GIR/miss %, putts, up-and-downs, penalties) is
@@ -164,7 +164,7 @@ async function saveRoundAnalysis(
 }
 
 export async function createRound(input: RoundInput) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to save rounds.")
   const { row, holes } = buildRound(input)
@@ -211,7 +211,7 @@ export async function createRound(input: RoundInput) {
 }
 
 export async function updateRound(id: string, input: RoundInput) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to edit rounds.")
   const { row, holes } = buildRound(input)
@@ -239,7 +239,7 @@ export async function updateRound(id: string, input: RoundInput) {
 
 /** A round's holes, for editing (none for score-only and older rounds). */
 export async function getRoundHoles(roundId: string): Promise<HoleEntry[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from("round_holes")
     .select("*") // includes penalty_shot once its migration is applied; naming it would break editing before that
@@ -267,7 +267,7 @@ export async function getRoundHoles(roundId: string): Promise<HoleEntry[]> {
  * anyway; this is the one-time catch-up for rounds saved under the old rules.
  */
 export async function recalculateAllRounds(): Promise<{ changed: number; index: number | null; rounds: number }> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to recalculate your rounds.")
   const result = await syncCalculatedHandicap(supabase, user.id, { strict: true })
@@ -277,7 +277,7 @@ export async function recalculateAllRounds(): Promise<{ changed: number; index: 
 }
 
 export async function deleteRound(id: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to delete rounds.")
   const { error } = await supabase.from("rounds").delete().eq("id", id)

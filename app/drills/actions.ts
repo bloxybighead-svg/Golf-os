@@ -10,7 +10,7 @@ export async function createDrill(data: {
   description: string
   target_metric: string
 }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to save drills.")
   const { error } = await supabase.from("drills").insert({ ...data, user_id: user.id })
@@ -22,7 +22,7 @@ export async function updateDrill(
   id: string,
   data: { name: string; category: DrillCategory; description: string; target_metric: string }
 ) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to edit drills.")
   const { error } = await supabase.from("drills").update(data).eq("id", id)
@@ -31,7 +31,7 @@ export async function updateDrill(
 }
 
 export async function deleteDrill(id: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to delete drills.")
   const { error } = await supabase.from("drills").delete().eq("id", id)

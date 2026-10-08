@@ -7,7 +7,7 @@ import { SimulatorClient, type ClubOption, type SimShot } from "@/components/sim
 // Where the golfer's own shots land, club by club: generated from their fitted
 // profile (the same shots the planner uses), not read from anyone else's rows.
 export async function DispersionSection() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const [profile, handicap] = await Promise.all([loadMyProfile(supabase), loadBlendHandicap(supabase)])
 
   if (!profile) {

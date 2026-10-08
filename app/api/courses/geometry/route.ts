@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
   // A fresh OpenStreetMap fetch: signed-in golfers only, RATE_LIMITS.geometryMiss an hour each.
   const {
     data: { user },
-  } = await createClient().auth.getUser()
+  } = await (await createClient()).auth.getUser()
   if (!user) {
     return NextResponse.json(
       { error: "Sign in to load a course that hasn't been loaded before.", signIn: true },

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { needsNewCalculatedEntry, recalculateRounds, type HoleScore, type RoundForHandicap } from "@/lib/handicap"
 
-type Supabase = ReturnType<typeof createClient>
+type Supabase = Awaited<ReturnType<typeof createClient>>
 
 const PAGE = 1000 // Supabase returns at most 1,000 rows per request
 

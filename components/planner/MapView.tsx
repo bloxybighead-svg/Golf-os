@@ -20,7 +20,7 @@ export interface MapViewProps {
   pendingPoints: LatLng[]
   aimIsManual: boolean
   onResetAim: () => void
-  layersRef: RefObject<HTMLDivElement>
+  layersRef: RefObject<HTMLDivElement | null>
   layersActive: boolean
   onLayersClick: () => void
   layersMenu: ReactNode
@@ -31,7 +31,7 @@ export interface MapViewProps {
   onUndoDraw: () => void
   onFinishDraw: () => void
   onCancelDraw: () => void
-  mapWrapRef: RefObject<HTMLDivElement>
+  mapWrapRef: RefObject<HTMLDivElement | null>
   /** The map (or the "Find a course" placeholder). */
   mapContent: ReactNode
   planReady: boolean

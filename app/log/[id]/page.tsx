@@ -44,8 +44,9 @@ const BLOCK_TYPE_LABEL_COLORS: Record<string, string> = {
   "Putting":           "text-accent-hi",
 }
 
-export default async function SessionDetailPage({ params }: { params: { id: string } }) {
-  const supabase = createClient()
+export default async function SessionDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient()
 
   const [{ data: session, error }, { data: blocks }] = await Promise.all([
     supabase

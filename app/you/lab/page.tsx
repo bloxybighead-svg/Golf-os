@@ -15,7 +15,8 @@ type View = (typeof VIEWS)[number]["key"]
 
 // One tool at a time, picked by ?view=. Stacking them would fetch every
 // simulated shot for every golfer (tens of thousands of rows) on each visit.
-export default function LabPage({ searchParams }: { searchParams?: { view?: string } }) {
+export default async function LabPage(props: { searchParams?: Promise<{ view?: string }> }) {
+  const searchParams = await props.searchParams
   const view: View = VIEWS.find((v) => v.key === searchParams?.view)?.key ?? "compare"
 
   return (

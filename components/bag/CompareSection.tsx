@@ -5,7 +5,7 @@ import { generateMyBag } from "@/lib/golfer/shotProfile"
 import { supabaseShotDb } from "@/lib/shots/store"
 
 async function fetchAllShots(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   profileIds: string[]
 ): Promise<{ golfer_profile_id: string; carry_yds: number; offline_yds: number; is_mishit: boolean }[]> {
   const pageSize = 1000
@@ -25,7 +25,7 @@ async function fetchAllShots(
 }
 
 export async function CompareSection() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: profiles, error: profilesError } = await supabase
     .from("golfer_profiles")

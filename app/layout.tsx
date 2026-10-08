@@ -36,7 +36,7 @@ export default async function RootLayout({
   // enough -- no network round trip to verify it (pages that read data do that).
   const {
     data: { session },
-  } = await createClient().auth.getSession();
+  } = await (await createClient()).auth.getSession();
 
   return (
     // data-theme is set before first paint by the script below when the golfer

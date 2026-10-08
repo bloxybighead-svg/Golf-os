@@ -21,7 +21,7 @@ export async function loadCalibratedShots(
   sourceLabel: string,
   perClub = 1000
 ): Promise<CalibratedClubShots[] | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: profiles, error } = await supabase
     .from("golfer_profiles")
     .select("id, club, mean_carry_yds")

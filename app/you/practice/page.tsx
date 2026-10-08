@@ -10,7 +10,7 @@ import type { SgCategory } from "@/lib/sgBenchmarks"
 import { DRILL_CATEGORIES, weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
 
 export default async function PracticePage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const [
     { data: { user } },

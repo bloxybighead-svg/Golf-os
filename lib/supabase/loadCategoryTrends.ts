@@ -10,7 +10,7 @@ const TRENDS_WINDOW_ROUNDS = 10
  * Shared by the Play page's TrendsCard and the You page's drill focus area, so
  * the two always agree on which category is weakest.
  */
-export async function loadCategoryTrends(supabase: ReturnType<typeof createClient>): Promise<CategoryTrend[]> {
+export async function loadCategoryTrends(supabase: Awaited<ReturnType<typeof createClient>>): Promise<CategoryTrend[]> {
   const { data: recent } = await supabase
     .from("rounds")
     .select("id")

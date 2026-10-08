@@ -19,7 +19,7 @@ export function useZones({
   authUser,
   course,
 }: {
-  supabase: ReturnType<typeof createClient>
+  supabase: Awaited<ReturnType<typeof createClient>>
   authUser: AuthUser | null
   course: CourseHit | null
 }) {

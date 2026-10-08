@@ -8,7 +8,7 @@ import { SyncSetting } from "@/components/you/SyncSetting"
 import { SubPageHeader } from "@/components/you/SubPageHeader"
 
 export default async function SettingsPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

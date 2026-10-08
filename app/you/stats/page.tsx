@@ -8,7 +8,7 @@ import type { HandicapEntry, Milestone, Round } from "@/lib/supabase/types"
 import { estimateHandicapIndex } from "@/lib/handicap"
 
 export default async function StatsPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const [
     { data: { user } },

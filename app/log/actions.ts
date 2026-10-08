@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import type { ClubWorkEntry } from "@/lib/supabase/types"
 
 export async function updateClubWork(sessionId: string, clubWork: ClubWorkEntry[]) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to edit sessions.")
   const { error } = await supabase
@@ -19,7 +19,7 @@ export async function updateClubWork(sessionId: string, clubWork: ClubWorkEntry[
 }
 
 export async function deleteSession(sessionId: string, redirectTo?: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Sign in to delete sessions.")
   const { error } = await supabase
