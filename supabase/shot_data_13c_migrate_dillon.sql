@@ -1,5 +1,5 @@
 -- Session 13c, step 2 of 3: give the existing "Dillon Cady" shots to
--- dilloncady@yahoo.com. Run AFTER shot_data_13c.sql. Safe to run twice (it only
+-- <owner email>. Run AFTER shot_data_13c.sql. Safe to run twice (it only
 -- touches rows that have no owner yet).
 --
 -- It makes one shot_session per (session_label, shot_date) -- 23 of them -- and
@@ -20,9 +20,9 @@ declare
   env constant text := 'outdoor';
   surf constant text := 'mat';
 begin
-  select id into uid from auth.users where email = 'dilloncady@yahoo.com';
+  select id into uid from auth.users where email = '<owner email>';
   if uid is null then
-    raise exception 'No account for dilloncady@yahoo.com';
+    raise exception 'No account for <owner email>';
   end if;
 
   insert into public.shot_sessions (user_id, label, session_date, environment, surface)

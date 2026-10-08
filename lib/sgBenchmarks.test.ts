@@ -60,7 +60,7 @@ describe("computeUserSg", () => {
 })
 
 describe("handicapBracketRange", () => {
-  it("puts a mid-2s handicap (e.g. Dillon's ~2.4) in the (2,5] bracket, not a gap", () => {
+  it("puts a mid-2s handicap (e.g. the author's ~2.4) in the (2,5] bracket, not a gap", () => {
     expect(handicapBracketRange(2.4)).toEqual({ low: 2, high: 5 })
   })
 

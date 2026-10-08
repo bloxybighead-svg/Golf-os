@@ -20,7 +20,7 @@ cluster while staying robust to the single longest flier, which a raw
 max would chase.
 
 Usage:
-    python parse_sessions.py "C:/Users/Jeff/Desktop/archive" --out output/real_shots.csv
+    python parse_sessions.py "<path to launch-monitor exports>" --out output/real_shots.csv
 """
 
 from __future__ import annotations

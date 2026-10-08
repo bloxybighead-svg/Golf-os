@@ -117,7 +117,7 @@ Required n scales with the *variance*, so the driver's SD (about twice an
 iron's) means about four times the shots. The bootstrap half-width sits
 slightly *below* theory at very small n (n ≤ 12), the known small-sample
 optimism of the bootstrap, which is one reason clubs with fewer than ~15–20
-real shots (Dillon's PW n = 10, 3-Wood n = 11, 4-Iron n = 7, 9-Iron n = 5)
+real shots (the author's PW n = 10, 3-Wood n = 11, 4-Iron n = 7, 9-Iron n = 5)
 should be flagged low-confidence.
 
 *Correction:* an earlier version of this document said ~25–35 (iron) and
@@ -163,7 +163,7 @@ held-out shots were skipped for that reason). This is an evidence of
 generalization *across sessions for one golfer*, not across golfers.
 
 **Baseline — an uncalibrated model that only knows a handicap** (handicap 3.0,
-the midpoint of Dillon's 1.9–4 range), compared with all his full-swing
+the midpoint of the author's 1.9–4 range), compared with all his full-swing
 shots for the 8 clubs the default bag shares with his:
 
 | model | KS carry passes | KS offline passes | notes |
@@ -196,7 +196,7 @@ The search-sample t-test is kept for reference but is optimistic: the winner
 is the best of 55 noisy estimates and is tested on the same shots that picked
 it.
 
-**Dillon's calibrated profile, 7-Iron, pin at (0, 165):**
+**the author's calibrated profile, 7-Iron, pin at (0, 165):**
 - Aiming at the pin: expected **2.673** strokes remaining
 - Grid-search optimum: **+5 yd right, 0 yd carry** → **2.663**
 - Search-sample test: saving 0.011 (SE 0.012, p = 0.368) — underpowered

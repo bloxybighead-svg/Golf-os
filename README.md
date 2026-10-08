@@ -8,7 +8,7 @@ This project is a **shot-dispersion simulator** that generates statistically rea
 
 **Live app:** [golf-os-ten.vercel.app](https://golf-os-ten.vercel.app)
 
-Built as a school capstone extension by Dillon Cady, a 1.9–4 handicap golfer whose own launch-monitor data calibrates and validates the model. Python and Claude Code were used for the coding.
+Built as a school capstone extension by a 1.9–4 handicap golfer whose own launch-monitor data calibrates and validates the model. Python and Claude Code were used for the coding.
 
 ## What it does
 

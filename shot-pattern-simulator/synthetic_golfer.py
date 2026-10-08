@@ -120,14 +120,14 @@ _TIER_CALIBRATION = {
 # mid-iron gaps (8 yds 5i->6i, 7 yds 6i->7i) that no measured source
 # supports. Two independent measured sources agree on the real shape:
 #
-#   ratio to 7-iron    TrackMan Tour 2024    Dillon's 565 real shots
+#   ratio to 7-iron    TrackMan Tour 2024    the author's 565 real shots
 #   4-Iron                   1.180                   1.202
 #   5-Iron                   1.128                   1.127
 #   6-Iron                   1.064                   1.068
 #   8-Iron                   0.930                   0.915
 #   9-Iron                   0.860                   0.868
 #
-# TrackMan gaps run 9-12 yds through the irons; so do Dillon's. Wedge
+# TrackMan gaps run 9-12 yds through the irons; so do the author's. Wedge
 # ratios come from his measured data since TrackMan does not publish
 # GW/SW/LW carries.
 _IRON_RATIOS = {
@@ -510,7 +510,7 @@ class SyntheticGolfer:
 
         # Per-club skill weighting: 1.0 = tier-typical, <1 = this golfer
         # is unusually good with that club, >1 = unusually bad. Real
-        # players are not uniformly skilled across the bag (Dillon's real
+        # players are not uniformly skilled across the bag (the author's real
         # wedge dispersion is far tighter than his handicap tier implies).
         self.club_weights = club_weights or {}
 

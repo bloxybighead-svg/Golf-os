@@ -3,7 +3,7 @@
 // on a fairway.
 //
 // Only the tee clubs roll: Driver and 3-Wood. Every other club -- 5/7-wood,
-// hybrids, irons, wedges -- is scored where it lands (Dillon, 2026-09-30:
+// hybrids, irons, wedges -- is scored where it lands (the author, 2026-09-30:
 // "my 7 iron does not roll at all"). Their few yards of release are within
 // the carry spread anyway.
 //

@@ -8,7 +8,7 @@ export const CLUB_CATALOG: readonly Club[] = BAG_ORDER
 /** New golfers: driver, 3-wood, 5- through 9-iron and four wedges. */
 export const DEFAULT_BAG: Club[] = ["Driver", "3-Wood", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW"]
 
-/** Dillon's bag (the calibrated golfer): driver, 3- and 7-wood, 4- through 9-iron and four wedges. */
+/** the author's bag (the calibrated golfer): driver, 3- and 7-wood, 4- through 9-iron and four wedges. */
 export const CALIBRATED_DEFAULT_BAG: Club[] = [
   "Driver", "3-Wood", "7-Wood", "4-Iron", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW",
 ]

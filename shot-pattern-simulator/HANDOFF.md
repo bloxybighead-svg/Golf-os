@@ -7,7 +7,7 @@ Context document for picking this project up in a fresh session. Written
 
 School capstone extension for **Golf OS**, a Next.js/Supabase golf
 analytics app (repo: `github.com/bloxybighead-svg/Golf-os`, live at
-golf-os-ten.vercel.app). Owner: Dillon Cady, a 1.9–4 handicap golfer.
+golf-os-ten.vercel.app). Owner: the author, a 1.9–4 handicap golfer.
 Advisor: Bryant Duong, meets in two 30-minute check-ins.
 
 **The problem being solved:** golfers badly underestimate their own shot
@@ -28,7 +28,7 @@ deadline, then substantially revised across two rounds of advisor
 feedback. ~1,600 lines of Python across 6 files.
 
 **Step 2 (Supabase seed): COMPLETE (2026-09-01).** `golfer_profiles`
-(11 rows, one per club, Dillon's calibrated profile) and `simulated_shots`
+(11 rows, one per club, the author's calibrated profile) and `simulated_shots`
 (2,000 rows generated from that profile, seed 42) are live on the
 project's Supabase instance. Schema, views, and example queries are in
 `supabase/simulated_shots_schema.sql`, `simulated_shots_views.sql`, and
@@ -81,8 +81,8 @@ and verified live in the browser:
   synthetic `from_band("2-4")` golfer seeded as `golfer_name = "Average
   2-4 Handicap"` — a legitimate, labeled stand-in, not a fabricated
   person. Shows: an overlaid dispersion scatter (`OverlayCanvas.tsx`),
-  a side-by-side stats table, a checkbox overlaying Dillon's real shots
-  (new `real_shots` table, seeded from `reference_data/real_shots.csv`,
+  a side-by-side stats table, a checkbox overlaying the author's real shots
+  (new `real_shots` table, seeded from `reference_data/synthetic_shots.csv`,
   589 rows), and a 500/1000/2000 shot-count radio.
 - Had to go back and reseed: the original 2,000-shot batches only had
   ~150-200 shots per club, so selecting 500 vs 1000 vs 2000 silently
@@ -122,7 +122,7 @@ surfaced at round-logging time instead of as a separate page; a
 dispersion pattern against their self-estimate, since underestimating
 dispersion is literally the problem this whole project exists to fix.
 
-**Kaggle-set comparison: done (2026-09-09).** Dillon found the file —
+**Kaggle-set comparison: done (2026-09-09).** the author found the file —
 `Desktop/golf_trajectories.csv` (832 rows, no club labels, matches the
 "handedness unknown" note). It has no explicit curve/start-line columns,
 so those were rebuilt the same way the model itself defines them:
@@ -133,18 +133,18 @@ almost exactly, good sign it's the right file/method.
 
 Refit the curve→carry slope fresh: **+0.669 raw, +0.395 controlling for
 ball speed** — positive, confirming (not just repeating) the prior
-session's finding that this golfer's sign is opposite Dillon's
+session's finding that this golfer's sign is opposite the author's
 (his per-club range is -0.288 to -0.892, all negative).
 
 Then actually ran the simulator both ways: regenerated 2,000 Driver
 shots twice, identical in every parameter except `curve_carry_slope` —
-once at Dillon's own -0.292, once at the Kaggle-derived +0.395. Real,
+once at the author's own -0.292, once at the Kaggle-derived +0.395. Real,
 visible consequence: corr(offline, carry) flips from -0.436 to +0.529 —
 the whole dispersion ellipse's diagonal lean reverses direction. Plot:
 `output/kaggle_slope_comparison.png`.
 
 **Revised finding — the sign disagreement is very likely a handedness
-artifact, not real physics disagreement.** Dillon's own instinct: a draw
+artifact, not real physics disagreement.** the author's own instinct: a draw
 (curving left for a right-hander) is the lower-spin, longer shot shape —
 that's the physical mechanism the model's own comment already cites,
 and it should hold for any right-handed golfer. If the Kaggle golfer is
@@ -156,18 +156,18 @@ sign observed, without the underlying physics actually disagreeing.
 
 Tested by mirroring the Kaggle data's left/right (negating both launch
 direction and deviation) and refitting: slope becomes **-0.395**,
-landing right inside Dillon's own -0.892 to -0.288 range. Reran the
+landing right inside the author's own -0.892 to -0.288 range. Reran the
 simulator once more with this corrected slope: corr(offline, carry)
-comes out **-0.531**, same direction as Dillon's -0.436 — both ellipses
+comes out **-0.531**, same direction as the author's -0.436 — both ellipses
 now lean the same way. Plot: `output/kaggle_slope_comparison_corrected.png`
-(both sent to Dillon).
+(both sent to the author).
 
 **Net conclusion:** the curve→carry relationship (draws carry farther,
 fades come up short) looks like it may be universal after all — the
 earlier "two real golfers disagree" framing was likely an artifact of
 not knowing this golfer's handedness, not a real per-golfer difference.
 Still can't be fully certain without ground truth on handedness, but the
-corrected sign fits Dillon's measured range far too well to be
+corrected sign fits the author's measured range far too well to be
 coincidence. `_DEFAULT_CURVE_CARRY_SLOPE` and the "two datasets disagree
 on sign" framing in the Weak/assumed section above should probably be
 revisited with this in mind — worth a note to Bryant.
@@ -201,8 +201,8 @@ revisited with this in mind — worth a note to Bryant.
 
 **Step 4 (aim-point optimization) + statistical validation, done
 (2026-09-19):**
-- `statistical_analysis.py` — three checks, all against real Dillon
-  shots (`reference_data/real_shots.csv`, full swings only):
+- `statistical_analysis.py` — three checks, all against real the author
+  shots (`reference_data/synthetic_shots.csv`, full swings only):
   1. **Significance tests** (simulated calibrated-profile output vs
      real): two-sample t-test + two-sample KS test on carry and
      offline, per club. Result: **11/11 clubs pass the KS test on both
@@ -237,7 +237,7 @@ revisited with this in mind — worth a note to Bryant.
   placeholders -- the point is the mechanics. **Fixed 2026-09-26:** the
   winner (best of 55) used to be t-tested on the same shots that picked it,
   which is optimistic AND underpowered. It is now re-tested on a fresh,
-  paired 10,000-shot sample. Results: calibrated Dillon aims +5 yd right
+  paired 10,000-shot sample. Results: calibrated the author aims +5 yd right
   (his natural miss averages -3.9 yd left), saving 0.024 strokes/approach
   (95% CI 0.014-0.033, p<0.001) -- this REPLACES the earlier "not
   significant (p=0.696/0.368)" claim, which was a power problem, not
@@ -340,7 +340,7 @@ A failed (busy) query returns 502 and the page auto-retries 3x; successful
 sub-queries are memoised so retries only repeat what failed. Courses with no
 OSM boundary/hole tagging fall back to a radius search (warned in the UI;
 hole numbers may be missing and neighbouring courses may appear, e.g.
-Bethpage). Penalty lies (added after Dillon's feedback that drivers were always
+Bethpage). Penalty lies (added after the author's feedback that drivers were always
 recommended): water, rough, bunker and trees (mapped `natural=wood`/
 `landuse=forest`) all cost real strokes via the Broadie tables above; out of
 bounds is a driving range / practice area (`golf=driving_range`, or a
@@ -383,7 +383,7 @@ Full per-user RLS rollout (2026-09-27): extended the `course_zones` pattern to
 every other personal-data table -- `rounds`, `drills`, `practice_sessions`,
 `session_blocks`, `milestones` (`supabase/per_user_data.sql`). Each got a
 `user_id uuid references auth.users(id) on delete cascade`, backfilled to
-Dillon's real account (`dilloncady@yahoo.com`, not the mailinator test
+the author's real account (`<owner email>`, not the mailinator test
 account) since all existing rows were his, then set `NOT NULL` with the same
 4-policy owner-only RLS as `course_zones`. `wedge_reference` (unused by the
 app, a shared lookup table, not per-user) just got RLS turned on with a
@@ -404,7 +404,7 @@ real behavior change**: Log/Drills/Rounds/Trends now require an account to use
 at all (previously fully usable as a guest) -- the course planner's hand-drawn
 zones are the only feature that still has a guest/localStorage fallback.
 Verified with the anon key directly: `select` returns `[]`, `insert` returns
-`42501` (RLS violation), same as the `course_zones` check. `dilloncady@yahoo.com`
+`42501` (RLS violation), same as the `course_zones` check. `<owner email>`
 already existed in `auth.users` from earlier testing.
 
 Data-quality badge + trustworthy SG (2026-09-27, later): Rumson GC exposed a
@@ -474,7 +474,7 @@ again all correctly keep it dismissed. 1 new test (95 total) covering the
 downgrade and its no-op when the hazard turns out to actually be mapped.
 
 "Best aim" beatable by a manual drag (2026-09-27, same day, later still):
-Dillon reported the auto-aim could be beaten by dragging the aim marker
+the author reported the auto-aim could be beaten by dragging the aim marker
 somewhere else by hand -- traced to a real bug in `bestAim` (`plan.ts`), not
 missing dimensionality. `evaluateClub` only ever reads the BEARING from the
 ball to the aim point (shots land wherever the club's own carry distribution
@@ -502,7 +502,7 @@ both instant (well under a second, no async/caching needed) and correct,
 including "already optimal" firing when it should. 2 new tests (96 total).
 
 Auto-optimize aim on load, not just on manual click (2026-09-27, same day,
-later still): even after the radius fix above, Dillon reported the *default*
+later still): even after the radius fix above, the author reported the *default*
 aim shown on load (no click) still lost to a manual drag -- Rumson hole 1
 loaded aiming left at 4.1 strokes, a manual drag found 4.05. Root cause: the
 optimizer was opt-in only. The aim shown on load was always
@@ -514,7 +514,7 @@ being planned for) genuinely changes, tracked in a ref so it only re-runs on
 a real change, not every render; a manual drag within an unchanged stance
 still persists (falls back to the heuristic default only if the saving is
 below the existing 0.05-stroke noise floor). Two bugs caught and fixed before/
-during live testing, neither reported by Dillon:
+during live testing, neither reported by the author:
 - `pin` was computed inline in the render body (`holePinFor(hole)`,
   unmemoized), sometimes returning a brand-new object via `ringCentroid` --
   would have broken the new effect's `last.pin === pin` change-detection
@@ -529,7 +529,7 @@ during live testing, neither reported by Dillon:
   (`defaultAim`), never the live aim, decoupling the effect's trigger from
   any manual-drag side effect.
 Verified live: Rumson hole 1 now shows 4.01 automatically on load from the
-tee (beats Dillon's manually-found 4.05), re-optimizes correctly on a ball
+tee (beats the author's manually-found 4.05), re-optimizes correctly on a ball
 move, a manual drag to a worse spot persists instead of snapping back, and
 "Reset aim" still correctly returns to the heuristic default. 96/96 tests
 still passing (pure-function suite, unaffected by this React-only change).
@@ -608,7 +608,7 @@ click at desktop width (worked with the tool) vs. phone width (needed
 nothing" for what looks like a real regression.
 
 Course caching + auto-resume + hole-nav stability (2026-09-27, later still):
-Dillon's spec asked for a NEW Supabase `course_cache` table (course_id,
+the author's spec asked for a NEW Supabase `course_cache` table (course_id,
 name, state, holes jsonb, 30-day expiry) -- **skipped as a real duplicate,
 not built**: `course_geometry` (`supabase/course_geometry_cache.sql`,
 `lib/supabase/courseCache.ts`) already does exactly this, keyed by
@@ -661,12 +661,12 @@ worse, not better. What WAS actually missing, and got built:
 Typecheck, `npx vitest run` (96/96, untouched by this work), and
 `npm run build` all clean.
 
-Map orientation + zoom (2026-09-27, later still): Dillon's spec asked for
+Map orientation + zoom (2026-09-27, later still): the author's spec asked for
 the map itself to physically rotate so the hole always faces up (CSS
 `transform: rotate()` on the Leaflet container), plus a compass, pinch/
 scroll zoom, zoom buttons, min/max zoom, and zoom persistence. **Rotation
 was flagged as a real risk before building anything, then dropped at
-Dillon's direction** -- Leaflet has no native map-rotation support, and the
+the author's direction** -- Leaflet has no native map-rotation support, and the
 spec's own suggested technique (CSS-rotating the container) is a
 well-documented broken pattern: Leaflet's click/drag hit-testing works in
 the container's own unrotated pixel space, so a CSS-rotated container
@@ -677,7 +677,7 @@ wrong. Checked the one real alternative (`leaflet-rotate`, which patches
 Leaflet's internals to fix this properly): last published to npm 3 years
 ago, and its README doesn't document compatibility with a canvas renderer
 or draggable markers -- both of which this app depends on. Presented this
-tradeoff to Dillon directly (skip rotation / hand-roll corrected click
+tradeoff to the author directly (skip rotation / hand-roll corrected click
 mapping / adopt the unmaintained plugin) rather than silently picking a
 lesser version or silently taking on the risk; he chose to skip rotation
 entirely. Everything else shipped in full:
@@ -700,7 +700,7 @@ entirely. Everything else shipped in full:
   in the live DOM; pinch-to-zoom is Leaflet's own default behavior
   (`touchZoom: true`, unchanged, not independently verifiable through
   browser automation -- no synthetic multi-touch gesture available, so this
-  one still wants a real-phone check next time Dillon has the course
+  one still wants a real-phone check next time the author has the course
   planner open on his own device). Plain scroll-wheel zoom is now enabled
   on desktop and OFF on touch (detected via `ontouchstart`/`maxTouchPoints`,
   same test used elsewhere in this file for coarse-pointer marker sizing) --
@@ -730,7 +730,7 @@ zoom 19, zoom-out capping at 16 (`leaflet-disabled` class on the button),
 scroll-wheel zoom working/not-working exactly per device type, and zoom
 value persisting to `localStorage` per course.
 
-Reverted (2026-09-27, later still): Dillon confirmed the Ctrl/Cmd+wheel
+Reverted (2026-09-27, later still): the author confirmed the Ctrl/Cmd+wheel
 convention was the right call after all -- plain scroll-wheel zoom is back
 to requiring the modifier, matching the original pre-Session-4 behavior
 (and how most embedded maps, Google Maps included, avoid hijacking page
@@ -738,7 +738,7 @@ scroll). `scrollWheelZoom: false` + the manual Ctrl/Cmd-checked `wheel`
 listener are both back in `CourseMap.tsx`; everything else from Session 4
 (compass, zoom min/max, zoom control position, persistence) is unchanged.
 
-Course corrections (2026-09-27, later still): Dillon's spec wanted a way to
+Course corrections (2026-09-27, later still): the author's spec wanted a way to
 fix wrong OpenGolfAPI/OSM course data (its own example: Colts Neck hole 12
 tagged Par 3, should be Par 4) globally, for every golfer. Two real
 deviations from the literal spec, both because the app's actual data model
@@ -802,7 +802,7 @@ design above), a confirmation toast, and an immediate forced geometry
 refetch (`fetchGeometry(course, {force:true})`) so the fix shows up
 without a manual page reload -- strictly better than the spec's own
 "refresh page" test case. Manually backfilled the Colts Neck hole 12 par
-correction Dillon's spec named as the known example (`way/917183416`,
+correction the author's spec named as the known example (`way/917183416`,
 `par` 3 -> 4, attributed to his real account like every other admin
 backfill this project has done). Verified live end to end: Colts Neck hole
 12 shows "Par 4" + the "corrected" badge on load, survives "Refresh course
@@ -823,10 +823,10 @@ helper duplicated in both `app/page.tsx` and `TrendsClient.tsx`, which then
 multiplied every partial round's already-correct differential by another
 `18/holes_played` (~×2 for 9 holes) before it fed the "best 8 of 20"
 handicap estimate or the Trends chart -- silently doubling roughly a third
-of Dillon's logged rounds and pushing the estimate to a fictitious ~5 HCP.
+of the author's logged rounds and pushing the estimate to a fictitious ~5 HCP.
 Deleted both copies of `normalizedDiff` outright rather than patching them,
 since a differential is a differential -- no per-file "normalization" layer
-belongs between it and any consumer. Confirmed the fix against Dillon's
+belongs between it and any consumer. Confirmed the fix against the author's
 real 45 logged rounds before touching any code: best-8-of-last-20 on the
 *unscaled* differentials averages to ~2.3 -> ×0.96 = **2.2**, in line with
 the spec's own ~2.4 expectation; the pre-fix scaled numbers would have
@@ -881,10 +881,10 @@ inline form) both disabled with a `title` hint when signed out, matching
 renders "Log at least 8 rated rounds to calculate" with both buttons
 visibly disabled; separately verified `previewDifferential` (the client
 preview, now backed by the shared `lib/handicap.ts`) against one of
-Dillon's actual logged 9-hole rounds (score 40, par 37, rating 35.6, slope
+the author's actual logged 9-hole rounds (score 40, par 37, rating 35.6, slope
 140) and it reproduced the exact stored value, 3.6 -- confirms the shared
 calc function behaves identically to the old inline one. Did not sign into
-Dillon's real account to exercise "Recalculate" end-to-end or log a test
+the author's real account to exercise "Recalculate" end-to-end or log a test
 round, same policy as every prior session: no real credentials, and
 inserting a fabricated round would corrupt his actual round history. RLS
 and the math were verified instead via anon-key curl and against his real
@@ -966,7 +966,7 @@ rest of the codebase rather than introducing a new pattern for one card.
 Verified: RLS both ways for both new tables via the anon-key technique used
 throughout this project (`sg_benchmarks` select succeeds/insert `42501`;
 `round_analysis` select returns `[]`/insert `42501`). Manually replayed the
-full pipeline against Dillon's real logged box-score stats through the
+full pipeline against the author's real logged box-score stats through the
 Supabase MCP connection (read-only SQL, no writes) and confirmed the
 numbers come out directionally sensible -- e.g. his 2026-08-22 round (38%
 fairways, 33% GIR, 35 putts) scores notably negative across all four
@@ -990,7 +990,7 @@ bracket arithmetic, 9-vs-18-hole scaling, missing-stat omission, up-and-down
 rate clamping, bracket lookup, trend aggregation, qualifier thresholds),
 125 total. Typecheck and `npm run build` both clean.
 
-Session 6b follow-up -- round_analysis backfill (2026-09-27): Dillon
+Session 6b follow-up -- round_analysis backfill (2026-09-27): the author
 reported the Strengths & Weaknesses card was empty despite 45 logged
 rounds. Root cause: `round_analysis` is only computed inside
 `createRound`/`updateRound`, and every existing round predated the
@@ -1009,7 +1009,7 @@ Approach -0.01, Off-Tee -0.12, Short Game -0.15 (weakest).
 
 Session 7 -- drill recommendations (2026-09-27): the spec assumed no drill
 infrastructure existed, but the app already had two pieces: a per-user
-`drills` table (Practice -> Drills, 13 drills in Dillon's account,
+`drills` table (Practice -> Drills, 13 drills in the author's account,
 categories Full Swing/Wedge/Chipping/Bunker/Putting/Mental, no
 instructions/reps/time fields) and the Practice Log, where drills are
 logged as `activities` inside `session_blocks`. Built the spec's
@@ -1023,7 +1023,7 @@ one-drill sessions or mapping its categories onto SG categories, where
 "Full Swing" is ambiguous between off-tee and approach). Consequence worth
 knowing: Drill History only shows drills started from a recommendation,
 not ones logged in the Practice Log, and recommendations only come from
-the curated library, not Dillon's own 13 drills. Both are easy follow-ups
+the curated library, not the author's own 13 drills. Both are easy follow-ups
 if he wants them unified.
 
 `supabase/drill_library.sql` (applied, migration `drill_library`):
@@ -1073,7 +1073,7 @@ returns all 19; anon insert on either `42501`; anon select on
 `user_drills` with the page's exact `drill_library(name, category)` embed
 returns `[]` rather than a relationship error, which proves the embed
 resolves). Since signed-out Home shows only empty states, rendered the
-three cards with realistic fixture props (Dillon's real aggregates, the
+three cards with realistic fixture props (the author's real aggregates, the
 real library rows) on a throwaway local route -- deleted afterward,
 nothing stored -- and checked by measurement rather than screenshots
 (the pane's screenshots kept timing out): 800px -- 3-column grid,
@@ -1087,7 +1087,7 @@ above it on phones (`scrollLeft` 20); matching `scroll-px-5` fixes it
 (both now at x=37). Pressing Start while signed out returns "Sign in to
 log drills." and the modal stays pre-start; `user_drills` confirmed
 still at 0 rows afterward. Did not sign in to run the real start ->
-complete -> history loop against Dillon's account (no credentials, and
+complete -> history loop against the author's account (no credentials, and
 signup/login go to the remote Supabase host, not localhost). 132 tests,
 typecheck and `npm run build` clean.
 
@@ -1159,7 +1159,7 @@ a one-line summary (averages and last-5) and a caption.
   `lib/handicap.ts`, 3 tests): the estimate as it stood after each round,
   using only rounds up to that point (needs 8 rated rounds). Saved
   `handicap_tracking` entries are overlaid as blue dots. Chosen because
-  Dillon has only 2 saved entries, both from 2026-09-27 -- a saved-only line
+  the author has only 2 saved entries, both from 2026-09-27 -- a saved-only line
   would be empty. Both land on his last round, so only the later one (the
   manual 3.5) shows as a dot. The estimate line is the app's simplified
   calculation, not GHIN, and currently reads ~1.0 against his manual 3.5.
@@ -1175,14 +1175,14 @@ a one-line summary (averages and last-5) and a caption.
   actions moved to `app/you/milestone-actions.ts` (revalidates `/you`).
 - **Pre-existing bug fixed:** milestone markers never drew, on any chart.
   recharts 3.9 silently drops a `ReferenceLine` on a category axis whose
-  labels repeat, and Dillon has same-day rounds (two on 4/22, two on
+  labels repeat, and the author has same-day rounds (two on 4/22, two on
   4/28). Each round is now its own x position (its index) with the date as
   the tick label; tooltips read the date from the point. Side benefit:
   same-day rounds no longer stack on one x.
 - `/you` First Load JS went 167 kB -> 284 kB because recharts now loads
   there. Lazy-loading the panel is the fix if that matters.
 
-Verified by rendering the panel with Dillon's real rounds/handicap/milestone
+Verified by rendering the panel with the author's real rounds/handicap/milestone
 rows (pulled read-only from Supabase) on a throwaway route, deleted
 afterward: all five views draw at 1000px and 375px, the milestone marker
 draws on every one, dropdown switching / collapse / reopen produce no
@@ -1253,7 +1253,7 @@ Known limitation: the iPhone home-screen app keeps
 mode that text sits over the light top bar. iOS can't switch it with the
 theme; worth checking on a real device.
 
-R2 follow-up -- Design Direction received (2026-09-28): Dillon pasted the
+R2 follow-up -- Design Direction received (2026-09-28): the author pasted the
 planning doc's Design Direction section. DESIGN.md now leads with it
 verbatim (IA table, visual rules, copy rules), then a "where the app
 stands" list of what isn't applied yet, then the token reference.
@@ -1268,9 +1268,9 @@ Tokens changed to match it:
   #4b5563 captions) became `muted`.
 Biggest divergence the list flags: the Direction says Play IS the planner
 and the dashboard content moves to You; R1 pointed Play at the old Home
-dashboard. Not changed yet -- asked Dillon.
+dashboard. Not changed yet -- asked the author.
 
-R3 -- Play is the planner, and the Play screen rebuilt (2026-09-28): Dillon
+R3 -- Play is the planner, and the Play screen rebuilt (2026-09-28): the author
 confirmed the Design Direction's IA ("Play opens the planner, like it says").
 - Routes: `app/page.tsx` is the planner (moved from `app/planner/page.tsx`);
   `/planner` and `/simulator/course` redirect to `/`. The old Home
@@ -1325,17 +1325,17 @@ confirmed the Design Direction's IA ("Play opens the planner, like it says").
 - Known, not changed: a course with no server-cached geometry (Rumson
   after clearing storage) took ~11 s to load on dev -- the existing
   Overpass fetch path, not R3.
-- Tooling note: the Browser preview reads `C:/Users/Jeff/Desktop/.claude/launch.json`
+- Tooling note: the Browser preview reads `the project's .claude/launch.json`
   (not the repo's); `golf-os-prod` there runs `next start` on 3001. Don't
   run the dev server while a prod build is being used -- it overwrites `.next`.
 
-Full bags, editable (2026-09-28, after R3): Dillon asked that every club he
+Full bags, editable (2026-09-28, after R3): the author asked that every club he
 carries be scored -- 4- through 9-iron, PW/GW/SW/LW, 7-wood, 3-wood,
 driver -- with new golfers defaulting to 5-9 iron, 3-wood, driver and the
 four wedges, and bags interchangeable.
 - `lib/golfer/bag.ts`: `CLUB_CATALOG` (Driver, 3W, 5W, 7W, 4i-9i, PW, GW,
   SW, LW), `DEFAULT_BAG` (11, new golfers), `CALIBRATED_DEFAULT_BAG` (13,
-  Dillon), `canonicalClub` ("56 (SW)" -> SW), `normalizeBag`, and
+  the author), `canonicalClub` ("56 (SW)" -> SW), `normalizeBag`, and
   `fillBag(measured, bag)`. His calibrated profile has no 4-iron or
   9-iron (too few clean real shots to calibrate: 4i n=7, 9i n=5 after
   filtering), so `fillBag` estimates a missing club from his OWN nearest
@@ -1355,7 +1355,7 @@ four wedges, and bags interchangeable.
   ("Bag · N clubs", at least one club). The handicap golfer generates only
   the bag's clubs (1000 shots each).
 - 9 new tests (`bag.test.ts`), 144 total. Verified: new visitor on
-  Dillon's shots -> 13 rows incl. 9-Iron est. 137 and 4-Iron est. 190;
+  the author's shots -> 13 rows incl. 9-Iron est. 137 and 4-Iron est. 190;
   "By handicap" -> the 11-club default; adding 7-Wood -> 12 rows, saved,
   survives reload. Build clean.
 
@@ -1378,7 +1378,7 @@ yet", and four of the five SignedOutNotice call sites. Done here:
   never throws (a failed sync can't fail a round save). A new calculation
   supersedes a manual entry as the current index; "Enter manually" stays
   for an official GHIN number. `recalculateHandicap` server action removed.
-  Not run against Dillon's account -- his index updates the next time he
+  Not run against the author's account -- his index updates the next time he
   saves a round.
 - You: the handicap is the hero (48px semibold, tabular); empty state
   "Needs 8 rated rounds. Add round". Card shadows removed on You/Rounds.
@@ -1405,7 +1405,7 @@ yet", and four of the five SignedOutNotice call sites. Done here:
   /rounds has 1 banner + "No rounds yet." and 0 dashes; /you exactly one
   "—" (the handicap hero) and no banner; / no banner. 149 tests, build clean.
 
-R5 -- copy pass (2026-09-28). **Rename on hold:** Dillon is still choosing
+R5 -- copy pass (2026-09-28). **Rename on hold:** the author is still choosing
 a name (thinking along the lines of "lowcap" / "locap", for lowering a
 handicap). The name now lives in one constant, `APP_NAME` in
 `lib/brand.ts`, read by the NavBar wordmark, layout metadata (title,
@@ -1429,7 +1429,7 @@ line + `"name"` in package.json. The wordmark is now plain ink (was
   71-359 px, on top, close on Escape/outside tap; bag pages render the new
   titles. 149 tests, build clean.
 
-Trends: handicap chart removed (2026-09-28, Dillon: "looks poor"). The
+Trends: handicap chart removed (2026-09-28, the author: "looks poor"). The
 Trends card now opens on Round scores over time (then Putts, Fairways,
 Greens). `rollingHandicapSeries` and its tests deleted (no other users).
 Strengths & Weaknesses is collapsible at every width now (was phone-only).
@@ -1494,7 +1494,7 @@ was moved to `public/icon.svg` in R2 and `app/apple-icon.png` +
   APP_NAME. You has a "Your clubs and home course" row -> /welcome.
 - Verified (dev, 375px, fresh device, signed out): Set up -> handicap 14,
   driver 240, 7-iron 150, Rumson -> Save -> Go play -> "Rumson · Hole 1 ·
-  Par 4 · 400", Driver 4.21 (Dillon's shots give 4.01 there, so it's the
+  Par 4 · 400", Driver 4.21 (the author's shots give 4.01 there, so it's the
   friend's clubs), tee line "Play White · 6,302 yd", source "Your clubs",
   setup prompt gone. App time 2.8 s end to end; the rest of the 60 s budget
   is a person typing five things. **Not verified: the signed-in path**
@@ -1569,7 +1569,7 @@ by tapping through its holes, and the box score is computed from the taps.
   user_drills, course_zones) are owner-only and return [] to the public
   key. Public-read by design: course_geometry, course_corrections,
   drill_library, sg_benchmarks, wedge_reference, golfer_profiles,
-  real_shots, simulated_shots (Play shows Dillon's shots signed out).
+  real_shots, simulated_shots (Play shows the author's shots signed out).
   course_corrections is also editable by any signed-in user (shared
   course fixes) -- deliberate, revisit if the app gets strangers.
 - Passwords are not readable: the auth schema isn't exposed by the API
@@ -1628,7 +1628,7 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
   56% / 14 putts / 0/4, rating 36.7, slope 137, differential 2.7 (all
   matching a hand count); reload kept the round; End without saving
   cleared it. **Not verified: the signed-in save from Play.**
-- Partial rounds (decided by Dillon, 2026-09-30): see "18-hole
+- Partial rounds (decided by the author, 2026-09-30): see "18-hole
   differentials" below.
 
 ### 18-hole differentials for short rounds (2026-09-30)
@@ -1639,7 +1639,7 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
   about half an 18-hole one and the best-8-of-20 averaged them as equals,
   pulling the estimate low. Official WHS adds an expected 9-hole
   differential from the golfer's index instead; the straight scale was
-  Dillon's call. Used by the server save, the round form preview and
+  the author's call. Used by the server save, the round form preview and
   Play's finish screen. 3 tests.
 - Existing rounds rescaled (supabase/scale_partial_differentials.sql,
   migration `scale_partial_differentials`): 20 nine-hole rounds and 1
@@ -1713,7 +1713,7 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
 ### Rollout: shots judged where they stop (2026-09-30, session 8)
 
 - `lib/course/roll.ts`: `rollYds(club, landingLie, carry, rng)`. Only the
-  tee clubs roll (Dillon: his 7-iron doesn't roll at all, so irons,
+  tee clubs roll (the author: his 7-iron doesn't roll at all, so irons,
   wedges, hybrids and 5/7-wood are scored where they land): Driver 20 yd,
   3-Wood 12 yd on fairway, x the landing lie (fairway/green 1, rough 0.3,
   trees 0.2, bunker/water/OOB 0) x a +-30% seeded spread, capped at a
@@ -1741,7 +1741,7 @@ Scoring used to live only behind Rounds -> Add round. Play now has a
   finishes ~280 on open fairway, rest-lie share. course.test.ts: no
   expectation moved (green/rough/water landings barely roll); a comment
   says why.
-- Seen on Pebble 1 from the tee (Dillon's shots): Driver 264 carry -> 272
+- Seen on Pebble 1 from the tee (the author's shots): Driver 264 carry -> 272
   total (most of that pattern lands in rough, a third of the roll), fairway
   share 19% -> 12% as fairway landings run off into rough at the dogleg.
 
@@ -1814,7 +1814,7 @@ showed 100% rough. `bestAim` only ran for the selected club on demand.
   `RANKING_SHOT_CAP` 400 (fixed-seed sample, `RANKING_SAMPLE_SEED` 5) --
   speed. `ClubPlan.strokesSe` (two-pass sample SD / sqrt n). `isTie`: gap
   <= `TIE_SE_MULTIPLIER` (1) x hypot(SE_a, SE_best) -- SE of the
-  difference (the clubs' shots are independent samples); Dillon OK'd this
+  difference (the clubs' shots are independent samples); the author OK'd this
   reading of "within 1 SE". `aimOffsetLabel`, `aimMarkerFor` (along the
   best bearing at min(mean total, pin distance); the pin itself if aiming
   at it and reaching), `isAtBestAim` (bearing within 0.1 deg),
@@ -1869,7 +1869,7 @@ showed 100% rough. `bestAim` only ran for the selected club on demand.
 
 ### Unmapped ground is rough again, never trees (2026-10-01, session 11)
 
-Dillon: "it is now putting trees in fairways". Cause: Session 9's guess
+the author: "it is now putting trees in fairways". Cause: Session 9's guess
 that unmapped ground more than `ROUGH_BAND_YDS` (25) from a mapped
 fairway/green/tee edge is trees. Where OSM hasn't traced a hole's fairway,
 the real fairway is exactly that ground: on Pebble, 47-49 of ~60-70
@@ -1893,7 +1893,7 @@ None came from mapped woods/scrub/tree rows/residential.
 
 ### Planner scored against the golfer's handicap (2026-10-01, session 12)
 
-Dillon's spec numbered this "Session 11"; it's session 12 here because 11
+the author's spec numbered this "Session 11"; it's session 12 here because 11
 was the trees fix. Problem: everything was scored against the PGA TOUR table.
 
 - Research: NO verifiable amateur strokes-to-hole-out table by lie and
@@ -1941,7 +1941,7 @@ was the trees fix. Problem: everything was scored against the PGA TOUR table.
 
 ### Handicap follows the World Handicap System (2026-10-01, session 13)
 
-Dillon's spec called this "Session 12". Checked against the USGA Rules of
+the author's spec called this "Session 12". Checked against the USGA Rules of
 Handicapping (usga.org/handicapping/roh): 5.1a, 5.1b, 5.2a, 5.2b, 3.1b,
 3.2b, 6.1a, 6.1b, Definitions, and the 2024 9-hole FAQ.
 
@@ -1997,7 +1997,7 @@ Handicapping (usga.org/handicapping/roh): 5.1a, 5.1b, 5.2a, 5.2b, 3.1b,
   / without stroke index / without index, 9-hole with and without index,
   10-17, record recalculation incl. waiting 9s backfilled, manual index,
   same-day); scorecard.test.ts.
-- Dillon's real data (read-only preview, nothing written): all 47 rounds
+- the author's real data (read-only preview, nothing written): all 47 rounds
   are score only (no NDB effect yet); 21 of 45 rated rounds change (all
   9/10-hole); new index 2.7 from 20 differentials. He needs to click
   "Recalculate all rounds" once (signed in) to rescore the saved rounds.
@@ -2066,7 +2066,7 @@ hole_number) (verified live) and rounds.id is the dedupe key.
 
 ### Code health: planner split, API rate limits (2026-10-01, session 14)
 
-Dillon's spec called this "Session 13". No planner numbers or layout changed:
+the author's spec called this "Session 13". No planner numbers or layout changed:
 Pebble 1 compared before/after (all 13 table rows, card, labels, localStorage
 keys identical; screenshots match; row pick, Layers, course sheet, Escape,
 Reset aim all work).
@@ -2130,11 +2130,11 @@ Reset aim all work).
 | `statistical_analysis.py` | t/KS tests, bootstrap CIs, power analysis, overlap figure, held-out validation. |
 | `aim_point_optimizer.py` | Aim-point grid search + paired confirmation + 3-panel hole figure. |
 | `aim_point_population.py` | Aim-point study over 200 random golfers per handicap. |
-| `reference_data/real_shots.csv` | 589 parsed real shots (451 full), 13 clubs, 23 sessions. |
-| `reference_data/dillon_profile.json` | Profile fit from those shots. |
+| `reference_data/synthetic_shots.csv` | 589 parsed real shots (451 full), 13 clubs, 23 sessions. |
+| `reference_data/synthetic_profile.json` | Profile fit from those shots. |
 | `reference_data/synthetic_shots_all_clubs_by_handicap.csv` | Reference seed dataset from another source. |
 
-Raw launch-monitor exports live in `C:\Users\Jeff\Desktop\archive\`
+Raw launch-monitor exports live in `<path to launch-monitor exports>`
 (NOT in the repo, must not be deleted — `real_shots.csv` is derived from
 them and they carry per-shot spin/club-path detail not yet used).
 
@@ -2178,7 +2178,7 @@ and a session drift redrawn every ~60 shots.
   796-shot Kaggle dataset).
 - Direction SDs — Broadie's peer-reviewed Golfmetrics driver SDs
   (4.0°/5.4°/6.4°/8.1°), cross-checked against Stagner/Arccos.
-- Iron gapping ratios — TrackMan 2024 Tour and Dillon's own data agree
+- Iron gapping ratios — TrackMan 2024 Tour and the author's own data agree
   to 0.001 (5-iron/7-iron ratio 1.128 vs 1.127).
 - Negative carry skew — measured −1.46 (6i), −0.64 (7i), −0.57 (SW).
 - Carry ceiling/floor — 159 driver shots: worst 91% of mean, best
@@ -2193,23 +2193,23 @@ and a session drift redrawn every ~60 shots.
 - **`_CLUB_DISTANCE_RATIO`** — per-club distance consistency comes from
   ONE golfer, because no source breaks distance dispersion out by club.
 - **`_DEFAULT_CURVE_CARRY_SLOPE` (−0.20)** — deliberately weak, still
-  unverified as a shared constant. Originally flagged because Dillon's
+  unverified as a shared constant. Originally flagged because the author's
   data and the Kaggle golfer's disagreed on *sign* — but a 2026-09-09
   recheck (see Status: Kaggle-set comparison) found the Kaggle golfer's
-  sign flips to match Dillon's (-0.395, inside his real -0.892 to -0.288
+  sign flips to match the author's (-0.395, inside his real -0.892 to -0.288
   range) once the data is mirrored under a left-handed hypothesis. So
   the disagreement may have been a handedness artifact, not evidence
   that golfers genuinely differ in sign — real handedness data would
   settle it. Calibrated profiles still fit this per golfer regardless,
   which stays the reliable path either way.
-- **Carry CV** — varies 3× between Dillon's own sessions (0.014 to
+- **Carry CV** — varies 3× between the author's own sessions (0.014 to
   0.044). The tier value is a compromise, not a measurement.
 
 ## Known limitations
 
 - **Fixed 2026-09-09: floor-clamp squash still walled the calibrated
   profile.** The 2026-09-01 mishit-floor fix only exempted shots flagged
-  `is_mishit` -- but calibrated profiles (Dillon's, and any real-data
+  `is_mishit` -- but calibrated profiles (the author's, and any real-data
   fit) run `mishit_rate=0` by design, so literally every one of their
   shots went through the *original* tight 0.08 linear squash below the
   floor, still producing a visible horizontal wall (confirmed at exactly
@@ -2224,14 +2224,14 @@ and a session drift redrawn every ~60 shots.
   seam for density to pile up against. Verified via histogram (smooth,
   unimodal, no spike) and a fresh plot. Required regenerating and
   reseeding both golfers' full bags (~2,200 shots/club, every club now,
-  not just the 8 previously "deep" ones -- 24,200 rows for Dillon,
+  not just the 8 previously "deep" ones -- 24,200 rows for the author,
   26,400 for the band-2-4 stand-in).
 - **Fixed 2026-09-09 (round 1): dispersion charts wasted most of their
   canvas.** Both `/planner/dispersion` and `/planner/compare` always drew the
   Y-axis from literal 0 (the tee) up to the club's max carry. For a
   163y-average 7-Iron, that's a ~0-200y range where the actual shot
   cluster (roughly 140-180y) only fills the top ~20% of the canvas —
-  everything below was empty fairway. Dillon caught it from a
+  everything below was empty fairway. the author caught it from a
   screenshot. Fixed by windowing the visible range to `[min observed
   carry, max observed carry]` with a small pad, instead of always
   anchoring at the tee — `minCarryYds` prop, gridline step auto-adjusts.
@@ -2240,7 +2240,7 @@ and a session drift redrawn every ~60 shots.
   round 2): it confirmed the Y-window was right but didn't catch that
   the canvas was still often mostly empty for an unrelated reason.
 - **Fixed 2026-09-09 (round 2): canvas still wasn't filled or
-  centered.** Dillon caught this too, from a live screenshot round 1's
+  centered.** the author caught this too, from a live screenshot round 1's
   DOM check missed. Root cause: keeping one shared px/yd scale on both
   axes (so dispersion shape isn't visually stretched) while *also*
   fixing both width and height independently means whichever axis has
@@ -2268,7 +2268,7 @@ and a session drift redrawn every ~60 shots.
   Only affects handicap/band-based generation (mishit_rate > 0) — the
   calibrated (real-data) profile already runs mishit_rate=0 by design,
   so the Supabase-seeded dataset was never affected and needs no re-seed.
-- **One golfer.** Several tables rest on Dillon's data alone. Getting
+- **One golfer.** Several tables rest on the author's data alone. Getting
   teammates' launch-monitor sessions is the single highest-value next
   step — it's the only way to tell which measured patterns are *human*
   and which are just *him*.
@@ -2308,13 +2308,13 @@ python menu.py
 python generate_shots.py --handicap 8 --carry Driver=250 --carry 7-Iron=160 --n-shots 10000 --show
 ```
 ```bash
-python generate_shots.py --profile-json reference_data/dillon_profile.json --club Driver --club 7-Iron --n-shots 900 --show
+python generate_shots.py --profile-json reference_data/synthetic_profile.json --club Driver --club 7-Iron --n-shots 900 --show
 ```
 ```bash
-python parse_sessions.py "C:/Users/Jeff/Desktop/archive" --out reference_data/real_shots.csv
+python parse_sessions.py "<path to launch-monitor exports>" --out reference_data/synthetic_shots.csv
 ```
 ```bash
-python calibrate.py reference_data/real_shots.csv --out reference_data/dillon_profile.json --min-shots 10
+python calibrate.py reference_data/synthetic_shots.csv --out reference_data/synthetic_profile.json --min-shots 10
 ```
 
 Useful flags: `--skill-level tour`, `--band 2-4`, `--club X` (repeatable),

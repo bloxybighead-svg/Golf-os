@@ -8,7 +8,7 @@ alter table public.practice_sessions add column if not exists user_id uuid refer
 alter table public.session_blocks add column if not exists user_id uuid references auth.users(id) on delete cascade;
 alter table public.milestones add column if not exists user_id uuid references auth.users(id) on delete cascade;
 
--- STEP 2: backfill existing rows to Dillon's account (dilloncady@yahoo.com)
+-- STEP 2: backfill existing rows to the author's account (<owner email>)
 update public.rounds set user_id = 'b36e19f7-9a6d-409a-a836-512a9ef88c26' where user_id is null;
 update public.drills set user_id = 'b36e19f7-9a6d-409a-a836-512a9ef88c26' where user_id is null;
 update public.practice_sessions set user_id = 'b36e19f7-9a6d-409a-a836-512a9ef88c26' where user_id is null;

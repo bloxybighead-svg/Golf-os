@@ -1,4 +1,4 @@
-"""Statistical validation: does the simulator's output for Dillon's
+"""Statistical validation: does the simulator's output for the author's
 calibrated profile actually match his real shots, and how much real data
 does a golfer need to enter before that calibration is trustworthy?
 
@@ -354,7 +354,7 @@ def section_5_held_out(real: pd.DataFrame, n_folds: int = 5, oversample: int = 2
     )
 
     # Baseline: an UNCALIBRATED model that only knows a handicap, compared to
-    # ALL of Dillon's full-swing shots (there is nothing to hold out here
+    # ALL of the author's full-swing shots (there is nothing to hold out here
     # because it never saw them). Handicap 3.0 = midpoint of his 1.9-4 range.
     print("\nBASELINE: uncalibrated handicap-only model (handicap 3.0) vs real shots")
     base_rows = []

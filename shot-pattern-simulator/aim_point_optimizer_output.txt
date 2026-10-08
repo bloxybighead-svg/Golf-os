@@ -1,6 +1,6 @@
 Grid-searching aim point for 7-Iron, pin at (0.0, 165.0)...
 
---- Dillon's calibrated profile (tight dispersion) ---
+--- the author's calibrated profile (tight dispersion) ---
 Aiming straight at the pin: expected 2.673 strokes remaining after the shot
 Grid-search optimum: +5yd offline, +0yd carry from pin -> expected 2.663 strokes
 Apparent savings in the search sample: 0.011 strokes/approach (SE 0.012, t-test p=0.368) -- OPTIMISTIC, picked as best of 55 on the same shots

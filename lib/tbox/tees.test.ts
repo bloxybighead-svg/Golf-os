@@ -45,7 +45,7 @@ describe("neighbourTees", () => {
 })
 
 describe("recommendation on real tees", () => {
-  it("a 264-yd driver (Dillon's) is steered to the longest tee within reach", () => {
+  it("a 264-yd driver (the author's) is steered to the longest tee within reach", () => {
     // 264 x 25 = 6600 yd recommended: Gold (6472) is the longest tee not over it.
     expect(recommendTee({ handicapIndex: 3.5, driverCarryYds: 264 }, teeOptionsFrom(PEBBLE)).recommended.tee.name).toBe("Gold")
   })

@@ -34,7 +34,7 @@ describe("recommendTee", () => {
   ]
 
   it("recommends the longest tee that doesn't exceed the golfer's recommended yardage", () => {
-    // Dillon's real calibrated Driver mean carry (264.1) -> recommended ~6600
+    // the author's real calibrated Driver mean carry (264.1) -> recommended ~6600
     const result = recommendTee({ handicapIndex: 2, driverCarryYds: 264.1 }, tees)
     expect(result.recommended.tee.name).toBe("Blue")
   })

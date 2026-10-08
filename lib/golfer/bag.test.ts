@@ -5,8 +5,8 @@ import { generateCustomGolferShots } from "./build"
 
 const shots = (carry: number, offline = 0, n = 4) => Array.from({ length: n }, () => ({ carryYds: carry, offlineYds: offline }))
 
-// Dillon's calibrated clubs as stored: no 4-iron or 9-iron.
-const DILLON = [
+// the author's calibrated clubs as stored: no 4-iron or 9-iron.
+const CALIBRATED_CLUBS = [
   { club: "Driver", shots: shots(264, 10) },
   { club: "3-Wood", shots: shots(243.5) },
   { club: "7-Wood", shots: shots(212.2) },
@@ -40,7 +40,7 @@ describe("bags", () => {
 })
 
 describe("fillBag", () => {
-  const bag = fillBag(DILLON, CALIBRATED_DEFAULT_BAG)
+  const bag = fillBag(CALIBRATED_CLUBS, CALIBRATED_DEFAULT_BAG)
 
   it("returns every club in the bag, in bag order, keeping the golfer's own labels", () => {
     expect(bag.map((b) => b.club)).toEqual([
@@ -70,7 +70,7 @@ describe("fillBag", () => {
   })
 
   it("leaves out clubs that aren't in the bag", () => {
-    const small = fillBag(DILLON, ["Driver", "PW"])
+    const small = fillBag(CALIBRATED_CLUBS, ["Driver", "PW"])
     expect(small.map((b) => b.club)).toEqual(["Driver", "PW"])
   })
 

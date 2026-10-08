@@ -15,7 +15,7 @@ describe("normalizeClubName", () => {
     expect(normalizeClubName(raw)).toBe(club)
   })
 
-  it.each(["", "Average", "Putter", "3H", "Hybrid", "2i", "10i", "12", "99", "Dillon"])("%j is not a catalog club", (raw) => {
+  it.each(["", "Average", "Putter", "3H", "Hybrid", "2i", "10i", "12", "99", "Nonsense"])("%j is not a catalog club", (raw) => {
     expect(normalizeClubName(raw)).toBeNull()
   })
 })
