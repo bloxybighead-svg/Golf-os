@@ -588,7 +588,7 @@ export function isTie(club: Pick<ClubPlan, "expectedStrokes" | "strokesSe">, bes
 export function aimOffsetLabel(offsetYds: number): string {
   const yds = Math.round(Math.abs(offsetYds))
   if (yds === 0) return "center"
-  return `${yds} ${offsetYds < 0 ? "L" : "R"}`
+  return `${yds} yd ${offsetYds < 0 ? "L" : "R"}`
 }
 
 /**

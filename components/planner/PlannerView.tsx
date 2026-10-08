@@ -393,7 +393,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
                 {optionsNote && chosen && <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} />}
               </div>
               <div className="flex h-11 shrink-0 items-center gap-2 md:hidden">
-                <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} className="flex min-w-0 flex-1 gap-1.5" />
+                <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} className="flex min-w-0 flex-1 gap-1.5 pr-2" />
                 {planReady && ranking.length > 0 && (
                   <button
                     type="button"

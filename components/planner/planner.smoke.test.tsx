@@ -45,8 +45,8 @@ describe("planner components render (smoke)", () => {
       />
     )
     expect(html).toContain('data-rank-ms="190"')
-    expect(html).toContain("4 L")
-    expect(html).toContain("10 R")
+    expect(html).toContain("4 yd L")
+    expect(html).toContain("10 yd R")
     expect(html).toContain("center")
     expect(html).toContain("+0.00")
     expect(html).toContain("~ tie") // 3-Wood is within 1 SE of the 4-Iron
