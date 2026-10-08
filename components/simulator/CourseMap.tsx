@@ -70,9 +70,9 @@ const WHEEL_ROTATE_DEG = 5
 // Map layers are drawn on a canvas, which can't resolve CSS variables, so
 // colors are read from the tokens when a layer is drawn (readColor).
 const FEATURE_STYLE: Record<FeatureKind, { token: string; weight: number; fillOpacity: number; dashArray?: string }> = {
-  green: { token: "map-green", weight: 1.5, fillOpacity: 0.3 },
-  fairway: { token: "map-fairway", weight: 1, fillOpacity: 0.12 },
-  bunker: { token: "map-bunker", weight: 1, fillOpacity: 0.45 },
+  green: { token: LIE_TOKEN.green, weight: 1.5, fillOpacity: 0.3 },
+  fairway: { token: LIE_TOKEN.fairway, weight: 1, fillOpacity: 0.12 },
+  bunker: { token: LIE_TOKEN.bunker, weight: 1, fillOpacity: 0.45 },
   water: { token: "lie-water", weight: 1, fillOpacity: 0.35 },
   tee: { token: "map-tee", weight: 1, fillOpacity: 0.25 },
   trees: { token: "lie-trees", weight: 1, fillOpacity: 0.12, dashArray: "3 4" },

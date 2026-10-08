@@ -141,8 +141,8 @@ describe("ties", () => {
 describe("table and aim-marker helpers", () => {
   it("labels the aim offset", () => {
     expect(aimOffsetLabel(0)).toBe("center")
-    expect(aimOffsetLabel(-6)).toBe("6 L")
-    expect(aimOffsetLabel(12)).toBe("12 R")
+    expect(aimOffsetLabel(-6)).toBe("6 yd L")
+    expect(aimOffsetLabel(12)).toBe("12 yd R")
   })
 
   it("puts the marker at the club's finish, or on the pin when it aims at the pin and reaches it", () => {

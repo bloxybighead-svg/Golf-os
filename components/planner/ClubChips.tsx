@@ -18,17 +18,19 @@ export function ClubChips({
 }) {
   if (ranking.length < 2) return null
   return (
-    <div className={`overflow-x-auto ${className}`} role="group" aria-label="Club">
-      {ranking.map((r) => (
+    <div className={`overflow-x-auto ${className}`} role="group" aria-label="Clubs, ranked by strokes">
+      {ranking.map((r, i) => (
         <button
           key={r.club}
           type="button"
+          title={`Ranked ${i + 1} of ${ranking.length} by strokes`}
           aria-pressed={chosen?.club === r.club}
           onClick={() => onPick(r)}
           className={`shrink-0 rounded-full border px-3 py-1.5 text-sm tabular-nums ${
             chosen?.club === r.club ? "border-accent bg-accent text-on-accent" : "border-fg/[0.12] text-fg-2"
           }`}
         >
+          <span className="mr-1 text-xs opacity-60" aria-hidden>{i + 1}</span>
           {r.club}
         </button>
       ))}
