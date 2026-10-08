@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import LoginForm from "@/components/auth/LoginForm"
 
-// useSearchParams (to read ?redirect=) needs a Suspense boundary or Next
+// useSearchParams (to read ?next=) needs a Suspense boundary or Next
 // tries to statically prerender this page and fails the build.
 export default function LoginPage() {
   return (

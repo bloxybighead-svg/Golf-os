@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import { loginHref } from "@/lib/auth/safeNext"
 
 /** Where signing in returns to: the Rounds page with the add-round form open (the draft reloads from this device). */
-export const SIGN_IN_FOR_ROUND = "/login?redirect=%2Frounds%3Fnew%3D1"
+export const SIGN_IN_FOR_ROUND = loginHref("/rounds?new=1")
 
 /**
  * The short "sign in to save rounds" sheet. Shown by "Add round" when signed

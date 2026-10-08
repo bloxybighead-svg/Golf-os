@@ -9,7 +9,7 @@ import { createRound, getRoundHoles, updateRound } from "@/app/rounds/actions"
 import { blankHoles, summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
 import { Choice, HolePad } from "./HolePad"
 import { CourseSearch } from "@/components/courses/CourseSearch"
-import { SignInToSave } from "./SignInToSave"
+import { SignInToSave, SIGN_IN_FOR_ROUND } from "./SignInToSave"
 import { teeFill, type Scorecard, type ScorecardTee } from "@/lib/courses/scorecard"
 
 interface Props {
@@ -347,6 +347,15 @@ export function RoundForm({ round, onDone, signedIn = true }: Props) {
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-lg space-y-5 px-5 py-6">
+          {!signedIn && (
+            <p className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-fg" role="status">
+              You&rsquo;re signed out, so this round is only on this device.{" "}
+              <a href={SIGN_IN_FOR_ROUND} className="font-semibold text-accent underline">
+                Sign in
+              </a>{" "}
+              to save it to your account. Your entries are kept.
+            </p>
+          )}
           {restored && (
             <p className="flex items-center justify-between gap-3 text-sm text-fg-3">
               Picked up where you left off.
