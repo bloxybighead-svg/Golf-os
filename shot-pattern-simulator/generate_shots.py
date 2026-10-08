@@ -15,7 +15,7 @@ Examples:
     python generate_shots.py --handicap 9 --carry 7-Iron=155 --carry Driver=265
 
     # a golfer fitted from real data by calibrate.py
-    python generate_shots.py --profile-json output/dillon_profile.json
+    python generate_shots.py --profile-json reference_data/synthetic_profile.json
 
     # restrict to one club
     python generate_shots.py --handicap 7 --club 9-Iron

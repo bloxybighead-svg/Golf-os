@@ -1,0 +1,126 @@
+{
+ "_note": "Synthetic fitted profile: calibrate.py output on make_synthetic_fixtures.py's generated shots (a generic 3-handicap, fixed seed). Per-club fitted parameters only. calibrate.py fits no mishit rate; from_profile_json runs with mishit_rate 0.",
+ "profile": {
+  "3-Wood": {
+   "mean_carry": 244.6,
+   "distance_cv": 0.0202,
+   "direction_sd_deg": 3.93,
+   "start_line_bias_deg": 0.55,
+   "start_line_sd_deg": 2.87,
+   "curve_bias_pct": 0.0073,
+   "curve_sd_pct": 0.0546,
+   "curve_carry_slope": 0.047,
+   "n_shots": 11
+  },
+  "5-Iron": {
+   "mean_carry": 179.4,
+   "distance_cv": 0.0271,
+   "direction_sd_deg": 3.39,
+   "start_line_bias_deg": -0.35,
+   "start_line_sd_deg": 2.39,
+   "curve_bias_pct": -0.006,
+   "curve_sd_pct": 0.0329,
+   "curve_carry_slope": -0.003,
+   "n_shots": 21
+  },
+  "56 (SW)": {
+   "mean_carry": 100.1,
+   "distance_cv": 0.0475,
+   "direction_sd_deg": 3.96,
+   "start_line_bias_deg": -0.98,
+   "start_line_sd_deg": 3.72,
+   "curve_bias_pct": 0.0007,
+   "curve_sd_pct": 0.0291,
+   "curve_carry_slope": -0.546,
+   "n_shots": 41
+  },
+  "6-Iron": {
+   "mean_carry": 169.7,
+   "distance_cv": 0.0351,
+   "direction_sd_deg": 3.88,
+   "start_line_bias_deg": -0.57,
+   "start_line_sd_deg": 2.41,
+   "curve_bias_pct": -0.0006,
+   "curve_sd_pct": 0.0504,
+   "curve_carry_slope": -0.202,
+   "n_shots": 34
+  },
+  "60 (LW)": {
+   "mean_carry": 89.7,
+   "distance_cv": 0.0517,
+   "direction_sd_deg": 3.07,
+   "start_line_bias_deg": 0.74,
+   "start_line_sd_deg": 2.31,
+   "curve_bias_pct": -0.0001,
+   "curve_sd_pct": 0.0312,
+   "curve_carry_slope": -0.422,
+   "n_shots": 32
+  },
+  "7-Iron": {
+   "mean_carry": 159.6,
+   "distance_cv": 0.0373,
+   "direction_sd_deg": 3.75,
+   "start_line_bias_deg": 0.11,
+   "start_line_sd_deg": 2.39,
+   "curve_bias_pct": -0.0032,
+   "curve_sd_pct": 0.0496,
+   "curve_carry_slope": -0.269,
+   "n_shots": 62
+  },
+  "7-Wood": {
+   "mean_carry": 210.3,
+   "distance_cv": 0.0407,
+   "direction_sd_deg": 4.17,
+   "start_line_bias_deg": 1.08,
+   "start_line_sd_deg": 3.02,
+   "curve_bias_pct": 0.0061,
+   "curve_sd_pct": 0.0494,
+   "curve_carry_slope": 0.179,
+   "n_shots": 19
+  },
+  "8-Iron": {
+   "mean_carry": 148.4,
+   "distance_cv": 0.0299,
+   "direction_sd_deg": 3.3,
+   "start_line_bias_deg": -0.36,
+   "start_line_sd_deg": 2.44,
+   "curve_bias_pct": -0.0073,
+   "curve_sd_pct": 0.0452,
+   "curve_carry_slope": -0.284,
+   "n_shots": 17
+  },
+  "Driver": {
+   "mean_carry": 266.5,
+   "distance_cv": 0.0467,
+   "direction_sd_deg": 5.3,
+   "start_line_bias_deg": 0.18,
+   "start_line_sd_deg": 3.2,
+   "curve_bias_pct": 0.0048,
+   "curve_sd_pct": 0.0814,
+   "curve_carry_slope": -0.116,
+   "n_shots": 159
+  },
+  "GW": {
+   "mean_carry": 110.5,
+   "distance_cv": 0.0464,
+   "direction_sd_deg": 3.27,
+   "start_line_bias_deg": -0.38,
+   "start_line_sd_deg": 3.14,
+   "curve_bias_pct": -0.0075,
+   "curve_sd_pct": 0.0329,
+   "curve_carry_slope": -0.448,
+   "n_shots": 33
+  },
+  "PW": {
+   "mean_carry": 123.2,
+   "distance_cv": 0.0483,
+   "direction_sd_deg": 3.44,
+   "start_line_bias_deg": -0.15,
+   "start_line_sd_deg": 3.21,
+   "curve_bias_pct": 0.0247,
+   "curve_sd_pct": 0.044,
+   "curve_carry_slope": -0.179,
+   "n_shots": 10
+  }
+ }
+}

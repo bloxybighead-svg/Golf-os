@@ -39,3 +39,10 @@ __pycache__/
 /public/sw.js.map
 /public/swe-worker-*.js
 /public/swe-worker-*.js.map
+
+# real shot data - private, never commit (synthetic replacements are committed; see shot-pattern-simulator/make_synthetic_fixtures.py)
+lib/golfer/__fixtures__/real_shots.csv
+lib/golfer/__fixtures__/dillon_fit.json
+lib/golfer/__fixtures__/dillon-fitted-profile.json
+shot-pattern-simulator/reference_data/real_shots.csv
+shot-pattern-simulator/reference_data/dillon_profile.json

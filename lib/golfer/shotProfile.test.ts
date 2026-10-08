@@ -3,7 +3,7 @@ import { readFileSync } from "fs"
 import path from "path"
 import { parseCsv } from "@/lib/shots/parseCsv"
 import type { SessionMeta, StoredShot } from "@/lib/shots/types"
-import fitted13b from "./__fixtures__/dillon-fitted-profile.json"
+import fitted13b from "./__fixtures__/synthetic-fitted-profile.json"
 import { normalizeClubName } from "./clubNames"
 import { profilesForHandicap } from "./tables"
 import {
@@ -89,9 +89,9 @@ describe("recency and surface weighting", () => {
   })
 })
 
-describe("continuity with the committed Dillon profile", () => {
+describe("continuity with the committed synthetic profile", () => {
   it("fits the reference shots to the same profile 13b's regression tests use", () => {
-    const rows = parseCsv(readFileSync(path.join(__dirname, "__fixtures__", "real_shots.csv"), "utf8"))
+    const rows = parseCsv(readFileSync(path.join(__dirname, "__fixtures__", "synthetic_shots.csv"), "utf8"))
     const col = (n: string) => rows[0].indexOf(n)
     const sessions = [session("ref", { date: "2026-10-01" })]
     const shots: StoredShot[] = rows

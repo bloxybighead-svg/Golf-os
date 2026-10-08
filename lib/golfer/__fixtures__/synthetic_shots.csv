@@ -1,0 +1,590 @@
+session,date,club,carry_yds,offline_yds,curve_yds,launch_dir_deg,ball_speed,is_partial
+synthetic_session_01,01/09/2026,Driver,272.5,-5.7,10.3,-3.4,161.5,False
+synthetic_session_01,01/09/2026,Driver,240.4,0.4,18.6,-4.3,152.9,False
+synthetic_session_01,01/09/2026,Driver,248.6,-35.1,-27.1,-1.8,151.3,False
+synthetic_session_01,01/09/2026,Driver,286.9,-4.0,-26.7,4.5,163.1,False
+synthetic_session_01,01/09/2026,Driver,274.7,-2.7,-11.9,1.9,158.4,False
+synthetic_session_01,01/09/2026,Driver,260.5,-11.8,-27.2,3.4,157.6,False
+synthetic_session_01,01/09/2026,Driver,265.1,43.7,23.0,4.5,157.4,False
+synthetic_session_01,01/09/2026,Driver,269.4,6.0,24.6,-4.0,158.6,False
+synthetic_session_01,01/09/2026,Driver,273.0,20.0,11.8,1.7,162.6,False
+synthetic_session_01,01/09/2026,Driver,251.4,-5.9,-5.6,-0.1,151.5,False
+synthetic_session_01,01/09/2026,Driver,276.8,0.2,5.4,-1.1,160.7,False
+synthetic_session_01,01/09/2026,Driver,262.9,30.9,23.1,1.7,157.4,False
+synthetic_session_01,01/09/2026,Driver,270.8,-1.6,-13.0,2.4,161.6,False
+synthetic_session_01,01/09/2026,Driver,257.1,-2.4,4.0,-1.4,155.0,False
+synthetic_session_01,01/09/2026,Driver,288.1,11.6,15.2,-0.7,165.9,False
+synthetic_session_01,01/09/2026,Driver,253.4,29.4,20.7,2.0,153.2,False
+synthetic_session_01,01/09/2026,Driver,261.6,39.1,38.0,0.2,155.2,False
+synthetic_session_01,01/09/2026,Driver,280.0,-40.1,-54.9,3.0,162.1,False
+synthetic_session_01,01/09/2026,Driver,263.9,9.8,6.7,0.7,157.3,False
+synthetic_session_01,01/09/2026,Driver,288.2,-21.3,-31.0,1.9,162.3,False
+synthetic_session_01,01/09/2026,Driver,267.5,-4.7,7.6,-2.6,159.7,False
+synthetic_session_01,01/09/2026,3-Wood,243.7,18.8,12.9,1.4,151.9,False
+synthetic_session_01,01/09/2026,3-Wood,251.7,16.4,14.7,0.4,155.6,False
+synthetic_session_01,01/09/2026,3-Wood,236.2,12.1,-5.4,4.2,150.0,False
+synthetic_session_01,01/09/2026,7-Wood,218.0,50.3,16.5,8.8,143.3,False
+synthetic_session_01,01/09/2026,4-Iron,190.5,3.0,-7.3,3.1,128.9,False
+synthetic_session_01,01/09/2026,5-Iron,185.7,14.5,5.3,2.8,130.2,False
+synthetic_session_01,01/09/2026,5-Iron,180.3,-2.5,0.7,-1.0,127.1,False
+synthetic_session_01,01/09/2026,5-Iron,168.4,15.4,7.4,2.7,122.9,False
+synthetic_session_01,01/09/2026,5-Iron,182.6,3.8,3.2,0.2,129.4,False
+synthetic_session_01,01/09/2026,6-Iron,162.8,0.3,3.2,-1.0,118.4,False
+synthetic_session_01,01/09/2026,6-Iron,167.8,10.4,6.2,1.4,120.9,False
+synthetic_session_01,01/09/2026,6-Iron,170.8,2.4,3.2,-0.3,123.1,False
+synthetic_session_01,01/09/2026,6-Iron,175.6,-6.3,-13.8,2.4,121.8,False
+synthetic_session_01,01/09/2026,6-Iron,107.1,-2.3,-11.7,2.9,78.5,True
+synthetic_session_01,01/09/2026,6-Iron,176.1,1.3,2.9,-0.5,124.6,False
+synthetic_session_01,01/09/2026,6-Iron,170.9,6.2,-2.0,2.7,122.4,False
+synthetic_session_01,01/09/2026,7-Iron,168.5,-7.8,-1.0,-2.3,123.3,False
+synthetic_session_01,01/09/2026,7-Iron,165.0,22.1,16.2,2.1,117.6,False
+synthetic_session_01,01/09/2026,7-Iron,158.6,-1.1,-3.5,0.9,116.8,False
+synthetic_session_01,01/09/2026,8-Iron,152.2,3.0,2.3,0.3,116.4,False
+synthetic_session_01,01/09/2026,8-Iron,112.0,-3.9,1.5,-2.6,84.6,True
+synthetic_session_01,01/09/2026,8-Iron,117.9,12.3,12.4,1.4,88.7,True
+synthetic_session_01,01/09/2026,8-Iron,151.8,-17.2,-16.5,-0.3,113.6,False
+synthetic_session_01,01/09/2026,8-Iron,148.6,-4.0,1.6,-2.2,113.4,False
+synthetic_session_01,01/09/2026,8-Iron,147.0,-0.9,-0.0,-0.4,113.1,False
+synthetic_session_01,01/09/2026,9-Iron,136.9,6.3,4.4,0.8,107.9,False
+synthetic_session_01,01/09/2026,PW,94.6,-4.4,1.0,-3.1,75.8,True
+synthetic_session_01,01/09/2026,GW,66.9,3.6,7.2,-0.6,55.2,True
+synthetic_session_01,01/09/2026,GW,111.6,1.6,2.7,-0.5,90.6,False
+synthetic_session_01,01/09/2026,GW,68.2,4.9,0.4,3.9,56.3,True
+synthetic_session_01,01/09/2026,GW,71.6,0.2,3.8,-2.0,60.5,True
+synthetic_session_01,01/09/2026,GW,100.3,-1.1,-1.7,0.3,83.4,False
+synthetic_session_01,01/09/2026,GW,78.0,-0.5,-0.5,-0.1,64.3,True
+synthetic_session_01,01/09/2026,GW,118.9,3.3,-0.1,1.6,95.8,False
+synthetic_session_01,01/09/2026,GW,116.5,-9.9,-8.1,-0.9,94.0,False
+synthetic_session_01,01/09/2026,56 (SW),81.5,-4.8,-0.7,-3.0,65.8,True
+synthetic_session_01,01/09/2026,56 (SW),100.6,-0.4,1.6,-1.2,84.5,False
+synthetic_session_01,01/09/2026,56 (SW),67.1,-7.0,-10.2,-0.3,55.3,True
+synthetic_session_01,01/09/2026,56 (SW),81.0,8.0,3.0,4.1,69.1,True
+synthetic_session_01,01/09/2026,56 (SW),93.3,-8.3,-0.3,-4.9,81.1,False
+synthetic_session_01,01/09/2026,56 (SW),103.5,-5.9,1.3,-4.0,86.9,False
+synthetic_session_01,01/09/2026,56 (SW),96.1,-3.2,-0.5,-1.6,82.3,False
+synthetic_session_01,01/09/2026,56 (SW),101.8,-7.3,0.9,-4.6,85.3,False
+synthetic_session_01,01/09/2026,56 (SW),67.3,3.6,0.4,2.8,57.0,True
+synthetic_session_01,01/09/2026,56 (SW),71.1,-1.1,4.9,-3.6,58.1,True
+synthetic_session_01,01/09/2026,56 (SW),56.1,5.8,2.9,4.1,47.9,True
+synthetic_session_01,01/09/2026,56 (SW),92.5,-9.0,2.3,-7.0,79.6,False
+synthetic_session_01,01/09/2026,60 (LW),64.8,-2.3,0.2,-2.2,57.7,True
+synthetic_session_01,01/09/2026,60 (LW),79.9,3.2,1.8,1.0,69.8,False
+synthetic_session_01,01/09/2026,60 (LW),90.1,-1.6,3.2,-3.1,77.6,False
+synthetic_session_01,01/09/2026,60 (LW),68.0,-1.9,-3.6,0.6,57.7,True
+synthetic_session_01,01/09/2026,60 (LW),62.8,8.7,10.4,1.6,54.0,True
+synthetic_session_01,01/09/2026,60 (LW),49.5,7.6,6.5,4.1,42.4,True
+synthetic_session_01,01/09/2026,60 (LW),90.2,4.0,0.2,2.4,76.9,False
+synthetic_session_01,01/09/2026,60 (LW),60.4,4.5,0.2,4.1,51.9,True
+synthetic_session_01,01/09/2026,60 (LW),71.1,3.2,-1.1,3.3,60.9,True
+synthetic_session_01,01/09/2026,60 (LW),62.0,3.4,2.5,1.6,51.2,True
+synthetic_session_01,01/09/2026,60 (LW),87.5,10.5,3.4,4.6,75.0,False
+synthetic_session_01,01/09/2026,60 (LW),88.5,-3.4,-1.1,-1.5,76.0,False
+synthetic_session_01,01/09/2026,60 (LW),98.8,4.4,2.4,1.2,84.4,False
+synthetic_session_02,01/11/2026,Driver,279.2,-12.5,-26.4,2.8,162.7,False
+synthetic_session_02,01/11/2026,Driver,268.0,-43.7,-13.2,-6.5,159.5,False
+synthetic_session_02,01/11/2026,Driver,270.4,58.7,60.8,-0.4,159.7,False
+synthetic_session_02,01/11/2026,Driver,289.7,45.4,16.1,5.8,164.6,False
+synthetic_session_02,01/11/2026,Driver,263.1,-13.3,-7.3,-1.3,154.0,False
+synthetic_session_02,01/11/2026,4-Iron,183.0,24.5,16.7,2.4,127.0,False
+synthetic_session_02,01/11/2026,5-Iron,177.4,-16.7,-5.6,-3.6,125.0,False
+synthetic_session_02,01/11/2026,6-Iron,167.8,4.8,1.7,1.0,122.5,False
+synthetic_session_02,01/11/2026,6-Iron,178.3,-33.1,-16.5,-5.3,126.5,False
+synthetic_session_02,01/11/2026,8-Iron,142.9,6.9,-2.1,3.6,110.4,False
+synthetic_session_02,01/11/2026,9-Iron,118.7,5.2,1.0,2.1,89.5,True
+synthetic_session_02,01/11/2026,60 (LW),85.7,8.6,3.0,3.7,74.9,False
+synthetic_session_03,01/18/2026,Driver,252.3,7.8,13.4,-1.3,152.8,False
+synthetic_session_03,01/18/2026,Driver,283.1,-24.3,-7.4,-3.4,164.1,False
+synthetic_session_03,01/18/2026,Driver,275.9,-6.8,-3.4,-0.7,159.9,False
+synthetic_session_03,01/18/2026,Driver,252.8,-8.3,-7.2,-0.3,154.1,False
+synthetic_session_03,01/18/2026,Driver,267.2,46.2,28.3,3.8,158.1,False
+synthetic_session_03,01/18/2026,6-Iron,169.0,-15.2,-13.0,-0.7,121.4,False
+synthetic_session_03,01/18/2026,7-Iron,157.6,8.8,13.1,-1.5,117.1,False
+synthetic_session_03,01/18/2026,8-Iron,152.9,8.8,1.7,2.7,113.1,False
+synthetic_session_03,01/18/2026,8-Iron,145.0,5.0,4.2,0.3,109.1,False
+synthetic_session_03,01/18/2026,9-Iron,139.0,3.2,1.4,0.7,107.1,False
+synthetic_session_03,01/18/2026,PW,107.0,-0.4,1.9,-1.1,83.6,True
+synthetic_session_03,01/18/2026,GW,78.0,-0.7,1.5,-1.4,64.7,True
+synthetic_session_03,01/18/2026,56 (SW),98.0,-4.9,1.5,-3.8,81.8,False
+synthetic_session_03,01/18/2026,56 (SW),93.0,-0.8,0.5,-0.8,80.0,False
+synthetic_session_03,01/18/2026,56 (SW),106.5,-2.9,-2.0,-0.4,86.7,False
+synthetic_session_03,01/18/2026,56 (SW),101.8,-1.8,-1.6,-0.1,85.8,False
+synthetic_session_03,01/18/2026,60 (LW),89.9,11.0,2.9,5.2,78.6,False
+synthetic_session_03,01/18/2026,60 (LW),88.3,-1.0,-1.3,0.2,75.5,False
+synthetic_session_04,01/27/2026,Driver,261.5,-36.0,5.7,-9.1,155.8,False
+synthetic_session_04,01/27/2026,Driver,274.2,34.0,17.1,3.5,160.9,False
+synthetic_session_04,01/27/2026,Driver,270.0,-18.5,-38.8,4.3,161.1,False
+synthetic_session_04,01/27/2026,Driver,253.8,-1.7,7.8,-2.1,152.4,False
+synthetic_session_04,01/27/2026,Driver,258.7,36.2,7.1,6.4,153.4,False
+synthetic_session_04,01/27/2026,Driver,263.7,26.0,3.0,5.0,157.1,False
+synthetic_session_04,01/27/2026,Driver,260.9,40.0,32.8,1.6,157.1,False
+synthetic_session_04,01/27/2026,Driver,277.9,-0.2,-5.6,1.1,161.3,False
+synthetic_session_04,01/27/2026,Driver,256.6,18.8,17.5,0.3,155.7,False
+synthetic_session_04,01/27/2026,Driver,233.8,4.6,11.3,-1.6,147.4,False
+synthetic_session_04,01/27/2026,4-Iron,197.4,8.9,4.2,1.4,133.7,False
+synthetic_session_04,01/27/2026,6-Iron,166.2,1.5,-2.8,1.4,120.6,False
+synthetic_session_04,01/27/2026,7-Iron,160.1,2.4,-1.3,1.3,115.9,False
+synthetic_session_04,01/27/2026,7-Iron,170.1,0.1,-5.5,1.9,123.2,False
+synthetic_session_04,01/27/2026,7-Iron,153.1,8.6,10.2,-0.6,114.2,False
+synthetic_session_04,01/27/2026,7-Iron,119.1,1.1,6.6,-1.8,86.4,True
+synthetic_session_04,01/27/2026,9-Iron,104.9,2.3,-0.5,1.5,82.2,True
+synthetic_session_04,01/27/2026,PW,115.3,2.4,6.6,-2.1,93.5,False
+synthetic_session_04,01/27/2026,PW,99.1,5.7,7.8,-0.2,76.8,True
+synthetic_session_04,01/27/2026,GW,110.4,-10.5,-1.8,-4.5,90.2,False
+synthetic_session_04,01/27/2026,GW,94.8,2.3,-3.5,3.2,78.1,True
+synthetic_session_04,01/27/2026,GW,91.6,10.4,4.2,4.2,75.0,True
+synthetic_session_04,01/27/2026,56 (SW),104.3,1.1,-5.1,3.4,83.8,False
+synthetic_session_04,01/27/2026,56 (SW),107.7,5.4,-2.1,4.0,86.7,False
+synthetic_session_04,01/27/2026,56 (SW),102.9,2.7,-1.4,2.3,86.4,False
+synthetic_session_04,01/27/2026,56 (SW),103.0,-9.0,1.9,-6.0,85.9,False
+synthetic_session_04,01/27/2026,60 (LW),86.7,-4.6,-4.4,-0.2,76.2,False
+synthetic_session_04,01/27/2026,60 (LW),73.3,-2.3,-1.4,-0.9,64.6,True
+synthetic_session_04,01/27/2026,60 (LW),55.2,-7.9,-5.6,-4.6,48.2,True
+synthetic_session_04,01/27/2026,60 (LW),75.3,-1.2,-1.8,0.2,64.3,True
+synthetic_session_05,01/27/2026,Driver,272.6,-26.2,-18.8,-1.6,159.3,False
+synthetic_session_05,01/27/2026,Driver,268.2,-4.8,22.1,-5.7,160.1,False
+synthetic_session_05,01/27/2026,Driver,248.6,-6.9,16.4,-5.4,151.6,False
+synthetic_session_05,01/27/2026,Driver,276.2,-43.7,-22.2,-4.4,161.6,False
+synthetic_session_05,01/27/2026,Driver,268.5,-27.4,-25.0,-0.5,159.8,False
+synthetic_session_05,01/27/2026,Driver,275.2,-17.1,-22.8,1.2,163.1,False
+synthetic_session_05,01/27/2026,Driver,246.6,2.4,15.6,-3.1,152.7,False
+synthetic_session_05,01/27/2026,Driver,274.8,-24.2,6.6,-6.4,160.7,False
+synthetic_session_05,01/27/2026,7-Wood,215.8,9.9,9.6,0.1,138.2,False
+synthetic_session_05,01/27/2026,4-Iron,197.6,14.1,22.1,-2.3,132.1,False
+synthetic_session_05,01/27/2026,5-Iron,173.6,-8.5,-1.1,-2.4,124.2,False
+synthetic_session_05,01/27/2026,6-Iron,165.7,12.1,4.1,2.8,121.0,False
+synthetic_session_05,01/27/2026,7-Iron,157.2,9.6,5.4,1.5,116.4,False
+synthetic_session_05,01/27/2026,7-Iron,169.5,-1.4,-10.2,3.0,122.7,False
+synthetic_session_05,01/27/2026,7-Iron,162.3,-10.4,-8.7,-0.6,116.8,False
+synthetic_session_05,01/27/2026,7-Iron,150.3,8.0,4.8,1.2,112.1,False
+synthetic_session_05,01/27/2026,8-Iron,151.5,-6.8,2.4,-3.5,113.2,False
+synthetic_session_05,01/27/2026,8-Iron,147.9,-20.1,-15.9,-1.6,110.8,False
+synthetic_session_05,01/27/2026,9-Iron,118.5,-0.2,1.8,-0.8,90.2,True
+synthetic_session_05,01/27/2026,PW,75.7,0.6,5.1,-1.9,61.1,True
+synthetic_session_05,01/27/2026,GW,87.9,-3.1,0.1,-2.1,68.9,True
+synthetic_session_05,01/27/2026,GW,117.3,1.2,-2.9,2.0,96.3,False
+synthetic_session_05,01/27/2026,GW,108.0,3.3,-3.2,3.5,91.9,False
+synthetic_session_05,01/27/2026,GW,65.2,2.2,2.9,0.4,52.8,True
+synthetic_session_05,01/27/2026,GW,67.1,-0.4,1.5,-1.1,56.4,True
+synthetic_session_05,01/27/2026,56 (SW),99.8,9.0,2.8,3.5,85.3,False
+synthetic_session_05,01/27/2026,56 (SW),99.8,2.0,1.7,0.2,87.0,False
+synthetic_session_05,01/27/2026,56 (SW),63.1,-10.4,-1.2,-8.6,55.4,True
+synthetic_session_05,01/27/2026,56 (SW),68.4,-5.1,-4.0,-1.7,59.1,True
+synthetic_session_05,01/27/2026,60 (LW),78.0,1.5,0.6,0.8,67.0,True
+synthetic_session_05,01/27/2026,60 (LW),93.6,1.0,0.0,0.6,79.3,False
+synthetic_session_05,01/27/2026,60 (LW),72.6,1.9,3.3,-0.6,63.1,True
+synthetic_session_05,01/27/2026,60 (LW),54.3,-2.5,-3.9,0.0,48.6,True
+synthetic_session_06,01/30/2026,Driver,259.9,-28.5,-20.8,-1.7,156.9,False
+synthetic_session_06,01/30/2026,Driver,274.7,-30.6,-37.3,1.4,160.7,False
+synthetic_session_06,01/30/2026,Driver,244.3,-21.2,-25.8,1.1,153.8,False
+synthetic_session_06,01/30/2026,Driver,249.4,18.1,12.5,1.3,152.0,False
+synthetic_session_06,01/30/2026,Driver,247.9,14.1,0.1,3.2,153.1,False
+synthetic_session_06,01/30/2026,Driver,264.9,3.8,6.4,-0.6,156.6,False
+synthetic_session_06,01/30/2026,Driver,285.3,30.3,20.9,1.9,162.1,False
+synthetic_session_06,01/30/2026,Driver,267.5,-4.4,24.8,-6.2,157.2,False
+synthetic_session_06,01/30/2026,Driver,244.0,32.6,3.9,6.7,151.5,False
+synthetic_session_06,01/30/2026,Driver,237.5,-1.8,-3.2,0.3,149.3,False
+synthetic_session_06,01/30/2026,Driver,263.6,27.2,3.4,5.2,157.5,False
+synthetic_session_06,01/30/2026,Driver,263.9,0.9,2.1,-0.3,157.4,False
+synthetic_session_06,01/30/2026,Driver,265.2,-19.0,-8.9,-2.2,157.5,False
+synthetic_session_06,01/30/2026,3-Wood,250.7,14.9,7.6,1.7,157.2,False
+synthetic_session_06,01/30/2026,3-Wood,239.2,11.2,20.3,-2.2,148.5,False
+synthetic_session_06,01/30/2026,7-Wood,211.8,-13.7,-1.4,-3.3,137.8,False
+synthetic_session_06,01/30/2026,7-Wood,188.4,3.4,-0.1,1.1,131.2,False
+synthetic_session_06,01/30/2026,7-Wood,206.8,5.7,3.4,0.6,136.1,False
+synthetic_session_06,01/30/2026,7-Wood,217.3,21.0,15.4,1.5,141.3,False
+synthetic_session_06,01/30/2026,5-Iron,183.0,-12.2,-13.1,0.3,128.5,False
+synthetic_session_06,01/30/2026,6-Iron,168.6,-3.6,-0.2,-1.2,120.5,False
+synthetic_session_06,01/30/2026,6-Iron,169.7,-12.5,-10.2,-0.8,122.3,False
+synthetic_session_06,01/30/2026,6-Iron,174.7,-3.8,10.0,-4.5,125.5,False
+synthetic_session_06,01/30/2026,7-Iron,156.2,8.4,-0.1,3.1,115.4,False
+synthetic_session_06,01/30/2026,7-Iron,156.1,-15.5,-12.7,-1.0,114.8,False
+synthetic_session_06,01/30/2026,7-Iron,156.0,-4.8,0.1,-1.8,114.6,False
+synthetic_session_06,01/30/2026,7-Iron,168.0,-3.2,-8.2,1.7,124.1,False
+synthetic_session_06,01/30/2026,7-Iron,149.4,9.5,0.8,3.3,111.8,False
+synthetic_session_06,01/30/2026,7-Iron,154.8,-1.8,9.5,-4.2,115.5,False
+synthetic_session_06,01/30/2026,7-Iron,161.9,-10.1,-6.2,-1.4,117.7,False
+synthetic_session_06,01/30/2026,7-Iron,158.8,3.4,0.2,1.2,117.1,False
+synthetic_session_06,01/30/2026,7-Iron,161.3,-12.0,-4.0,-2.8,120.2,False
+synthetic_session_06,01/30/2026,9-Iron,128.2,9.0,1.9,3.2,100.4,False
+synthetic_session_06,01/30/2026,9-Iron,80.3,-0.8,-2.8,0.7,62.4,True
+synthetic_session_06,01/30/2026,PW,73.3,2.3,2.1,0.8,55.7,True
+synthetic_session_06,01/30/2026,PW,126.9,9.2,0.9,3.8,100.2,False
+synthetic_session_06,01/30/2026,PW,99.4,-10.8,-4.0,-4.4,78.7,True
+synthetic_session_06,01/30/2026,GW,109.8,-1.5,-2.4,0.4,91.0,False
+synthetic_session_06,01/30/2026,GW,112.3,-5.2,-5.6,0.2,94.0,False
+synthetic_session_06,01/30/2026,GW,113.6,-14.3,-2.6,-5.9,92.8,False
+synthetic_session_06,01/30/2026,GW,103.1,7.2,2.9,2.4,87.1,False
+synthetic_session_06,01/30/2026,GW,66.3,-14.4,-0.3,-12.1,56.0,True
+synthetic_session_06,01/30/2026,GW,114.2,2.0,3.6,-0.8,91.5,False
+synthetic_session_06,01/30/2026,GW,101.6,1.9,2.4,-0.3,85.1,False
+synthetic_session_06,01/30/2026,GW,79.4,-5.7,-1.3,-3.5,63.9,True
+synthetic_session_06,01/30/2026,GW,62.9,7.1,2.5,5.2,50.4,True
+synthetic_session_06,01/30/2026,GW,63.8,1.1,2.3,-0.4,56.1,True
+synthetic_session_06,01/30/2026,GW,117.1,4.6,2.8,0.9,94.7,False
+synthetic_session_06,01/30/2026,56 (SW),101.4,-1.2,-5.8,2.6,85.9,False
+synthetic_session_06,01/30/2026,56 (SW),104.9,7.9,4.6,1.8,87.3,False
+synthetic_session_06,01/30/2026,56 (SW),96.9,-3.7,-1.4,-1.4,81.6,False
+synthetic_session_06,01/30/2026,56 (SW),60.1,0.7,0.6,0.3,49.7,True
+synthetic_session_06,01/30/2026,56 (SW),102.4,-12.6,4.8,-9.6,86.9,False
+synthetic_session_06,01/30/2026,56 (SW),94.4,2.5,4.4,-1.2,81.6,False
+synthetic_session_06,01/30/2026,56 (SW),97.6,-16.6,-0.8,-9.2,84.2,False
+synthetic_session_06,01/30/2026,60 (LW),61.3,-1.0,-0.7,-0.5,52.0,True
+synthetic_session_06,01/30/2026,60 (LW),86.6,8.8,1.4,4.9,75.4,False
+synthetic_session_06,01/30/2026,60 (LW),74.1,11.1,4.6,5.8,64.2,True
+synthetic_session_06,01/30/2026,60 (LW),89.6,7.0,0.5,4.2,77.2,False
+synthetic_session_06,01/30/2026,60 (LW),54.1,1.1,5.9,-2.8,46.2,True
+synthetic_session_07,02/08/2026,Driver,279.6,22.7,6.8,3.3,161.6,False
+synthetic_session_07,02/08/2026,Driver,271.5,29.3,13.8,3.3,159.5,False
+synthetic_session_07,02/08/2026,Driver,258.3,40.9,42.9,-0.4,155.1,False
+synthetic_session_07,02/08/2026,Driver,284.3,-14.4,-19.7,1.1,163.2,False
+synthetic_session_07,02/08/2026,Driver,275.4,9.0,3.5,1.2,160.8,False
+synthetic_session_07,02/08/2026,Driver,256.2,19.2,25.5,-1.4,153.3,False
+synthetic_session_07,02/08/2026,Driver,269.4,-7.6,-24.6,3.6,158.4,False
+synthetic_session_07,02/08/2026,7-Wood,207.4,-0.1,2.6,-0.7,137.3,False
+synthetic_session_07,02/08/2026,5-Iron,175.7,0.3,-5.3,1.8,126.1,False
+synthetic_session_07,02/08/2026,5-Iron,182.5,-25.2,-6.9,-5.8,129.1,False
+synthetic_session_07,02/08/2026,6-Iron,165.2,1.2,4.2,-1.0,121.0,False
+synthetic_session_07,02/08/2026,7-Iron,163.1,2.6,7.9,-1.8,119.1,False
+synthetic_session_07,02/08/2026,7-Iron,153.7,3.4,-1.7,1.9,114.8,False
+synthetic_session_07,02/08/2026,9-Iron,78.2,-6.0,-7.2,-1.4,59.2,True
+synthetic_session_07,02/08/2026,GW,111.1,-8.1,-7.0,-0.6,93.4,False
+synthetic_session_07,02/08/2026,GW,116.6,12.4,-1.2,6.7,93.7,False
+synthetic_session_07,02/08/2026,GW,71.6,-0.0,-3.5,1.8,58.2,True
+synthetic_session_07,02/08/2026,60 (LW),91.3,0.3,0.1,0.1,80.2,False
+synthetic_session_07,02/08/2026,60 (LW),45.3,-1.7,4.0,-5.0,40.0,True
+synthetic_session_07,02/08/2026,60 (LW),53.6,1.4,-3.0,3.6,47.5,True
+synthetic_session_07,02/08/2026,60 (LW),80.0,1.9,6.3,-3.2,70.8,False
+synthetic_session_07,02/08/2026,60 (LW),92.1,0.8,1.7,-0.5,79.5,False
+synthetic_session_08,02/10/2026,Driver,264.6,6.4,6.9,-0.1,157.3,False
+synthetic_session_08,02/10/2026,Driver,279.7,16.2,15.4,0.2,160.8,False
+synthetic_session_08,02/10/2026,3-Wood,248.4,-23.0,-19.4,-0.8,151.2,False
+synthetic_session_08,02/10/2026,7-Wood,219.8,13.5,5.3,2.2,141.9,False
+synthetic_session_08,02/10/2026,6-Iron,166.4,-1.4,5.3,-2.3,120.4,False
+synthetic_session_08,02/10/2026,GW,99.4,-3.8,-0.5,-1.9,84.7,False
+synthetic_session_08,02/10/2026,56 (SW),98.7,0.1,0.6,-0.3,84.0,False
+synthetic_session_08,02/10/2026,56 (SW),104.5,-2.5,-0.2,-1.3,85.9,False
+synthetic_session_08,02/10/2026,60 (LW),87.4,0.2,0.2,0.0,77.4,False
+synthetic_session_09,02/16/2026,Driver,264.2,42.5,35.8,1.5,157.4,False
+synthetic_session_09,02/16/2026,Driver,274.4,13.6,-15.7,6.1,159.0,False
+synthetic_session_09,02/16/2026,Driver,266.5,60.5,35.9,5.3,158.9,False
+synthetic_session_09,02/16/2026,Driver,242.1,15.7,15.7,-0.0,153.3,False
+synthetic_session_09,02/16/2026,Driver,254.9,22.5,26.2,-0.8,153.6,False
+synthetic_session_09,02/16/2026,Driver,278.5,26.4,9.3,3.5,163.7,False
+synthetic_session_09,02/16/2026,Driver,257.0,-13.6,-34.5,4.7,154.9,False
+synthetic_session_09,02/16/2026,4-Iron,200.7,-11.4,-14.5,0.9,134.9,False
+synthetic_session_09,02/16/2026,5-Iron,177.3,7.0,2.0,1.6,123.7,False
+synthetic_session_09,02/16/2026,6-Iron,165.9,5.1,9.8,-1.6,120.2,False
+synthetic_session_09,02/16/2026,7-Iron,147.7,-0.5,4.9,-2.1,112.3,False
+synthetic_session_09,02/16/2026,7-Iron,156.4,11.1,8.0,1.2,114.5,False
+synthetic_session_09,02/16/2026,8-Iron,145.2,-5.6,2.2,-3.1,111.3,False
+synthetic_session_09,02/16/2026,GW,102.6,-8.6,-5.5,-1.7,85.7,False
+synthetic_session_09,02/16/2026,56 (SW),98.3,3.6,0.5,1.8,83.5,False
+synthetic_session_09,02/16/2026,56 (SW),60.7,-1.1,4.8,-3.9,51.4,True
+synthetic_session_09,02/16/2026,56 (SW),81.4,-5.4,-3.4,-1.8,68.2,True
+synthetic_session_09,02/16/2026,56 (SW),72.8,-5.4,-4.5,-1.6,61.8,True
+synthetic_session_09,02/16/2026,60 (LW),88.3,-4.6,-4.1,-0.3,77.6,False
+synthetic_session_09,02/16/2026,60 (LW),85.7,-5.3,-1.7,-2.4,77.4,False
+synthetic_session_10,02/18/2026,Driver,284.0,12.7,-0.5,2.7,162.7,False
+synthetic_session_10,02/18/2026,Driver,262.2,17.0,15.8,0.3,156.8,False
+synthetic_session_10,02/18/2026,Driver,266.2,0.8,-23.7,5.3,159.1,False
+synthetic_session_10,02/18/2026,Driver,276.5,-19.2,-28.0,1.8,162.5,False
+synthetic_session_10,02/18/2026,Driver,265.0,-34.3,-5.6,-6.2,157.4,False
+synthetic_session_10,02/18/2026,Driver,277.4,-15.2,-4.3,-2.2,162.0,False
+synthetic_session_10,02/18/2026,Driver,286.3,-45.8,-25.1,-4.1,165.0,False
+synthetic_session_10,02/18/2026,3-Wood,240.4,-27.7,-18.6,-2.2,151.6,False
+synthetic_session_10,02/18/2026,7-Wood,211.8,11.7,17.9,-1.7,139.7,False
+synthetic_session_10,02/18/2026,5-Iron,181.7,-12.1,-5.6,-2.0,128.2,False
+synthetic_session_10,02/18/2026,6-Iron,159.9,21.2,14.3,2.5,116.9,False
+synthetic_session_10,02/18/2026,6-Iron,184.8,-10.9,-6.5,-1.3,125.5,False
+synthetic_session_10,02/18/2026,7-Iron,155.8,-0.7,-4.7,1.5,114.3,False
+synthetic_session_10,02/18/2026,7-Iron,158.0,2.2,-5.6,2.8,115.9,False
+synthetic_session_10,02/18/2026,7-Iron,160.6,23.6,19.0,1.6,118.0,False
+synthetic_session_10,02/18/2026,GW,105.7,-2.2,0.5,-1.5,88.6,False
+synthetic_session_10,02/18/2026,GW,64.0,3.1,3.2,1.2,52.0,True
+synthetic_session_10,02/18/2026,56 (SW),62.5,-0.4,1.0,-1.0,54.1,True
+synthetic_session_10,02/18/2026,56 (SW),110.3,-6.2,-5.0,-0.6,93.0,False
+synthetic_session_10,02/18/2026,60 (LW),95.0,0.0,-0.9,0.6,82.3,False
+synthetic_session_10,02/18/2026,60 (LW),74.0,3.0,-0.4,2.6,64.1,True
+synthetic_session_11,02/20/2026,Driver,267.7,4.5,-8.3,2.7,158.7,False
+synthetic_session_11,02/20/2026,Driver,259.0,-8.1,2.0,-2.2,156.0,False
+synthetic_session_11,02/20/2026,Driver,249.0,-18.0,-8.8,-2.1,152.6,False
+synthetic_session_11,02/20/2026,Driver,246.5,7.2,8.8,-0.4,151.5,False
+synthetic_session_11,02/20/2026,Driver,280.2,-11.2,-12.1,0.2,161.9,False
+synthetic_session_11,02/20/2026,Driver,264.5,-21.6,-15.6,-1.3,155.6,False
+synthetic_session_11,02/20/2026,Driver,277.0,-31.4,-20.5,-2.2,162.5,False
+synthetic_session_11,02/20/2026,Driver,266.5,-17.0,1.1,-3.9,157.4,False
+synthetic_session_11,02/20/2026,Driver,286.1,-23.5,-14.7,-1.8,163.0,False
+synthetic_session_11,02/20/2026,Driver,256.2,45.0,35.8,2.1,153.4,False
+synthetic_session_11,02/20/2026,Driver,264.2,22.0,31.4,-2.0,155.2,False
+synthetic_session_11,02/20/2026,Driver,159.3,11.2,28.8,-2.4,97.2,True
+synthetic_session_11,02/20/2026,Driver,266.4,4.5,10.4,-1.3,159.8,False
+synthetic_session_11,02/20/2026,Driver,251.5,18.7,30.1,-2.6,152.1,False
+synthetic_session_11,02/20/2026,3-Wood,248.9,21.2,-7.0,6.4,150.9,False
+synthetic_session_11,02/20/2026,7-Wood,217.9,14.0,1.6,3.2,142.1,False
+synthetic_session_11,02/20/2026,7-Wood,204.5,1.5,3.0,-0.4,136.3,False
+synthetic_session_11,02/20/2026,7-Wood,216.7,7.2,2.0,1.4,141.0,False
+synthetic_session_11,02/20/2026,4-Iron,190.5,10.4,8.2,0.7,130.6,False
+synthetic_session_11,02/20/2026,5-Iron,183.2,9.3,11.6,-0.7,126.7,False
+synthetic_session_11,02/20/2026,5-Iron,185.1,-2.8,2.8,-1.8,128.1,False
+synthetic_session_11,02/20/2026,5-Iron,183.5,-2.4,-3.7,0.4,128.0,False
+synthetic_session_11,02/20/2026,5-Iron,173.7,-2.0,1.4,-1.1,124.6,False
+synthetic_session_11,02/20/2026,5-Iron,174.2,-0.0,-3.6,1.2,123.4,False
+synthetic_session_11,02/20/2026,6-Iron,168.1,-7.9,-10.7,0.9,121.1,False
+synthetic_session_11,02/20/2026,6-Iron,167.4,-16.5,-13.7,-1.0,120.3,False
+synthetic_session_11,02/20/2026,6-Iron,166.7,-4.5,-1.0,-1.2,119.7,False
+synthetic_session_11,02/20/2026,6-Iron,173.9,9.1,3.6,1.8,124.8,False
+synthetic_session_11,02/20/2026,6-Iron,178.8,12.6,10.0,0.8,126.9,False
+synthetic_session_11,02/20/2026,7-Iron,148.0,1.4,2.1,-0.2,110.9,False
+synthetic_session_11,02/20/2026,7-Iron,168.6,15.3,4.9,3.5,119.8,False
+synthetic_session_11,02/20/2026,7-Iron,155.0,-3.3,7.4,-3.9,114.6,False
+synthetic_session_11,02/20/2026,7-Iron,154.7,0.4,0.3,0.0,113.9,False
+synthetic_session_11,02/20/2026,7-Iron,99.6,4.4,-0.2,2.6,74.9,True
+synthetic_session_11,02/20/2026,7-Iron,138.6,8.7,7.1,1.2,99.3,True
+synthetic_session_11,02/20/2026,7-Iron,154.4,-12.4,-8.9,-1.3,113.9,False
+synthetic_session_11,02/20/2026,7-Iron,165.5,-15.2,-14.0,-0.4,119.0,False
+synthetic_session_11,02/20/2026,7-Iron,155.5,8.2,5.4,1.0,115.7,False
+synthetic_session_11,02/20/2026,7-Iron,164.3,-12.5,-3.9,-3.0,120.1,False
+synthetic_session_11,02/20/2026,8-Iron,80.8,0.5,7.5,-2.6,59.4,True
+synthetic_session_11,02/20/2026,8-Iron,142.4,-2.1,2.0,-1.6,108.2,False
+synthetic_session_11,02/20/2026,8-Iron,141.5,-0.2,3.8,-1.6,108.8,False
+synthetic_session_11,02/20/2026,PW,118.9,7.7,1.1,3.2,95.7,False
+synthetic_session_11,02/20/2026,PW,115.8,4.2,-1.0,2.6,95.9,False
+synthetic_session_11,02/20/2026,PW,124.0,-4.0,-1.0,-1.4,100.8,False
+synthetic_session_11,02/20/2026,PW,97.5,-8.6,1.7,-5.8,77.3,True
+synthetic_session_11,02/20/2026,PW,77.7,-6.2,-4.8,-2.2,62.7,True
+synthetic_session_11,02/20/2026,PW,89.1,7.2,8.1,0.8,72.0,True
+synthetic_session_11,02/20/2026,GW,77.1,-12.6,-6.2,-5.7,67.0,True
+synthetic_session_11,02/20/2026,GW,76.6,0.8,-0.3,0.7,65.6,True
+synthetic_session_11,02/20/2026,GW,120.0,4.5,-4.7,4.4,96.0,False
+synthetic_session_11,02/20/2026,GW,110.2,8.5,1.1,3.8,88.8,False
+synthetic_session_11,02/20/2026,GW,74.5,-2.1,-1.2,-1.0,62.4,True
+synthetic_session_11,02/20/2026,GW,114.0,-2.6,-4.7,1.1,92.6,False
+synthetic_session_11,02/20/2026,GW,85.2,-4.5,-0.9,-2.5,71.7,True
+synthetic_session_11,02/20/2026,GW,113.1,-12.6,-0.4,-6.1,93.0,False
+synthetic_session_11,02/20/2026,GW,68.0,-3.1,-2.4,-1.4,56.3,True
+synthetic_session_11,02/20/2026,GW,109.2,5.7,-4.9,5.6,90.0,False
+synthetic_session_11,02/20/2026,56 (SW),105.7,10.3,1.4,4.8,88.0,False
+synthetic_session_11,02/20/2026,56 (SW),100.4,9.5,6.3,1.8,84.0,False
+synthetic_session_11,02/20/2026,56 (SW),101.1,-4.0,-2.0,-1.2,85.3,False
+synthetic_session_11,02/20/2026,56 (SW),93.1,-3.0,-2.3,-0.5,80.0,False
+synthetic_session_11,02/20/2026,56 (SW),99.0,12.3,4.0,4.8,83.5,False
+synthetic_session_11,02/20/2026,56 (SW),98.7,-7.5,0.6,-4.7,84.0,False
+synthetic_session_11,02/20/2026,60 (LW),73.4,3.0,-2.5,3.9,64.2,True
+synthetic_session_11,02/20/2026,60 (LW),66.6,-2.6,2.6,-4.1,58.5,True
+synthetic_session_11,02/20/2026,60 (LW),75.1,0.7,-3.2,2.5,65.2,True
+synthetic_session_11,02/20/2026,60 (LW),47.8,4.8,5.1,2.4,42.6,True
+synthetic_session_11,02/20/2026,60 (LW),82.4,1.8,-0.2,1.4,73.6,False
+synthetic_session_11,02/20/2026,60 (LW),72.3,4.4,1.0,2.8,64.9,True
+synthetic_session_11,02/20/2026,60 (LW),83.1,4.1,2.0,1.4,74.6,False
+synthetic_session_11,02/20/2026,60 (LW),72.2,5.6,5.1,1.1,63.8,True
+synthetic_session_12,02/27/2026,Driver,251.6,60.0,27.6,7.3,154.1,False
+synthetic_session_12,02/27/2026,Driver,276.2,17.3,17.2,0.0,160.0,False
+synthetic_session_12,02/27/2026,Driver,290.2,-53.6,-35.8,-3.5,166.5,False
+synthetic_session_12,02/27/2026,Driver,267.7,13.2,9.9,0.7,157.6,False
+synthetic_session_12,02/27/2026,Driver,241.9,0.5,-7.5,1.9,152.7,False
+synthetic_session_12,02/27/2026,Driver,271.3,27.2,16.7,2.2,158.2,False
+synthetic_session_12,02/27/2026,Driver,276.4,7.8,7.4,0.1,161.2,False
+synthetic_session_12,02/27/2026,Driver,250.4,17.3,-9.2,6.0,151.3,False
+synthetic_session_12,02/27/2026,Driver,274.4,-7.6,-15.6,1.7,159.5,False
+synthetic_session_12,02/27/2026,Driver,278.2,46.4,36.8,2.0,160.7,False
+synthetic_session_12,02/27/2026,7-Iron,160.7,3.0,-5.2,2.9,117.4,False
+synthetic_session_12,02/27/2026,7-Iron,165.8,8.5,0.9,2.6,120.4,False
+synthetic_session_12,02/27/2026,8-Iron,153.5,-5.9,-4.3,-0.6,113.5,False
+synthetic_session_12,02/27/2026,9-Iron,96.8,-3.4,-4.8,-0.0,75.6,True
+synthetic_session_12,02/27/2026,GW,78.4,5.4,1.4,3.3,63.9,True
+synthetic_session_12,02/27/2026,GW,78.0,2.0,4.4,-0.8,65.4,True
+synthetic_session_12,02/27/2026,GW,77.8,-3.2,1.0,-2.9,64.4,True
+synthetic_session_12,02/27/2026,60 (LW),73.0,-5.9,-7.7,0.4,64.0,True
+synthetic_session_12,02/27/2026,60 (LW),64.4,-1.0,-3.0,1.2,55.1,True
+synthetic_session_12,02/27/2026,60 (LW),47.6,4.8,10.1,-1.1,41.9,True
+synthetic_session_12,02/27/2026,60 (LW),69.6,-0.2,-0.6,0.2,62.3,True
+synthetic_session_12,02/27/2026,60 (LW),94.7,-7.2,-6.4,-0.5,83.1,False
+synthetic_session_12,02/27/2026,60 (LW),59.4,0.2,-1.4,1.1,49.4,True
+synthetic_session_13,03/08/2026,Driver,264.2,-7.2,-24.6,3.8,159.0,False
+synthetic_session_13,03/08/2026,Driver,256.5,-2.6,-4.0,0.3,154.9,False
+synthetic_session_13,03/08/2026,Driver,264.2,3.1,-12.5,3.4,155.2,False
+synthetic_session_13,03/08/2026,Driver,264.0,-23.8,-7.8,-3.5,156.0,False
+synthetic_session_13,03/08/2026,Driver,259.1,4.6,5.7,-0.2,155.4,False
+synthetic_session_13,03/08/2026,Driver,284.7,-19.8,11.7,-6.3,162.5,False
+synthetic_session_13,03/08/2026,Driver,259.4,-27.2,-38.3,2.4,157.5,False
+synthetic_session_13,03/08/2026,7-Wood,215.5,19.6,-4.1,6.3,141.4,False
+synthetic_session_13,03/08/2026,5-Iron,171.3,13.0,-1.4,4.8,121.1,False
+synthetic_session_13,03/08/2026,6-Iron,180.0,-23.6,0.3,-7.6,126.6,False
+synthetic_session_13,03/08/2026,7-Iron,162.7,-3.4,3.9,-2.6,117.1,False
+synthetic_session_13,03/08/2026,7-Iron,148.1,2.3,-3.3,2.2,111.0,False
+synthetic_session_13,03/08/2026,7-Iron,151.8,-0.4,6.1,-2.5,114.6,False
+synthetic_session_13,03/08/2026,7-Iron,155.7,7.1,11.3,-1.5,113.0,False
+synthetic_session_13,03/08/2026,7-Iron,166.0,-24.5,-16.0,-2.9,121.1,False
+synthetic_session_13,03/08/2026,GW,70.1,3.5,6.2,-0.3,55.7,True
+synthetic_session_13,03/08/2026,GW,113.8,-4.6,-1.1,-1.8,93.9,False
+synthetic_session_13,03/08/2026,GW,71.5,-1.0,4.0,-3.0,59.0,True
+synthetic_session_13,03/08/2026,GW,69.4,-5.3,-3.5,-2.6,56.7,True
+synthetic_session_13,03/08/2026,GW,86.7,2.1,0.4,1.2,70.6,True
+synthetic_session_13,03/08/2026,56 (SW),80.7,3.0,2.0,1.1,65.9,True
+synthetic_session_13,03/08/2026,56 (SW),81.8,-5.4,-1.5,-2.9,69.2,True
+synthetic_session_13,03/08/2026,60 (LW),56.7,1.7,4.0,-0.9,51.2,True
+synthetic_session_13,03/08/2026,60 (LW),91.5,5.9,-1.7,4.7,79.3,False
+synthetic_session_13,03/08/2026,60 (LW),77.6,4.8,1.3,2.8,69.2,True
+synthetic_session_14,03/08/2026,Driver,287.1,9.5,-21.8,6.2,163.8,False
+synthetic_session_14,03/08/2026,7-Iron,163.4,-16.3,-11.2,-1.8,120.9,False
+synthetic_session_14,03/08/2026,8-Iron,147.1,13.2,6.3,2.7,111.7,False
+synthetic_session_14,03/08/2026,9-Iron,137.2,-3.2,-1.5,-0.7,104.9,False
+synthetic_session_14,03/08/2026,56 (SW),61.2,1.2,-0.2,1.3,53.5,True
+synthetic_session_15,03/22/2026,Driver,273.3,-9.7,-10.0,0.1,160.6,False
+synthetic_session_15,03/22/2026,Driver,253.5,32.3,6.2,5.9,154.2,False
+synthetic_session_15,03/22/2026,Driver,283.3,-2.3,22.0,-4.9,162.2,False
+synthetic_session_15,03/22/2026,7-Wood,193.5,-11.8,-1.7,-3.0,132.2,False
+synthetic_session_15,03/22/2026,PW,102.3,2.9,3.7,0.1,79.5,True
+synthetic_session_16,03/23/2026,PW,80.7,-4.5,-3.0,-1.9,63.3,True
+synthetic_session_17,04/13/2026,Driver,271.8,-21.6,-19.9,-0.4,161.2,False
+synthetic_session_17,04/13/2026,Driver,189.6,23.2,-2.8,7.5,110.3,True
+synthetic_session_17,04/13/2026,Driver,281.3,21.0,23.7,-0.6,163.2,False
+synthetic_session_17,04/13/2026,Driver,238.8,-13.2,-23.0,2.4,147.1,False
+synthetic_session_17,04/13/2026,Driver,261.6,11.1,9.7,0.3,157.5,False
+synthetic_session_17,04/13/2026,7-Wood,217.8,-0.0,5.4,-1.4,141.1,False
+synthetic_session_17,04/13/2026,7-Iron,165.9,-26.3,-19.6,-2.3,118.7,False
+synthetic_session_17,04/13/2026,7-Iron,134.5,-16.8,-9.6,-3.7,98.8,True
+synthetic_session_17,04/13/2026,7-Iron,162.4,16.7,13.8,1.0,119.0,False
+synthetic_session_17,04/13/2026,PW,132.0,-7.0,3.5,-4.5,101.2,False
+synthetic_session_17,04/13/2026,GW,87.7,-2.5,-0.6,-1.3,71.0,True
+synthetic_session_17,04/13/2026,56 (SW),91.8,7.1,-0.6,4.8,78.1,False
+synthetic_session_17,04/13/2026,56 (SW),111.1,-9.8,-4.4,-2.8,90.1,False
+synthetic_session_17,04/13/2026,56 (SW),55.3,-1.5,-1.2,-0.8,45.9,True
+synthetic_session_17,04/13/2026,60 (LW),89.4,-0.2,-0.1,-0.0,74.7,False
+synthetic_session_17,04/13/2026,60 (LW),72.1,3.1,5.3,-0.9,62.7,True
+synthetic_session_17,04/13/2026,60 (LW),99.1,-6.0,-1.5,-2.6,81.9,False
+synthetic_session_17,04/13/2026,60 (LW),85.9,-3.7,-5.0,0.9,76.2,False
+synthetic_session_18,04/16/2026,Driver,277.0,-34.0,-24.2,-2.0,164.0,False
+synthetic_session_18,04/16/2026,Driver,251.9,-15.8,-18.8,0.7,153.1,False
+synthetic_session_18,04/16/2026,Driver,283.0,-13.6,15.1,-5.8,162.2,False
+synthetic_session_18,04/16/2026,3-Wood,240.5,-5.4,-2.4,-0.7,150.4,False
+synthetic_session_18,04/16/2026,4-Iron,189.2,8.2,7.5,0.2,129.0,False
+synthetic_session_18,04/16/2026,5-Iron,186.2,-6.2,2.4,-2.6,129.6,False
+synthetic_session_18,04/16/2026,7-Iron,161.3,-13.8,-3.8,-3.5,115.7,False
+synthetic_session_18,04/16/2026,7-Iron,163.0,-3.4,-6.5,1.1,118.4,False
+synthetic_session_18,04/16/2026,8-Iron,141.5,-9.1,1.2,-4.2,108.4,False
+synthetic_session_18,04/16/2026,56 (SW),91.7,1.4,-2.8,2.7,76.7,False
+synthetic_session_18,04/16/2026,60 (LW),67.4,-0.2,0.5,-0.5,59.1,True
+synthetic_session_19,04/18/2026,Driver,282.7,-16.8,7.4,-4.9,164.0,False
+synthetic_session_19,04/18/2026,Driver,261.0,5.0,21.9,-3.7,155.0,False
+synthetic_session_19,04/18/2026,Driver,283.3,-45.0,-30.6,-2.9,163.4,False
+synthetic_session_19,04/18/2026,Driver,253.5,-15.9,-14.9,-0.2,153.2,False
+synthetic_session_19,04/18/2026,Driver,262.2,5.7,0.4,1.2,157.7,False
+synthetic_session_19,04/18/2026,Driver,252.4,44.2,41.4,0.6,153.2,False
+synthetic_session_19,04/18/2026,Driver,271.3,25.9,26.2,-0.1,160.2,False
+synthetic_session_19,04/18/2026,Driver,268.7,30.0,23.8,1.3,159.7,False
+synthetic_session_19,04/18/2026,Driver,242.9,56.8,75.6,-4.4,151.2,False
+synthetic_session_19,04/18/2026,Driver,274.0,-30.3,-2.6,-5.8,160.5,False
+synthetic_session_19,04/18/2026,Driver,234.5,-16.8,-26.4,2.3,148.0,False
+synthetic_session_19,04/18/2026,Driver,276.6,0.7,-10.1,2.2,160.6,False
+synthetic_session_19,04/18/2026,3-Wood,248.2,-3.6,10.3,-3.2,153.0,False
+synthetic_session_19,04/18/2026,5-Iron,181.2,-3.5,-2.0,-0.5,125.4,False
+synthetic_session_19,04/18/2026,5-Iron,179.1,-15.4,-11.6,-1.2,126.3,False
+synthetic_session_19,04/18/2026,5-Iron,181.0,-0.6,0.6,-0.4,127.5,False
+synthetic_session_19,04/18/2026,6-Iron,168.1,2.8,7.2,-1.5,121.4,False
+synthetic_session_19,04/18/2026,6-Iron,162.4,-1.3,1.5,-1.0,118.8,False
+synthetic_session_19,04/18/2026,7-Iron,155.9,18.9,7.5,4.2,117.1,False
+synthetic_session_19,04/18/2026,7-Iron,90.7,-7.5,-10.8,-0.7,67.8,True
+synthetic_session_19,04/18/2026,7-Iron,165.1,-2.2,0.6,-1.0,119.1,False
+synthetic_session_19,04/18/2026,7-Iron,160.8,-8.2,6.1,-5.1,117.2,False
+synthetic_session_19,04/18/2026,7-Iron,168.3,10.0,-0.5,3.6,121.0,False
+synthetic_session_19,04/18/2026,8-Iron,153.0,-0.1,1.9,-0.8,112.2,False
+synthetic_session_19,04/18/2026,8-Iron,94.5,-3.2,-1.8,-1.2,70.0,True
+synthetic_session_19,04/18/2026,9-Iron,140.8,2.0,2.6,-0.2,107.0,False
+synthetic_session_19,04/18/2026,9-Iron,102.8,1.1,1.6,-0.0,80.5,True
+synthetic_session_19,04/18/2026,PW,116.1,-0.3,9.7,-5.0,93.2,False
+synthetic_session_19,04/18/2026,PW,129.7,18.6,11.9,2.9,101.0,False
+synthetic_session_19,04/18/2026,PW,123.3,1.8,4.6,-1.3,96.7,False
+synthetic_session_19,04/18/2026,GW,110.8,0.5,-0.5,0.5,89.0,False
+synthetic_session_19,04/18/2026,GW,60.7,4.6,10.6,-1.6,51.0,True
+synthetic_session_19,04/18/2026,GW,94.0,-2.7,0.0,-1.6,76.5,True
+synthetic_session_19,04/18/2026,GW,113.0,-7.4,-2.0,-2.8,89.4,False
+synthetic_session_19,04/18/2026,GW,73.7,5.7,7.5,0.4,60.0,True
+synthetic_session_19,04/18/2026,GW,71.8,2.3,3.4,-0.1,59.9,True
+synthetic_session_19,04/18/2026,GW,76.3,-4.0,-0.5,-2.7,64.6,True
+synthetic_session_19,04/18/2026,GW,67.6,4.3,3.2,2.0,55.4,True
+synthetic_session_19,04/18/2026,GW,102.9,-1.1,4.1,-2.9,84.6,False
+synthetic_session_19,04/18/2026,GW,67.9,0.6,-0.4,0.7,57.5,True
+synthetic_session_19,04/18/2026,GW,105.8,-2.2,6.2,-4.5,87.0,False
+synthetic_session_19,04/18/2026,56 (SW),96.4,2.1,4.8,-1.6,80.3,False
+synthetic_session_19,04/18/2026,56 (SW),58.5,-6.6,-1.2,-5.8,48.8,True
+synthetic_session_19,04/18/2026,56 (SW),65.7,0.2,0.3,0.0,53.3,True
+synthetic_session_19,04/18/2026,56 (SW),60.4,-0.1,-1.2,0.6,49.1,True
+synthetic_session_19,04/18/2026,56 (SW),75.3,-1.9,-2.9,0.2,62.5,True
+synthetic_session_19,04/18/2026,56 (SW),76.8,-0.1,2.0,-1.2,63.3,True
+synthetic_session_19,04/18/2026,60 (LW),67.8,-0.2,3.5,-2.3,59.2,True
+synthetic_session_19,04/18/2026,60 (LW),92.4,0.3,-2.9,2.0,77.0,False
+synthetic_session_19,04/18/2026,60 (LW),94.5,2.9,2.5,0.2,82.3,False
+synthetic_session_19,04/18/2026,60 (LW),72.8,-1.3,-1.4,-0.1,62.9,True
+synthetic_session_19,04/18/2026,60 (LW),92.5,-0.5,-1.8,0.8,79.5,False
+synthetic_session_19,04/18/2026,60 (LW),63.0,6.4,3.9,3.2,54.3,True
+synthetic_session_19,04/18/2026,60 (LW),57.8,-1.9,-4.4,0.8,51.3,True
+synthetic_session_19,04/18/2026,60 (LW),69.3,0.1,-1.2,0.8,60.0,True
+synthetic_session_19,04/18/2026,60 (LW),97.0,-4.4,-1.5,-1.7,83.1,False
+synthetic_session_20,04/29/2026,Driver,265.9,-12.6,10.2,-4.9,158.0,False
+synthetic_session_20,04/29/2026,Driver,282.7,-33.7,-17.8,-3.2,164.8,False
+synthetic_session_20,04/29/2026,Driver,264.8,38.8,26.5,2.6,158.5,False
+synthetic_session_20,04/29/2026,7-Wood,197.1,-5.5,-3.0,-0.7,132.7,False
+synthetic_session_20,04/29/2026,6-Iron,163.9,-1.5,-0.0,-0.5,118.6,False
+synthetic_session_20,04/29/2026,6-Iron,166.4,-11.3,-14.1,1.0,120.6,False
+synthetic_session_20,04/29/2026,7-Iron,150.7,13.2,1.4,4.5,112.7,False
+synthetic_session_20,04/29/2026,7-Iron,153.6,-10.8,-2.0,-3.2,113.8,False
+synthetic_session_20,04/29/2026,7-Iron,158.6,-4.6,-0.9,-1.3,116.4,False
+synthetic_session_20,04/29/2026,7-Iron,169.2,-13.7,-14.6,0.3,122.2,False
+synthetic_session_20,04/29/2026,8-Iron,129.7,6.7,3.1,1.8,98.3,True
+synthetic_session_20,04/29/2026,9-Iron,87.5,5.4,4.9,1.6,66.3,True
+synthetic_session_20,04/29/2026,9-Iron,85.1,5.0,-5.7,5.7,67.1,True
+synthetic_session_20,04/29/2026,PW,129.7,-5.6,-6.4,0.3,102.3,False
+synthetic_session_20,04/29/2026,GW,70.7,6.9,0.6,5.2,59.3,True
+synthetic_session_20,04/29/2026,GW,84.7,4.1,1.6,1.9,68.1,True
+synthetic_session_20,04/29/2026,56 (SW),101.9,-12.9,-2.4,-5.9,85.5,False
+synthetic_session_21,04/30/2026,Driver,262.1,-19.1,-30.5,2.5,156.2,False
+synthetic_session_21,04/30/2026,Driver,250.0,29.4,19.5,2.3,152.8,False
+synthetic_session_21,04/30/2026,Driver,245.4,-9.0,-18.7,2.2,151.4,False
+synthetic_session_21,04/30/2026,Driver,257.3,9.4,11.6,-0.5,155.5,False
+synthetic_session_21,04/30/2026,Driver,266.5,5.4,0.5,1.1,157.2,False
+synthetic_session_21,04/30/2026,6-Iron,163.6,-14.2,-6.4,-2.7,119.9,False
+synthetic_session_21,04/30/2026,7-Iron,165.0,-13.6,-8.3,-1.9,122.5,False
+synthetic_session_21,04/30/2026,56 (SW),91.1,6.6,2.8,2.4,80.5,False
+synthetic_session_22,04/30/2026,Driver,278.5,-47.6,-31.6,-3.3,163.1,False
+synthetic_session_22,04/30/2026,Driver,286.8,-20.3,-6.9,-2.7,162.6,False
+synthetic_session_22,04/30/2026,7-Wood,208.6,2.0,-3.8,1.6,138.3,False
+synthetic_session_22,04/30/2026,7-Wood,217.3,1.0,-16.0,4.5,141.6,False
+synthetic_session_22,04/30/2026,7-Iron,158.5,6.0,-8.4,5.2,114.9,False
+synthetic_session_22,04/30/2026,56 (SW),98.5,0.5,-1.2,1.0,82.0,False
+synthetic_session_23,05/03/2026,Driver,276.6,-15.5,-24.2,1.8,161.4,False
+synthetic_session_23,05/03/2026,Driver,210.6,-16.3,-1.7,-4.0,126.8,True
+synthetic_session_23,05/03/2026,Driver,274.1,26.3,21.4,1.0,160.3,False
+synthetic_session_23,05/03/2026,Driver,261.3,-12.5,-14.2,0.4,156.3,False
+synthetic_session_23,05/03/2026,Driver,267.7,-12.9,-14.2,0.3,158.9,False
+synthetic_session_23,05/03/2026,Driver,270.3,14.6,11.3,0.7,160.0,False
+synthetic_session_23,05/03/2026,Driver,282.3,15.8,10.6,1.0,162.7,False
+synthetic_session_23,05/03/2026,Driver,267.7,44.2,33.0,2.4,158.6,False
+synthetic_session_23,05/03/2026,Driver,268.7,-7.9,-14.9,1.5,159.5,False
+synthetic_session_23,05/03/2026,Driver,277.6,32.6,2.4,6.2,162.2,False
+synthetic_session_23,05/03/2026,Driver,280.2,-35.4,-38.2,0.6,162.4,False
+synthetic_session_23,05/03/2026,Driver,276.1,-17.0,2.5,-4.0,163.0,False
+synthetic_session_23,05/03/2026,3-Wood,242.8,11.2,7.1,1.0,151.2,False
+synthetic_session_23,05/03/2026,7-Wood,209.5,-24.9,-26.7,0.5,139.2,False
+synthetic_session_23,05/03/2026,6-Iron,176.0,-5.9,8.4,-4.6,126.9,False
+synthetic_session_23,05/03/2026,6-Iron,168.7,7.0,0.3,2.3,120.0,False
+synthetic_session_23,05/03/2026,6-Iron,181.7,-11.4,-7.1,-1.4,127.5,False
+synthetic_session_23,05/03/2026,6-Iron,158.4,20.0,15.5,1.6,115.0,False
+synthetic_session_23,05/03/2026,7-Iron,173.3,-7.9,-4.6,-1.1,123.3,False
+synthetic_session_23,05/03/2026,7-Iron,109.5,4.9,4.9,0.8,82.7,True
+synthetic_session_23,05/03/2026,7-Iron,152.2,5.3,-0.6,2.2,114.0,False
+synthetic_session_23,05/03/2026,7-Iron,151.2,5.4,4.0,0.5,114.0,False
+synthetic_session_23,05/03/2026,7-Iron,171.8,4.1,-1.0,1.7,122.1,False
+synthetic_session_23,05/03/2026,7-Iron,160.8,-8.8,-7.6,-0.4,118.7,False
+synthetic_session_23,05/03/2026,8-Iron,158.6,0.8,-10.6,4.1,117.6,False
+synthetic_session_23,05/03/2026,9-Iron,103.3,-0.6,0.7,-0.6,79.0,True
+synthetic_session_23,05/03/2026,PW,66.8,5.8,-1.9,5.8,53.7,True
+synthetic_session_23,05/03/2026,GW,113.0,-3.9,1.7,-2.8,92.9,False
+synthetic_session_23,05/03/2026,GW,106.4,3.1,6.9,-2.0,87.6,False
+synthetic_session_23,05/03/2026,GW,112.3,-11.6,-1.2,-5.3,91.0,False
+synthetic_session_23,05/03/2026,GW,112.1,0.1,-1.7,0.9,90.7,False
+synthetic_session_23,05/03/2026,56 (SW),105.8,-11.4,-2.1,-5.0,89.6,False
+synthetic_session_23,05/03/2026,56 (SW),104.4,-8.7,-4.2,-2.4,87.3,False
+synthetic_session_23,05/03/2026,56 (SW),66.9,-1.5,-0.1,-1.2,58.6,True
+synthetic_session_23,05/03/2026,60 (LW),63.1,0.3,1.9,-1.0,55.5,True
+synthetic_session_23,05/03/2026,60 (LW),94.1,0.6,1.4,-0.5,78.7,False

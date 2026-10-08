@@ -6,7 +6,7 @@ import { hasOobBesideLine, obBand, obBandsFor, obZonesFor } from "./obTags"
 import { bestAim, evaluateClub, type ClubShots, type OptimizedClubPlan } from "./plan"
 import { createRankHandler, rankKey, type LieInputs, type RankMessage } from "./rankRequest"
 import { optionsFor, rankWithSpread, tradeoffText } from "./rankOptions"
-import { dillonBag, rankColtsNeck, table, TEST_HANDICAP } from "./regressionHarness"
+import { sampleBag, rankColtsNeck, table, TEST_HANDICAP } from "./regressionHarness"
 import { getBaseline } from "./baseline"
 import { clampSpread } from "./spreadSetting"
 import {
@@ -23,7 +23,7 @@ import { answerBanner, hasAnswered, loadObTags, rowsToMap, toggleSide, withMargi
 import { cleanHoles } from "@/lib/rounds/holes"
 import { holesToAskAboutOb } from "@/lib/rounds/obQuestions"
 import { generateFromFittedProfile } from "@/lib/golfer/fitted"
-import profileFile from "@/lib/golfer/__fixtures__/dillon-fitted-profile.json"
+import profileFile from "@/lib/golfer/__fixtures__/synthetic-fitted-profile.json"
 
 const opt = (club: string, strokes: number, penalty: number) => ({ club, strokes, penalty })
 const two = (rows: ReturnType<typeof opt>[]) => lowestAndSafer(rows, (r) => r)
@@ -204,7 +204,7 @@ describe("OB tags", () => {
 // ---- look-ahead ---------------------------------------------------------------
 
 describe("look-ahead on long holes", () => {
-  const bag = dillonBag(300, 3)
+  const bag = sampleBag(300, 3)
   const lies = buildLieMap(
     ORIGIN,
     [
@@ -343,7 +343,7 @@ describe("penalty shot on a hole", () => {
   })
 })
 
-// ---- regression: real rounds ---------------------------------------------------
+// ---- regression: synthetic golfer ---------------------------------------------------
 
 describe("fitted profile generator", () => {
   it("reproduces the fitted driver's mean carry and is repeatable from its seed", () => {
@@ -351,16 +351,16 @@ describe("fitted profile generator", () => {
     const b = generateFromFittedProfile(profileFile.profile, 2000, 11).find((c) => c.club === "Driver")!
     expect(a.shots).toEqual(b.shots)
     const mean = a.shots.reduce((s, x) => s + x.carryYds, 0) / a.shots.length
-    expect(Math.abs(mean - 264)).toBeLessThan(4) // fitted mean_carry 264
+    expect(Math.abs(mean - 266.5)).toBeLessThan(4) // fitted mean_carry 266.5
   })
 })
 
-describe("Colts Neck regression cases (Dillon's fitted profile and his own hand-drawn marks, ON_COURSE_SPREAD 1.25)", () => {
+describe("Colts Neck regression cases (synthetic fitted profile and hand-drawn marks, ON_COURSE_SPREAD 1.25)", () => {
   it("hole 3 (par 5): Go for it is the Driver at a big penalty share; smart play is the 3-Wood, 7-Wood or 4-Iron and gives up little", () => {
     const c = rankColtsNeck(3, [])
     const msg = `Hole 3: smart play ${c.options.safer.club}, go for it ${c.options.lowest.club}. Per club:\n${table(c.ranking)}`
     expect(c.options.lowest.club, msg).toBe("Driver")
-    expect(penaltyShare(c.options.lowest.plan), msg).toBeGreaterThan(0.15) // he sees about 23%: OB plus trees
+    expect(penaltyShare(c.options.lowest.plan), msg).toBeGreaterThan(0.15) // OB plus trees; about 0.2 with the synthetic profile
     expect(["3-Wood", "7-Wood", "4-Iron"], msg).toContain(c.options.safer.club)
     expect(penaltyShare(c.options.safer.plan), msg).toBeLessThan(0.1)
   })
@@ -374,7 +374,7 @@ describe("Colts Neck regression cases (Dillon's fitted profile and his own hand-
 
   it("hole 3: smart play is a wood or the 4-Iron across shot seeds, not an artefact of one sample", () => {
     for (const seed of [1, 2, 3, 4]) {
-      const c = rankColtsNeck(3, [], { clubs: dillonBag(1000, seed) })
+      const c = rankColtsNeck(3, [], { clubs: sampleBag(1000, seed) })
       expect(["3-Wood", "7-Wood", "4-Iron"], `seed ${seed}\n${table(c.ranking)}`).toContain(c.options.safer.club)
     }
   })
@@ -402,7 +402,7 @@ describe("counter-case: a long, wide par 4 with minor OB", () => {
     const base = getBaseline(TEST_HANDICAP)
     const from = at(0, 0)
     const pin = at(0, 470)
-    const ranking = rankWithSpread(dillonBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline: base }, { spread: ON_COURSE_SPREAD, line: [from, pin] })
+    const ranking = rankWithSpread(sampleBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline: base }, { spread: ON_COURSE_SPREAD, line: [from, pin] })
     const o = optionsFor(ranking)!
     const wood = ranking.find((r) => r.club === "3-Wood")!
     const msg = `Smart play ${o.safer.club}, go for it ${o.lowest.club}. Per club:\n${table(ranking)}`
@@ -427,7 +427,7 @@ describe("aiming away from trouble (Smart play's aim search)", () => {
   const from = at(0, 0)
   const pin = at(0, 470)
   const ctx = { from, aim: pin, pin, lies, startLie: "tee" as const, baseline: getBaseline(TEST_HANDICAP) }
-  const driver = widenShots(dillonBag().find((c) => c.club === "Driver")!, ON_COURSE_SPREAD)
+  const driver = widenShots(sampleBag().find((c) => c.club === "Driver")!, ON_COURSE_SPREAD)
 
   it("with a limit, the aim search finds an aim at or under it where one exists, and never has more penalty than the strokes-best aim", () => {
     const r = bestAim(driver, ctx, 60, 2, SMART_MAX_PENALTY_RATE)

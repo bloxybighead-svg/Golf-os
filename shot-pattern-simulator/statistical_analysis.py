@@ -34,8 +34,8 @@ from synthetic_golfer import SyntheticGolfer
 pd.set_option("display.width", 200)
 pd.set_option("display.max_columns", 20)
 
-REAL_SHOTS_PATH = "reference_data/real_shots.csv"
-PROFILE_PATH = "reference_data/dillon_profile.json"
+REAL_SHOTS_PATH = "reference_data/synthetic_shots.csv"
+PROFILE_PATH = "reference_data/synthetic_profile.json"
 BOOTSTRAP_ITERS = 5000
 RNG = np.random.default_rng(0)
 

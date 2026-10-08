@@ -4,11 +4,12 @@ import path from "path"
 import { parseCsv } from "@/lib/shots/parseCsv"
 import { calibrate, type FitShot } from "./calibrate"
 
-// Fixtures: real_shots.csv is shot-pattern-simulator/reference_data/real_shots.csv;
-// dillon_fit.json is what `python calibrate.py real_shots.csv --min-shots 10`
-// wrote from it. Regenerate both together if calibrate.py changes.
+// Fixtures: synthetic_shots.csv is shot-pattern-simulator/reference_data/synthetic_shots.csv
+// (a generic 3-handicap from a fixed seed, no real data); synthetic_fit.json is what
+// `python calibrate.py synthetic_shots.csv --min-shots 10` wrote from its full swings.
+// Regenerate both together with `python make_synthetic_fixtures.py` if calibrate.py changes.
 const dir = path.join(__dirname, "__fixtures__")
-const rows = parseCsv(readFileSync(path.join(dir, "real_shots.csv"), "utf8"))
+const rows = parseCsv(readFileSync(path.join(dir, "synthetic_shots.csv"), "utf8"))
 const header = rows[0]
 const col = (name: string) => header.indexOf(name)
 const all = rows.slice(1).map((r) => ({
@@ -20,7 +21,7 @@ const all = rows.slice(1).map((r) => ({
   partial: r[col("is_partial")] === "True",
 }))
 const full: FitShot[] = all.filter((s) => !s.partial)
-const expected = JSON.parse(readFileSync(path.join(dir, "dillon_fit.json"), "utf8")) as Record<string, Record<string, number>>
+const expected = JSON.parse(readFileSync(path.join(dir, "synthetic_fit.json"), "utf8")) as Record<string, Record<string, number>>
 
 describe("calibrate.ts parity with calibrate.py", () => {
   const fit = calibrate(full)

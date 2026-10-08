@@ -1,11 +1,11 @@
-// Shared set-up for the regression tests built from Dillon's real rounds: his
-// fitted per-club profile (calibrate.py output, no raw shots) generates shots
+// Shared set-up for the Colts Neck regression tests: a synthetic fitted per-club
+// profile (calibrate.py output on generated shots, see make_synthetic_fixtures.py) generates shots
 // from a fixed seed, and the Colts Neck geometry for holes 3 and 6 is a fixture
 // (OpenStreetMap data, ODbL; see the fixture's _attribution). No Supabase.
 
 import fixture from "./__fixtures__/colts-neck-3-6.json"
 import zonesFile from "./__fixtures__/colts-neck-3-6-zones.json"
-import profileFile from "@/lib/golfer/__fixtures__/dillon-fitted-profile.json"
+import profileFile from "@/lib/golfer/__fixtures__/synthetic-fitted-profile.json"
 import { fillBag, CALIBRATED_DEFAULT_BAG, canonicalClub } from "@/lib/golfer/bag"
 import { generateFromFittedProfile, type FittedProfile } from "@/lib/golfer/fitted"
 import { getBaseline } from "./baseline"
@@ -21,10 +21,10 @@ import { needsLookahead, ON_COURSE_SPREAD, penaltyShare, type Options } from "./
 import type { ShotConditions } from "./playsLike"
 import { holePinFor } from "@/lib/planner/geometry"
 
-/** Handicap the regression cases are scored against (Dillon's tracked index is about 3). */
+/** Handicap the regression cases are scored against (the synthetic golfer is a 3-handicap). */
 export const TEST_HANDICAP = 3
 
-export function dillonBag(perClub = 1000, seed = 7): ClubShots[] {
+export function sampleBag(perClub = 1000, seed = 7): ClubShots[] {
   const generated = generateFromFittedProfile(profileFile.profile as FittedProfile, perClub, seed)
   const measured = generated.flatMap((g) => (canonicalClub(g.club) ? [{ club: g.club, shots: g.shots }] : []))
   return fillBag(measured, CALIBRATED_DEFAULT_BAG).map((c) => ({ club: c.club, shots: c.shots }))
@@ -64,7 +64,7 @@ export function rankColtsNeck(ref: number, tags: ObTag[], opts: { spread?: numbe
   const from = hole.line[0]
   const t0 = performance.now()
   const useLook = opts.lookahead ?? needsLookahead(par, yards)
-  const ranking = rankWithSpread(opts.clubs ?? dillonBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline, conditions: opts.conditions }, {
+  const ranking = rankWithSpread(opts.clubs ?? sampleBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline, conditions: opts.conditions }, {
     spread: opts.spread ?? ON_COURSE_SPREAD,
     line: hole.line,
     lookahead: useLook ? (clubs) => buildLookahead({ clubs, from, pin, line: hole.line, lies, baseline, conditions: opts.conditions }) : undefined,

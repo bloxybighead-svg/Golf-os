@@ -433,15 +433,15 @@ def report(result: dict, label: str):
 if __name__ == "__main__":
     club = "7-Iron"
 
-    real = pd.read_csv("reference_data/real_shots.csv")
+    real = pd.read_csv("reference_data/synthetic_shots.csv")
     real = real[(~real.is_partial) & (real.club == club)]
 
-    calibrated = SyntheticGolfer.from_profile_json("reference_data/dillon_profile.json", seed=99)
+    calibrated = SyntheticGolfer.from_profile_json("reference_data/synthetic_profile.json", seed=99)
     print(f"Grid-searching aim point for {club}, pin at {PIN}...")
     result_calibrated = grid_search(calibrated, club, n_shots_per_point=3000)
-    report(result_calibrated, "Dillon's calibrated profile (tight dispersion)")
+    report(result_calibrated, "Calibrated synthetic profile (tight dispersion)")
     plot_grid(result_calibrated, club, calibrated, "output/aim_point_grid_search_calibrated.png",
-              "Dillon (calibrated, 1.9-4 handicap)", real_shots=real)
+              "Synthetic (calibrated, 3 handicap)", real_shots=real)
 
     # A much wider-dispersion golfer should show a bigger, clearer benefit from
     # aiming away from trouble -- aim-point strategy matters more the less

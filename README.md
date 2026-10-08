@@ -80,7 +80,7 @@ A golfer can be built from a handicap, a handicap plus a few known carries, a sk
 ```python
 SyntheticGolfer.from_handicap(8.5)
 SyntheticGolfer.from_handicap_and_carries(8, {"Driver": 250, "7-Iron": 160})
-SyntheticGolfer.from_profile_json("reference_data/dillon_profile.json")
+SyntheticGolfer.from_profile_json("reference_data/synthetic_profile.json")
 ```
 
 Parameters are anchored to published sources where they exist (Broadie's Golfmetrics direction-error SDs, TrackMan 2024 Tour carries, GOLFTEC's dispersion-by-handicap study, Shot Scope/Arccos aggregates) and to the author's own launch-monitor data otherwise. The evidence-versus-assumption breakdown is in [`shot-pattern-simulator/HANDOFF.md`](shot-pattern-simulator/HANDOFF.md).
@@ -92,7 +92,7 @@ Parameters are anchored to published sources where they exist (Broadie's Golfmet
 | Folder | What is in it |
 |---|---|
 | [`shot-pattern-simulator/`](shot-pattern-simulator/) | **The Python project.** The simulator model, calibration, statistical validation, and aim-point analysis. Everything in the research results is produced here. |
-| `shot-pattern-simulator/reference_data/` | Input data: the author's real shots (`real_shots.csv`), the fitted profile (`dillon_profile.json`), and a reference synthetic dataset used as a sanity check. |
+| `shot-pattern-simulator/reference_data/` | Input data: synthetic shots (`synthetic_shots.csv`) and the profile fitted to them (`synthetic_profile.json`), both reproducible with `make_synthetic_fixtures.py`, and a reference synthetic dataset used as a sanity check. Real launch-monitor data is not committed. |
 | `shot-pattern-simulator/output/` | Generated plots and CSVs (git-ignored; recreate by running the scripts). |
 | [`app/`](app/) | The Next.js website. `app/planner/` holds the new pages; `app/api/courses/` proxies the free OpenGolfAPI for course search. The rest is the original Golf OS app. |
 | [`components/simulator/`](components/simulator/) | React components: the SVG dispersion canvas, the two-golfer overlay, and the client pages. |
@@ -107,8 +107,8 @@ Parameters are anchored to published sources where they exist (Broadie's Golfmet
 | `synthetic_golfer.py` | **The model.** The `SyntheticGolfer` class and all calibration tables. About 90% of the project's logic. | imported by the others |
 | `generate_shots.py` | Command-line front end: choose a golfer, generate shots to CSV, draw the dispersion plot. | `python generate_shots.py --handicap 8 --carry Driver=250 --n-shots 10000 --show` |
 | `menu.py` | Interactive version of the above with numbered prompts; prints the equivalent command. | `python menu.py` |
-| `parse_sessions.py` | Turns raw launch-monitor session exports into one tidy shots CSV and flags partial swings. | `python parse_sessions.py "<folder>" --out reference_data/real_shots.csv` |
-| `calibrate.py` | Fits the model's parameters from real shots (start line, curve, carry spread, curve→carry slope) into a JSON profile. | `python calibrate.py reference_data/real_shots.csv --out my_profile.json --min-shots 10` |
+| `parse_sessions.py` | Turns raw launch-monitor session exports into one tidy shots CSV and flags partial swings. | `python parse_sessions.py "<folder>" --out output/real_shots.csv` |
+| `calibrate.py` | Fits the model's parameters from real shots (start line, curve, carry spread, curve→carry slope) into a JSON profile. | `python calibrate.py reference_data/synthetic_shots.csv --out my_profile.json --min-shots 10` |
 | `validate_against_reference.py` | Cross-check against an independent reference synthetic dataset (not ground truth). | `python validate_against_reference.py` |
 | `statistical_analysis.py` | **Validation suite:** t-test and KS test, bootstrap CIs, power analysis, distribution-overlap figure, held-out (by session) validation, uncalibrated baseline. | `python statistical_analysis.py` |
 | `aim_point_optimizer.py` | Grid search of 55 aim points on an illustrative hole, fresh-sample paired confirmation, and the three-panel hole figure. | `python aim_point_optimizer.py` |
@@ -161,7 +161,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 Then run the SQL files in [`supabase/`](supabase/) in the Supabase SQL editor. The simulator pages need `simulated_shots_schema.sql`, `real_shots_schema.sql`, and `simulated_shots_views.sql`.
 
-> A one-command seed script is not included yet. The seeded tables were generated from the calibrated profile in `reference_data/dillon_profile.json`.
+> A one-command seed script is not included yet. The seeded tables were generated from the calibrated profile in the author's own (uncommitted) launch-monitor data.
 
 ## Limitations
 
@@ -183,7 +183,7 @@ Stated up front, because they bound what the results can claim:
 
 ## Data and attribution
 
-- `shot-pattern-simulator/reference_data/real_shots.csv` is the author's own launch-monitor data (589 shots, 13 clubs, 23 sessions, June–August 2026; 451 full swings from 19 sessions are used for calibration).
+- `shot-pattern-simulator/reference_data/synthetic_shots.csv` is **synthetic**: 589 generated shots, 13 clubs, 23 sessions, with the shape and statistics of a launch-monitor export (a 3-handicap from a fixed seed). The author's real shots are kept out of the repo.
 - Course search uses [OpenGolfAPI](https://opengolfapi.org) (ODbL-licensed) — course data © its contributors.
 - The curve/start-line cross-check used a public Kaggle golf-trajectory dataset (~800 shots, handedness not stated).
 - Course Handicap follows the USGA formula; the recommended-tee-yardage heuristic is approximate and flagged as unverified in the code.
