@@ -15,7 +15,7 @@
 // a plain background (components/simulator/CourseMap.tsx).
 
 import { clearOfflineStore, kvDelete, kvGet, kvKeys, kvSet } from "./db"
-import type { CourseGeometry } from "@/lib/course/overpass"
+import { GEOMETRY_VERSION, type CourseGeometry } from "@/lib/course/overpass"
 import { PAGES_CACHE } from "./cacheNames"
 
 export const snapshotKeys = {
@@ -24,14 +24,56 @@ export const snapshotKeys = {
   scorecard: (id: string) => `scorecard:${id}`,
 }
 
-/** Courses kept offline; the least recently saved goes first. An estimate: a few home courses plus ones played on trips. */
-export const MAX_SAVED_COURSES = 8
+/**
+ * Courses kept on this device (IndexedDB is the only course cache; localStorage holds none). The least recently
+ * used goes first. An estimate: about 280 KB each, so 30 is under 10 MB, far inside IndexedDB's quota.
+ */
+export const MAX_SAVED_COURSES = 30
 
-/** Saves a course's map data, dropping the oldest saved course beyond MAX_SAVED_COURSES. */
+const USED_PREFIX = "courseused:"
+const COURSE_PREFIX = "course:"
+
+export interface KeyTime {
+  key: string
+  savedAt: number
+}
+
+/**
+ * Which saved courses to delete to stay within `max`: the least recently used. A course's last use is its entry
+ * in `used` (keyed by course key), else the time it was saved. Returns course keys, oldest first.
+ */
+export function coursesToEvict(courses: KeyTime[], used: Map<string, number>, max: number): string[] {
+  const lastUse = (c: KeyTime) => Math.max(c.savedAt, used.get(c.key) ?? 0)
+  return [...courses].sort((a, b) => lastUse(b) - lastUse(a) || a.key.localeCompare(b.key)).slice(Math.max(0, max)).map((c) => c.key)
+}
+
+/** Notes that a saved course was just used, so eviction keeps the courses the golfer actually plays. */
+export async function touchCourse(courseId: string): Promise<void> {
+  await kvSet(USED_PREFIX + courseId, 1)
+}
+
+/** Saves a course's map data, dropping the least recently used courses beyond MAX_SAVED_COURSES. */
 export async function saveCourseGeometry(courseId: string, geometry: CourseGeometry): Promise<void> {
   if (!(await kvSet(snapshotKeys.course(courseId), geometry))) return
-  const saved = (await kvKeys("course:")).sort((a, b) => b.savedAt - a.savedAt)
-  for (const old of saved.slice(MAX_SAVED_COURSES)) await kvDelete(old.key)
+  await touchCourse(courseId)
+  const used = new Map((await kvKeys(USED_PREFIX)).map((u) => [COURSE_PREFIX + u.key.slice(USED_PREFIX.length), u.savedAt]))
+  for (const key of coursesToEvict(await kvKeys(COURSE_PREFIX), used, MAX_SAVED_COURSES)) {
+    await kvDelete(key)
+    await kvDelete(USED_PREFIX + key.slice(COURSE_PREFIX.length))
+  }
+}
+
+/** A saved course with the time it was saved; `current` is false when it was made by an older GEOMETRY_VERSION. */
+export interface SavedCourse {
+  geometry: CourseGeometry
+  at: number
+  current: boolean
+}
+
+export async function loadSavedCourse(courseId: string): Promise<SavedCourse | null> {
+  const row = await kvGet<CourseGeometry>(snapshotKeys.course(courseId))
+  if (!row || !Array.isArray(row.value?.holes) || row.value.holes.length === 0) return null
+  return { geometry: row.value, at: row.savedAt, current: row.value.version === GEOMETRY_VERSION }
 }
 
 export async function loadCourseGeometry(courseId: string): Promise<CourseGeometry | null> {

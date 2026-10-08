@@ -1,6 +1,6 @@
 "use client"
 
-// The Play planner's course: search, loading its map data (this device's cache,
+// The Play planner's course: search, loading its map data (this device's IndexedDB cache,
 // then /api/courses/geometry), "Refresh course data", and hole corrections
 // (moved verbatim from CourseMapClient.tsx). What happens once a course's map
 // data arrives (framing the map, standing on a hole) is the caller's `onApplied`,
@@ -13,7 +13,7 @@ import { submitCorrection } from "@/app/courses/correction-actions"
 import { GEOMETRY_VERSION, type CourseGeometry, type CourseHole } from "@/lib/course/overpass"
 import { COURSE_CACHE_MAX_AGE_MS, type CourseHit } from "@/lib/planner/storage"
 import type { HoleCorrectionSubmission } from "@/components/simulator/EditHoleModal"
-import { loadCourseGeometry, saveCourseGeometry } from "@/lib/offline/snapshots"
+import { loadCourseGeometry, loadSavedCourse, saveCourseGeometry, touchCourse } from "@/lib/offline/snapshots"
 import type { AuthUser } from "./useAuthUser"
 
 export type AutoHole = { autoHoleId?: string; autoHoleRef?: number; autoFirstHole?: boolean }
@@ -102,33 +102,25 @@ export function useCourseGeometry({ supabase, authUser }: { supabase: ReturnType
    * the way picking a *different* course does.
    */
   async function fetchGeometry(c: CourseHit, opts: ({ force?: boolean } & AutoHole) | undefined, onApplied: OnGeometryApplied) {
-    const cacheKey = `golfos.course.${c.id}.v${GEOMETRY_VERSION}`
     const apply = (g: CourseGeometry) => {
-      // Also kept in IndexedDB (roomier than localStorage, and what the offline round reads).
-      if (g.scope === "course-area") void saveCourseGeometry(c.id, g)
       setGeometry(g)
       setLoadError("")
       setLoadState("idle")
       onApplied(g, c, opts)
     }
-    // Saved on this device (great for a round with weak signal): use it if it is recent,
-    // unless a refresh was explicitly requested.
+    // Saved on this device in IndexedDB, the only course cache (great for a round with weak signal): use it
+    // if it is recent, unless a refresh was explicitly requested.
     let stale: CourseGeometry | null = null
     if (!opts?.force) {
-      try {
-        const raw = localStorage.getItem(cacheKey)
-        if (raw) {
-          const saved = JSON.parse(raw)
-          if (saved?.geometry?.holes?.length) {
-            if (Date.now() - saved.at < COURSE_CACHE_MAX_AGE_MS) {
-              apply({ ...saved.geometry, coast: saved.geometry.coast ?? [] })
-              return
-            }
-            stale = { ...saved.geometry, coast: saved.geometry.coast ?? [] }
-          }
+      const saved = await loadSavedCourse(c.id)
+      if (saved?.current) {
+        const geometry = { ...saved.geometry, coast: saved.geometry.coast ?? [] }
+        if (Date.now() - saved.at < COURSE_CACHE_MAX_AGE_MS) {
+          void touchCourse(c.id)
+          apply(geometry)
+          return
         }
-      } catch {
-        /* ignore unreadable saved data */
+        stale = geometry
       }
     }
     // No signal at all: go straight to the copy saved on this phone instead of waiting out three failed tries.
@@ -161,13 +153,7 @@ export function useCourseGeometry({ supabase, authUser }: { supabase: ReturnType
         if (!res.ok || !data) throw new Error(data?.error ?? lastError)
         const g = { ...(data as CourseGeometry), coast: (data as CourseGeometry).coast ?? [] }
         apply(g)
-        if (g.scope === "course-area") {
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), geometry: g }))
-          } catch {
-            /* storage full: fine, it just won't be available offline */
-          }
-        }
+        if (g.scope === "course-area") void saveCourseGeometry(c.id, g) // also what the offline round reads
         return
       } catch (e) {
         lastError = e instanceof Error ? e.message : lastError
