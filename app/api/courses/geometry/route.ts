@@ -89,10 +89,13 @@ export async function GET(req: NextRequest) {
   // "Refresh course data": skip every cache layer and re-fetch from OpenStreetMap, then
   // overwrite whatever was cached so the NEXT normal load (no force) picks up the refresh.
   const force = req.nextUrl.searchParams.get("force") === "1"
-  const CDN = force ? "no-store" : "public, s-maxage=86400, stale-while-revalidate=604800"
-  // Applied fresh on every request, on top of whatever cache layer served the geometry --
-  // never baked into the cached copy itself -- so a new correction takes effect on the very
-  // next load instead of waiting for that cache to expire (90 days for Supabase).
+  const CDN = force ? "no-store" : "public, s-maxage=300, stale-while-revalidate=3600"
+  // Applied fresh on every request that reaches this route, on top of the cached geometry --
+  // never baked into the Supabase copy itself -- so a new correction doesn't wait for that
+  // copy to expire (90 days). The CDN header above is short (5 min, plus up to 1 hour of
+  // stale serving while it revalidates) because the heavy OpenStreetMap work is already in
+  // Supabase: a correction shows up on the next load that misses the CDN, so within about
+  // 5 minutes, or sooner after "Refresh course data" (force=1 is never cached).
   const corrections = dbKey ? await readCorrections(dbKey) : []
   const withCorrections = (g: CourseGeometry) => applyCorrections(g, corrections)
 
