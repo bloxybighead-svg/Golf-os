@@ -6,13 +6,15 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Flag, Loader2, LogIn, UserPlus } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { APP_NAME } from "@/lib/brand"
+import { safeNext } from "@/lib/auth/safeNext"
 
 type Mode = "signin" | "signup"
 
 export default function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
-  const redirectTo = params.get("redirect") || "/"
+  // ?next= is the link format; ?redirect= is the older name, still honoured. Same-site paths only.
+  const redirectTo = safeNext(params.get("next") ?? params.get("redirect"))
 
   const [mode, setMode] = useState<Mode>("signin")
   const [email, setEmail] = useState("")
