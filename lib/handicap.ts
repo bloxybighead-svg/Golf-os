@@ -15,8 +15,14 @@
 //    lowest few (table below, for fewer than 20), rounded to the nearest
 //    tenth, at most 54.0. A player has an index once 54 holes are posted
 //    (Rule 5.1 / USGA 9-hole FAQ).
-// Left out (follow-ups): soft/hard cap against the 365-day low index (5.8),
-// exceptional score reduction (5.9), PCC (5.6).
+//  - Exceptional Score Reduction (Rule 5.9): a differential 7.0-9.9 better than
+//    the Handicap Index it was played under takes -1.0 (10.0+: -2.0), and so do
+//    the 19 differentials before it. The adjustment stays on them for good.
+//  - Soft and hard cap (Rule 5.8): once there are 20 differentials, a new index
+//    more than 3.0 above the Low Handicap Index (lowest index in the 365 days
+//    before the latest round) has the part over 3.0 halved, and never goes more
+//    than 5.0 above it.
+// Left out (follow-up): PCC (5.6).
 
 /** Fewer holes than this and a score doesn't count (Rule 5.1b). */
 export const MIN_HOLES_FOR_DIFFERENTIAL = 9
@@ -50,6 +56,21 @@ export const INDEX_TABLE: readonly { min: number; max: number; lowest: number; a
   { min: 20, max: 20, lowest: 8, adjustment: 0 },
 ]
 
+/** Rule 5.9: gap between index and differential at which a score is exceptional / very exceptional. */
+export const ESR_THRESHOLD = 7.0
+export const ESR_THRESHOLD_LARGE = 10.0
+/** Rule 5.9: the reductions, and how many of the most recent differentials (the exceptional one included) take them. */
+export const ESR_REDUCTION = -1.0
+export const ESR_REDUCTION_LARGE = -2.0
+export const ESR_WINDOW = 20
+/** Rule 5.8: increase over the Low Handicap Index before the soft cap bites, the share of the excess kept, and the hard limit. */
+export const SOFT_CAP_TRIGGER = 3.0
+export const SOFT_CAP_KEEP = 0.5
+export const HARD_CAP_LIMIT = 5.0
+/** Rule 5.8: look-back for the Low Handicap Index, and the differentials needed before one exists. */
+export const LOW_INDEX_DAYS = 365
+export const DIFFERENTIALS_FOR_LOW_INDEX = 20
+
 /** Round to the nearest tenth, .5 up (WHS rounding). The toFixed step stops 15.65 landing at 15.6499999. */
 export function roundTenth(x: number): number {
   return Math.round(Number((x * 10).toFixed(6))) / 10 || 0 // "|| 0": no -0 (would show as "+0.0")
@@ -71,6 +92,70 @@ export function handicapIndexFrom(differentials: number[]): number | null {
   const lowest = [...recent].sort((a, b) => a - b).slice(0, row.lowest)
   const avg = lowest.reduce((s, d) => s + d, 0) / row.lowest
   return Math.min(MAX_HANDICAP_INDEX, roundTenth(avg + row.adjustment))
+}
+
+// ---- Exceptional score reduction (Rule 5.9) ----------------------------------
+
+/**
+ * Rule 5.9: the reduction a new differential earns against the Handicap Index
+ * the player held when it was played. 7.0-9.9 strokes lower: -1.0; 10.0 or
+ * more: -2.0; otherwise 0. No index, no reduction.
+ */
+export function exceptionalScoreReduction(differential: number, indexAtTime: number | null): number {
+  if (indexAtTime == null) return 0
+  const gap = roundTenth(indexAtTime - differential) // tenths, so 6.9999999 can't miss a 7.0
+  if (gap >= ESR_THRESHOLD_LARGE) return ESR_REDUCTION_LARGE
+  if (gap >= ESR_THRESHOLD) return ESR_REDUCTION
+  return 0
+}
+
+/**
+ * Rule 5.9: adds `reduction` to the exceptional differential and the 19 before
+ * it. `adjustments` is each differential's running adjustment, most recent
+ * first (index 0 = the exceptional score). Returns a new array; with fewer
+ * than 20 differentials all of them take it. Older ones are left alone.
+ */
+export function applyReductionToWindow(adjustments: number[], reduction: number): number[] {
+  return adjustments.map((a, i) => (i < ESR_WINDOW ? a + reduction : a))
+}
+
+// ---- Soft and hard cap (Rule 5.8) ---------------------------------------------
+
+export type IndexCap = "none" | "soft" | "hard"
+
+export interface IndexOnDate {
+  date: string // YYYY-MM-DD
+  index: number
+}
+
+/**
+ * Rule 5.8: the Low Handicap Index, the lowest index held in the 365 days before
+ * `asOfDate` (the day of the most recent round). Null with no index in that
+ * window. The caller passes only indexes that count (see recalculateRounds).
+ */
+export function lowHandicapIndex(history: IndexOnDate[], asOfDate: string): number | null {
+  const end = Date.parse(`${asOfDate}T00:00:00Z`)
+  const start = end - LOW_INDEX_DAYS * 86_400_000
+  let low: number | null = null
+  for (const h of history) {
+    const t = Date.parse(`${h.date}T00:00:00Z`)
+    if (t >= start && t < end && (low == null || h.index < low)) low = h.index
+  }
+  return low
+}
+
+/**
+ * Rule 5.8: limits a newly calculated index against the Low Handicap Index.
+ * More than 3.0 above it: the excess over 3.0 is halved (soft cap). Then never
+ * more than 5.0 above it (hard cap). Decreases are never limited. No Low
+ * Handicap Index: nothing to cap against.
+ */
+export function applyIndexCaps(calculated: number, low: number | null): { index: number; cap: IndexCap } {
+  if (low == null || calculated <= low + SOFT_CAP_TRIGGER) return { index: calculated, cap: "none" }
+  const soft = low + SOFT_CAP_TRIGGER + (calculated - low - SOFT_CAP_TRIGGER) * SOFT_CAP_KEEP
+  const hardLimit = low + HARD_CAP_LIMIT
+  if (soft > hardLimit) return { index: roundTenth(hardLimit), cap: "hard" }
+  return { index: roundTenth(soft), cap: "soft" }
 }
 
 /**
@@ -208,6 +293,18 @@ export interface RoundResult {
   status: DifferentialStatus
   /** The Handicap Index used for this round's caps and expected score. */
   indexUsed: number | null
+  /** Rule 5.9 reduction sitting on this differential (0 or negative); already included in `differential`. */
+  esrAdjustment: number
+}
+
+/** What shaped the final index, for display. */
+export interface IndexAdjustments {
+  /** Index before the soft/hard cap. */
+  calculatedIndex: number | null
+  lowIndex: number | null
+  cap: IndexCap
+  /** Sum of the Rule 5.9 reductions still acting on the differentials behind the index (0 or negative). */
+  esr: number
 }
 
 /**
@@ -224,18 +321,22 @@ export interface RoundResult {
 export function recalculateRounds(
   rounds: RoundForHandicap[],
   manual: ManualIndex[] = []
-): { results: RoundResult[]; index: number | null; differentialsUsed: number } {
+): { results: RoundResult[]; index: number | null; differentialsUsed: number; adjustments: IndexAdjustments } {
   const ordered = [...rounds].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
   const manualSorted = [...manual].sort((a, b) => a.date.localeCompare(b.date))
   const results = new Map<string, RoundResult>()
-  // Rated rounds so far, in play order, for the index.
-  const rated: { order: number; differential: number }[] = []
+  // Rated rounds so far. `differential` is the raw one; `adj` the Rule 5.9 total on it; `events` which exceptional scores gave it.
+  const rated: { order: number; id: string; differential: number; adj: number; events: number[] }[] = []
   const waiting: { order: number; round: RoundForHandicap; adjusted: number }[] = []
+  const esrAmounts: number[] = [] // by event number
+  // Indexes that can be a Low Handicap Index: hand-entered ones, and calculated ones built on 20 differentials (Rule 5.8).
+  const lowCandidates: IndexOnDate[] = manualSorted.map((m) => ({ date: m.date, index: m.index }))
   let holesPosted = 0
   let established = false
+  let current: number | null = null // the capped index after the latest day
+  let last: IndexAdjustments = { calculatedIndex: null, lowIndex: null, cap: "none", esr: 0 }
 
-  const currentIndex = () =>
-    established ? handicapIndexFrom([...rated].sort((a, b) => b.order - a.order).map((r) => r.differential)) : null
+  const recent = () => [...rated].sort((a, b) => b.order - a.order).slice(0, 20)
   const manualAsOf = (date: string) => {
     let v: number | null = null
     for (const m of manualSorted) if (m.date <= date) v = m.index
@@ -245,7 +346,7 @@ export function recalculateRounds(
   let i = 0
   while (i < ordered.length) {
     const date = ordered[i].date
-    const index = currentIndex() ?? manualAsOf(date)
+    const index = current ?? manualAsOf(date)
     // Every round on this day uses the index from the start of the day.
     for (; i < ordered.length && ordered[i].date === date; i++) {
       const r = ordered[i]
@@ -253,8 +354,21 @@ export function recalculateRounds(
         ? adjustHoles(r.holes, { index, rating: r.courseRating, slope: r.slopeRating })
         : { adjusted: r.score, cap: "none" as ScoreCap }
       const d = scoreDifferential({ adjusted: adj.adjusted, rating: r.courseRating, slope: r.slopeRating, holes: r.holesPlayed }, index)
-      results.set(r.id, { id: r.id, adjustedScore: r.holes ? adj.adjusted : null, scoreCap: adj.cap, ...d, indexUsed: index })
-      if (d.status === "rated") rated.push({ order: i, differential: d.differential as number })
+      results.set(r.id, { id: r.id, adjustedScore: r.holes ? adj.adjusted : null, scoreCap: adj.cap, ...d, indexUsed: index, esrAdjustment: 0 })
+      if (d.status === "rated") {
+        rated.push({ order: i, id: r.id, differential: d.differential as number, adj: 0, events: [] })
+        // Rule 5.9: judged against the index held when it was played, applied to it and the 19 before it.
+        const reduction = exceptionalScoreReduction(d.differential as number, index)
+        if (reduction !== 0) {
+          const window = recent()
+          const next = applyReductionToWindow(window.map((w) => w.adj), reduction)
+          esrAmounts.push(reduction)
+          window.forEach((w, k) => {
+            w.adj = next[k]
+            if (k < ESR_WINDOW) w.events.push(esrAmounts.length - 1)
+          })
+        }
+      }
       if (d.status === "waiting_for_index") waiting.push({ order: i, round: r, adjusted: adj.adjusted })
       if (d.status === "rated" || d.status === "waiting_for_index") holesPosted += Math.min(18, r.holesPlayed)
     }
@@ -282,17 +396,56 @@ export function recalculateRounds(
         )
         const prev = results.get(w.round.id) as RoundResult
         results.set(w.round.id, { ...prev, ...d })
-        if (d.status === "rated") rated.push({ order: w.order, differential: d.differential as number })
+        if (d.status === "rated") rated.push({ order: w.order, id: w.round.id, differential: d.differential as number, adj: 0, events: [] })
+      }
+    }
+
+    if (established) {
+      const window = recent()
+      const calculated = handicapIndexFrom(window.map((r) => r.differential + r.adj))
+      if (calculated == null) {
+        current = null
+        last = { calculatedIndex: null, lowIndex: null, cap: "none", esr: 0 }
+      } else {
+        // Rule 5.8: caps only once there are 20 differentials; the Low Handicap Index looks at the 365 days before today's round.
+        const full = rated.length >= DIFFERENTIALS_FOR_LOW_INDEX
+        const low = full ? lowHandicapIndex(lowCandidates, date) : null
+        const capped = applyIndexCaps(calculated, low)
+        current = Math.min(MAX_HANDICAP_INDEX, capped.index)
+        if (full) lowCandidates.push({ date, index: current })
+        const active = new Set(window.flatMap((w) => w.events))
+        last = {
+          calculatedIndex: calculated,
+          lowIndex: low,
+          cap: capped.cap,
+          esr: [...active].reduce((s, e) => s + esrAmounts[e], 0),
+        }
       }
     }
   }
 
-  const index = currentIndex()
+  // The differentials that count carry their Rule 5.9 reductions.
+  for (const r of rated) {
+    const prev = results.get(r.id) as RoundResult
+    results.set(r.id, { ...prev, differential: roundTenth(r.differential + r.adj), esrAdjustment: r.adj })
+  }
+
   return {
     results: rounds.map((r) => results.get(r.id) as RoundResult),
-    index,
+    index: current,
     differentialsUsed: Math.min(20, rated.length),
+    adjustments: last,
   }
+}
+
+/** Short notes on what shaped a calculated index: Rule 5.9 reductions and Rule 5.8 caps. */
+export function adjustmentNotesFor(entry: { esr_adjustment?: number | string | null; cap_applied?: string | null }): string[] {
+  const notes: string[] = []
+  const esr = Number(entry.esr_adjustment ?? 0)
+  if (esr < 0) notes.push(`Exceptional score: ${esr.toFixed(1)} applied`)
+  if (entry.cap_applied === "soft") notes.push("Soft cap applied")
+  if (entry.cap_applied === "hard") notes.push("Hard cap applied")
+  return notes
 }
 
 /** Index from the record, for display (same as recalculateRounds' final index). */
@@ -308,10 +461,14 @@ export function estimateHandicapIndex(differentials: number[]): number | null {
  * manual entry as the current index.
  */
 export function needsNewCalculatedEntry(
-  latest: { source: string; handicap_index: number | string } | null,
-  index: number | null
+  latest: { source: string; handicap_index: number | string; esr_adjustment?: number | string | null; cap_applied?: string | null } | null,
+  index: number | null,
+  flags?: { esr: number; cap: IndexCap }
 ): boolean {
   if (index == null) return false
   if (!latest) return true
-  return !(latest.source === "calculated" && Number(latest.handicap_index) === index)
+  if (latest.source !== "calculated" || Number(latest.handicap_index) !== index) return true
+  // Same index: still record it when the adjustments behind it changed.
+  if (!flags) return false
+  return Number(latest.esr_adjustment ?? 0) !== flags.esr || (latest.cap_applied ?? "none") !== flags.cap
 }

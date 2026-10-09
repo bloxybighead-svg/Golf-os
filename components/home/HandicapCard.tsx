@@ -5,6 +5,7 @@ import Link from "next/link"
 import type { HandicapEntry } from "@/lib/supabase/types"
 import { saveManualHandicap } from "@/app/handicap/actions"
 import { InfoTip } from "@/components/InfoTip"
+import { adjustmentNotesFor } from "@/lib/handicap"
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -52,6 +53,7 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
   }
 
   const displayIndex = latest?.handicap_index ?? liveEstimate
+  const adjustmentNotes = latest?.source === "calculated" ? adjustmentNotesFor(latest) : []
   const isEstimate = latest ? latest.source === "calculated" : liveEstimate != null
 
   return (
@@ -64,9 +66,10 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
               <InfoTip label="How your handicap is worked out">
                 World Handicap System: the lowest 8 of your last 20 differentials averaged (fewer with under 20
                 rounds), rounded to a tenth. Hole-by-hole rounds are capped at net double bogey, and 9-hole rounds
-                are completed with your expected score. Updated each time you save a round. It leaves out the
-                playing-conditions adjustment and the caps on how fast it can rise, so it&rsquo;s close to, not the
-                same as, your GHIN Index.
+                are completed with your expected score. Updated each time you save a round. Scores far better than
+                your index lower your recent differentials, and a rise is limited against your lowest index of the
+                past year. It leaves out the playing-conditions adjustment, so it&rsquo;s close to, not the same as,
+                your GHIN Index.
               </InfoTip>
             )}
           </p>
@@ -78,6 +81,11 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
                   ? `${latest.source === "manual" ? "Entered by hand" : `From your last ${latest.rounds_used} rounds`}${mounted ? ` · ${formatDate(latest.calculation_date)}` : ""}`
                   : "From your recent rounds"}
               </p>
+              {adjustmentNotes.map((note) => (
+                <p key={note} className="mt-0.5 text-xs text-muted">
+                  {note}
+                </p>
+              ))}
             </>
           ) : (
             <>

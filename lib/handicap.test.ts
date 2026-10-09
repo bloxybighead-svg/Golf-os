@@ -3,6 +3,11 @@ import { readFileSync } from "fs"
 import path from "path"
 import {
   adjustHoles,
+  adjustmentNotesFor,
+  applyIndexCaps,
+  applyReductionToWindow,
+  exceptionalScoreReduction,
+  lowHandicapIndex,
   calcDifferential,
   courseHandicap,
   expectedNineHoleDifferential,
@@ -209,5 +214,100 @@ describe("needsNewCalculatedEntry", () => {
   })
   it("a new calculation supersedes a manual entry, even at the same value", () => {
     expect(needsNewCalculatedEntry({ source: "manual", handicap_index: 3.5 }, 3.5)).toBe(true)
+  })
+})
+
+/** Consecutive days from 2026-01-01, as YYYY-MM-DD. */
+function day(offset: number): string {
+  return new Date(Date.UTC(2026, 0, 1 + offset)).toISOString().slice(0, 10)
+}
+/** Rounds at rating 72 / slope 113, so differential = score - 72. */
+function series(scores: number[], startDay = 0): RoundForHandicap[] {
+  return scores.map((s, k) => round(day(startDay + k), s))
+}
+
+describe("exceptional score reduction (Rule 5.9)", () => {
+  it("is -1.0 from 7.0 to 9.9 strokes below the index, -2.0 from 10.0, else 0", () => {
+    expect(exceptionalScoreReduction(8, 15)).toBe(-1) // exactly 7.0
+    expect(exceptionalScoreReduction(5.1, 15)).toBe(-1) // 9.9
+    expect(exceptionalScoreReduction(5, 15)).toBe(-2) // exactly 10.0
+    expect(exceptionalScoreReduction(8.1, 15)).toBe(0) // 6.9
+    expect(exceptionalScoreReduction(2, null)).toBe(0) // no index yet
+  })
+  it("adds the reduction to the exceptional score and the 19 before it only", () => {
+    const out = applyReductionToWindow(Array(22).fill(0), -1)
+    expect(out.slice(0, 20).every((a) => a === -1)).toBe(true)
+    expect(out.slice(20)).toEqual([0, 0])
+  })
+  it("-1.0 case: a differential 8.0 under the index lowers it and every differential before it", () => {
+    const { results, index, adjustments } = recalculateRounds(series([...Array(10).fill(90), 82]))
+    expect(results[10]).toMatchObject({ differential: 9, esrAdjustment: -1 }) // 10.0 - 1.0, index was 18.0
+    expect(results[0]).toMatchObject({ differential: 17, esrAdjustment: -1 })
+    expect(index).toBe(14.3) // lowest 3 of 11: (9 + 17 + 17) / 3; unadjusted it would be 15.3
+    expect(adjustments.esr).toBe(-1)
+    expect(adjustmentNotesFor({ esr_adjustment: adjustments.esr })).toEqual(["Exceptional score: -1.0 applied"])
+  })
+  it("-2.0 case: 11.0 under the index", () => {
+    const { results, index, adjustments } = recalculateRounds(series([...Array(10).fill(90), 79]))
+    expect(results[10]).toMatchObject({ differential: 5, esrAdjustment: -2 })
+    expect(results[3].differential).toBe(16)
+    expect(index).toBe(12.3) // (5 + 16 + 16) / 3
+    expect(adjustments.esr).toBe(-2)
+  })
+  it("20-differential window: the 19 before it are adjusted, older ones are not, and it sticks", () => {
+    const scores = [...Array(25).fill(90), 82]
+    const { results } = recalculateRounds(series(scores))
+    expect(results.slice(0, 6).every((r) => r.esrAdjustment === 0 && r.differential === 18)).toBe(true)
+    expect(results.slice(6).every((r) => r.esrAdjustment === -1)).toBe(true) // 6..25 = the 20 most recent
+    // later rounds don't take it off
+    const later = recalculateRounds(series([...scores, 90, 90]))
+    expect(later.results.slice(6, 26).every((r) => r.esrAdjustment === -1)).toBe(true)
+    expect(later.results[26].esrAdjustment).toBe(0)
+  })
+})
+
+describe("soft and hard cap (Rule 5.8)", () => {
+  it("Low Handicap Index is the lowest index in the 365 days before the day", () => {
+    const h = [{ date: "2025-01-01", index: 2 }, { date: "2025-06-01", index: 6 }, { date: "2025-09-01", index: 9 }, { date: "2026-03-01", index: 4 }]
+    expect(lowHandicapIndex(h, "2026-02-01")).toBe(6) // 2025-01-01 is over a year back; 2026-03-01 hasn't happened
+    expect(lowHandicapIndex(h, "2026-03-01")).toBe(6)
+    expect(lowHandicapIndex([], "2026-03-01")).toBeNull()
+  })
+  it("within 3.0 of the low index: untouched; no low index: untouched", () => {
+    expect(applyIndexCaps(11, 8)).toEqual({ index: 11, cap: "none" })
+    expect(applyIndexCaps(20, null)).toEqual({ index: 20, cap: "none" })
+  })
+  it("soft cap: the part over 3.0 is halved", () => {
+    expect(applyIndexCaps(13, 8)).toEqual({ index: 12, cap: "soft" }) // 8 + 3 + (5 - 3) / 2
+    expect(applyIndexCaps(15, 8)).toEqual({ index: 13, cap: "soft" }) // lands exactly on the hard limit: still soft
+  })
+  it("hard cap: never more than 5.0 above", () => {
+    expect(applyIndexCaps(20, 8)).toEqual({ index: 13, cap: "hard" })
+  })
+  it("soft cap in a record: 14 bad rounds after 20 steady ones push the calculated index to 13.0, capped to 12.0", () => {
+    const { index, adjustments } = recalculateRounds(series([...Array(20).fill(80), ...Array(14).fill(100)]))
+    expect(adjustments).toMatchObject({ calculatedIndex: 13, lowIndex: 8, cap: "soft", esr: 0 })
+    expect(index).toBe(12)
+    expect(adjustmentNotesFor({ cap_applied: adjustments.cap })).toEqual(["Soft cap applied"])
+  })
+  it("hard cap in a record: 20 bad rounds would be 28.0, held at 13.0", () => {
+    const { index, adjustments } = recalculateRounds(series([...Array(20).fill(80), ...Array(20).fill(100)]))
+    expect(adjustments).toMatchObject({ calculatedIndex: 28, lowIndex: 8, cap: "hard" })
+    expect(index).toBe(13)
+  })
+  it("no caps with fewer than 20 differentials", () => {
+    const scores = [...Array(5).fill(80), ...Array(14).fill(100)] // 19 differentials; index jumps 8.0 -> 13.7
+    const { index, adjustments } = recalculateRounds(series(scores))
+    expect(adjustments).toMatchObject({ cap: "none", lowIndex: null })
+    expect(index).toBe(13.7) // (5 x 8 + 2 x 28) / 7
+  })
+})
+
+describe("needsNewCalculatedEntry with adjustments", () => {
+  it("records the same index again when a cap or reduction now applies", () => {
+    const latest = { source: "calculated", handicap_index: 12, esr_adjustment: 0, cap_applied: null }
+    expect(needsNewCalculatedEntry(latest, 12, { esr: 0, cap: "none" })).toBe(false)
+    expect(needsNewCalculatedEntry(latest, 12, { esr: 0, cap: "soft" })).toBe(true)
+    expect(needsNewCalculatedEntry(latest, 12, { esr: -1, cap: "none" })).toBe(true)
   })
 })
