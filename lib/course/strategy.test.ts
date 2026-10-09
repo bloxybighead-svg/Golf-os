@@ -218,7 +218,7 @@ describe("look-ahead on long holes", () => {
   const holeLine = [at(0, 0), at(0, 560)]
   const base = getBaseline(TEST_HANDICAP)
   const args = { clubs: bag, from: at(0, 0), pin: at(0, 557), line: holeLine, lies, baseline: base }
-  const land = (y: number, lie: "fairway" | "water" = "fairway", x = 0) => ({
+  const land = (y: number, lie: "fairway" | "water" | "bunker" | "trees" = "fairway", x = 0) => ({
     point: at(x, y),
     lie,
     carryPoint: at(x, y),
@@ -242,6 +242,30 @@ describe("look-ahead on long holes", () => {
   it("a spot closer to the green is worth no more strokes than one far back", () => {
     const grid = buildLookahead(args)
     expect(grid.valueAt(land(285)) as number).toBeLessThan(grid.valueAt(land(150)) as number)
+  })
+
+  it("values a bunker inside a fairway cell worse than the fairway in the same cell", () => {
+    const withBunker = buildLieMap(
+      ORIGIN,
+      [
+        { kind: "fairway", ring: box(-20, 0, 20, 560) },
+        { kind: "green", ring: box(-15, 540, 15, 575) },
+        { kind: "bunker", ring: box(2, 264, 8, 270) },
+      ],
+      [],
+      []
+    )
+    const grid = buildLookahead({ ...args, lies: withBunker })
+    // Both landings sit in the same 16 yd cell (x 0-16, y 256-272); only the bunker one is in the bunker.
+    expect(withBunker.lieAt(at(5, 267))).toBe("bunker")
+    expect(withBunker.lieAt(at(12, 260))).toBe("fairway")
+    const inBunker = grid.valueAt(land(267, "bunker", 5))
+    const onFairway = grid.valueAt(land(260, "fairway", 12))
+    expect(inBunker).not.toBeNull()
+    expect(onFairway).not.toBeNull()
+    expect(inBunker as number).toBeGreaterThan(onFairway as number)
+    // A lie the cell does not hold has no value: the baseline table decides.
+    expect(grid.valueAt(land(267, "trees", 5))).toBeNull()
   })
 
   it("the tee shot ranking changes when it looks ahead", () => {
@@ -368,7 +392,8 @@ describe("Colts Neck regression cases (synthetic fitted profile and hand-drawn m
   it("hole 3 with an OB-right tag on top: same shape of answer", () => {
     const c = rankColtsNeck(3, [{ side: "right", marginYds: OB_MARGIN_YDS }])
     const msg = `Hole 3 + OB right: smart play ${c.options.safer.club}, go for it ${c.options.lowest.club}. Per club:\n${table(c.ranking)}`
-    expect(c.options.lowest.club, msg).toBe("Driver")
+    // The look-ahead now charges a tree landing its recovery shot, which takes the Driver's 23% tree share out of first place.
+    expect(c.options.lowest.club, msg).toBe("3-Wood")
     expect(["3-Wood", "7-Wood", "4-Iron"], msg).toContain(c.options.safer.club)
   })
 

@@ -6,7 +6,8 @@
 // just hit it. Here every spot a tee shot can finish gets a value from the best
 // NEXT shot instead: each club (a few samples, its own best aim among a few),
 // played from that spot and scored with the same baseline as the tee shot
-// itself; the best club's expected strokes is the spot's value. A tee shot is
+// itself; the best club's expected strokes is the spot's value. A cell holds one value per lie in it, so a bunker
+// inside a fairway cell is not valued as fairway. A tee shot is
 // then worth the average grid value at its finish spots.
 //
 // The grid depends on the hole, pin, map and bag, not on where the
@@ -24,6 +25,7 @@ import {
   LOOKAHEAD_LATERAL_YDS,
   LOOKAHEAD_MAX_CELLS,
   LOOKAHEAD_MAX_CLUBS,
+  LOOKAHEAD_MAX_VALUATIONS,
   LOOKAHEAD_MAX_TEE_FACTOR,
   LOOKAHEAD_MIN_TEE_YDS,
   LOOKAHEAD_SAMPLES,
@@ -51,6 +53,9 @@ export interface Lookahead {
   cells: number
 }
 
+/** Where inside a cell (as a fraction of its size from the centre) the lies are sampled: a 3x3 set of points. */
+const SAMPLE_OFFSETS = [-1 / 3, 0, 1 / 3]
+
 const NO_OPINION: ReadonlySet<Lie> = new Set<Lie>(["water", "oob"])
 
 interface Candidate {
@@ -72,7 +77,9 @@ export function bestNextShot(at: LatLng, lie: Lie, cands: Candidate[], args: Loo
       if (plan.expectedStrokes < best) best = plan.expectedStrokes
     }
   }
-  return Number.isFinite(best) ? best : null
+  if (!Number.isFinite(best)) return null
+  // The simulated next shot does not depend on the lie it starts from, so add what the baseline says that lie costs over fairway at this distance.
+  return best + args.baseline.expectedStrokesRemaining(lie, d) - args.baseline.expectedStrokesRemaining("fairway", d)
 }
 
 export function buildLookahead(args: LookaheadArgs): Lookahead {
@@ -91,35 +98,53 @@ export function buildLookahead(args: LookaheadArgs): Lookahead {
   const hi = longest * LOOKAHEAD_MAX_TEE_FACTOR
   const origin = args.from
 
-  // Cell centres: within [lo, hi] of the tee and LOOKAHEAD_LATERAL_YDS of the hole line. The cell grows until it fits the cap.
+  // Cell centres: within [lo, hi] of the tee and LOOKAHEAD_LATERAL_YDS of the hole line. A cell is valued once per playable
+  // lie found inside it (a 3x3 sample), so a bunker in a fairway cell gets its own value. The cell grows until both the
+  // cell count and the number of valuations fit their caps.
   const line = args.line.map((p) => toLocal(origin, p))
   const minX = Math.min(...line.map((p) => p.x)) - LOOKAHEAD_LATERAL_YDS
   const maxX = Math.max(...line.map((p) => p.x)) + LOOKAHEAD_LATERAL_YDS
   const minY = Math.min(...line.map((p) => p.y)) - LOOKAHEAD_LATERAL_YDS
   const maxY = Math.max(...line.map((p) => p.y)) + LOOKAHEAD_LATERAL_YDS
   let size = LOOKAHEAD_CELL_YDS
-  let centres: { ix: number; iy: number; p: LatLng }[] = []
+  let centres: { ix: number; iy: number; p: LatLng; lies: Lie[] }[] = []
   for (let guard = 0; guard < 20; guard++) {
     centres = []
+    let valuations = 0
     for (let ix = Math.floor(minX / size); ix <= Math.floor(maxX / size); ix++) {
       for (let iy = Math.floor(minY / size); iy <= Math.floor(maxY / size); iy++) {
         const p = fromLocal(origin, { x: (ix + 0.5) * size, y: (iy + 0.5) * size })
         const d = distanceYds(origin, p)
         if (d < lo || d > hi) continue
         if (projectOnLine(args.line, p).off > LOOKAHEAD_LATERAL_YDS) continue
-        centres.push({ ix, iy, p })
+        centres.push({ ix, iy, p, lies: [] })
       }
     }
-    if (centres.length <= LOOKAHEAD_MAX_CELLS) break
+    if (centres.length > LOOKAHEAD_MAX_CELLS) {
+      size *= 1.2
+      continue
+    }
+    for (const c of centres) {
+      const found = new Set<Lie>()
+      for (const dx of SAMPLE_OFFSETS) {
+        for (const dy of SAMPLE_OFFSETS) {
+          const lie = args.lies.lieAt(fromLocal(origin, { x: (c.ix + 0.5 + dx) * size, y: (c.iy + 0.5 + dy) * size }))
+          if (!NO_OPINION.has(lie)) found.add(lie)
+        }
+      }
+      c.lies = [...found]
+      valuations += c.lies.filter((l) => l !== "green").length
+    }
+    if (valuations <= LOOKAHEAD_MAX_VALUATIONS) break
     size *= 1.2
   }
 
   const values = new Map<string, number>()
   for (const c of centres) {
-    const lie = args.lies.lieAt(c.p)
-    if (NO_OPINION.has(lie)) continue
-    const v = lie === "green" ? args.baseline.expectedStrokesRemaining("green", distanceYds(c.p, args.pin)) : bestNextShot(c.p, lie, cands, args)
-    if (v != null) values.set(`${c.ix},${c.iy}`, v)
+    for (const lie of c.lies) {
+      const v = lie === "green" ? args.baseline.expectedStrokesRemaining("green", distanceYds(c.p, args.pin)) : bestNextShot(c.p, lie, cands, args)
+      if (v != null) values.set(`${c.ix},${c.iy},${lie}`, v)
+    }
   }
 
   return {
@@ -127,7 +152,7 @@ export function buildLookahead(args: LookaheadArgs): Lookahead {
     valueAt: (l) => {
       if (NO_OPINION.has(l.lie)) return null
       const { x, y } = toLocal(origin, l.point)
-      return values.get(`${Math.floor(x / size)},${Math.floor(y / size)}`) ?? null
+      return values.get(`${Math.floor(x / size)},${Math.floor(y / size)},${l.lie}`) ?? null
     },
   }
 }

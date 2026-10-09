@@ -53,6 +53,8 @@ export const LOOKAHEAD_MAX_CLUBS = 3
 /** Look-ahead grid cell size, yards: the larger of this and what keeps the grid under LOOKAHEAD_MAX_CELLS. SPEED SETTING. */
 export const LOOKAHEAD_CELL_YDS = 16
 export const LOOKAHEAD_MAX_CELLS = 160
+/** Most next-shot valuations (one per playable lie per cell) a grid may need: twice the cell cap, so lies cost at most 2x the one-lie grid. SPEED SETTING. */
+export const LOOKAHEAD_MAX_VALUATIONS = 2 * LOOKAHEAD_MAX_CELLS
 
 /** How far either side of the hole line the look-ahead grid reaches, yards. A tee shot finishing farther out is valued with the plain table. */
 export const LOOKAHEAD_LATERAL_YDS = 60
