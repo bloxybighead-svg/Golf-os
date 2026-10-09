@@ -123,6 +123,10 @@ export interface HandicapEntry {
   calculation_date: string
   rounds_used: number | null
   notes: string | null
+  /** Rule 5.9 reductions acting on a calculated index (0 or negative). Absent until handicap_caps.sql has run. */
+  esr_adjustment?: number | string | null
+  /** Rule 5.8 cap applied to a calculated index. */
+  cap_applied?: 'soft' | 'hard' | null
   created_at: string
 }
 

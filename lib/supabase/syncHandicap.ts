@@ -45,7 +45,7 @@ export async function syncCalculatedHandicap(
 
     const { data: entries } = await supabase
       .from("handicap_tracking")
-      .select("source, handicap_index, calculation_date")
+      .select("*")
       .order("calculation_date", { ascending: true })
     const manual = (entries ?? [])
       .filter((e) => e.source === "manual")
@@ -61,7 +61,7 @@ export async function syncCalculatedHandicap(
       slopeRating: r.slope_rating == null ? null : Number(r.slope_rating),
       holes: holesByRound.get(r.id) ?? null,
     }))
-    const { results, index, differentialsUsed } = recalculateRounds(record, manual)
+    const { results, index, differentialsUsed, adjustments } = recalculateRounds(record, manual)
 
     const byId = new Map((rounds ?? []).map((r) => [r.id, r]))
     const changes = results.filter((res) => {
@@ -88,13 +88,14 @@ export async function syncCalculatedHandicap(
     }
 
     const latest = entries && entries.length > 0 ? entries[entries.length - 1] : null
-    if (needsNewCalculatedEntry(latest ?? null, index)) {
-      const { error: insError } = await supabase.from("handicap_tracking").insert({
-        user_id: userId,
-        handicap_index: index,
-        source: "calculated",
-        rounds_used: differentialsUsed,
-      })
+    const flags = { esr: adjustments.esr, cap: adjustments.cap }
+    if (needsNewCalculatedEntry(latest ?? null, index, flags)) {
+      const row = { user_id: userId, handicap_index: index, source: "calculated", rounds_used: differentialsUsed }
+      // esr_adjustment / cap_applied come from supabase/handicap_caps.sql; before it has run, record the index without them.
+      let { error: insError } = await supabase
+        .from("handicap_tracking")
+        .insert({ ...row, esr_adjustment: flags.esr, cap_applied: flags.cap === "none" ? null : flags.cap })
+      if (insError) ({ error: insError } = await supabase.from("handicap_tracking").insert(row))
       if (insError) throw new Error(insError.message)
     }
     return { changed: changes.length, index, rounds: results.length }
