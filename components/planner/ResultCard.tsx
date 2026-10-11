@@ -18,6 +18,8 @@ export interface ResultCardProps {
   chosen: OptimizedClubPlan
   clubChoice: string
   atBestAim: boolean
+  /** Expected strokes for the chosen club aimed at the marker, as it is now. */
+  chosenAtAim: number | null
   /** The lie where the chosen club's best aim points; null until the lie map exists. */
   aimLie: Lie | null
   /** Ball to pin; the distance shown when the hole has no mapped green. */
@@ -38,6 +40,7 @@ export function ResultCard({
   chosen,
   clubChoice,
   atBestAim,
+  chosenAtAim,
   aimLie,
   distPin,
   greenYards,
@@ -48,6 +51,8 @@ export function ResultCard({
   onOpenDetails,
 }: ResultCardProps) {
   const risk = riskLine(chosen.plan)
+  // Follows the aim marker: at its best aim it is the ranking's number, anywhere else the same shots aimed where the marker is.
+  const strokes = !atBestAim && chosenAtAim != null ? chosenAtAim : chosen.plan.expectedStrokes
   const label = strategyLabel(options, chosen)
   const center = Math.round(greenYards?.center ?? distPin ?? NaN)
   const plays = Number.isFinite(center) ? playsShown(center, pinPlaysLike?.plays) : null
@@ -56,7 +61,7 @@ export function ResultCard({
       <div className="flex items-baseline gap-2">
         <p className="min-w-0 truncate text-5xl font-semibold leading-none tracking-tight text-fg tabular-nums">{chosen.club}</p>
         <p className="ml-auto shrink-0 text-right">
-          <span className="block text-4xl font-semibold leading-none text-accent tabular-nums">{chosen.plan.expectedStrokes.toFixed(1)}</span>
+          <span className="block text-4xl font-semibold leading-none text-accent tabular-nums">{strokes.toFixed(1)}</span>
           <span className="block text-[11px] text-muted">Expected strokes</span>
         </p>
         {isLowConfidence(chosen.plan) && (

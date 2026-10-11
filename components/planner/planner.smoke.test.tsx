@@ -41,6 +41,7 @@ function card(over: Partial<ComponentProps<typeof ResultCard>> = {}) {
       chosen={fourIron}
       clubChoice="auto"
       atBestAim
+      chosenAtAim={4.6}
       aimLie="fairway"
       distPin={364}
       greenYards={{ front: 352, center: 364, back: 376 }}
@@ -136,6 +137,12 @@ describe("planner components render (smoke)", () => {
       expect(html).not.toContain(text)
     }
     expect(html).not.toContain("Use best aim") // already at the best aim
+  })
+
+  it("ResultCard: expected strokes follow the aim marker", () => {
+    expect(renderToStaticMarkup(card({ atBestAim: false, chosenAtAim: 5.04 }))).toContain(">5.0<")
+    expect(renderToStaticMarkup(card({ atBestAim: false, chosenAtAim: 5.26 }))).toContain(">5.3<")
+    expect(renderToStaticMarkup(card({ atBestAim: true, chosenAtAim: 5.26 }))).toContain(">4.6<")
   })
 
   it("ResultCard: the risk line shows the largest risk only, and not at all at 1% or less", () => {

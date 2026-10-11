@@ -97,6 +97,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         chosen={chosen}
         clubChoice={clubChoice}
         atBestAim={atBestAim}
+        chosenAtAim={chosenAtAim}
         aimLie={aimLie}
         distPin={distPin}
         greenYards={greenYards}
