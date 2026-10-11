@@ -10,6 +10,7 @@ const local: SyncedSettings = {
   carries: { PW: 120 },
   tendency: { side: "auto", strength: "moderate" },
   bags: { calibrated: DEFAULT_BAG, handicap: DEFAULT_BAG },
+  wedgeCarries: { "SW 3/4": 78 },
 }
 
 describe("decideSync: newest wins", () => {
@@ -46,6 +47,7 @@ describe("settings <-> row", () => {
     expect(back.sevenIronCarry).toBe("150")
     expect(back.carries).toEqual({ PW: 120 })
     expect(back.bags).toEqual({ calibrated: ["Driver", "7-Iron"], handicap: ["Driver", "PW"] })
+    expect(back.wedgeCarries).toEqual({ "SW 3/4": 78 })
     expect(back.tendency).toEqual(local.tendency)
     expect(back.source).toBe("handicap")
   })

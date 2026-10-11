@@ -6,6 +6,7 @@
 import { normalizeBag } from "./bag"
 import { cleanCarries, cleanHandicap } from "./baseline"
 import type { Tendency } from "./build"
+import { cleanWedgeCarries, type PartialName } from "./partials"
 import type { Club } from "./tables"
 
 /** How long after the last bag or settings edit before it is saved to the account. Estimate: long enough that tapping through several clubs sends one save. */
@@ -25,6 +26,8 @@ export interface SyncedSettings {
   carries: Partial<Record<Club, number>>
   tendency: Tendency
   bags: { calibrated: Club[]; handicap: Club[] }
+  /** Carries the golfer typed for partial wedge swings (kept in golfer_baseline.bag). */
+  wedgeCarries: Partial<Record<PartialName, number>>
 }
 
 /** The golfer_baseline columns that carry these settings. */
@@ -55,8 +58,9 @@ export function settingsFromRow(row: SettingsRow): RemoteSettings {
   if (row.source === "calibrated" || row.source === "handicap") out.source = row.source
   const t = row.tendency as Tendency | null | undefined
   if (t && SIDES.includes(t.side) && STRENGTHS.includes(t.strength)) out.tendency = { side: t.side, strength: t.strength }
-  const bag = row.bag as { calibrated?: unknown; handicap?: unknown } | null | undefined
+  const bag = row.bag as { calibrated?: unknown; handicap?: unknown; wedgeCarries?: unknown } | null | undefined
   if (bag && typeof bag === "object") {
+    out.wedgeCarries = cleanWedgeCarries(bag.wedgeCarries)
     const cal = Array.isArray(bag.calibrated) ? normalizeBag(bag.calibrated as string[]) : []
     const hcp2 = Array.isArray(bag.handicap) ? normalizeBag(bag.handicap as string[]) : []
     if (cal.length && hcp2.length) out.bags = { calibrated: cal, handicap: hcp2 }
@@ -75,7 +79,7 @@ export function settingsToRow(s: SyncedSettings): Required<Omit<SettingsRow, "up
     carries,
     source: s.source,
     tendency: s.tendency,
-    bag: { calibrated: normalizeBag(s.bags.calibrated), handicap: normalizeBag(s.bags.handicap) },
+    bag: { calibrated: normalizeBag(s.bags.calibrated), handicap: normalizeBag(s.bags.handicap), wedgeCarries: cleanWedgeCarries(s.wedgeCarries) },
   }
 }
 

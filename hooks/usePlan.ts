@@ -35,6 +35,7 @@ import type { CourseHit, NoHazardMap } from "@/lib/planner/storage"
 import { useClubRanking, type RankingRequest } from "@/components/simulator/useClubRanking"
 import type { CalibratedClub, MyProfile, ShotSource } from "@/lib/planner/types"
 import { generateMyBag } from "@/lib/golfer/shotProfile"
+import { PARTIAL_CARRY_RATIO, parsePartial, withPartials, type PartialName } from "@/lib/golfer/partials"
 
 const DOTS_SHOWN = 400
 const HANDICAP_SHOTS_PER_CLUB = 1000
@@ -49,6 +50,8 @@ export interface PlanInputs {
   driverCarry: string
   sevenIronCarry: string
   extraCarries: Partial<Record<Club, number>>
+  /** Carries typed for partial wedge swings; the rest are derived from the full club. */
+  wedgeCarries: Partial<Record<PartialName, number>>
   tendency: Tendency
   compareAgainst: CompareAgainst
   trackedHandicap: number | null
@@ -86,6 +89,7 @@ export function usePlan({
   driverCarry,
   sevenIronCarry,
   extraCarries,
+  wedgeCarries,
   tendency,
   compareAgainst,
   trackedHandicap,
@@ -125,15 +129,7 @@ export function usePlan({
     // The profile object is replaced whenever it is re-fitted.
     [source, myProfile, bag, blendHandicap]
   )
-  // Why a club's shots are an estimate, in words, for the "est." marker and the result card.
-  const estimateNotes = useMemo(() => {
-    if (myBag) return myBag.notes
-    const m: Record<string, string> = {}
-    for (const c of calibratedBag ?? []) if (c.estimatedFrom) m[c.club] = `No ${c.club} shots on record: estimated from your ${c.estimatedFrom}`
-    return m
-  }, [myBag, calibratedBag])
-
-  const clubShots: ClubShots[] = useMemo(() => {
+  const fullShots: ClubShots[] = useMemo(() => {
     if (myBag) return myBag.clubs.map((c) => ({ club: c.club, shots: c.shots }))
     if (calibratedBag) {
       return calibratedBag.map((c) => ({ club: c.club, shots: c.shots }))
@@ -158,6 +154,19 @@ export function usePlan({
     }
     return Array.from(by, ([club, shots]) => ({ club, shots }))
   }, [myBag, calibratedBag, handicap, driverCarry, sevenIronCarry, extraCarries, tendency, bag])
+  // Every full wedge also plays as a 3/4 and a 1/2 swing (lib/golfer/partials.ts); the ranking drops them far from the pin.
+  const clubShots: ClubShots[] = useMemo(() => withPartials(fullShots, wedgeCarries), [fullShots, wedgeCarries])
+
+  // Why a club's shots are an estimate, in words, for the "est." marker and the result card.
+  const estimateNotes = useMemo(() => {
+    const m: Record<string, string> = { ...myBag?.notes }
+    if (!myBag) for (const c of calibratedBag ?? []) if (c.estimatedFrom) m[c.club] = `No ${c.club} shots on record: estimated from your ${c.estimatedFrom}`
+    for (const c of clubShots) {
+      const p = parsePartial(c.club)
+      if (p && !wedgeCarries[c.club as PartialName]) m[c.club] = `Estimated from your full ${p.club}: ${Math.round(PARTIAL_CARRY_RATIO[p.length] * 100)}% of its carry. Type your own in My bag`
+    }
+    return m
+  }, [myBag, calibratedBag, clubShots, wedgeCarries])
 
   // The bag's driver carry (or its longest club, if there's no driver in the bag)
   // sets the recommended tee length.

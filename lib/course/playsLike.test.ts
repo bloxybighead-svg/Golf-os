@@ -115,7 +115,7 @@ describe("wind carry and drift", () => {
   it("wedges feel the wind more than drivers", () => {
     expect(windCarryShare("PW", 10)).toBeGreaterThan(windCarryShare("7-Iron", 10))
     expect(windCarryShare("7-Iron", 10)).toBeGreaterThan(windCarryShare("Driver", 10))
-    expect(["Driver", "3-Wood", "Hybrid", "7-Iron", "PW", "LW"].map(spinGroup)).toEqual(["driver", "wood", "wood", "iron", "wedge", "wedge"])
+    expect(["Driver", "3-Wood", "Hybrid", "7-Iron", "PW", "LW", "GW 3/4"].map(spinGroup)).toEqual(["driver", "wood", "wood", "iron", "wedge", "wedge", "wedge"])
   })
 
   it("a crosswind from the left moves the shot right, from the right moves it left, in proportion to carry and speed", () => {

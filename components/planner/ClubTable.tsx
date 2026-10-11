@@ -2,10 +2,12 @@
 
 // The Play planner's club table: every club at its own best aim (moved verbatim from CourseMapClient.tsx).
 
+import { Fragment } from "react"
 import type { Lie } from "@/lib/course/lies"
 import { aimOffsetLabel, isTie, type OptimizedClubPlan } from "@/lib/course/plan"
 import { LIE_LABEL, LIE_SHORT, pct } from "@/lib/planner/labels"
 import { SMART_MAX_PENALTY_RATE, pctText, penaltyShare } from "@/lib/course/strategy"
+import { usePartialGroups } from "./usePartialGroups"
 
 export interface ClubTableProps {
   ranking: OptimizedClubPlan[]
@@ -25,6 +27,72 @@ export interface ClubTableProps {
 }
 
 export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, estimateNotes, baselineLabel, onPick, smartMode = false }: ClubTableProps) {
+  const { groups, isOpen, toggle: toggleGroup } = usePartialGroups(ranking, chosen)
+  const row = (r: OptimizedClubPlan, partial: boolean, toggle?: { count: number; open: boolean; onToggle: () => void }) => {
+    const over = smartMode && penaltyShare(r.plan) > SMART_MAX_PENALTY_RATE
+    return (
+      <tr
+        key={r.club}
+        onClick={(e) => {
+          // The sheet closes on this tap: don't let it carry on to the map underneath.
+          e.preventDefault()
+          e.stopPropagation()
+          onPick(r)
+        }}
+        className={`cursor-pointer border-b border-fg/[0.04] transition-colors last:border-0 hover:bg-fg/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
+          chosen?.club === r.club ? "bg-accent/10" : ""
+        } ${over ? "opacity-60" : ""}`}
+      >
+        <td className={`whitespace-nowrap font-semibold text-fg ${partial ? "pl-7 pr-3" : "px-3"}`}>
+          {r.club}
+          {toggle && (
+            <button
+              type="button"
+              aria-expanded={toggle.open}
+              aria-label={`${r.club} partial swings`}
+              title="Partial swings"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggle.onToggle()
+              }}
+              className="ml-1 inline-flex min-h-[28px] items-center rounded px-1.5 text-[10px] font-normal text-muted hover:text-fg"
+            >
+              {toggle.open ? "−" : "+"}{toggle.count}
+            </button>
+          )}
+          {over && (
+            <span className="ml-1 text-[10px] font-normal text-danger" title={`Over the ${Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty limit Smart play allows`}>
+              over {Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty
+            </span>
+          )}
+          {estimateNotes[r.club] && (
+            <span className="ml-1 text-[10px] font-normal text-muted" title={estimateNotes[r.club]}>
+              est.
+            </span>
+          )}
+        </td>
+        <td className="whitespace-nowrap px-1 text-right text-fg-3">{aimOffsetLabel(r.offsetYds)}</td>
+        <td className="px-1 text-right text-fg-3">{Math.round(r.plan.meanCarryYds)}</td>
+        <td className="px-1 text-right text-fg-3">{Math.round(r.plan.meanTotalYds)}</td>
+        {shownLies.map((l) => (
+          <td key={l} className="px-1 text-right text-fg-3">
+            {pct(r.plan.lieShare[l])}
+          </td>
+        ))}
+        <td className={`px-1 text-right ${penaltyShare(r.plan) > SMART_MAX_PENALTY_RATE ? "font-semibold text-danger" : "text-fg-3"}`}>
+          {pctText(penaltyShare(r.plan))}
+        </td>
+        <td className="whitespace-nowrap px-3 text-right font-semibold text-fg">
+          {best && r !== best && isTie(r.plan, best.plan)
+            ? "~ tie"
+            : (() => {
+                const d = r.plan.expectedStrokes - (best?.plan.expectedStrokes ?? 0)
+                return `${d < 0 ? "-" : "+"}${Math.abs(d).toFixed(2)}`
+              })()}
+        </td>
+      </tr>
+    )
+  }
   return (
     <div
       className={`overflow-x-auto rounded-2xl border border-fg/[0.07] bg-surface transition-opacity ${pending ? "opacity-60" : ""}`}
@@ -60,56 +128,12 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
           </tr>
         </thead>
         <tbody>
-          {ranking.map((r) => {
-          const over = smartMode && penaltyShare(r.plan) > SMART_MAX_PENALTY_RATE
-          return (
-            <tr
-              key={r.club}
-              onClick={(e) => {
-                // The sheet closes on this tap: don't let it carry on to the map underneath.
-                e.preventDefault()
-                e.stopPropagation()
-                onPick(r)
-              }}
-              className={`cursor-pointer border-b border-fg/[0.04] transition-colors last:border-0 hover:bg-fg/[0.04] [&>td]:py-2.5 md:[&>td]:py-1.5 ${
-                chosen?.club === r.club ? "bg-accent/10" : ""
-              } ${over ? "opacity-60" : ""}`}
-            >
-              <td className="whitespace-nowrap px-3 font-semibold text-fg">
-                {r.club}
-                {over && (
-                  <span className="ml-1 text-[10px] font-normal text-danger" title={`Over the ${Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty limit Smart play allows`}>
-                    over {Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty
-                  </span>
-                )}
-                {estimateNotes[r.club] && (
-                  <span className="ml-1 text-[10px] font-normal text-muted" title={estimateNotes[r.club]}>
-                    est.
-                  </span>
-                )}
-              </td>
-              <td className="whitespace-nowrap px-1 text-right text-fg-3">{aimOffsetLabel(r.offsetYds)}</td>
-              <td className="px-1 text-right text-fg-3">{Math.round(r.plan.meanCarryYds)}</td>
-              <td className="px-1 text-right text-fg-3">{Math.round(r.plan.meanTotalYds)}</td>
-              {shownLies.map((l) => (
-                <td key={l} className="px-1 text-right text-fg-3">
-                  {pct(r.plan.lieShare[l])}
-                </td>
-              ))}
-              <td className={`px-1 text-right ${penaltyShare(r.plan) > SMART_MAX_PENALTY_RATE ? "font-semibold text-danger" : "text-fg-3"}`}>
-                {pctText(penaltyShare(r.plan))}
-              </td>
-              <td className="whitespace-nowrap px-3 text-right font-semibold text-fg">
-                {best && r !== best && isTie(r.plan, best.plan)
-                  ? "~ tie"
-                  : (() => {
-                      const d = r.plan.expectedStrokes - (best?.plan.expectedStrokes ?? 0)
-                      return `${d < 0 ? "-" : "+"}${Math.abs(d).toFixed(2)}`
-                    })()}
-              </td>
-            </tr>
-          )
-          })}
+          {groups.map((g) => (
+            <Fragment key={g.row.club}>
+              {row(g.row, false, g.partials.length > 0 ? { count: g.partials.length, open: isOpen(g.row.club), onToggle: () => toggleGroup(g.row.club) } : undefined)}
+              {isOpen(g.row.club) && g.partials.map((p) => row(p.row, true))}
+            </Fragment>
+          ))}
         </tbody>
       </table>
     </div>

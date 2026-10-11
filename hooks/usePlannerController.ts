@@ -51,7 +51,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const settings = usePlannerSettings({ calibrated, myProfile, baseline })
   const {
     source, setSource, handicap, setHandicap, driverCarry, setDriverCarry, sevenIronCarry, setSevenIronCarry,
-    tendency, setTendency, extraCarries, showSetupPrompt, setShowSetupPrompt, bag, compareAgainst, recent,
+    tendency, setTendency, extraCarries, wedgeCarries, showSetupPrompt, setShowSetupPrompt, bag, compareAgainst, recent,
     hydrated, remember,
   } = settings
   // A round being scored (kept on the device) and which side of it is showing.
@@ -271,6 +271,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     driverCarry,
     sevenIronCarry,
     extraCarries,
+    wedgeCarries,
     tendency,
     compareAgainst,
     trackedHandicap,

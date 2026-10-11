@@ -3,6 +3,8 @@
 // from the localStorage read so it can be tested.
 
 import { CALIBRATED_DEFAULT_BAG, DEFAULT_BAG, normalizeBag } from "@/lib/golfer/bag"
+import { SETTINGS_STAMP_KEY } from "@/lib/golfer/bagSync"
+import { cleanWedgeCarries, type PartialName } from "@/lib/golfer/partials"
 import { LAST_POSITION_KEY, SETTINGS_KEY, cleanCarries, type CourseRef } from "@/lib/golfer/baseline"
 import type { Club } from "@/lib/golfer/tables"
 
@@ -17,6 +19,8 @@ export interface DeviceBag {
   bag: Club[]
   /** Carries the golfer typed in setup, by club. */
   carries: Partial<Record<Club, number>>
+  /** Carries the golfer typed for partial wedge swings. */
+  wedgeCarries: Partial<Record<PartialName, number>>
   handicap: number | null
   /** The course Play last opened, which setup sets to the home course. */
   course: CourseRef | null
@@ -64,6 +68,7 @@ export function parseDeviceBag(
     source,
     bag,
     carries: { ...carries, ...withMain },
+    wedgeCarries: cleanWedgeCarries(s.wedgeCarries),
     handicap: typeof s.handicap === "number" ? s.handicap : null,
     course,
   }
@@ -74,5 +79,16 @@ export function readDeviceBag(defaultSource: "calibrated" | "handicap" = "handic
     return parseDeviceBag(localStorage.getItem(SETTINGS_KEY), localStorage.getItem(LAST_POSITION_KEY), defaultSource, fittedClubs)
   } catch {
     return parseDeviceBag(null, null, defaultSource, fittedClubs)
+  }
+}
+
+/** Saves the typed partial carries into this device's Play settings and stamps the change, so Play pushes it to the account. */
+export function writeWedgeCarries(carries: Partial<Record<PartialName, number>>): void {
+  try {
+    const existing = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") ?? {}
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...existing, wedgeCarries: carries }))
+    localStorage.setItem(SETTINGS_STAMP_KEY, String(Date.now()))
+  } catch {
+    /* storage blocked: the numbers just are not remembered */
   }
 }

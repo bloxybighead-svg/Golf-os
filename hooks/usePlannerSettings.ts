@@ -15,6 +15,7 @@ import { readRisk, RISK_EVENT, RISK_KEY } from "@/lib/course/riskSetting"
 import { readSpread, SPREAD_EVENT, SPREAD_KEY } from "@/lib/course/spreadSetting"
 import { ON_COURSE_SPREAD, SMART_RISK_STROKES } from "@/lib/course/strategy"
 import { RECENT_KEY, type CourseHit } from "@/lib/planner/storage"
+import { cleanWedgeCarries, type PartialName } from "@/lib/golfer/partials"
 import { BAG_SYNC_DEBOUNCE_MS, SETTINGS_STAMP_KEY, decideSync, stampMs, type SyncedSettings } from "@/lib/golfer/bagSync"
 import { bannerVisible, readPrompt, recordView, writePrompt } from "@/lib/planner/setupPrompt"
 import { saveGolferSettings } from "@/app/welcome/actions"
@@ -57,6 +58,8 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
   const [tendency, setTendency] = useState<Tendency>({ side: "auto", strength: "moderate" })
   // Carries for clubs beyond driver and 7-iron, from setup (/welcome).
   const [extraCarries, setExtraCarries] = useState<Partial<Record<Club, number>>>({})
+  // Carries typed for partial wedge swings (You -> My bag); a partial without one is derived from its full club.
+  const [wedgeCarries, setWedgeCarries] = useState<Partial<Record<PartialName, number>>>({})
   // First visit on this device with no setup yet: offer it, once.
   const [showSetupPrompt, setShowSetupPrompt] = useState(false)
   // Which clubs are in the bag, per shot source (the calibrated golfer and a
@@ -140,6 +143,7 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
       if (typeof v.handicap === "number") setHandicap(Math.min(36, Math.max(0, v.handicap)))
       if (typeof v.driverCarry === "string") setDriverCarry(v.driverCarry.slice(0, 4))
       if (v.carries && typeof v.carries === "object") setExtraCarries(cleanCarries(v.carries))
+      if (v.wedgeCarries) setWedgeCarries(cleanWedgeCarries(v.wedgeCarries))
       if (typeof v.sevenIronCarry === "string") setSevenIronCarry(v.sevenIronCarry.slice(0, 4))
       if (v.tendency && SIDES.includes(v.tendency.side) && STRENGTHS.includes(v.tendency.strength)) setTendency(v.tendency)
       if (v.bags && typeof v.bags === "object") {
@@ -169,6 +173,7 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     if (r.driverCarry != null) setDriverCarry(r.driverCarry)
     if (r.sevenIronCarry != null) setSevenIronCarry(r.sevenIronCarry)
     if (r.carries) setExtraCarries(r.carries)
+    if (r.wedgeCarries) setWedgeCarries(r.wedgeCarries)
     if (r.tendency) setTendency(r.tendency)
     if (r.bags) setBags((prev) => ({ ...prev, calibrated: r.bags!.calibrated, handicap: r.bags!.handicap }))
     writeStamp(at ?? Date.now())
@@ -183,12 +188,12 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     try {
       localStorage.setItem(
         SETTINGS_KEY,
-        JSON.stringify({ source, sourceV: SOURCE_VERSION, handicap, driverCarry, sevenIronCarry, carries: extraCarries, tendency, bags })
+        JSON.stringify({ source, sourceV: SOURCE_VERSION, handicap, driverCarry, sevenIronCarry, carries: extraCarries, wedgeCarries, tendency, bags })
       )
     } catch {
       /* storage full or blocked: settings just won't be remembered */
     }
-  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, extraCarries, tendency, bags])
+  }, [hydrated, source, handicap, driverCarry, sevenIronCarry, extraCarries, wedgeCarries, tendency, bags])
 
   // ---- account sync (signed in with a setup row; guests keep the device copy only) ----
   // What the account stores: not the old public data's source or bag, which stay on this device.
@@ -198,6 +203,7 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     driverCarry,
     sevenIronCarry,
     carries: extraCarries,
+    wedgeCarries,
     tendency,
     bags: { calibrated: bags.calibrated, handicap: bags.handicap },
   }
@@ -276,6 +282,7 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     tendency,
     setTendency,
     extraCarries,
+    wedgeCarries,
     showSetupPrompt,
     setShowSetupPrompt,
     bags,

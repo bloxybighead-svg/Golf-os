@@ -19,6 +19,7 @@ import { penaltyShare, smartCost, type SmartRule } from "./strategy"
 import { rollToRest, rollYds } from "./roll"
 import { adjustShot, type ShotConditions } from "./playsLike"
 import { seededRng, seededSample } from "@/lib/dispersion/stats"
+import { clubsForDistance } from "@/lib/golfer/partials"
 
 export interface ShotSample {
   carryYds: number
@@ -551,7 +552,7 @@ export function strokesAtAim(club: ClubShots, ctx: PlanContext, cap = RANKING_SH
 export function rankClubsOptimized(clubs: ClubShots[], ctx: PlanContext, opts: RankOptions = {}): OptimizedClubPlan[] {
   const cap = opts.shotCap ?? RANKING_SHOT_CAP
   const toPin = distanceYds(ctx.from, ctx.pin)
-  return clubs
+  return clubsForDistance(clubs, toPin)
     .filter((c) => c.shots.length > 0)
     .map((c) => {
       let { search, confirm } = rankingSplit(c, cap)

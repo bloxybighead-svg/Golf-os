@@ -4,12 +4,13 @@
 // golfer's own shot data stands behind each (Solid / OK / Thin, from 13c), and
 // the home course. Editing happens on /welcome in edit mode and returns here.
 
-import { useEffect, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import type { CourseRef } from "@/lib/golfer/baseline"
-import { readDeviceBag, type DeviceBag } from "@/lib/you/deviceBag"
-import { buildBagRows, type FittedClub } from "@/lib/you/hub"
+import { PARTIAL_CARRY_RATIO, PARTIAL_WEDGES, SWING_LENGTHS, cleanWedgeCarries, partialName, type PartialName } from "@/lib/golfer/partials"
+import { readDeviceBag, writeWedgeCarries, type DeviceBag } from "@/lib/you/deviceBag"
+import { buildBagRows, type BagRow, type FittedClub } from "@/lib/you/hub"
 import { BadgePill } from "@/components/shots/ui"
 
 const EDIT_HREF = "/welcome?edit=1&return=%2Fyou%2Fbag"
@@ -26,6 +27,52 @@ function LinkRow({ href, title, blurb }: { href: string; title: string; blurb: s
       </span>
       <ChevronRight size={16} className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
     </Link>
+  )
+}
+
+/** Carries for the partial wedge swings: a typed number replaces the one derived from the full club. */
+function WedgeNumbers({ rows, initial }: { rows: BagRow[]; initial: Partial<Record<PartialName, number>> }) {
+  const [typed, setTyped] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, String(v)])))
+  const wedges = PARTIAL_WEDGES.filter((w) => rows.some((r) => r.club === w))
+  if (wedges.length === 0) return null
+
+  const save = () => writeWedgeCarries(cleanWedgeCarries(typed))
+  return (
+    <section className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
+      <p className="label-xs">Wedge numbers</p>
+      <div className="mt-2 grid grid-cols-[2.5rem_repeat(3,minmax(0,1fr))] items-center gap-x-2 gap-y-2 text-sm">
+        <span />
+        {["Full", ...SWING_LENGTHS].map((h) => (
+          <span key={h} className="text-right text-xs text-muted">{h}</span>
+        ))}
+        {wedges.map((w) => {
+          const full = rows.find((r) => r.club === w)?.carryYds ?? null
+          return (
+            <Fragment key={w}>
+              <span className="font-medium text-fg">{w}</span>
+              <span className="text-right text-fg-3 tabular-nums">{full ?? "–"}</span>
+              {SWING_LENGTHS.map((l) => {
+                const name = partialName(w, l)
+                return (
+                  <input
+                    key={name}
+                    type="text"
+                    inputMode="numeric"
+                    aria-label={`${name} carry in yards`}
+                    placeholder={full != null ? String(Math.round(full * PARTIAL_CARRY_RATIO[l])) : "–"}
+                    value={typed[name] ?? ""}
+                    onChange={(e) => setTyped((t) => ({ ...t, [name]: e.target.value.replace(/\D/g, "").slice(0, 3) }))}
+                    onBlur={save}
+                    className="h-11 w-full min-w-0 rounded-lg border border-fg/[0.12] bg-transparent px-2 text-right text-base text-fg tabular-nums placeholder:text-faint"
+                  />
+                )
+              })}
+            </Fragment>
+          )
+        })}
+      </div>
+      <p className="mt-2 text-xs text-muted">Greyed numbers are estimates ({SWING_LENGTHS.map((l) => `${l} = ${Math.round(PARTIAL_CARRY_RATIO[l] * 100)}%`).join(", ")} of full). Type your own to replace them.</p>
+    </section>
   )
 }
 
@@ -83,6 +130,8 @@ export function MyBag({
           </p>
         )}
       </section>
+
+      <WedgeNumbers rows={rows} initial={device.wedgeCarries} />
 
       <section className="rounded-xl border border-fg/[0.06] bg-surface">
         <div className="flex items-center justify-between gap-3 px-5 py-4">

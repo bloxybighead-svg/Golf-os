@@ -123,7 +123,7 @@ export function spinGroup(club: string): SpinGroup {
   const c = club.toLowerCase()
   if (c.includes("driver")) return "driver"
   if (c.includes("wood") || c.includes("hybrid") || /^\d+\s*-?\s*(w|h)$/.test(c)) return "wood"
-  if (c.includes("wedge") || /^(pw|gw|aw|sw|lw)$/.test(c)) return "wedge"
+  if (c.includes("wedge") || /^(pw|gw|aw|sw|lw)( \d\/\d)?$/.test(c)) return "wedge"
   return "iron"
 }
 
