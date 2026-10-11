@@ -9,6 +9,9 @@ import { ClubTable } from "./ClubTable"
 import { HoleHeader } from "./HoleHeader"
 import { StrategyToggle } from "./StrategyToggle"
 import { ResultCard } from "./ResultCard"
+import { ClubChips } from "./ClubChips"
+import { PlayDock } from "./PlayDock"
+import { DOCK_ROW_CLASS, DOCK_ROW_PX } from "@/lib/planner/dock"
 
 function plan(club: string, expectedStrokes: number, strokesSe: number, carry: number): ClubPlan {
   return {
@@ -198,6 +201,41 @@ describe("planner components render (smoke)", () => {
       <StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true } as never} chosen={fourIron} onPick={() => {}} compact unmappedWarning={0.54} />
     )
     expect(html).toContain("Best play")
-    expect(html).toContain("54% unmapped")
+    expect(html).toContain('aria-label="54% unmapped. Show why"')
+    expect(html).not.toContain(">54% unmapped<") // the words live in the icon, not on the card
+  })
+
+  it("phone dock: three fixed rows, cards of two truncating lines, nothing that can wrap", () => {
+    const sevenWood: OptimizedClubPlan = { ...fourIron, club: "7-Wood", plan: { ...plan("7-Wood", 4.6, 0.02, 200), unmappedShare: 0.43 } }
+    const html = renderToStaticMarkup(
+      <PlayDock
+        scoring={false}
+        status={<button>Start round</button>}
+        plays={<StrategyToggle options={{ safer: sevenWood, lowest: sevenWood, same: false } as never} chosen={sevenWood} onPick={() => {}} compact unmappedWarning={0.43} />}
+        chips={<ClubChips ranking={[sevenWood, pw]} chosen={sevenWood} onPick={() => {}} className="flex min-w-0 flex-1 gap-1.5" />}
+      />
+    )
+    for (const text of ["Smart play", "Go for it", "7-Wood", "43% unmapped"]) expect(html).toContain(text)
+
+    // Each row: its own fixed height class, clipped, never shrunk, and no wrapping below md.
+    const rows = [...html.matchAll(/<div[^>]*?data-dock-row="(status|plays|chips)"[^>]*?class="([^"]*)"|<div[^>]*?class="([^"]*)"[^>]*?data-dock-row="(status|plays|chips)"/g)]
+    expect(rows).toHaveLength(3)
+    for (const m of rows) {
+      const row = (m[1] ?? m[4]) as keyof typeof DOCK_ROW_CLASS
+      const phone = (m[2] ?? m[3]).split(" ").filter((c) => !c.includes(":"))
+      expect(phone).toContain(DOCK_ROW_CLASS[row])
+      expect(phone).toContain("shrink-0")
+      expect(phone).toContain("overflow-hidden")
+      expect(phone).not.toContain("flex-wrap")
+      expect(Number(DOCK_ROW_CLASS[row].slice(2)) * 4).toBe(DOCK_ROW_PX[row]) // class and px constant agree
+    }
+
+    // Each card is as tall as the plays row, with exactly two lines that both truncate.
+    const cards = [...html.matchAll(/<button[^>]*aria-pressed[^>]*class="([^"]*)"[^>]*>(.*?)<\/button>/g)].filter(([, , inner]) => inner.includes("strokes"))
+    expect(cards).toHaveLength(2)
+    for (const [, cls, inner] of cards) {
+      expect(cls.split(" ")).toEqual(expect.arrayContaining(["h-full", "overflow-hidden"]))
+      expect(inner.match(/class="block truncate/g)).toHaveLength(2)
+    }
   })
 })

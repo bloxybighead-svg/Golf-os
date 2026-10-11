@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useTransition } from "react"
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import { Check, ChevronRight, X } from "lucide-react"
@@ -31,6 +31,7 @@ import { fetchWithSnapshot, snapshotKeys, type PrefetchReport } from "@/lib/offl
 import { queueJob } from "@/lib/offline/outbox"
 import { ROUND_JOB, type RoundPayload } from "@/lib/offline/jobs"
 import { SyncStatus } from "@/components/pwa/SyncStatus"
+import { Toast } from "@/components/play/Toast"
 
 export type PlayView = "map" | "score"
 
@@ -55,7 +56,7 @@ interface Props {
   userId: string | null
   /** What Start round saved for offline use (null until it has run). */
   offlineReport?: PrefetchReport | null
-  /** "Round saved" note after finishing: held by the parent so it survives this component moving between the dock and the page. */
+  /** "Round saved" toast after finishing: held by the parent so it survives this component moving between the dock and the page. */
   savedNote: boolean
   onSavedNote: (v: boolean) => void
   /** Whether the golfer has already said anything about OB on this hole of the open course. */
@@ -74,6 +75,11 @@ function localToday() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+/** How long the "Saved for offline" toast stays; a failure stays longer because the golfer has to act on it. */
+const OFFLINE_TOAST_MS = 2000
+const OFFLINE_FAILED_TOAST_MS = 6000
+const SAVED_TOAST_MS = 6000
+
 const INPUT =
   "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg tabular-nums placeholder:text-faint focus:border-accent/60 focus:outline-none"
 
@@ -86,30 +92,33 @@ const INPUT =
 export function PlayRound(props: Props) {
   const { course, round, onRoundChange, view, onViewChange, onGoToHole, onResume, signedIn, savedNote, onSavedNote: setSavedNote } = props
   const [starting, setStarting] = useState(false)
+  const [offlineToast, setOfflineToast] = useState(false)
+  const clearOfflineToast = useCallback(() => setOfflineToast(false), [])
+  useEffect(() => setOfflineToast(props.offlineReport != null), [props.offlineReport])
+  const clearSavedNote = useCallback(() => setSavedNote(false), [setSavedNote])
 
   if (!round) {
     return (
       <>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex shrink-0 items-center">
           <button
             onClick={() => {
               setSavedNote(false)
               setStarting(true)
             }}
-            className="h-11 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent transition-all hover:brightness-110"
+            className="h-10 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent transition-all hover:brightness-110"
           >
             Start round
           </button>
-          {savedNote && (
-            <p className="text-sm text-fg-2">
-              Round saved.{" "}
-              <SyncStatus className="mr-2" />
-              <Link href="/rounds" className="font-semibold text-accent hover:underline">
-                View rounds
-              </Link>
-            </p>
-          )}
         </div>
+        {savedNote && (
+          <Toast ms={SAVED_TOAST_MS} onDone={clearSavedNote}>
+            Round saved. <SyncStatus className="mr-2" />
+            <Link href="/rounds" className="font-semibold text-accent hover:underline">
+              View rounds
+            </Link>
+          </Toast>
+        )}
         {starting && (
           <StartRoundSheet
             {...props}
@@ -128,11 +137,11 @@ export function PlayRound(props: Props) {
 
   if (round.course.id !== course.id) {
     return (
-      <p className="flex flex-wrap items-center gap-x-3 text-sm text-fg-2">
-        Round in progress at {round.course.name}.
+      <p className="flex min-w-0 items-center gap-x-3 text-sm text-fg-2">
+        <span className="min-w-0 truncate">Round in progress at {round.course.name}.</span>
         <button
           onClick={() => onResume(round.course, nextUnscored(round) ?? round.startHole)}
-          className="min-h-[44px] font-semibold text-accent hover:underline"
+          className="h-10 shrink-0 font-semibold text-accent hover:underline"
         >
           Resume
         </button>
@@ -153,7 +162,7 @@ export function PlayRound(props: Props) {
               role="tab"
               aria-selected={view === v}
               onClick={() => onViewChange(v)}
-              className={`h-11 px-5 text-sm font-semibold capitalize ${
+              className={`h-10 px-5 text-sm font-semibold capitalize ${
                 view === v ? "bg-accent text-on-accent" : "bg-surface text-fg-3 hover:text-fg"
               }`}
             >
@@ -167,12 +176,12 @@ export function PlayRound(props: Props) {
         </p>
       </div>
 
-      {props.offlineReport && (
-        <p className={`text-xs ${props.offlineReport.failed.length > 0 ? "text-warn" : "text-fg-3"}`}>
+      {offlineToast && props.offlineReport && (
+        <Toast ms={props.offlineReport.failed.length > 0 ? OFFLINE_FAILED_TOAST_MS : OFFLINE_TOAST_MS} onDone={clearOfflineToast}>
           {props.offlineReport.failed.length > 0
             ? `Not saved for offline: ${props.offlineReport.failed.join(", ")}. Start with signal to save them.`
             : "Saved for offline: course map, tees, your shots."}
-        </p>
+        </Toast>
       )}
 
       {view === "score" && (

@@ -82,11 +82,11 @@ export function MapView({
   return (
     <div className="min-w-0 space-y-2.5">
       {/* The map. Phones: as tall as the screen allows (never more than 60%) once the header, the bottom dock
-          and the tab bar are taken out, so it is the same height whether or not a sheet is open. Everything
+          and the tab bar are taken out (--map-h, from lib/planner/dock.ts), so it is the same height whether or not a sheet is open. Everything
           the golfer touches sits on top of it. */}
       <div
         ref={mapWrapRef}
-        className="relative isolate h-[min(60dvh,calc(100dvh-20rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] min-h-[260px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
+        className="relative isolate h-[min(60dvh,var(--map-h))] min-h-[260px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
       >
         {mapContent}
 

@@ -1,0 +1,23 @@
+// The phone Play dock: three fixed rows above the tab bar. The map takes the
+// height that is left, worked out from these numbers (never a guess).
+
+import type { CSSProperties } from "react"
+
+/** Row heights in px. The Tailwind class for each is in DOCK_ROW_CLASS (4 px per unit). */
+export const DOCK_ROW_PX = { status: 40, plays: 64, chips: 44 } as const
+export const DOCK_ROW_CLASS = { status: "h-10", plays: "h-16", chips: "h-11" } as const
+
+const DOCK_BORDER_PX = 1
+export const DOCK_HEIGHT_PX = DOCK_ROW_PX.status + DOCK_ROW_PX.plays + DOCK_ROW_PX.chips + DOCK_BORDER_PX
+
+export const TAB_BAR_PX = 56
+const TOP_NAV_PX = 56
+const HOLE_HEADER_PX = 48
+const GAP_PX = 12
+
+/** Set on the Play page: --dock-h and --tab-h place the dock and toasts, --map-h is the map's height on phones. */
+export const dockCssVars = {
+  "--dock-h": `${DOCK_HEIGHT_PX}px`,
+  "--tab-h": `${TAB_BAR_PX}px`,
+  "--map-h": `calc(100dvh - ${TOP_NAV_PX + HOLE_HEADER_PX + GAP_PX + DOCK_HEIGHT_PX + TAB_BAR_PX}px - env(safe-area-inset-top) - env(safe-area-inset-bottom))`,
+} as CSSProperties

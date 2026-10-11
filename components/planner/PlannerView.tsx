@@ -19,6 +19,8 @@ import { distanceYds } from "@/lib/course/geo"
 import { dismissed as promptDismissed, readPrompt, writePrompt } from "@/lib/planner/setupPrompt"
 import { useIsPhone } from "@/hooks/useIsPhone"
 import { StrategyToggle } from "@/components/planner/StrategyToggle"
+import { PlayDock } from "@/components/planner/PlayDock"
+import { dockCssVars } from "@/lib/planner/dock"
 import { EditHoleModal } from "@/components/simulator/EditHoleModal"
 import { TeeLine } from "@/components/simulator/TeeLine"
 import { PlayRound } from "@/components/play/PlayRound"
@@ -326,16 +328,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     </>
   )
 
-  // Phones, map showing: tees and Start round, then the two plays (Smart / Go for it) with their penalty
-  // shares, then the club chips with "All clubs" -- one dock at a fixed height above the tab bar, so the map
-  // above it never changes size. Tablets and desktops keep these in the page. Scoring puts it back in the page.
-  const dockClass = scoring
-    ? "space-y-3"
-    : "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[1100] flex h-[9.25rem] flex-col justify-between overflow-hidden rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface px-4 md:static md:z-auto md:block md:h-auto md:space-y-3 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent md:px-0"
-  const rowClass = scoring ? "space-y-3" : "flex h-11 shrink-0 items-center justify-between gap-2 md:h-auto md:flex-wrap md:justify-start md:gap-3"
-
   return (
-    <div className="space-y-3 pb-40 md:pb-0">
+    <div className="space-y-3 pb-[calc(var(--dock-h)+1rem)] md:pb-0" style={dockCssVars}>
       {introOpen && <IntroCards onClose={closeIntro} />}
       {/* ---- header: "H7 · P3 · 108" and the course name; opens the course/hole sheet ---- */}
       <HoleHeader
@@ -348,66 +342,69 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
       />
 
       {course && loadState !== "error" && (
-        <div className={dockClass}>
-          <div className={rowClass}>
-            {!roundHere && (
-              <TeeLine
-                courseId={course.id}
-                courseName={course.name}
-                driverCarryYds={roundSource}
-                handicapIndex={source === "handicap" ? handicap : trackedHandicap}
-                compact={phone && !scoring}
-              />
-            )}
-            {hydrated && (
-              <PlayRound
-                course={course}
-                courseHoles={holes}
-                currentHole={hole?.ref ?? null}
-                round={round}
-                onRoundChange={changeRound}
-                view={playView}
-                onViewChange={changePlayView}
-                onGoToHole={goToHoleNumber}
-                onResume={(c, n) => void loadCourse(c, { autoHoleRef: n })}
-                driverCarryYds={roundSource}
-                handicapIndex={source === "handicap" ? handicap : trackedHandicap}
-                signedIn={!!authUser}
-                userId={authUser?.id ?? null}
-                offlineReport={offlineReport}
-                savedNote={savedNote}
-                onSavedNote={setSavedNote}
-                obAnswered={(n) => {
-                  const h = holes.find((x) => x.ref === n)
-                  return !!h && (obTags.obTagMap[h.id]?.length ?? 0) > 0
-                }}
-                onObAnswer={(n, side) => {
-                  const h = holes.find((x) => x.ref === n)
-                  if (h) void obTags.toggleTag(h.id, side)
-                }}
-              />
-            )}
-          </div>
-          {!scoring && (
+        <PlayDock
+          scoring={scoring}
+          status={
             <>
-              <div className="h-14 shrink-0 md:hidden">
-                {optionsNote && chosen && <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} />}
-              </div>
-              <div className="flex h-11 shrink-0 items-center gap-2 md:hidden">
-                <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} className="flex min-w-0 flex-1 gap-1.5 pr-2" />
-                {planReady && ranking.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSheetOpen(true)}
-                    className="flex h-9 shrink-0 items-center gap-1 rounded-full border border-fg/[0.12] px-3 text-sm text-fg-2"
-                  >
-                    All clubs <ChevronUp size={14} />
-                  </button>
-                )}
-              </div>
+              {!roundHere && (
+                <TeeLine
+                  courseId={course.id}
+                  courseName={course.name}
+                  driverCarryYds={roundSource}
+                  handicapIndex={source === "handicap" ? handicap : trackedHandicap}
+                  compact={phone && !scoring}
+                />
+              )}
+              {hydrated && (
+                <PlayRound
+                  course={course}
+                  courseHoles={holes}
+                  currentHole={hole?.ref ?? null}
+                  round={round}
+                  onRoundChange={changeRound}
+                  view={playView}
+                  onViewChange={changePlayView}
+                  onGoToHole={goToHoleNumber}
+                  onResume={(c, n) => void loadCourse(c, { autoHoleRef: n })}
+                  driverCarryYds={roundSource}
+                  handicapIndex={source === "handicap" ? handicap : trackedHandicap}
+                  signedIn={!!authUser}
+                  userId={authUser?.id ?? null}
+                  offlineReport={offlineReport}
+                  savedNote={savedNote}
+                  onSavedNote={setSavedNote}
+                  obAnswered={(n) => {
+                    const h = holes.find((x) => x.ref === n)
+                    return !!h && (obTags.obTagMap[h.id]?.length ?? 0) > 0
+                  }}
+                  onObAnswer={(n, side) => {
+                    const h = holes.find((x) => x.ref === n)
+                    if (h) void obTags.toggleTag(h.id, side)
+                  }}
+                />
+              )}
             </>
-          )}
-        </div>
+          }
+          plays={
+            optionsNote && chosen && (
+              <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} />
+            )
+          }
+          chips={
+            <>
+              <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} className="flex min-w-0 flex-1 gap-1.5 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" />
+              {planReady && ranking.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSheetOpen(true)}
+                  className="flex h-9 shrink-0 items-center gap-1 rounded-full border border-fg/[0.12] px-3 text-sm text-fg-2"
+                >
+                  All clubs <ChevronUp size={14} />
+                </button>
+              )}
+            </>
+          }
+        />
       )}
 
       {/* Scoring a hole hides the map (kept mounted, so it comes back as it was). */}

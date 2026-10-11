@@ -95,11 +95,11 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
 
   return (
     <>
-      <div className={compact ? "flex min-w-0 items-center gap-1" : "flex flex-wrap items-center gap-x-2 gap-y-1"}>
+      <div className={compact ? "flex min-w-0 flex-1 items-center gap-1" : "flex flex-wrap items-center gap-x-2 gap-y-1"}>
         <button
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
-          className="flex min-h-[44px] min-w-0 items-center gap-1.5 text-sm md:min-h-[32px]"
+          className={`flex min-w-0 items-center gap-1.5 text-sm md:min-h-[32px] ${compact ? "h-10" : "min-h-[44px]"}`}
         >
           <span className="shrink-0 text-fg-3">{isBest ? "Play" : "Playing"}</span>
           <span className="min-w-0 truncate font-semibold text-fg">{selected.name}</span>
@@ -109,12 +109,12 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
         {compact ? (
           <>
             {shorter && (
-              <button onClick={() => choose(shorter.name)} aria-label={`Shorter tee: ${shorter.name}`} title={`Shorter: ${shorter.name}`} className="flex h-11 w-9 shrink-0 items-center justify-center text-fg-3">
+              <button onClick={() => choose(shorter.name)} aria-label={`Shorter tee: ${shorter.name}`} title={`Shorter: ${shorter.name}`} className="flex h-10 w-9 shrink-0 items-center justify-center text-fg-3">
                 <ChevronLeft size={18} />
               </button>
             )}
             {longer && (
-              <button onClick={() => choose(longer.name)} aria-label={`Longer tee: ${longer.name}`} title={`Longer: ${longer.name}`} className="flex h-11 w-9 shrink-0 items-center justify-center text-fg-3">
+              <button onClick={() => choose(longer.name)} aria-label={`Longer tee: ${longer.name}`} title={`Longer: ${longer.name}`} className="flex h-10 w-9 shrink-0 items-center justify-center text-fg-3">
                 <ChevronRight size={18} />
               </button>
             )}
