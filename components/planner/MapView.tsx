@@ -37,12 +37,8 @@ export interface MapViewProps {
   planReady: boolean
   showTrouble: boolean
   zones: UserZone[]
-  localOnlyZones: UserZone[] | null
   showMarks: boolean
   onToggleMarks: () => void
-  onSyncZones: () => void
-  syncingZones: boolean
-  onDismissLocalZones: () => void
   signedIn: boolean
   onDeleteZone: (id: string) => void
 }
@@ -69,12 +65,8 @@ export function MapView({
   planReady,
   showTrouble,
   zones,
-  localOnlyZones,
   showMarks,
   onToggleMarks,
-  onSyncZones,
-  syncingZones,
-  onDismissLocalZones,
   signedIn,
   onDeleteZone,
 }: MapViewProps) {
@@ -197,7 +189,7 @@ export function MapView({
         </div>
       )}
 
-      {(zones.length > 0 || (localOnlyZones?.length ?? 0) > 0) && (
+      {zones.length > 0 && (
         <div className="text-xs">
           <button
             type="button"
@@ -210,24 +202,6 @@ export function MapView({
           </button>
           {showMarks && (
             <div className="mt-1.5 space-y-2">
-              {localOnlyZones && localOnlyZones.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2 text-fg-2">
-                  <span>
-                    {localOnlyZones.length} mark{localOnlyZones.length === 1 ? "" : "s"} saved on this device only.
-                  </span>
-                  <button
-                    onClick={onSyncZones}
-                    disabled={syncingZones}
-                    className="ml-auto flex shrink-0 items-center gap-1 rounded-md bg-accent px-2.5 py-1 font-semibold text-on-accent disabled:opacity-50"
-                  >
-                    {syncingZones ? <Loader2 size={12} className="animate-spin" /> : null}
-                    {syncingZones ? "Saving…" : "Save to my account"}
-                  </button>
-                  <button onClick={onDismissLocalZones} className="shrink-0 text-muted hover:text-fg">
-                    Not now
-                  </button>
-                </div>
-              )}
               {zones.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                   {!signedIn && (

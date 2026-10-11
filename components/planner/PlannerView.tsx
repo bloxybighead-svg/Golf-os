@@ -55,16 +55,16 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
-    localOnlyZones, longestCarry, mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
+    longestCarry, mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
     placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
     refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, setAimManual,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
     optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
-    setLocalOnlyZones, setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
+    setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
     setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowSetupPrompt, setShowTrouble,
     setShowZones, setSource, setTendency, sevenIronCarry, sheetOpen, showCarry, showLayersMenu, showMarks,
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
-    stopFollowing, submitHoleCorrection, syncLocalZonesToAccount, syncingZones, tendency, toggleClub,
+    stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     pinPlaysLike, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
   } = vm
@@ -440,12 +440,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           planReady={planReady}
           showTrouble={showTrouble}
           zones={zones}
-          localOnlyZones={localOnlyZones}
           showMarks={showMarks}
           onToggleMarks={() => setShowMarks((v) => !v)}
-          onSyncZones={syncLocalZonesToAccount}
-          syncingZones={syncingZones}
-          onDismissLocalZones={() => setLocalOnlyZones(null)}
           signedIn={!!authUser}
           onDeleteZone={deleteZone}
         />

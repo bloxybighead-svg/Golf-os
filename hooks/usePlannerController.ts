@@ -66,8 +66,8 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const [clubChoice, setClubChoice] = useState<string>("auto")
   const zoneState = useZones({ supabase, authUser, course })
   const {
-    zones, noHazard, setNoHazard, localOnlyZones, setLocalOnlyZones, syncingZones, drawKind, setDrawKind,
-    pendingPoints, setPendingPoints, loadZonesFor, syncLocalZonesToAccount, startDraw, addDrawPoint,
+    zones, noHazard, setNoHazard, drawKind, setDrawKind,
+    pendingPoints, setPendingPoints, startDraw, addDrawPoint,
     undoDrawPoint, cancelDraw, finishDraw, deleteZone,
   } = zoneState
   const [showTrouble, setShowTrouble] = useState(false)
@@ -163,7 +163,6 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     setPinManual(null)
     setDrawKind(null)
     setPendingPoints([])
-    void loadZonesFor(c)
     setNoHazard(loadNoHazard(c.id))
     setInitialZoom(loadZoom(c.id))
     saveLastPosition({ course: c, holeId: null })
@@ -366,15 +365,15 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
-    localOnlyZones, longestCarry, mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
+    longestCarry, mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
     placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
     refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, setAimManual,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
-    setLocalOnlyZones, setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
+    setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
     setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowSetupPrompt, setShowTrouble,
     setShowZones, setSource, setTendency, sevenIronCarry, sheetOpen, showCarry, showLayersMenu, showMarks,
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
-    stopFollowing, submitHoleCorrection, syncLocalZonesToAccount, syncingZones, tendency, toggleClub,
+    stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
     pinPlaysLike, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,

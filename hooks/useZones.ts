@@ -14,6 +14,11 @@ import type { ConfirmableHazard } from "@/lib/course/dataQuality"
 import { loadZones, saveNoHazard, saveZones, type CourseHit, type NoHazardMap } from "@/lib/planner/storage"
 import type { AuthUser } from "./useAuthUser"
 
+/** Two marks are the same mark when they have the same kind and outline. */
+function zoneKey(z: { lie: Lie; ring: LatLng[] }) {
+  return `${z.lie}:${z.ring.map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join(";")}`
+}
+
 export function useZones({
   supabase,
   authUser,
@@ -25,55 +30,51 @@ export function useZones({
 }) {
   const [zones, setZones] = useState<UserZone[]>([])
   const [noHazard, setNoHazard] = useState<NoHazardMap>({})
-  const [localOnlyZones, setLocalOnlyZones] = useState<UserZone[] | null>(null) // marks made before signing in
-  const [syncingZones, setSyncingZones] = useState(false)
   const [drawKind, setDrawKind] = useState<Lie | null>(null)
   const [pendingPoints, setPendingPoints] = useState<LatLng[]>([])
 
-  // Save hand-marked zones for the loaded course whenever they change (guest/offline
-  // fallback -- while signed in, marks are already the source of truth in Supabase,
-  // but keeping a local mirror costs nothing and covers a failed write).
+  // Loads the course's hand-marked zones whenever the course or the signed-in user changes
+  // (sign-in resolves after the course loads, so this must not be a one-shot call). Signed
+  // in: the account's marks, plus any marks this device made as a guest, which are uploaded
+  // once and then removed from this device. Signed out: this device's marks.
+  const courseId = course?.id
+  const userId = authUser?.id
   useEffect(() => {
-    if (!course) return
-    saveZones(course.id, zones)
-  }, [course, zones])
-
-  // Loads hand-marked zones for a course: from the signed-in user's account if
-  // there is one, otherwise from this browser's local storage. If the account
-  // has none yet but this browser does (marks made before signing in, or on a
-  // guest session), those are offered for one-time upload rather than silently
-  // dropped or silently merged.
-  async function loadZonesFor(c: CourseHit) {
-    const local = loadZones(c.id)
-    if (authUser) {
-      const { data, error } = await supabase.from("course_zones").select("id, lie, ring").eq("course_id", c.id)
-      if (!error && data) {
-        const remote = data as { id: string; lie: Lie; ring: LatLng[] }[]
-        setZones(remote)
-        setLocalOnlyZones(remote.length === 0 && local.length > 0 ? local : null)
+    if (!courseId) return
+    let cancelled = false
+    async function load(id: string) {
+      const local = loadZones(id)
+      if (!userId) {
+        setZones(local)
         return
       }
-      // Read failed (offline, RLS hiccup, ...): fall back to the local copy rather than showing nothing.
-    }
-    setZones(local)
-    setLocalOnlyZones(null)
-  }
-
-  async function syncLocalZonesToAccount() {
-    if (!authUser || !course || !localOnlyZones || localOnlyZones.length === 0) return
-    setSyncingZones(true)
-    try {
-      const rows = localOnlyZones.map((z) => ({ user_id: authUser.id, course_id: course.id, lie: z.lie, ring: z.ring }))
-      const { data, error } = await supabase.from("course_zones").insert(rows).select("id, lie, ring")
-      if (!error && data) {
-        setZones(data as { id: string; lie: Lie; ring: LatLng[] }[])
-        setLocalOnlyZones(null)
-        saveZones(course.id, []) // now that the account has them, this browser doesn't need its own copy
+      const { data, error } = await supabase.from("course_zones").select("id, lie, ring").eq("course_id", id)
+      if (cancelled) return
+      if (error || !data) {
+        setZones(local) // offline or refused: show this device's copy rather than nothing
+        return
       }
-    } finally {
-      setSyncingZones(false)
+      let all = data as { id: string; lie: Lie; ring: LatLng[] }[]
+      const have = new Set(all.map(zoneKey))
+      const fresh = local.filter((z) => !have.has(zoneKey(z)))
+      if (fresh.length > 0) {
+        const rows = fresh.map((z) => ({ user_id: userId, course_id: id, lie: z.lie, ring: z.ring }))
+        const { data: added, error: addError } = await supabase.from("course_zones").insert(rows).select("id, lie, ring")
+        if (cancelled) return
+        if (addError || !added) {
+          setZones([...all, ...fresh]) // not uploaded: keep them here and try again next load
+          return
+        }
+        all = [...all, ...(added as { id: string; lie: Lie; ring: LatLng[] }[])]
+      }
+      if (local.length > 0) saveZones(id, [])
+      setZones(all)
     }
-  }
+    void load(courseId)
+    return () => {
+      cancelled = true
+    }
+  }, [supabase, courseId, userId])
 
   function setHazardConfirmed(hazard: ConfirmableHazard, value: boolean, hole: CourseHole | null) {
     if (!hole || !course) return
@@ -119,27 +120,24 @@ export function useZones({
     }
     const zone: UserZone = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, lie, ring }
     setZones((prev) => [...prev, zone])
+    if (course) saveZones(course.id, [...loadZones(course.id), zone]) // this device keeps it until it can be uploaded
   }
   async function deleteZone(id: string) {
     setZones((prev) => prev.filter((z) => z.id !== id)) // optimistic
     // supabase-js query builders are lazy thenables -- they only actually send the
     // request once awaited/`.then()`-ed, so this must be awaited, not just built.
     if (authUser) await supabase.from("course_zones").delete().eq("id", id)
+    if (course) saveZones(course.id, loadZones(course.id).filter((z) => z.id !== id))
   }
 
   return {
     zones,
     noHazard,
     setNoHazard,
-    localOnlyZones,
-    setLocalOnlyZones,
-    syncingZones,
     drawKind,
     setDrawKind,
     pendingPoints,
     setPendingPoints,
-    loadZonesFor,
-    syncLocalZonesToAccount,
     setHazardConfirmed,
     startDraw,
     addDrawPoint,
