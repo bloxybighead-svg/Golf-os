@@ -130,6 +130,7 @@ describe("planner components render (smoke)", () => {
     const html = renderToStaticMarkup(card())
     for (const text of ["4-Iron", "Left side of the fairway", "Front", "Center", "Back", "352", "364", "376"]) expect(html).toContain(text)
     expect(html.match(/4-Iron/g)).toHaveLength(1)
+    expect(html).toContain(">4.6<") // expected strokes, one decimal, beside the club
     for (const text of ["strokes", "handicap", "Wind", "Fairway", "Greens", "Bunkers", "Water", "Shots", "unmapped", "leaves", "Best play", "Best club"]) {
       expect(html).not.toContain(text)
     }

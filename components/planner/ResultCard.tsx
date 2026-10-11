@@ -56,12 +56,15 @@ export function ResultCard({
       <div className="flex items-baseline gap-2">
         <p className="min-w-0 truncate text-5xl font-semibold leading-none tracking-tight text-fg tabular-nums">{chosen.club}</p>
         {label && <p className="shrink-0 text-xs text-muted">{label}</p>}
+        <p className="ml-auto shrink-0 text-2xl font-semibold leading-none text-accent tabular-nums" title="Expected strokes to hole out">
+          {chosen.plan.expectedStrokes.toFixed(1)}
+        </p>
         {isLowConfidence(chosen.plan) && (
           <button
             type="button"
             onClick={() => onOpenDetails("map")}
             aria-label={`${Math.round(chosen.plan.unmappedShare * 100)}% unmapped. Show why`}
-            className="-my-2 ml-auto flex h-11 w-11 shrink-0 items-center justify-center self-center text-warn md:h-9 md:w-9"
+            className="-my-2 flex h-11 w-11 shrink-0 items-center justify-center self-center text-warn md:h-9 md:w-9"
           >
             <AlertTriangle size={18} />
           </button>
