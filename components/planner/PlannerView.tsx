@@ -67,7 +67,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
-    pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
+    pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, aimLie,
   } = vm
 
   const isOwner = authUser?.id === MARKS_USER_ID
@@ -98,6 +98,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         hole={hole}
         baselineHandicap={baselineHandicap}
         atBestAim={atBestAim}
+        aimLie={aimLie}
         chosenAtAim={chosenAtAim}
         distPin={distPin}
         greenYards={greenYards}

@@ -6,13 +6,13 @@
 // and the map labels (moved verbatim from CourseMapClient.tsx).
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { bearingDeg, distanceYds, ringCentroid, type LatLng } from "@/lib/course/geo"
+import { bearingDeg, distanceYds, landingPoint, ringCentroid, type LatLng } from "@/lib/course/geo"
 import { greenYardages, holeGreen } from "@/lib/course/green"
 import { defaultTeeAim } from "@/lib/course/aim"
 import type { StartLie } from "@/lib/course/cost"
 import { applyConfirmedAbsent, assessHoleDataQuality, estimatedFairwayCorridor, type HoleDataQuality } from "@/lib/course/dataQuality"
 import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
-import type { UserZone } from "@/lib/course/lies"
+import type { Lie, UserZone } from "@/lib/course/lies"
 import type { CourseFeature, CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import { aimMarkerFor, evaluateClub, isAtBestAim, simulateLandings, strokesAtAim, type ClubShots, type OptimizedClubPlan } from "@/lib/course/plan"
 import { buildLieMapFrom, type LieInputs } from "@/lib/course/rankRequest"
@@ -357,6 +357,13 @@ export function usePlan({
     return strokesAtAim(chosenShots, { from: ball, aim, pin, lies, startLie, baseline: scoreBaseline, conditions })
   }, [chosenShots, ball, aim, pin, lies, startLie, scoreBaseline, conditions])
   const atBestAim = !!chosen && !!ball && !!aim && isAtBestAim(ball, aim, chosen)
+  // The lie where the chosen club's best aim points (at its reach), for the card's "Aim ..." line.
+  const chosenBearing = chosen?.bearingDeg
+  const chosenReach = chosen?.plan.meanTotalYds
+  const aimLie: Lie | null = useMemo(
+    () => (ball && lies && chosenBearing != null && chosenReach != null ? lies.lieAt(landingPoint(ball, chosenBearing, chosenReach, 0)) : null),
+    [ball, lies, chosenBearing, chosenReach]
+  )
 
   function aimAtBest(r: OptimizedClubPlan) {
     if (!ball || !pin) return
@@ -443,6 +450,7 @@ export function usePlan({
     aim,
     aimAtBest,
     aimIsPin,
+    aimLie,
     aimToPin,
     atBestAim,
     avgLeft,

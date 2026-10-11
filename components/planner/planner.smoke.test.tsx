@@ -2,6 +2,7 @@
 // (react-dom/server, no browser needed) with fixture data and show what the
 // page showed before the split.
 
+import type { ComponentProps } from "react"
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import type { ClubPlan, OptimizedClubPlan } from "@/lib/course/plan"
@@ -32,6 +33,37 @@ function plan(club: string, expectedStrokes: number, strokesSe: number, carry: n
 const fourIron: OptimizedClubPlan = { club: "4-Iron", bearingDeg: 60, offsetYds: -4, plan: plan("4-Iron", 4.6, 0.02, 190), atAimStrokes: 4.6 }
 const threeWood: OptimizedClubPlan = { club: "3-Wood", bearingDeg: 62, offsetYds: 10, plan: plan("3-Wood", 4.61, 0.03, 243), atAimStrokes: 4.7 }
 const pw: OptimizedClubPlan = { club: "PW", bearingDeg: 59, offsetYds: 0, plan: plan("PW", 5.06, 0.02, 124), atAimStrokes: 5.1 }
+
+function card(over: Partial<ComponentProps<typeof ResultCard>> = {}) {
+  return (
+    <ResultCard
+      best={fourIron}
+      chosen={fourIron}
+      chosenLive={plan("4-Iron", 4.6, 0.02, 190)}
+      clubChoice="auto"
+      fromLabel="the tee"
+      hole={null}
+      baselineHandicap={10}
+      atBestAim
+      aimLie="fairway"
+      chosenAtAim={4.6}
+      distPin={364}
+      greenYards={{ front: 352, center: 364, back: 376 }}
+      avgLeft={187}
+      estimateNotes={{ "4-Iron": "No 4-Iron shots on record: estimated from your 5-Iron" }}
+      holeQuality={null}
+      geometry={null}
+      onEditHole={() => {}}
+      onStartDraw={() => {}}
+      onConfirmHazard={() => {}}
+      onAimAtBest={() => {}}
+      onBackToBest={() => {}}
+      options={null}
+      onPickOption={() => {}}
+      {...over}
+    />
+  )
+}
 
 describe("planner components render (smoke)", () => {
   it("ClubTable: aims, carries, ties and the gap to the best club", () => {
@@ -69,138 +101,44 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("Previous hole (Hole 18)")
   })
 
-  it("ResultCard: best club, strokes, baseline and distances", () => {
-    const html = renderToStaticMarkup(
-      <ResultCard
-        best={fourIron}
-        chosen={fourIron}
-        chosenLive={plan("4-Iron", 4.6, 0.02, 190)}
-        clubChoice="auto"
-        fromLabel="the tee"
-        hole={null}
-        baselineHandicap={10}
-        atBestAim
-        chosenAtAim={4.6}
-        distPin={364}
-        greenYards={{ front: 352, center: 364, back: 376 }}
-        avgLeft={187}
-        estimateNotes={{ "4-Iron": "No 4-Iron shots on record: estimated from your 5-Iron" }}
-        holeQuality={null}
-        geometry={null}
-        onEditHole={() => {}}
-        onStartDraw={() => {}}
-        onConfirmHazard={() => {}}
-        onAimAtBest={() => {}}
-        onBackToBest={() => {}}
-        options={null}
-        onPickOption={() => {}}
-      />
-    )
-    expect(html).toContain("Best club")
-    expect(html).toContain("4.60")
-    expect(html).toContain("vs a 10.0 handicap")
-    for (const text of ["Front", "Center", "Back", "352", "364", "376"]) expect(html).toContain(text)
-    expect(html).not.toContain("Aim line")
-    expect(html).not.toContain("plays ") // nothing changes the distance
-    expect(html).toContain("No 4-Iron shots on record: estimated from your 5-Iron.")
-    expect(html).not.toContain("Use best aim") // already at the best aim
-    expect(html).not.toContain("At your aim")
+  it("ResultCard: the visible card is the club, where to aim, front/center/back and the risk line", () => {
+    const html = renderToStaticMarkup(card({ chosen: { ...fourIron, plan: { ...fourIron.plan, lieShare: { ...fourIron.plan.lieShare, oob: 0.02 } } } })).replace(/<!-- -->/g, "")
+    const [visible, why] = html.split("<details")
+    for (const text of ["4-Iron", "Aim 4 yd left of the middle of the fairway", "Front", "Center", "Back", "352", "364", "376", "2% OB", "leaves ~187"]) {
+      expect(visible).toContain(text)
+    }
+    for (const text of ["4.60", "10.0 handicap", "estimated from your 5-Iron", "Expected strokes"]) expect(visible).not.toContain(text)
+    expect(why).toContain("Why")
+    expect(why).toContain("Expected strokes</span> <span class=\"tabular-nums text-fg-2\">4.6<")
+    expect(why).toContain("a 10.0 handicap")
+    expect(why).toContain("No 4-Iron shots on record: estimated from your 5-Iron.")
+    expect(visible).not.toContain("Use best aim") // already at the best aim
+    expect(why).not.toContain("At your aim")
   })
 
-  it("ResultCard: a picked club shows as your pick, with the best club and the gap", () => {
-    const html = renderToStaticMarkup(
-      <ResultCard
-        best={fourIron}
-        chosen={threeWood}
-        chosenLive={plan("3-Wood", 4.61, 0.03, 243)}
-        clubChoice="3-Wood"
-        fromLabel="the tee"
-        hole={null}
-        baselineHandicap={10}
-        atBestAim
-        chosenAtAim={4.61}
-        distPin={364}
-        greenYards={{ front: 352, center: 364, back: 376 }}
-        avgLeft={118}
-        estimateNotes={{}}
-        holeQuality={null}
-        geometry={null}
-        onEditHole={() => {}}
-        onStartDraw={() => {}}
-        onConfirmHazard={() => {}}
-        onAimAtBest={() => {}}
-        onBackToBest={() => {}}
-        options={null}
-        onPickOption={() => {}}
-      />
-    )
-    expect(html).toContain("Your pick")
-    expect(html).toContain("Best: 4-Iron (+0.01)")
-    expect(html).toContain("3-Wood")
-    expect(html).toContain("Back to best club")
+  it("ResultCard: a picked club shows as your pick, with the gap to the best club as a difference", () => {
+    const html = renderToStaticMarkup(card({ chosen: threeWood, clubChoice: "3-Wood", chosenLive: plan("3-Wood", 4.61, 0.03, 243), chosenAtAim: 4.71, atBestAim: false, avgLeft: 118 }))
+    const [visible, why] = html.split("<details")
+    expect(visible).toContain("Your pick")
+    expect(visible).toContain("Back to best club")
+    expect(visible).toContain("Use best aim")
+    expect(why).toContain("vs 4-Iron")
+    expect(why).toContain("+0.01")
+    expect(why).toContain("a tie, within the noise")
+    expect(why).toContain("+0.10") // at your aim: 4.71 against the 4.61 at its best aim
+    expect(why).not.toContain("4.61") // never two absolute strokes side by side
   })
 
-  it("ResultCard: plays-like sits under Center only when it changes it by a yard or more", () => {
-    const render = (plays: number) =>
-      renderToStaticMarkup(
-        <ResultCard
-          best={fourIron}
-          chosen={fourIron}
-          chosenLive={plan("4-Iron", 4.6, 0.02, 190)}
-          clubChoice="auto"
-          fromLabel="the tee"
-          hole={null}
-          baselineHandicap={10}
-          atBestAim
-          chosenAtAim={4.6}
-          distPin={364}
-          greenYards={{ front: 352, center: 364, back: 376 }}
-          avgLeft={187}
-          estimateNotes={{}}
-          holeQuality={null}
-          geometry={null}
-          onEditHole={() => {}}
-          onStartDraw={() => {}}
-          onConfirmHazard={() => {}}
-          onAimAtBest={() => {}}
-          onBackToBest={() => {}}
-          options={null}
-          onPickOption={() => {}}
-          pinPlaysLike={{ plays, breakdown: "+7 uphill, -9 wind helping, +3 cold (40°F)" }}
-        />
-      )
-    expect(render(365)).toContain("plays 365")
-    expect(render(365)).toContain("+7 uphill, -9 wind helping, +3 cold (40°F)")
+  it("ResultCard: plays-like sits under Center only when it changes it by a yard or more; the breakdown is in Why", () => {
+    const render = (plays: number) => renderToStaticMarkup(card({ pinPlaysLike: { plays, breakdown: "+7 uphill, -9 wind helping, +3 cold (40°F)" } }))
+    expect(render(365).split("<details")[0]).toContain("plays 365")
+    expect(render(365).split("<details")[0]).not.toContain("uphill")
+    expect(render(365).split("<details")[1]).toContain("+7 uphill, -9 wind helping, +3 cold (40°F)")
     expect(render(364)).not.toContain("plays 364")
   })
 
   it("ResultCard: with no mapped green the center is the pin distance and front and back are blank", () => {
-    const html = renderToStaticMarkup(
-      <ResultCard
-        best={fourIron}
-        chosen={fourIron}
-        chosenLive={plan("4-Iron", 4.6, 0.02, 190)}
-        clubChoice="auto"
-        fromLabel="the tee"
-        hole={null}
-        baselineHandicap={10}
-        atBestAim
-        chosenAtAim={4.6}
-        distPin={364}
-        greenYards={null}
-        avgLeft={187}
-        estimateNotes={{}}
-        holeQuality={null}
-        geometry={null}
-        onEditHole={() => {}}
-        onStartDraw={() => {}}
-        onConfirmHazard={() => {}}
-        onAimAtBest={() => {}}
-        onBackToBest={() => {}}
-        options={null}
-        onPickOption={() => {}}
-      />
-    )
+    const html = renderToStaticMarkup(card({ greenYards: null })).split("<details")[0]
     expect(html).toContain("364")
     expect(html.match(/–/g)).toHaveLength(2)
   })
@@ -225,42 +163,17 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("4.60 strokes")
   })
 
-  it("unmapped warning: above 25% the recommendation stays and a warning line sits under it", () => {
+  it("unmapped warning: above 25% the recommendation stays and the warning sits in Why", () => {
     const render = (share: number) => {
       const p: OptimizedClubPlan = { ...fourIron, plan: { ...fourIron.plan, unmappedShare: share } }
-      return renderToStaticMarkup(
-        <ResultCard
-          best={p}
-          chosen={p}
-          chosenLive={p.plan}
-          clubChoice="auto"
-          fromLabel="the tee"
-          hole={null}
-          baselineHandicap={10}
-          atBestAim
-          chosenAtAim={4.6}
-          distPin={364}
-          greenYards={{ front: 352, center: 364, back: 376 }}
-          avgLeft={187}
-          estimateNotes={{}}
-          holeQuality={null}
-          geometry={null}
-          onEditHole={() => {}}
-          onStartDraw={() => {}}
-          onConfirmHazard={() => {}}
-          onAimAtBest={() => {}}
-          onBackToBest={() => {}}
-          options={null}
-          onPickOption={() => {}}
-        />
-      )
+      return renderToStaticMarkup(card({ best: p, chosen: p, chosenLive: p.plan }))
     }
-    const warned = render(0.47)
-    expect(warned).toContain("Best club")
-    expect(warned).toContain("4.60")
-    expect(warned).toContain("47%")
-    expect(warned).toContain("of this pattern is on unmapped ground")
-    expect(warned).toContain("Check the")
+    const [visible, why] = render(0.47).split("<details")
+    expect(visible).toContain("4-Iron")
+    expect(visible).not.toContain("unmapped")
+    expect(why).toContain("47%")
+    expect(why).toContain("of this pattern is on unmapped ground")
+    expect(why).toContain("Check the")
     expect(render(0.25)).not.toContain("of this pattern is on unmapped ground")
     expect(render(0.26)).toContain("of this pattern is on unmapped ground")
   })

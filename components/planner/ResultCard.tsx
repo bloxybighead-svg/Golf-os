@@ -11,10 +11,22 @@ import type { GreenYardages } from "@/lib/course/green"
 
 const COLD_BALL_TIP = "Cold day: keep your ball in your pocket between shots. A cold ball loses far more distance than cold air."
 import { flagsUnmapped, isLowConfidence, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
-import { SMART_MAX_PENALTY_RATE, pctText, penaltyShare, penaltyWord, troubleShare, type Options } from "@/lib/course/strategy"
+import { SMART_MAX_PENALTY_RATE, pctText, penaltyShare, penaltyWord, type Options } from "@/lib/course/strategy"
+import { aimText } from "@/lib/planner/aimText"
 import { pct, STATUS_TITLE } from "@/lib/planner/labels"
 import { Stat } from "./ui"
 import { StrategyToggle } from "./StrategyToggle"
+
+/** A strokes difference as "+0.07" / "-0.07". */
+const signed = (d: number) => `${d < 0 ? "-" : "+"}${Math.abs(d).toFixed(2)}`
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <p>
+      <span className="text-muted">{label}</span> <span className="tabular-nums text-fg-2">{children}</span>
+    </p>
+  )
+}
 
 export interface ResultCardProps {
   best: OptimizedClubPlan
@@ -26,6 +38,8 @@ export interface ResultCardProps {
   hole: CourseHole | null
   baselineHandicap: number | null
   atBestAim: boolean
+  /** The lie where the chosen club's best aim points; null until the lie map exists. */
+  aimLie: Lie | null
   chosenAtAim: number | null
   /** Ball to pin; the center number when the hole has no mapped green. */
   distPin: number | null
@@ -61,6 +75,7 @@ export function ResultCard({
   hole,
   baselineHandicap,
   atBestAim,
+  aimLie,
   chosenAtAim,
   distPin,
   greenYards,
@@ -81,104 +96,94 @@ export function ResultCard({
 }: ResultCardProps) {
   const penalty = penaltyShare(chosen.plan)
   const overCap = penalty > SMART_MAX_PENALTY_RATE
-  const trees = troubleShare(chosen.plan)
   const centerYds = greenYards?.center ?? distPin
   const center = centerYds != null ? Math.round(centerYds) : null
+  // The option this one is measured against: the best club when you picked another, else Smart play's other option.
+  const other =
+    chosen.club !== best.club
+      ? best
+      : options && !options.same
+        ? (chosen.strategy ?? "smart") === "go"
+          ? options.safer
+          : options.lowest
+        : null
+  const gap = other ? chosen.plan.expectedStrokes - other.plan.expectedStrokes : 0
   return (
     <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
       {options && <StrategyToggle options={options} chosen={chosen} onPick={onPickOption} className="mb-3 hidden md:grid" />}
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="label-xs">
-          {clubChoice === "auto" || chosen.club === best.club ? (
-            "Best club"
-          ) : (
-            <>
-              Your pick ·{" "}
-              <span className="normal-case tracking-normal">
-                Best: {best.club} (+{(chosen.plan.expectedStrokes - best.plan.expectedStrokes).toFixed(2)})
-              </span>
-            </>
-          )}
-        </p>
-        <p className="text-xs text-muted">
-          From {fromLabel}
-          {hole && !!hole.correctedFields?.length && (
-            <span title={`Corrected: ${hole.correctedFields.join(", ")}`}> · corrected</span>
-          )}
-          {hole && (
-            <>
-              {" · "}
-              <button onClick={onEditHole} className="hover:text-fg hover:underline">
-                Edit hole
-              </button>
-            </>
-          )}
-        </p>
-      </div>
+      {clubChoice !== "auto" && chosen.club !== best.club && <p className="label-xs">Your pick</p>}
+      <p className="truncate text-5xl font-semibold leading-none tracking-tight text-fg tabular-nums">{chosen.club}</p>
+      <p className="mt-2 text-base text-fg">{aimText(chosen.offsetYds, aimLie)}</p>
 
-      <div className="mt-1 flex items-end justify-between gap-4">
-        <p className="min-w-0 truncate text-5xl font-semibold leading-none tracking-tight text-fg tabular-nums">{chosen.club}</p>
-        <p className="shrink-0 text-right">
-          <span className="block text-4xl font-semibold leading-none text-accent tabular-nums">
-            {chosen.plan.expectedStrokes.toFixed(2)}
-          </span>
-          <span className="text-xs text-muted">strokes to hole out</span>
-          <span className={`block text-xs tabular-nums ${overCap ? "font-semibold text-danger" : "text-fg-3"}`} title="Share of shots that finish out of bounds or in water (a penalty stroke). Trees are counted in the strokes, not here">
-            {pctText(penalty)} {penaltyWord(chosen.plan)} / penalty{trees >= 0.005 && <> · {pctText(trees)} trees</>}
-          </span>
-          <span className="block text-[11px] text-muted" title="Change on You, under Planner">
-            vs {baselineHandicap == null ? "PGA TOUR" : `a ${baselineHandicap.toFixed(1)} handicap`}
-          </span>
-          {shotsLabel && (
-            <span className="block text-[11px] text-muted" title="Whose shots the planner uses. Change it in the course sheet, under Shots.">
-              Shots: {shotsLabel}
-            </span>
-          )}
-          {!atBestAim && chosenAtAim != null && (
-            <span className="block text-xs text-fg-3" title="The same shots, aimed where the marker is now">
-              At your aim <span className="font-semibold tabular-nums">{chosenAtAim.toFixed(2)}</span>
-            </span>
-          )}
-        </p>
-      </div>
-
-      <dl className="mt-4 grid grid-cols-3 items-end divide-x divide-fg/[0.08] border-y border-fg/[0.08] py-2 text-center">
+      <dl className="mt-3 grid grid-cols-3 items-end divide-x divide-fg/[0.08] border-y border-fg/[0.08] py-2 text-center">
         <Stat label="Front" value={greenYards ? Math.round(greenYards.front) : null} />
         <Stat label="Center" value={center} big plays={pinPlaysLike && center != null && Math.abs(pinPlaysLike.plays - center) >= 1 ? pinPlaysLike.plays : null} />
         <Stat label="Back" value={greenYards ? Math.round(greenYards.back) : null} />
       </dl>
-      {pinPlaysLike?.breakdown && <p className="mt-1 text-[11px] text-fg-3 tabular-nums">{pinPlaysLike.breakdown}</p>}
-      {coldTip && <p className="mt-1 text-[11px] text-fg-3">{COLD_BALL_TIP}</p>}
 
-      <p className="mt-2 text-xs text-fg-3">
-        Finishes ~<span className="tabular-nums">{Math.round(chosenLive.meanTotalYds)}</span> yd (carry{" "}
-        <span className="tabular-nums">{Math.round(chosenLive.meanCarryYds)}</span>)
-        {avgLeft != null && (
-          <>
-            , leaves <span className="font-semibold text-fg tabular-nums">{Math.round(avgLeft)}</span> yd
-          </>
-        )}
-        .
-        {estimateNotes[chosen.club] && <> {estimateNotes[chosen.club]}.</>}
-        {chosen.club !== best.club &&
-          (isTie(chosen.plan, best.plan) ? (
-            <> A tie with the {best.club}: the gap is within the noise of the shot samples.</>
-          ) : (
-            <>
-              {" "}
-              {best.club} saves{" "}
-              <span className="font-semibold text-accent tabular-nums">
-                {(chosen.plan.expectedStrokes - best.plan.expectedStrokes).toFixed(2)}
-              </span>{" "}
-              strokes.
-            </>
-          ))}
+      <p className="mt-2 text-sm tabular-nums text-fg-2" title="Share of shots that finish out of bounds or in water (a penalty stroke), and the average distance left to the pin">
+        <span className={overCap ? "font-semibold text-danger" : ""}>
+          {pctText(penalty)} {penaltyWord(chosen.plan)}
+        </span>
+        {avgLeft != null && <> · leaves ~{Math.round(avgLeft)}</>}
       </p>
 
-      {options?.tradeoff && <p className="mt-2 text-xs text-fg-2">{options.tradeoff}</p>}
+      {(!atBestAim || clubChoice !== "auto") && (
+        <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 md:min-h-9">
+          {!atBestAim && (
+            <button
+              onClick={() => onAimAtBest(chosen)}
+              className="h-11 rounded-lg border border-accent/50 px-3 text-xs font-semibold text-accent transition-colors hover:bg-accent/10 md:h-9"
+            >
+              Use best aim
+            </button>
+          )}
+          {clubChoice !== "auto" && (
+            <button
+              onClick={onBackToBest}
+              className="h-11 rounded-lg border border-fg/[0.08] px-3 text-xs text-fg-3 hover:text-fg md:h-9"
+            >
+              Back to best club
+            </button>
+          )}
+        </div>
+      )}
+
+      <details className="mt-3 border-t border-fg/[0.08] pt-2 text-xs">
+        <summary className="flex min-h-11 cursor-pointer select-none items-center font-semibold text-fg-2 md:min-h-9">Why</summary>
+        <div className="space-y-1 pb-1">
+          <Row label="Expected strokes">{chosen.plan.expectedStrokes.toFixed(1)}</Row>
+          {other && (
+            <Row label={`vs ${other.club}`}>
+              {signed(gap)}
+              {(gap >= 0 ? isTie(chosen.plan, other.plan) : isTie(other.plan, chosen.plan)) ? " (a tie, within the noise)" : ""}
+            </Row>
+          )}
+          {!atBestAim && chosenAtAim != null && <Row label="At your aim">{signed(chosenAtAim - chosen.plan.expectedStrokes)}</Row>}
+          <Row label="Scored against">{baselineHandicap == null ? "PGA TOUR" : `a ${baselineHandicap.toFixed(1)} handicap`}</Row>
+          {shotsLabel && <Row label="Shots">{shotsLabel}</Row>}
+          <Row label="Finishes">
+            ~{Math.round(chosenLive.meanTotalYds)} yd (carry {Math.round(chosenLive.meanCarryYds)})
+          </Row>
+          {estimateNotes[chosen.club] && <p className="text-fg-3">{estimateNotes[chosen.club]}.</p>}
+          {options?.tradeoff && <p className="text-fg-2">{options.tradeoff}</p>}
+          {pinPlaysLike?.breakdown && <p className="tabular-nums text-fg-3">{pinPlaysLike.breakdown}</p>}
+          {coldTip && <p className="text-fg-3">{COLD_BALL_TIP}</p>}
+          <p className="text-fg-3">
+            From {fromLabel}
+            {hole && !!hole.correctedFields?.length && <span title={`Corrected: ${hole.correctedFields.join(", ")}`}> · corrected</span>}
+            {hole && (
+              <>
+                {" · "}
+                <button onClick={onEditHole} className="hover:text-fg hover:underline">
+                  Edit hole
+                </button>
+              </>
+            )}
+          </p>
 
       {isLowConfidence(chosen.plan) ? (
-        <p className="mt-2 text-xs text-fg-2" data-testid="unmapped-warning">
+        <p className="text-fg-2" data-testid="unmapped-warning">
           <span className="font-semibold text-warn">{pct(chosen.plan.unmappedShare)}</span> of this pattern is on unmapped ground. Check the
           map, mark{" "}
           <button onClick={() => onStartDraw("trees")} className="font-semibold text-accent hover:underline">
@@ -192,7 +197,7 @@ export function ResultCard({
         </p>
       ) : (
         flagsUnmapped(chosenLive) && (
-        <p className="mt-2 text-[11px] text-fg-3">
+        <p className="text-fg-3">
           <span className="font-semibold text-warn">{pct(chosenLive.unmappedShare)}</span> of shots landed on unmapped ground.
           Draw{" "}
           <button onClick={() => onStartDraw("trees")} className="font-semibold text-accent hover:underline">
@@ -206,6 +211,7 @@ export function ResultCard({
         </p>
         )
       )}
+
 
       {holeQuality && (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
@@ -309,25 +315,8 @@ export function ResultCard({
             )}
           </div>
         )}
-
-      <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 md:min-h-9">
-        {!atBestAim && (
-          <button
-            onClick={() => onAimAtBest(chosen)}
-            className="h-11 rounded-lg border border-accent/50 px-3 text-xs font-semibold text-accent transition-colors hover:bg-accent/10 md:h-9"
-          >
-            Use best aim
-          </button>
-        )}
-        {clubChoice !== "auto" && (
-          <button
-            onClick={onBackToBest}
-            className="h-11 rounded-lg border border-fg/[0.08] px-3 text-xs text-fg-3 hover:text-fg md:h-9"
-          >
-            Back to best club
-          </button>
-        )}
-      </div>
+        </div>
+      </details>
     </div>
   )
 }
