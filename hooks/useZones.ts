@@ -12,6 +12,7 @@ import type { Lie, UserZone } from "@/lib/course/lies"
 import type { CourseHole } from "@/lib/course/overpass"
 import type { ConfirmableHazard } from "@/lib/course/dataQuality"
 import { loadZones, saveNoHazard, saveZones, type CourseHit, type NoHazardMap } from "@/lib/planner/storage"
+import { MARKS_USER_ID } from "@/lib/planner/marks"
 import type { AuthUser } from "./useAuthUser"
 
 /** Two marks are the same mark when they have the same kind and outline. */
@@ -39,8 +40,13 @@ export function useZones({
   // once and then removed from this device. Signed out: this device's marks.
   const courseId = course?.id
   const userId = authUser?.id
+  const canMark = userId === MARKS_USER_ID
   useEffect(() => {
     if (!courseId) return
+    if (!canMark) {
+      setZones([])
+      return
+    }
     let cancelled = false
     async function load(id: string) {
       const local = loadZones(id)
@@ -74,7 +80,7 @@ export function useZones({
     return () => {
       cancelled = true
     }
-  }, [supabase, courseId, userId])
+  }, [supabase, courseId, userId, canMark])
 
   function setHazardConfirmed(hazard: ConfirmableHazard, value: boolean, hole: CourseHole | null) {
     if (!hole || !course) return
@@ -131,6 +137,7 @@ export function useZones({
   }
 
   return {
+    canMark,
     zones,
     noHazard,
     setNoHazard,

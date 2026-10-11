@@ -26,7 +26,8 @@ export interface LayersMenuProps {
   showZones: boolean
   onToggleZones: () => void
   drawKind: Lie | null
-  onStartDraw: (lie: Lie) => void
+  /** Absent when this account can't mark areas. */
+  onStartDraw?: (lie: Lie) => void
 }
 
 export function LayersMenu({
@@ -105,18 +106,22 @@ export function LayersMenu({
             label="My marks"
           />
         )}
-        <p className="px-2.5 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wider text-muted">Mark an area</p>
-        {DRAW_KINDS.map((k) => (
-          <LayerMenuItem
-            key={k}
-            onClick={() => {
-              onStartDraw(k)
-              onClose()
-            }}
-            active={drawKind === k}
-            label={LIE_LABEL[k]}
-          />
-        ))}
+        {onStartDraw && (
+          <>
+          <p className="px-2.5 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wider text-muted">Mark an area</p>
+          {DRAW_KINDS.map((k) => (
+            <LayerMenuItem
+              key={k}
+              onClick={() => {
+                onStartDraw(k)
+                onClose()
+              }}
+              active={drawKind === k}
+              label={LIE_LABEL[k]}
+            />
+          ))}
+          </>
+        )}
       </div>,
       document.body
   )

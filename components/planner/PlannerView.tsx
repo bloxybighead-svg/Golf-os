@@ -48,7 +48,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     offlineReport,
     mapTapGuardUntil,
     loadNeedsSignIn, searchError,
-    addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
+    addDrawPoint, canMark, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
     deleteZone, distAim, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
@@ -105,7 +105,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         holeQuality={holeQuality}
         geometry={geometry}
         onEditHole={() => setEditingHole(true)}
-        onStartDraw={startDraw}
+        onStartDraw={canMark ? startDraw : undefined}
         onConfirmHazard={setHazardConfirmed}
         onAimAtBest={aimAtBest}
         onBackToBest={() => {
@@ -170,7 +170,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
       showZones={showZones}
       onToggleZones={() => setShowZones((v) => !v)}
       drawKind={drawKind}
-      onStartDraw={startDraw}
+      onStartDraw={canMark ? startDraw : undefined}
     />
   )
 
@@ -442,7 +442,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           zones={zones}
           showMarks={showMarks}
           onToggleMarks={() => setShowMarks((v) => !v)}
-          signedIn={!!authUser}
           onDeleteZone={deleteZone}
         />
         {/* ---- shot plan (tablet/desktop: everything inline, including the table) ---- */}
