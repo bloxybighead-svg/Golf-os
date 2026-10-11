@@ -12,7 +12,7 @@ import {
   ELEVATION_FT_PER_YD,
   HEADWIND_CARRY_PER_MPH,
   playsLike,
-  playsLikeBreakdown,
+  playsLikeShown,
   spinGroup,
   TAILWIND_CARRY_PER_MPH,
   windCarryShare,
@@ -249,7 +249,7 @@ describe("the card's plays-like number", () => {
     expect(p.windYds).toBeLessThan(0)
     expect(p.playsYds).toBeLessThan(300)
     expect(p.playsYds).toBeCloseTo(300 + p.elevationYds + p.windYds, 6)
-    expect(playsLikeBreakdown(p)).toMatch(/^-10 downhill, -\d+ wind helping/)
+    expect(playsLikeShown(300, p).breakdown).toMatch(/^-10 downhill, -\d+ wind helping/)
   })
 
   it("is the inverse of the simulation: the plays-like carry, flown in those conditions, covers the distance", () => {
@@ -430,9 +430,9 @@ describe("air temperature", () => {
     const cold = playsLike(150, at(0, 0), at(0, 150), NORTH, "7-Iron", temp(48))!
     expect(cold.temperatureYds).toBeGreaterThan(0)
     expect(cold.playsYds).toBeCloseTo(150 / (1 - 0.022), 6)
-    expect(playsLikeBreakdown(cold)).toBe("+3 cold (48°F)")
+    expect(playsLikeShown(150, cold).breakdown).toBe("+3 cold (48°F)")
     const warm = playsLike(150, at(0, 0), at(0, 150), NORTH, "7-Iron", temp(88))!
-    expect(playsLikeBreakdown(warm)).toBe("-3 warm (88°F)")
+    expect(playsLikeShown(150, warm).breakdown).toBe("-3 warm (88°F)")
     expect(playsLike(150, at(0, 0), at(0, 150), NORTH, "7-Iron", temp(70))).toBeNull()
   })
 
@@ -441,6 +441,14 @@ describe("air temperature", () => {
     const p = playsLike(150, at(0, 0), at(0, 150), NORTH, "7-Iron", c)!
     expect(adjustShot("7-Iron", p.playsYds, 0, at(0, 0), NORTH, c).carryYds).toBeCloseTo(150, 6)
     expect(p.playsYds).toBeCloseTo(150 + p.windYds + p.temperatureYds + p.elevationYds, 6)
+  })
+
+  it("the plays number is the shown distance plus the shown adjustments, rounded once each (364 + 7 - 9 + 3 = 365)", () => {
+    // 364.4 true distance; +7.4 uphill, -8.6 wind helping, +3.4 cold: the true total rounds to 364, the card must say 365.
+    const p = { playsYds: 364.4 + 2.2, elevationYds: 7.4, windYds: -8.6, temperatureYds: 3.4, temperatureF: 40, crossRightMph: 0 }
+    const shown = playsLikeShown(364.4, p)
+    expect(shown.breakdown).toBe("+7 uphill, -9 wind helping, +3 cold (40°F)")
+    expect(shown.plays).toBe(364 + 7 - 9 + 3)
   })
 
   it("the cold-day tip threshold is 45 F", () => {

@@ -7,7 +7,7 @@ import { AlertTriangle, Check, X } from "lucide-react"
 import type { CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import type { Lie } from "@/lib/course/lies"
 import { boundaryStatus, type ConfirmableHazard, type HoleDataQuality, type SurfaceStatus } from "@/lib/course/dataQuality"
-import type { PlaysLike } from "@/lib/course/playsLike"
+import type { GreenYardages } from "@/lib/course/green"
 
 const COLD_BALL_TIP = "Cold day: keep your ball in your pocket between shots. A cold ball loses far more distance than cold air."
 import { flagsUnmapped, isLowConfidence, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
@@ -27,10 +27,10 @@ export interface ResultCardProps {
   baselineHandicap: number | null
   atBestAim: boolean
   chosenAtAim: number | null
-  distAim: number | null
+  /** Ball to pin; the center number when the hole has no mapped green. */
   distPin: number | null
-  aimToPin: number | null
-  aimIsPin: boolean
+  /** Front, center and back of the green along the line to the pin; null with no mapped green. */
+  greenYards: GreenYardages | null
   avgLeft: number | null
   estimateNotes: Record<string, string>
   holeQuality: HoleDataQuality | null
@@ -46,8 +46,8 @@ export interface ResultCardProps {
   shotsLabel?: string
   /** Taps an option: that club, aimed at its best. */
   onPickOption: (r: OptimizedClubPlan) => void
-  /** The distance to the pin as it plays for the chosen club (height change, wind), with its breakdown; null when neither applies. */
-  pinPlaysLike?: (PlaysLike & { breakdown: string }) | null
+  /** The distance to the pin as it plays for the chosen club (height change, wind): the number and its adjustments as shown; null when neither applies. */
+  pinPlaysLike?: { plays: number; breakdown: string } | null
   /** The air is under COLD_TIP_BELOW_F: show the cold-ball tip. */
   coldTip?: boolean
 }
@@ -62,10 +62,8 @@ export function ResultCard({
   baselineHandicap,
   atBestAim,
   chosenAtAim,
-  distAim,
   distPin,
-  aimToPin,
-  aimIsPin,
+  greenYards,
   avgLeft,
   estimateNotes,
   holeQuality,
@@ -84,6 +82,8 @@ export function ResultCard({
   const penalty = penaltyShare(chosen.plan)
   const overCap = penalty > SMART_MAX_PENALTY_RATE
   const trees = troubleShare(chosen.plan)
+  const centerYds = greenYards?.center ?? distPin
+  const center = centerYds != null ? Math.round(centerYds) : null
   return (
     <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
       {options && <StrategyToggle options={options} chosen={chosen} onPick={onPickOption} className="mb-3 hidden md:grid" />}
@@ -142,10 +142,10 @@ export function ResultCard({
         </p>
       </div>
 
-      <dl className="mt-4 grid grid-cols-3 divide-x divide-fg/[0.08] border-y border-fg/[0.08] py-2 text-center">
-        <Stat label="Aim line" value={distAim != null ? Math.round(distAim) : null} />
-        <Stat label={aimIsPin ? "Aim is pin" : "Aim to pin"} value={aimIsPin ? 0 : aimToPin != null ? Math.round(aimToPin) : null} />
-        <Stat label="To pin" value={distPin != null ? Math.round(distPin) : null} plays={pinPlaysLike && distPin != null ? Math.round(pinPlaysLike.playsYds) : null} />
+      <dl className="mt-4 grid grid-cols-3 items-end divide-x divide-fg/[0.08] border-y border-fg/[0.08] py-2 text-center">
+        <Stat label="Front" value={greenYards ? Math.round(greenYards.front) : null} />
+        <Stat label="Center" value={center} big plays={pinPlaysLike && center != null && Math.abs(pinPlaysLike.plays - center) >= 1 ? pinPlaysLike.plays : null} />
+        <Stat label="Back" value={greenYards ? Math.round(greenYards.back) : null} />
       </dl>
       {pinPlaysLike?.breakdown && <p className="mt-1 text-[11px] text-fg-3 tabular-nums">{pinPlaysLike.breakdown}</p>}
       {coldTip && <p className="mt-1 text-[11px] text-fg-3">{COLD_BALL_TIP}</p>}

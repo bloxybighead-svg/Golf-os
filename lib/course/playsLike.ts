@@ -279,15 +279,24 @@ export function playsLike(
   }
 }
 
-/** "-8 downhill, -4 wind helping, +4 cold (48°F), 6 mph from the left": only the parts that matter (half a yard or more). */
-export function playsLikeBreakdown(p: PlaysLike): string {
+/**
+ * What the card shows for a distance that plays differently: "-8 downhill, -4 wind helping, +4 cold (48°F), 6 mph
+ * from the left" (only the parts that matter, half a yard or more), and the plays-like number. Each adjustment is
+ * rounded once, and the number is the shown distance plus the shown adjustments, so the card always adds up.
+ */
+export function playsLikeShown(distYds: number, p: PlaysLike): { plays: number; breakdown: string } {
   const parts: string[] = []
-  const sign = (n: number) => `${n < 0 ? "-" : "+"}${Math.abs(Math.round(n))}`
-  if (Math.abs(p.elevationYds) >= 0.5) parts.push(`${sign(p.elevationYds)} ${p.elevationYds < 0 ? "downhill" : "uphill"}`)
-  if (Math.abs(p.windYds) >= 0.5) parts.push(`${sign(p.windYds)} wind ${p.windYds < 0 ? "helping" : "into you"}`)
-  if (p.temperatureF != null && Math.abs(p.temperatureYds) >= 0.5) parts.push(`${sign(p.temperatureYds)} ${p.temperatureYds > 0 ? "cold" : "warm"} (${Math.round(p.temperatureF)}°F)`)
+  let plays = Math.round(distYds)
+  const add = (yds: number, text: string) => {
+    const shown = Math.sign(yds) * Math.round(Math.abs(yds))
+    plays += shown
+    parts.push(`${shown < 0 ? "-" : "+"}${Math.abs(shown)} ${text}`)
+  }
+  if (Math.abs(p.elevationYds) >= 0.5) add(p.elevationYds, p.elevationYds < 0 ? "downhill" : "uphill")
+  if (Math.abs(p.windYds) >= 0.5) add(p.windYds, p.windYds < 0 ? "wind helping" : "wind into you")
+  if (p.temperatureF != null && Math.abs(p.temperatureYds) >= 0.5) add(p.temperatureYds, `${p.temperatureYds > 0 ? "cold" : "warm"} (${Math.round(p.temperatureF)}°F)`)
   if (Math.abs(p.crossRightMph) >= 1) parts.push(`${Math.round(Math.abs(p.crossRightMph))} mph from the ${p.crossRightMph > 0 ? "left" : "right"}`)
-  return parts.join(", ")
+  return { plays, breakdown: parts.join(", ") }
 }
 
 /** A key for the pieces of the conditions that change a ranking (part of rankKey and the worker's grid cache key). */

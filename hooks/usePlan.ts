@@ -6,7 +6,8 @@
 // and the map labels (moved verbatim from CourseMapClient.tsx).
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { bearingDeg, distanceYds, type LatLng } from "@/lib/course/geo"
+import { bearingDeg, distanceYds, ringCentroid, type LatLng } from "@/lib/course/geo"
+import { greenYardages, holeGreen } from "@/lib/course/green"
 import { defaultTeeAim } from "@/lib/course/aim"
 import type { StartLie } from "@/lib/course/cost"
 import { applyConfirmedAbsent, assessHoleDataQuality, estimatedFairwayCorridor, type HoleDataQuality } from "@/lib/course/dataQuality"
@@ -15,7 +16,7 @@ import type { UserZone } from "@/lib/course/lies"
 import type { CourseFeature, CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import { aimMarkerFor, evaluateClub, isAtBestAim, simulateLandings, strokesAtAim, type ClubShots, type OptimizedClubPlan } from "@/lib/course/plan"
 import { buildLieMapFrom, type LieInputs } from "@/lib/course/rankRequest"
-import { COLD_TIP_BELOW_F, conditionsKey, DEFAULT_BASELINE_TEMP_F, hasEffect, playsLike, playsLikeBreakdown, type PlaysLike, type ShotConditions } from "@/lib/course/playsLike"
+import { COLD_TIP_BELOW_F, conditionsKey, DEFAULT_BASELINE_TEMP_F, hasEffect, playsLike, playsLikeShown, type ShotConditions } from "@/lib/course/playsLike"
 import { useHoleElevation } from "@/hooks/useHoleElevation"
 import { usePlaysLikeSetting } from "@/hooks/usePlaysLikeSetting"
 import { useWind } from "@/hooks/useWind"
@@ -190,9 +191,9 @@ export function usePlan({
   // centroid), and several effects below tell "a new stance" from "just
   // re-rendered" by reference, which an unstable pin would break.
   const pin: LatLng | null = useMemo(
-    () => pinManual ?? (hole ? holePinForFeatures(hole, geometry?.features ?? []) : null),
+    () => pinManual ?? (hole ? holePinForFeatures(hole, geometry?.features ?? [], zones) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pinManual, hole, geometry]
+    [pinManual, hole, geometry, zones]
   )
 
   const defaultAim: LatLng | null = useMemo(() => {
@@ -409,11 +410,19 @@ export function usePlan({
 
   const distPin = ball && pin ? distanceYds(ball, pin) : null
   // The distance to the pin as it plays for the chosen club: height change, wind and temperature (null when none applies).
-  const pinPlaysLike: (PlaysLike & { breakdown: string }) | null = useMemo(() => {
+  const pinPlaysLike = useMemo(() => {
     if (!ball || !pin || !chosen || !conditions) return null
-    const p = playsLike(distanceYds(ball, pin), ball, pin, bearingDeg(ball, pin), chosen.club, conditions)
-    return p ? { ...p, breakdown: playsLikeBreakdown(p) } : null
+    const dist = distanceYds(ball, pin)
+    const p = playsLike(dist, ball, pin, bearingDeg(ball, pin), chosen.club, conditions)
+    return p ? playsLikeShown(dist, p) : null
   }, [ball, pin, chosen, conditions])
+  // Front, center and back of the hole's green along the line from the ball to the pin (null with no mapped green).
+  const green = useMemo(() => (hole ? holeGreen(hole, geometry?.features ?? [], zones) : null), [hole, geometry, zones])
+  const greenYards = useMemo(() => (ball ? greenYardages(ball, pin, green) : null), [ball, pin, green])
+  const greenLabel = useMemo(
+    () => (green && greenYards ? { at: ringCentroid(green), text: `F ${Math.round(greenYards.front)} · C ${Math.round(greenYards.center)} · B ${Math.round(greenYards.back)}` } : null),
+    [green, greenYards]
+  )
   const distAim = ball && aim ? distanceYds(ball, aim) : null
   const aimToPin = aim && pin ? distanceYds(aim, pin) : null
   const aimIsPin = aimToPin != null && aimToPin < 3
@@ -474,6 +483,8 @@ export function usePlan({
     strategyMode,
     optionsNote,
     pinPlaysLike,
+    greenYards,
+    greenLabel,
     coldTip: temperatureF != null && temperatureF < COLD_TIP_BELOW_F,
     wind,
     playsLikeOn,

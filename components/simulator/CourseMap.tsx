@@ -106,6 +106,8 @@ interface Props {
   showCarry?: boolean
   /** Distance labels: each belongs on the line from `from` to `to`; the map slides it off the green. */
   labels: { from: LatLng; to: LatLng; text: string }[]
+  /** Front/center/back of the green, drawn on it once the golfer zooms in past the hole fit. */
+  greenLabel?: { at: LatLng; text: string } | null
   cells: { sw: LatLng; ne: LatLng; color: string; opacity: number }[]
   rings: LatLng[][]
   zones: UserZone[]
@@ -217,6 +219,7 @@ export default function CourseMap(props: Props) {
   const [rotation, setRotationState] = useState(0)
   const [satelliteDown, setSatelliteDown] = useState(false) // tiles are failing or the phone is offline
   const [viewDirty, setViewDirty] = useState(false) // the golfer moved the view off the auto fit
+  const [fitZoom, setFitZoom] = useState<number | null>(null) // the zoom the current hole was framed at
   const [zoomTick, setZoomTick] = useState(0) // bumps on every zoom: labels re-place, the zoom buttons re-check their limits
 
   const setRotation = useCallback((deg: number) => {
@@ -251,6 +254,7 @@ export default function CourseMap(props: Props) {
       programmatic.current = true
       map.setView([view.center.lat, view.center.lng], view.zoom, { animate: false })
       programmatic.current = false
+      setFitZoom(view.zoom)
       lastFit.current = { req, autoRot }
       setViewDirty(remembered != null && remembered !== autoRot)
     },
@@ -651,7 +655,19 @@ export default function CourseMap(props: Props) {
         }),
       }).addTo(g)
     }
-  }, [props.labels, props.pin, props.geometry, zoomTick])
+    const green = props.greenLabel
+    if (green && fitZoom != null && map.getZoom() > fitZoom) {
+      L.marker(ll(green.at), {
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({
+          className: "",
+          iconSize: [0, 0],
+          html: `<div style="transform:rotate(var(--unrot,0deg)) translate(-50%,14px);white-space:nowrap;padding:2px 7px;border-radius:9999px;background:${cssColor("map-scrim", 0.82)};border:1px solid ${cssColor("map-marker", 0.35)};font:600 11px system-ui;color:${cssColor("map-marker")}">${green.text}</div>`,
+        }),
+      }).addTo(g)
+    }
+  }, [props.labels, props.greenLabel, props.pin, props.geometry, zoomTick, fitZoom])
 
   // Simulated shots: a dot where each one stops, plus (optionally) a hollow
   // ring where it first landed.

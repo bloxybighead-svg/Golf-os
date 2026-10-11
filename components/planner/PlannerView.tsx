@@ -67,7 +67,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
-    pinPlaysLike, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
+    pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
   } = vm
 
   const isOwner = authUser?.id === MARKS_USER_ID
@@ -99,10 +99,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         baselineHandicap={baselineHandicap}
         atBestAim={atBestAim}
         chosenAtAim={chosenAtAim}
-        distAim={distAim}
         distPin={distPin}
-        aimToPin={aimToPin}
-        aimIsPin={aimIsPin}
+        greenYards={greenYards}
         avgLeft={avgLeft}
         estimateNotes={estimateNotes}
         holeQuality={holeQuality}
@@ -151,7 +149,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
   )
 
   const scoringDetails = (
-    <ScoringDetails baselineHandicap={baselineHandicap} onCourseSpread={vm.onCourseSpread} onShowIntro={() => setIntroOpen(true)} />
+    <ScoringDetails distAim={distAim} aimToPin={aimToPin} aimIsPin={aimIsPin} baselineHandicap={baselineHandicap} onCourseSpread={vm.onCourseSpread} onShowIntro={() => setIntroOpen(true)} />
   )
 
   const layersMenu = showLayersMenu && layersMenuPos && (
@@ -237,6 +235,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         drawKind={drawKind}
         pendingPoints={pendingPoints}
         labels={labels}
+        greenLabel={greenLabel}
         placing={placing}
         fit={fit}
         fitKey={fit.key}

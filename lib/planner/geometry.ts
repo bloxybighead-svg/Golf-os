@@ -1,6 +1,8 @@
 // Small geometry helpers for the Play planner (moved verbatim from CourseMapClient.tsx).
 
 import { distanceYds, lineLengthYds, pointAlongLine, ringCentroid, type LatLng } from "@/lib/course/geo"
+import { holeGreen } from "@/lib/course/green"
+import type { UserZone } from "@/lib/course/lies"
 import type { CourseFeature, CourseHole } from "@/lib/course/overpass"
 
 export function boundsOf(points: LatLng[]): [[number, number], [number, number]] | null {
@@ -18,21 +20,10 @@ export function boundsOf(points: LatLng[]): [[number, number], [number, number]]
   return [[minLat, minLng], [maxLat, maxLng]]
 }
 
-/** Where the pin goes for a hole: the centre of the mapped green nearest its line's end (within 60 yd), else the line's end. */
-export function holePinFor(h: CourseHole, features: CourseFeature[]): LatLng {
-  const end = h.line[h.line.length - 1]
-  let best: LatLng | null = null
-  let bestD = 60
-  for (const f of features) {
-    if (f.kind !== "green") continue
-    const c = ringCentroid(f.ring)
-    const d = distanceYds(c, end)
-    if (d < bestD) {
-      bestD = d
-      best = c
-    }
-  }
-  return best ?? end
+/** Where the pin goes for a hole: the centre of the drawn or mapped green nearest its line's end (within 60 yd), else the line's end. */
+export function holePinFor(h: CourseHole, features: CourseFeature[], zones: UserZone[] = []): LatLng {
+  const green = holeGreen(h, features, zones)
+  return green ? ringCentroid(green) : h.line[h.line.length - 1]
 }
 
 /** A fairway, green or tee polygon counts as part of a hole when its centre is this close to the hole's line. Estimate: fairways are 30-50 yd wide, greens 15-25 yd across. */

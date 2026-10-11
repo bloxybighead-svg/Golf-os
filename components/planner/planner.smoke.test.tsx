@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import type { ClubPlan, OptimizedClubPlan } from "@/lib/course/plan"
 import { ClubTable } from "./ClubTable"
+import { ScoringDetails } from "./ScoringDetails"
 import { HoleHeader } from "./HoleHeader"
 import { StrategyToggle } from "./StrategyToggle"
 import { ResultCard } from "./ResultCard"
@@ -80,10 +81,8 @@ describe("planner components render (smoke)", () => {
         baselineHandicap={10}
         atBestAim
         chosenAtAim={4.6}
-        distAim={190}
         distPin={364}
-        aimToPin={188}
-        aimIsPin={false}
+        greenYards={{ front: 352, center: 364, back: 376 }}
         avgLeft={187}
         estimateNotes={{ "4-Iron": "No 4-Iron shots on record: estimated from your 5-Iron" }}
         holeQuality={null}
@@ -100,6 +99,9 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("Best club")
     expect(html).toContain("4.60")
     expect(html).toContain("vs a 10.0 handicap")
+    for (const text of ["Front", "Center", "Back", "352", "364", "376"]) expect(html).toContain(text)
+    expect(html).not.toContain("Aim line")
+    expect(html).not.toContain("plays ") // nothing changes the distance
     expect(html).toContain("No 4-Iron shots on record: estimated from your 5-Iron.")
     expect(html).not.toContain("Use best aim") // already at the best aim
     expect(html).not.toContain("At your aim")
@@ -117,10 +119,8 @@ describe("planner components render (smoke)", () => {
         baselineHandicap={10}
         atBestAim
         chosenAtAim={4.61}
-        distAim={249}
         distPin={364}
-        aimToPin={120}
-        aimIsPin={false}
+        greenYards={{ front: 352, center: 364, back: 376 }}
         avgLeft={118}
         estimateNotes={{}}
         holeQuality={null}
@@ -138,6 +138,77 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("Best: 4-Iron (+0.01)")
     expect(html).toContain("3-Wood")
     expect(html).toContain("Back to best club")
+  })
+
+  it("ResultCard: plays-like sits under Center only when it changes it by a yard or more", () => {
+    const render = (plays: number) =>
+      renderToStaticMarkup(
+        <ResultCard
+          best={fourIron}
+          chosen={fourIron}
+          chosenLive={plan("4-Iron", 4.6, 0.02, 190)}
+          clubChoice="auto"
+          fromLabel="the tee"
+          hole={null}
+          baselineHandicap={10}
+          atBestAim
+          chosenAtAim={4.6}
+          distPin={364}
+          greenYards={{ front: 352, center: 364, back: 376 }}
+          avgLeft={187}
+          estimateNotes={{}}
+          holeQuality={null}
+          geometry={null}
+          onEditHole={() => {}}
+          onStartDraw={() => {}}
+          onConfirmHazard={() => {}}
+          onAimAtBest={() => {}}
+          onBackToBest={() => {}}
+          options={null}
+          onPickOption={() => {}}
+          pinPlaysLike={{ plays, breakdown: "+7 uphill, -9 wind helping, +3 cold (40°F)" }}
+        />
+      )
+    expect(render(365)).toContain("plays 365")
+    expect(render(365)).toContain("+7 uphill, -9 wind helping, +3 cold (40°F)")
+    expect(render(364)).not.toContain("plays 364")
+  })
+
+  it("ResultCard: with no mapped green the center is the pin distance and front and back are blank", () => {
+    const html = renderToStaticMarkup(
+      <ResultCard
+        best={fourIron}
+        chosen={fourIron}
+        chosenLive={plan("4-Iron", 4.6, 0.02, 190)}
+        clubChoice="auto"
+        fromLabel="the tee"
+        hole={null}
+        baselineHandicap={10}
+        atBestAim
+        chosenAtAim={4.6}
+        distPin={364}
+        greenYards={null}
+        avgLeft={187}
+        estimateNotes={{}}
+        holeQuality={null}
+        geometry={null}
+        onEditHole={() => {}}
+        onStartDraw={() => {}}
+        onConfirmHazard={() => {}}
+        onAimAtBest={() => {}}
+        onBackToBest={() => {}}
+        options={null}
+        onPickOption={() => {}}
+      />
+    )
+    expect(html).toContain("364")
+    expect(html.match(/–/g)).toHaveLength(2)
+  })
+
+  it("ScoringDetails: the aim-line and aim-to-pin distances live in the details", () => {
+    const html = renderToStaticMarkup(<ScoringDetails distAim={190} aimToPin={188} aimIsPin={false} baselineHandicap={null} onCourseSpread={1.2} />)
+    expect(html).toContain("Aim line 190 yd")
+    expect(html).toContain("Aim to pin 188 yd")
   })
 
   it("StrategyToggle: both plays with strokes and penalty share", () => {
@@ -168,10 +239,8 @@ describe("planner components render (smoke)", () => {
           baselineHandicap={10}
           atBestAim
           chosenAtAim={4.6}
-          distAim={190}
           distPin={364}
-          aimToPin={188}
-          aimIsPin={false}
+          greenYards={{ front: 352, center: 364, back: 376 }}
           avgLeft={187}
           estimateNotes={{}}
           holeQuality={null}

@@ -3,10 +3,17 @@
 import { SMART_MAX_PENALTY_RATE } from "@/lib/course/strategy"
 
 export function ScoringDetails({
+  distAim,
+  aimToPin,
+  aimIsPin,
   baselineHandicap,
   onCourseSpread,
   onShowIntro,
 }: {
+  /** Ball to the aim marker, and aim marker to the pin, yards. */
+  distAim: number | null
+  aimToPin: number | null
+  aimIsPin: boolean
   baselineHandicap: number | null
   onCourseSpread: number
   /** Reopens the first-visit intro. */
@@ -16,6 +23,9 @@ export function ScoringDetails({
     <details className="rounded-2xl border border-fg/[0.07] bg-surface px-4 py-3 text-xs leading-relaxed text-fg-3">
       <summary className="cursor-pointer select-none font-medium text-fg-2">How this is scored</summary>
       <div className="mt-2 space-y-2">
+        <p className="tabular-nums text-fg-2">
+          Aim line {distAim != null ? Math.round(distAim) : "–"} yd · {aimIsPin ? "Aim is the pin" : `Aim to pin ${aimToPin != null ? Math.round(aimToPin) : "–"} yd`}
+        </p>
         {onShowIntro && (
           <button onClick={onShowIntro} className="flex min-h-[44px] items-center text-sm font-semibold text-accent hover:underline md:min-h-0">
             Show the intro again
