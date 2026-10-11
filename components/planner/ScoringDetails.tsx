@@ -43,14 +43,15 @@ export function ScoringDetails({
         <p>
           The card gives two options from the same ranking. <strong className="font-medium text-fg-2">Go for it</strong> is the
           club with the fewest expected strokes. <strong className="font-medium text-fg-2">Smart play</strong> (the default)
-          is the safe, set-up-for-par play: a club and aim are only allowed if no more than {Math.round(SMART_MAX_PENALTY_RATE * 100)}%
-          of shots finish out of bounds, in water or in the trees (a drop, a punch-out or a lost ball). Each club is
-          aimed away from the trouble first, and Smart play is the fewest strokes among those that qualify. When none
-          does, it is the lowest-risk club. Go for it has no limit. When both are the same play there is just one
+          is the safe, set-up-for-par play: the club and aim with the lowest strokes plus a charge for every
+          shot out of bounds or in the water (a penalty stroke). How big that charge is is the Risk setting on You, under
+          Planner. Trees are already in the strokes, so they are shown beside the penalty but not charged twice. Each club
+          is aimed away from the trouble by the same rule. A club with more than {Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty
+          is only chosen when no other is under it. Go for it has no charge. When both are the same play there is just one
           option. Your misses are
           widened to {onCourseSpread.toFixed(2)}x of what the range data shows, since range data is tighter than real rounds
           (change it on You, under Planner). On par 5s and par 4s over 440 yd, each tee shot is valued by the best next shot
-          from where it finishes, not by a table that assumes every distance can be played. The penalty limit
+          from where it finishes, not by a table that assumes every distance can be played. The risk charge
           and the spread are estimates, not measurements.
         </p>
         <p>

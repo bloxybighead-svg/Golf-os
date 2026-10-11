@@ -11,7 +11,7 @@ import type { PlaysLike } from "@/lib/course/playsLike"
 
 const COLD_BALL_TIP = "Cold day: keep your ball in your pocket between shots. A cold ball loses far more distance than cold air."
 import { flagsUnmapped, isLowConfidence, isTie, type ClubPlan, type OptimizedClubPlan } from "@/lib/course/plan"
-import { SMART_MAX_PENALTY_RATE, pctText, penaltyShare, penaltyWord, type Options } from "@/lib/course/strategy"
+import { SMART_MAX_PENALTY_RATE, pctText, penaltyShare, penaltyWord, troubleShare, type Options } from "@/lib/course/strategy"
 import { pct, STATUS_TITLE } from "@/lib/planner/labels"
 import { Stat } from "./ui"
 import { StrategyToggle } from "./StrategyToggle"
@@ -83,6 +83,7 @@ export function ResultCard({
 }: ResultCardProps) {
   const penalty = penaltyShare(chosen.plan)
   const overCap = penalty > SMART_MAX_PENALTY_RATE
+  const trees = troubleShare(chosen.plan)
   return (
     <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
       {options && <StrategyToggle options={options} chosen={chosen} onPick={onPickOption} className="mb-3 hidden md:grid" />}
@@ -122,8 +123,8 @@ export function ResultCard({
             {chosen.plan.expectedStrokes.toFixed(2)}
           </span>
           <span className="text-xs text-muted">strokes to hole out</span>
-          <span className={`block text-xs tabular-nums ${overCap ? "font-semibold text-danger" : "text-fg-3"}`} title="Share of shots that finish out of bounds, in water or in trees (a drop, punch-out or lost ball)">
-            {pctText(penalty)} {penaltyWord(chosen.plan)} / penalty
+          <span className={`block text-xs tabular-nums ${overCap ? "font-semibold text-danger" : "text-fg-3"}`} title="Share of shots that finish out of bounds or in water (a penalty stroke). Trees are counted in the strokes, not here">
+            {pctText(penalty)} {penaltyWord(chosen.plan)} / penalty{trees >= 0.005 && <> · {pctText(trees)} trees</>}
           </span>
           <span className="block text-[11px] text-muted" title="Change on You, under Planner">
             vs {baselineHandicap == null ? "PGA TOUR" : `a ${baselineHandicap.toFixed(1)} handicap`}
@@ -174,11 +175,6 @@ export function ResultCard({
           ))}
       </p>
 
-      {options?.noSafeOption && chosen.strategy !== "go" && (
-        <p className="mt-2 text-xs font-semibold text-danger">
-          No club keeps penalty risk under {Math.round(SMART_MAX_PENALTY_RATE * 100)}% here. This is the lowest-risk play.
-        </p>
-      )}
       {options?.tradeoff && <p className="mt-2 text-xs text-fg-2">{options.tradeoff}</p>}
 
       {isLowConfidence(chosen.plan) ? (

@@ -37,6 +37,8 @@ export interface RankingRequest {
   handicap: number | null
   /** The offline-spread multiplier applied to every club (the golfer's on-course spread setting). */
   spread: number
+  /** Smart play's risk, strokes per unit of OB/water share (You -> Planner). */
+  risk: number
   /** The hole's par and yardage: long holes look one shot ahead from the tee. */
   par: number | null
   yards: number | null

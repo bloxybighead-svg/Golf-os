@@ -4,7 +4,7 @@
 // strokes and penalty share. One tap picks that club, aimed at its best. Shown
 // in the result card on tablets and desktops, and in the dock on phones.
 
-import { penaltyShare, pctText, penaltyWord, SMART_MAX_PENALTY_RATE, type Options } from "@/lib/course/strategy"
+import { penaltyShare, pctText, penaltyWord, SMART_MAX_PENALTY_RATE, troubleShare, type Options } from "@/lib/course/strategy"
 import type { OptimizedClubPlan } from "@/lib/course/plan"
 
 export function StrategyToggle({
@@ -35,6 +35,7 @@ export function StrategyToggle({
         .filter((_, i) => !(options.same && i === 1))
         .map(([label, r, strategy]) => {
           const pen = penaltyShare(r.plan)
+          const trees = troubleShare(r.plan)
           const selected = chosen.club === r.club && (options.same || (chosen.strategy ?? "smart") === strategy)
           return (
             <button
@@ -59,6 +60,7 @@ export function StrategyToggle({
                 <span className={pen > SMART_MAX_PENALTY_RATE ? "font-semibold text-danger" : ""}>
                   {pctText(pen)} {penaltyWord(r.plan)}
                 </span>
+                {!compact && trees >= 0.005 && <> · {pctText(trees)} trees</>}
               </span>
             </button>
           )

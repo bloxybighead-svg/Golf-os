@@ -1,14 +1,14 @@
 // Two options for every shot, from one ranking:
 //  - GO FOR IT: the club with the fewest expected strokes to hole out, at its
 //    own best aim. No safety limit.
-//  - SMART PLAY (the default): a safe, set-up-for-par play. Out of bounds,
-//    water and trees (a drop, a punch-out or a lost ball) are weighted
-//    heavily: any club + aim whose penalty share is above SMART_MAX_PENALTY_RATE
-//    is not eligible. Each club is first aimed away from the trouble (the aim
-//    search keeps the penalty share under the limit where some aim can), and
-//    smart play is the fewest strokes among the eligible clubs. If no club can
-//    get under the limit it is the one with the LOWEST penalty share (ties:
-//    fewer strokes) and the card says so.
+//  - SMART PLAY (the default): the club and aim with the lowest
+//    expectedStrokes + riskStrokes * penaltyShare, where penaltyShare is the
+//    share of shots out of bounds or in water. Every extra point of penalty
+//    costs a smooth amount, so a club never flips on a tiny change. Trees are
+//    already scored by cost.ts (the recovery column); they are shown as
+//    troubleShare but are not in this objective. Each club is first aimed by
+//    the same objective. A club + aim above SMART_MAX_PENALTY_RATE is only
+//    chosen when nothing is under it.
 // The card shows both and the golfer taps the one that fits how they feel.
 // Both come from the SAME model: shots are scored with the golfer's misses
 // widened to on-course reality (ON_COURSE_SPREAD), so a club's numbers never
@@ -20,10 +20,34 @@
 import type { ClubShots } from "./plan"
 
 /**
- * Smart play's penalty limit: a club + aim with more than this share of shots out of bounds, in water or in trees
- * is not eligible. Also the line the card and table flag in red. ESTIMATE (spec): 1 in 25.
+ * What one unit of penalty share costs Smart play, in strokes: 1.5 means a club with 10% more shots out of bounds or
+ * in water has to save 0.15 strokes to be worth it. ESTIMATE: a stroke-and-distance or drop penalty is one stroke plus
+ * the lost position, which the strokes table does not charge in full. The golfer sets 0.5 to 3.0 on You -> Planner.
  */
-export const SMART_MAX_PENALTY_RATE = 0.04
+export const SMART_RISK_STROKES = 1.5
+
+/** The three stops of the You -> Planner "Risk" setting. ESTIMATE: Normal is SMART_RISK_STROKES, the others half and double. */
+export const RISK_STOPS = [
+  { label: "Aggressive", strokes: 0.5 },
+  { label: "Normal", strokes: SMART_RISK_STROKES },
+  { label: "Conservative", strokes: 3.0 },
+] as const
+
+/**
+ * Backstop on Smart play: a club + aim with more than this share of shots out of bounds or in water is only chosen
+ * when nothing is under it. Also the line the card and table flag in red. ESTIMATE: 1 in 10.
+ */
+export const SMART_MAX_PENALTY_RATE = 0.1
+
+export interface SmartRule {
+  riskStrokes: number
+  maxPenalty: number
+}
+
+export const smartRule = (riskStrokes: number = SMART_RISK_STROKES): SmartRule => ({ riskStrokes, maxPenalty: SMART_MAX_PENALTY_RATE })
+
+/** Smart play's objective (lower is better): expected strokes plus the strokes the penalty share is worth. */
+export const smartCost = (strokes: number, penalty: number, riskStrokes: number): number => strokes + riskStrokes * penalty
 
 /**
  * Every club's offline spread (start line + curve) is multiplied by this before scoring.
@@ -92,13 +116,14 @@ export const OB_SCAN_HALF_WIDTH_YDS = 60
 
 // ---- The two options ------------------------------------------------------
 
-/**
- * Share of a plan's finishing spots that cost a penalty or a punch-out: out of bounds, water and TREES. A ball in
- * the trees is treated as a drop, a punch-out or a lost ball, not a playable lie, so it counts as risk even though
- * the strokes table scores it as "recovery".
- */
-export function penaltyShare(plan: { lieShare: { oob: number; water: number; trees?: number } }): number {
-  return plan.lieShare.oob + plan.lieShare.water + (plan.lieShare.trees ?? 0)
+/** Share of a plan's finishing spots that cost a penalty stroke: out of bounds and water. */
+export function penaltyShare(plan: { lieShare: { oob: number; water: number } }): number {
+  return plan.lieShare.oob + plan.lieShare.water
+}
+
+/** Share finishing in trees. Shown beside the penalty, not part of it: cost.ts already charges trees the recovery column. */
+export function troubleShare(plan: { lieShare: { trees?: number } }): number {
+  return plan.lieShare.trees ?? 0
 }
 
 /** Offline spread x `spread` about each club's own mean offline: wider misses, same natural bias. */
@@ -111,35 +136,34 @@ export function widenShots(club: ClubShots, spread: number): ClubShots {
 export interface Options<T> {
   /** GO FOR IT: the fewest expected strokes. */
   lowest: T
-  /** SMART PLAY (the default): the fewest strokes among the options within SMART_MAX_PENALTY_RATE, else the lowest penalty. */
+  /** SMART PLAY (the default): the lowest smartCost, among the options within SMART_MAX_PENALTY_RATE when any are. */
   safer: T
   /** Smart play and Go for it are the same play (same club, same aim), so there is only one option. */
   same: boolean
-  /** No club keeps the penalty share within SMART_MAX_PENALTY_RATE: smart play is the lowest-risk play and the card says so. */
-  noSafeOption: boolean
 }
 
 /**
  * The two options. `ranking` is every club at its strokes-best aim (Go for it); `smartRanking` is every club at its
  * Smart-play aim (the same clubs, aimed away from trouble) and defaults to `ranking`.
- * Go for it = fewest strokes. Smart play = fewest strokes among those with penalty <= SMART_MAX_PENALTY_RATE; if
- * there are none, the lowest penalty (ties: fewest strokes).
+ * Go for it = fewest strokes. Smart play = lowest smartCost among those with penalty <= rule.maxPenalty, or among
+ * all of them when none is.
  */
 export function lowestAndSafer<T>(
   ranking: T[],
   view: (t: T) => { strokes: number; penalty: number },
   smartRanking: T[] = ranking,
-  sameChoice: (a: T, b: T) => boolean = (a, b) => a === b
+  sameChoice: (a: T, b: T) => boolean = (a, b) => a === b,
+  rule: SmartRule = smartRule()
 ): Options<T> | null {
   if (ranking.length === 0 || smartRanking.length === 0) return null
   const go = ranking.map((o) => ({ o, ...view(o) })).reduce((a, b) => (b.strokes < a.strokes ? b : a))
-  const sm = smartRanking.map((o) => ({ o, ...view(o) }))
-  const eligible = sm.filter((x) => x.penalty <= SMART_MAX_PENALTY_RATE + 1e-9)
-  const smart =
-    eligible.length > 0
-      ? eligible.reduce((a, b) => (b.strokes < a.strokes ? b : a))
-      : sm.reduce((a, b) => (b.penalty < a.penalty - 1e-9 || (Math.abs(b.penalty - a.penalty) <= 1e-9 && b.strokes < a.strokes) ? b : a))
-  return { lowest: go.o, safer: smart.o, same: sameChoice(smart.o, go.o), noSafeOption: eligible.length === 0 }
+  const sm = smartRanking.map((o) => {
+    const v = view(o)
+    return { o, ...v, cost: smartCost(v.strokes, v.penalty, rule.riskStrokes) }
+  })
+  const eligible = sm.filter((x) => x.penalty <= rule.maxPenalty + 1e-9)
+  const smart = (eligible.length > 0 ? eligible : sm).reduce((a, b) => (b.cost < a.cost ? b : a))
+  return { lowest: go.o, safer: smart.o, same: sameChoice(smart.o, go.o) }
 }
 
 /** "3%" style, whole percent; under half a percent shows "<1%" so a small risk never reads as none. */
@@ -149,11 +173,9 @@ export function pctText(share: number): string {
   return p < 0.5 ? "<1%" : `${Math.round(p)}%`
 }
 
-/** What most of the risk is: "OB", "water" or "trees". */
-export function penaltyWord(plan: { lieShare: { oob: number; water: number; trees?: number } }): string {
-  const { oob, water, trees = 0 } = plan.lieShare
-  if (oob >= water && oob >= trees) return "OB"
-  return water >= trees ? "water" : "trees"
+/** What most of the penalty is: "OB" or "water". */
+export function penaltyWord(plan: { lieShare: { oob: number; water: number } }): string {
+  return plan.lieShare.oob >= plan.lieShare.water ? "OB" : "water"
 }
 
 /** The look-ahead grid only covers where a tee shot can finish: from this far from the tee. ESTIMATE: nobody tees off with less than a long iron on a par 5. */

@@ -15,7 +15,7 @@ import { projectOnLine } from "./aim"
 import type { StartLie } from "./cost"
 import { TOUR_BASELINE, type Baseline } from "./baseline"
 import type { Lie, LieMap, LieSource } from "./lies"
-import { penaltyShare } from "./strategy"
+import { penaltyShare, smartCost, type SmartRule } from "./strategy"
 import { rollToRest, rollYds } from "./roll"
 import { adjustShot, type ShotConditions } from "./playsLike"
 import { seededRng, seededSample } from "@/lib/dispersion/stats"
@@ -269,14 +269,14 @@ export interface AimResult {
   bearingDeg: number
   plan: ClubPlan
   baselineStrokes: number // same club, aimed at the original aim point
-  /** Only when a `maxPenalty` was given: the best aim that keeps the penalty share under it (see SafeAim). */
+  /** Only when a Smart-play rule was given: the aim with the lowest smartCost (see SafeAim). */
   safe?: SafeAim
 }
 
 /**
- * The aim Smart play uses for a club: among the aims tried, the fewest strokes whose penalty share (OB + water +
- * trees) is within the limit; when none is, the lowest penalty share (ties: fewer strokes). Searched on the
- * search half and scored on the held-out half, like the strokes-best aim.
+ * The aim Smart play uses for a club: among the aims tried, the lowest smartCost (strokes + risk x OB/water share)
+ * within the penalty cap; when none is, the lowest smartCost of all. Searched on the search half and scored on the
+ * held-out half, like the strokes-best aim.
  */
 export interface SafeAim {
   offsetYds: number
@@ -318,9 +318,9 @@ export function splitShots(shots: ShotSample[]): { search: ShotSample[]; holdout
  * onto. Using the club's own mean carry as the radius instead ties the
  * search's yard range to where its shots actually land.
  */
-export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 60, stepYds = 2, maxPenalty?: number): AimResult {
+export function bestAim(club: ClubShots, ctx: PlanContext, maxOffsetYds = 60, stepYds = 2, smart?: SmartRule): AimResult {
   const { search, holdout } = splitShots(club.shots)
-  return bestAimFrom(club, search, holdout.length > 0 ? holdout : search, ctx, maxOffsetYds, stepYds, undefined, true, maxPenalty)
+  return bestAimFrom(club, search, holdout.length > 0 ? holdout : search, ctx, maxOffsetYds, stepYds, undefined, true, smart)
 }
 
 /**
@@ -338,7 +338,7 @@ export function bestAimFrom(
   stepYds = 2,
   coarseStepYds?: number,
   withBaseline = true,
-  maxPenalty?: number
+  smart?: SmartRule
 ): AimResult {
   const searchClub: ClubShots = { club: club.club, shots: search }
   const confirmClub: ClubShots = { club: club.club, shots: confirm }
@@ -362,15 +362,15 @@ export function bestAimFrom(
     const d = scoreAt(a).strokes - scoreAt(b).strokes
     return d < -1e-12 || (Math.abs(d) <= 1e-12 && Math.abs(a) < Math.abs(b))
   }
-  // Smart play's order: under the limit beats over it; both under, fewer strokes; both over, lower penalty then strokes.
+  // Smart play's order: under the penalty cap beats over it; otherwise the lower smartCost, a tie keeping the smaller offset.
   const safeBetter = (a: number, b: number) => {
     const pa = scoreAt(a)
     const pb = scoreAt(b)
-    const ea = pa.penalty <= maxPenalty!
-    const eb = pb.penalty <= maxPenalty!
+    const ea = pa.penalty <= smart!.maxPenalty
+    const eb = pb.penalty <= smart!.maxPenalty
     if (ea !== eb) return ea
-    if (!ea && Math.abs(pa.penalty - pb.penalty) > 1e-12) return pa.penalty < pb.penalty
-    return strokesBetter(a, b)
+    const d = smartCost(pa.strokes, pa.penalty, smart!.riskStrokes) - smartCost(pb.strokes, pb.penalty, smart!.riskStrokes)
+    return d < -1e-12 || (Math.abs(d) <= 1e-12 && Math.abs(a) < Math.abs(b))
   }
   const pickBest = (better: (a: number, b: number) => boolean) => {
     let best = 0
@@ -395,7 +395,7 @@ export function bestAimFrom(
     sweep(outward(coarseStepYds))
     // The gaps either side of each coarse winner (the strokes-best aim, and Smart play's when there is a limit).
     const centres = new Set([pickBest(strokesBetter)])
-    if (maxPenalty != null) centres.add(pickBest(safeBetter))
+    if (smart) centres.add(pickBest(safeBetter))
     for (const c of Array.from(centres)) sweep(outward(stepYds, c, coarseStepYds - stepYds))
   } else {
     sweep(outward(stepYds))
@@ -403,7 +403,7 @@ export function bestAimFrom(
   const winnerOff = pickBest(strokesBetter)
   const plan = evaluateClub(confirmClub, ctx, bearingFor(winnerOff))
   let safe: SafeAim | undefined
-  if (maxPenalty != null) {
+  if (smart) {
     const off = pickBest(safeBetter)
     safe = {
       offsetYds: off,
@@ -492,15 +492,15 @@ export interface OptimizedClubPlan {
   plan: ClubPlan
   /** The same held-out shots, aimed at the aim marker instead, for comparison. */
   atAimStrokes: number
-  /** Smart play's aim for this club when the ranking was given a `maxPenalty` (same as the above when that is already safe). */
+  /** Smart play's aim for this club when the ranking was given a Smart-play rule (same as the above when that is already safe). */
   safe?: SafeAim
   /** Which option this row is: Smart play's aim or Go for it's. Set by lib/course/rankOptions.ts. */
   strategy?: "smart" | "go"
 }
 
 export interface RankOptions {
-  /** Smart play's penalty limit: also finds each club's best aim that keeps OB + water + trees at or under this share. */
-  maxPenalty?: number
+  /** Smart play's rule: also finds each club's aim with the lowest smartCost (strokes + risk x OB/water share). */
+  smart?: SmartRule
   /** The hole's centreline (tee to green). Without it each club's search centres on ctx.aim. */
   line?: LatLng[] | null
   maxOffsetYds?: number
@@ -564,7 +564,7 @@ export function rankClubsOptimized(clubs: ClubShots[], ctx: PlanContext, opts: R
         coarse = LIGHT_RANK_STEP_YDS
       }
       const centre = centerlineAim(opts.line, ctx.from, reach, ctx.pin) ?? ctx.aim
-      const r = bestAimFrom(c, search, confirm, { ...ctx, aim: centre }, opts.maxOffsetYds ?? 60, opts.stepYds ?? 2, coarse, false, opts.maxPenalty)
+      const r = bestAimFrom(c, search, confirm, { ...ctx, aim: centre }, opts.maxOffsetYds ?? 60, opts.stepYds ?? 2, coarse, false, opts.smart)
       return {
         club: c.club,
         bearingDeg: r.bearingDeg,

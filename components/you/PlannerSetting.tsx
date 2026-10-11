@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { readCompareAgainst, saveCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
+import { readRisk, saveRisk } from "@/lib/course/riskSetting"
 import { readSpread, saveSpread } from "@/lib/course/spreadSetting"
-import { ON_COURSE_SPREAD, SPREAD_MAX, SPREAD_MIN, SPREAD_STEP } from "@/lib/course/strategy"
+import { ON_COURSE_SPREAD, RISK_STOPS, SPREAD_MAX, SPREAD_MIN, SPREAD_STEP } from "@/lib/course/strategy"
 
 const OPTIONS: { value: CompareAgainst; label: string }[] = [
   { value: "handicap", label: "My handicap" },
@@ -18,6 +19,8 @@ export function PlannerSetting() {
   const [spread, setSpread] = useState<number | null>(null)
   useEffect(() => setSpread(readSpread()), [])
   const shownSpread = spread ?? ON_COURSE_SPREAD
+  const [risk, setRisk] = useState<number | null>(null)
+  useEffect(() => setRisk(readRisk()), [])
 
   function choose(next: CompareAgainst) {
     saveCompareAgainst(next)
@@ -45,6 +48,26 @@ export function PlannerSetting() {
             </button>
           )
         })}
+      </div>
+      <div className="w-full">
+        <p className="text-xs text-fg-2">Risk</p>
+        <div role="radiogroup" aria-label="Risk" className="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-fg/[0.06] bg-surface-3 p-1">
+          {RISK_STOPS.map(({ label, strokes }) => (
+            <button
+              key={label}
+              role="radio"
+              aria-checked={risk === strokes}
+              onClick={() => {
+                saveRisk(strokes)
+                setRisk(strokes)
+              }}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${risk === strokes ? "bg-surface text-fg" : "text-muted hover:text-fg"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-muted">How much Smart play gives up to avoid out of bounds and water. Conservative plays safer.</p>
       </div>
       <div className="w-full">
         <label htmlFor="on-course-spread" className="flex items-baseline justify-between text-xs text-fg-2">

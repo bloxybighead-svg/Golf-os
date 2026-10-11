@@ -290,6 +290,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     showTrouble,
     showRings,
     onCourseSpread: settings.onCourseSpread,
+    smartRisk: settings.smartRisk,
     obTags: obTags.tagsFor(holeId),
     roundActive: !!roundHere,
   })
