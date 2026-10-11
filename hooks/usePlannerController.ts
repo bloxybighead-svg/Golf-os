@@ -295,8 +295,8 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     roundActive: !!roundHere,
   })
   const {
-    aim, aimAtBest, aimIsPin, aimLie, aimToPin, atBestAim, avgLeft, bagDriverCarry, baselineHandicap, best, chosen,
-    chosenAtAim, chosenLive, distAim, distPin, estimateNotes, fromLabel, holeBearingDeg, holeQuality, labels,
+    aim, aimAtBest, aimLie, atBestAim, avgLeft, bagDriverCarry, baselineHandicap, best, chosen,
+    chosenAtAim, chosenLive, distPin, estimateNotes, fromLabel, holeBearingDeg, holeQuality, labels,
     landings, longestCarry, pickClub, pin, planReady, rankState, strategyMode, ranking, rankingPending, rings,
     scoreBaseline, shownLies, stats, troubleCells, optionsNote, obBands, lies,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
@@ -358,10 +358,10 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     mapTapGuardUntil,
     offlineReport,
     loadNeedsSignIn, searchError,
-    addDrawPoint, aim, aimAtBest, aimIsPin, aimLie, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
+    addDrawPoint, aim, aimAtBest, aimLie, aimManual, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
-    deleteZone, distAim, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
+    deleteZone, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,

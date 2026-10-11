@@ -432,7 +432,6 @@ export function usePlan({
   )
   const distAim = ball && aim ? distanceYds(ball, aim) : null
   const aimToPin = aim && pin ? distanceYds(aim, pin) : null
-  const aimIsPin = aimToPin != null && aimToPin < 3
   // What the chosen club's pattern leaves: from its average finish point (after roll) to the pin.
   const avgLeft = pin && chosenLive ? distanceYds(chosenLive.meanRest, pin) : null
 
@@ -449,9 +448,7 @@ export function usePlan({
   return {
     aim,
     aimAtBest,
-    aimIsPin,
     aimLie,
-    aimToPin,
     atBestAim,
     avgLeft,
     bagDriverCarry,
@@ -465,7 +462,6 @@ export function usePlan({
     clubShots,
     corridor,
     defaultAim,
-    distAim,
     distPin,
     estimateNotes,
     fairwayEstimated,

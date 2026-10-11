@@ -13,7 +13,7 @@ import { IntroCards } from "@/components/planner/IntroCards"
 import type { PlannerVM } from "@/hooks/usePlannerController"
 import Link from "next/link"
 import { MAP_TAP_GUARD_MS } from "@/lib/planner/clubChoice"
-import { ChevronUp, Loader2, X } from "lucide-react"
+import { Loader2, X } from "lucide-react"
 import dynamic from "next/dynamic"
 import { distanceYds } from "@/lib/course/geo"
 import { dismissed as promptDismissed, readPrompt, writePrompt } from "@/lib/planner/setupPrompt"
@@ -25,7 +25,7 @@ import { EditHoleModal } from "@/components/simulator/EditHoleModal"
 import { TeeLine } from "@/components/simulator/TeeLine"
 import { PlayRound } from "@/components/play/PlayRound"
 import { saveZoom } from "@/lib/planner/storage"
-import { ScoringDetails } from "@/components/planner/ScoringDetails"
+import { DetailsPanel, type DetailsSection } from "@/components/planner/DetailsPanel"
 import { ClubTable } from "@/components/planner/ClubTable"
 import { ResultCard } from "@/components/planner/ResultCard"
 import { isLowConfidence } from "@/lib/course/plan"
@@ -34,7 +34,6 @@ import { HoleHeader } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
 import { ClubChips } from "@/components/planner/ClubChips"
 import { ObBanner } from "@/components/planner/ObBanner"
-import { WindControl } from "@/components/planner/WindControl"
 import { CoursePickerSheet } from "@/components/planner/CoursePickerSheet"
 import { MARKS_USER_ID } from "@/lib/planner/marks"
 import { MapView } from "@/components/planner/MapView"
@@ -49,10 +48,10 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     offlineReport,
     mapTapGuardUntil,
     loadNeedsSignIn, searchError,
-    addDrawPoint, aim, aimAtBest, aimIsPin, aimManual, aimToPin, atBestAim, authUser, avgLeft, bag,
+    addDrawPoint, aim, aimAtBest, aimManual, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
-    deleteZone, distAim, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
+    deleteZone, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
@@ -84,43 +83,63 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     setIntroOpen(false)
   }
 
+  const [details, setDetails] = useState<{ open: boolean; section: DetailsSection }>({ open: false, section: "scoring" })
+  const openDetails = (section: DetailsSection) => setDetails({ open: true, section })
+
   const planCard =
     best && chosen && chosenLive ? (
       <>
       {noObMapped && holeId && <ObBanner onAnswer={(a) => void obTags.answer(holeId, a)} />}
-      <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} className="hidden md:flex -mx-1 mb-2 gap-1.5 px-1 pb-1" />
+      {optionsNote && <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} className="hidden md:grid" />}
+      <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} onMore={() => setSheetOpen(true)} className="hidden md:flex gap-1.5" />
       <ResultCard
         best={best}
         chosen={chosen}
-        chosenLive={chosenLive}
         clubChoice={clubChoice}
-        fromLabel={fromLabel}
-        hole={hole}
-        baselineHandicap={baselineHandicap}
         atBestAim={atBestAim}
         aimLie={aimLie}
-        chosenAtAim={chosenAtAim}
         distPin={distPin}
         greenYards={greenYards}
-        avgLeft={avgLeft}
-        estimateNotes={estimateNotes}
-        holeQuality={holeQuality}
-        geometry={geometry}
-        onEditHole={() => setEditingHole(true)}
-        onStartDraw={startDraw}
-        onConfirmHazard={setHazardConfirmed}
+        options={optionsNote}
+        pinPlaysLike={pinPlaysLike}
         onAimAtBest={aimAtBest}
         onBackToBest={() => {
           setClubChoice("auto")
           aimAtBest(best)
         }}
-        options={optionsNote}
-        onPickOption={pickClub}
-        shotsLabel={source === "calibrated" ? "My shots" : source === "legacy" ? `${calibratedName} (old data)` : "Handicap estimate"}
-        pinPlaysLike={pinPlaysLike}
-        coldTip={coldTip}
+        onOpenDetails={openDetails}
       />
-      <WindControl wind={wind} holeBearingDeg={holeBearingDeg} playsLikeOn={playsLikeOn} onPlaysLikeChange={setPlaysLikeOn} hasElevation={hasElevation} />
+      <DetailsPanel
+        open={details.open}
+        section={details.section}
+        onClose={() => setDetails((d) => ({ ...d, open: false }))}
+        wind={wind}
+        holeBearingDeg={holeBearingDeg}
+        playsLikeOn={playsLikeOn}
+        onPlaysLikeChange={setPlaysLikeOn}
+        hasElevation={hasElevation}
+        breakdown={pinPlaysLike?.breakdown ?? null}
+        coldTip={coldTip}
+        hole={hole}
+        holeQuality={holeQuality}
+        geometry={geometry}
+        onEditHole={() => setEditingHole(true)}
+        onStartDraw={startDraw}
+        onConfirmHazard={setHazardConfirmed}
+        best={best}
+        chosen={chosen}
+        chosenLive={chosenLive}
+        options={optionsNote}
+        atBestAim={atBestAim}
+        chosenAtAim={chosenAtAim}
+        fromLabel={fromLabel}
+        baselineHandicap={baselineHandicap}
+        shotsLabel={source === "calibrated" ? "My shots" : source === "legacy" ? `${calibratedName} (old data)` : "Handicap estimate"}
+        avgLeft={avgLeft}
+        estimateNotes={estimateNotes}
+        onCourseSpread={vm.onCourseSpread}
+        onShowIntro={() => setIntroOpen(true)}
+      />
       </>
     ) : null
 
@@ -147,10 +166,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         setSheetOpen(false)
       }}
     />
-  )
-
-  const scoringDetails = (
-    <ScoringDetails distAim={distAim} aimToPin={aimToPin} aimIsPin={aimIsPin} baselineHandicap={baselineHandicap} onCourseSpread={vm.onCourseSpread} onShowIntro={() => setIntroOpen(true)} />
   )
 
   const layersMenu = showLayersMenu && layersMenuPos && (
@@ -244,6 +259,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         onZoomChange={(z) => course && saveZoom(course.id, z)}
         holeBearingDeg={holeBearingDeg}
         wind={playsLikeOn ? wind.wind : null}
+        onWindClick={() => openDetails("conditions")}
         onBall={(p) => {
           if (Date.now() < mapTapGuardUntil.current) return
           stopFollowing()
@@ -390,22 +406,11 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           }
           plays={
             optionsNote && chosen && (
-              <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} />
+              <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} onUnmapped={() => openDetails("map")} />
             )
           }
           chips={
-            <>
-              <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} className="flex min-w-0 flex-1 gap-1.5 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" />
-              {planReady && ranking.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSheetOpen(true)}
-                  className="flex h-9 shrink-0 items-center gap-1 rounded-full border border-fg/[0.12] px-3 text-sm text-fg-2"
-                >
-                  All clubs <ChevronUp size={14} />
-                </button>
-              )}
-            </>
+            <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} onMore={() => setSheetOpen(true)} className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" />
           }
         />
       )}
@@ -451,15 +456,12 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         <aside className="hidden min-w-0 space-y-3 md:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
           {placePrompt}
           {planCard}
-          {planReady && ranking.length > 0 && clubTable}
-          {planReady && scoringDetails}
         </aside>
 
         {/* ---- shot plan (phone: table moves into a bottom sheet so the map stays dominant) ---- */}
         <div className="min-w-0 space-y-3 md:hidden">
           {placePrompt}
           {planCard}
-          {planReady && scoringDetails}
         </div>
       </div>
 

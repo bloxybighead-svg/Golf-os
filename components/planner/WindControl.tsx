@@ -1,6 +1,6 @@
 "use client"
 
-// Wind and air temperature under the result card: what is blowing (automatic
+// Wind and air temperature in the card's details, under Conditions: what is blowing (automatic
 // reading, or the golfer's own setting), a speed slider 0-30 mph, a dial for where
 // it comes from relative to the hole, a temperature field in degrees F with -10 and
 // +10 buttons, and the "Plays like" switch. The arithmetic is in lib/course/wind.ts.
@@ -22,9 +22,11 @@ export interface WindControlProps {
   onPlaysLikeChange: (on: boolean) => void
   /** Ground heights for this hole are loaded. */
   hasElevation: boolean
+  /** What the distance plays like, adjustment by adjustment ("+7 uphill, -9 wind, +3 cold"); null when none applies. */
+  breakdown?: string | null
 }
 
-export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChange, hasElevation }: WindControlProps) {
+export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChange, hasElevation, breakdown = null }: WindControlProps) {
   const [open, setOpen] = useState(false)
   const bearing = holeBearingDeg ?? 0
   const speed = wind.wind?.speedMph ?? 0
@@ -38,10 +40,9 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
   const time = wind.at != null && (wind.labelTime || wind.source === "manual") ? ` · ${wind.labelTime ? "last reading " : ""}${timeLabel(wind.at)}` : ""
 
   return (
-    <div className="rounded-2xl border border-fg/[0.07] bg-surface px-4 py-3">
+    <div>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="label-xs">Wind</p>
           <p className="truncate text-sm text-fg tabular-nums">
             {summary}
             {source && (
@@ -79,6 +80,7 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
         </div>
       </div>
 
+      {playsLikeOn && breakdown && <p className="mt-1 text-xs tabular-nums text-fg-2">{breakdown}</p>}
       {playsLikeOn && !hasElevation && <p className="mt-1 text-[11px] text-fg-3">No ground heights for this hole yet: the ground counts as level.</p>}
 
       {open && (

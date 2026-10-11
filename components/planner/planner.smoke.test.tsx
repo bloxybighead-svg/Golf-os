@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import type { ClubPlan, OptimizedClubPlan } from "@/lib/course/plan"
 import { ClubTable } from "./ClubTable"
-import { ScoringDetails } from "./ScoringDetails"
+import { DetailsPanel } from "./DetailsPanel"
 import { HoleHeader } from "./HoleHeader"
 import { StrategyToggle } from "./StrategyToggle"
 import { ResultCard } from "./ResultCard"
@@ -39,27 +39,52 @@ function card(over: Partial<ComponentProps<typeof ResultCard>> = {}) {
     <ResultCard
       best={fourIron}
       chosen={fourIron}
-      chosenLive={plan("4-Iron", 4.6, 0.02, 190)}
       clubChoice="auto"
-      fromLabel="the tee"
-      hole={null}
-      baselineHandicap={10}
       atBestAim
       aimLie="fairway"
-      chosenAtAim={4.6}
       distPin={364}
       greenYards={{ front: 352, center: 364, back: 376 }}
-      avgLeft={187}
-      estimateNotes={{ "4-Iron": "No 4-Iron shots on record: estimated from your 5-Iron" }}
-      holeQuality={null}
+      options={null}
+      onAimAtBest={() => {}}
+      onBackToBest={() => {}}
+      onOpenDetails={() => {}}
+      {...over}
+    />
+  )
+}
+
+function details(over: Partial<ComponentProps<typeof DetailsPanel>> = {}) {
+  return (
+    <DetailsPanel
+      open
+      section="scoring"
+      onClose={() => {}}
+      wind={{ wind: { speedMph: 9, fromDeg: 90 }, source: "auto", at: null, labelTime: false, temperature: { temperatureF: 63, source: "auto" } } as never}
+      holeBearingDeg={0}
+      playsLikeOn
+      onPlaysLikeChange={() => {}}
+      hasElevation
+      breakdown="+7 uphill, -9 wind, +3 cold"
+      coldTip={false}
+      hole={null}
+      holeQuality={{ fairway: "mapped", greens: "mapped", bunkers: "mapped", water: "missing" }}
       geometry={null}
       onEditHole={() => {}}
       onStartDraw={() => {}}
       onConfirmHazard={() => {}}
-      onAimAtBest={() => {}}
-      onBackToBest={() => {}}
+      best={fourIron}
+      chosen={fourIron}
+      chosenLive={plan("4-Iron", 4.6, 0.02, 190)}
       options={null}
-      onPickOption={() => {}}
+      atBestAim
+      chosenAtAim={4.6}
+      fromLabel="the fairway"
+      baselineHandicap={10}
+      shotsLabel="Handicap estimate"
+      avgLeft={187}
+      estimateNotes={{ "4-Iron": "No 4-Iron shots on record: estimated from your 5-Iron" }}
+      onCourseSpread={1.2}
+      onShowIntro={() => {}}
       {...over}
     />
   )
@@ -101,90 +126,99 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("Previous hole (Hole 18)")
   })
 
-  it("ResultCard: the visible card is the club, where to aim, front/center/back and the risk line", () => {
-    const html = renderToStaticMarkup(card({ chosen: { ...fourIron, plan: { ...fourIron.plan, lieShare: { ...fourIron.plan.lieShare, oob: 0.02 } } } })).replace(/<!-- -->/g, "")
-    const [visible, why] = html.split("<details")
-    for (const text of ["4-Iron", "Aim 4 yd left of the middle of the fairway", "Front", "Center", "Back", "352", "364", "376", "2% OB", "leaves ~187"]) {
-      expect(visible).toContain(text)
+  it("ResultCard: the club once, where to aim, the distances and nothing else", () => {
+    const html = renderToStaticMarkup(card())
+    for (const text of ["4-Iron", "Left side of the fairway", "Front", "Center", "Back", "352", "364", "376"]) expect(html).toContain(text)
+    expect(html.match(/4-Iron/g)).toHaveLength(1)
+    for (const text of ["strokes", "handicap", "Wind", "Fairway", "Greens", "Bunkers", "Water", "Shots", "unmapped", "leaves", "Best play", "Best club"]) {
+      expect(html).not.toContain(text)
     }
-    for (const text of ["4.60", "10.0 handicap", "estimated from your 5-Iron", "Expected strokes"]) expect(visible).not.toContain(text)
-    expect(why).toContain("Why")
-    expect(why).toContain("Expected strokes</span> <span class=\"tabular-nums text-fg-2\">4.6<")
-    expect(why).toContain("a 10.0 handicap")
-    expect(why).toContain("No 4-Iron shots on record: estimated from your 5-Iron.")
-    expect(visible).not.toContain("Use best aim") // already at the best aim
-    expect(why).not.toContain("At your aim")
+    expect(html).not.toContain("Use best aim") // already at the best aim
   })
 
-  it("ResultCard: a picked club shows as your pick, with the gap to the best club as a difference", () => {
-    const html = renderToStaticMarkup(card({ chosen: threeWood, clubChoice: "3-Wood", chosenLive: plan("3-Wood", 4.61, 0.03, 243), chosenAtAim: 4.71, atBestAim: false, avgLeft: 118 }))
-    const [visible, why] = html.split("<details")
-    expect(visible).toContain("Your pick")
-    expect(visible).toContain("Back to best club")
-    expect(visible).toContain("Use best aim")
-    expect(why).toContain("vs 4-Iron")
-    expect(why).toContain("+0.01")
-    expect(why).toContain("a tie, within the noise")
-    expect(why).toContain("+0.10") // at your aim: 4.71 against the 4.61 at its best aim
-    expect(why).not.toContain("4.61") // never two absolute strokes side by side
+  it("ResultCard: the risk line shows the largest risk only, and not at all at 1% or less", () => {
+    const withShare = (lieShare: Partial<OptimizedClubPlan["plan"]["lieShare"]>): OptimizedClubPlan => ({ ...fourIron, plan: { ...fourIron.plan, lieShare: { ...fourIron.plan.lieShare, ...lieShare } } })
+    expect(renderToStaticMarkup(card({ chosen: withShare({ oob: 0.01 }) }))).not.toContain("OB")
+    const html = renderToStaticMarkup(card({ chosen: withShare({ oob: 0.03, water: 0.08, trees: 0.02 }) }))
+    expect(html).toContain("8% water")
+    expect(html).toContain("text-warn")
+    expect(html).not.toContain("3% OB")
   })
 
-  it("ResultCard: plays-like sits under Center only when it changes it by a yard or more; the breakdown is in Why", () => {
-    const render = (plays: number) => renderToStaticMarkup(card({ pinPlaysLike: { plays, breakdown: "+7 uphill, -9 wind helping, +3 cold (40°F)" } }))
-    expect(render(365).split("<details")[0]).toContain("plays 365")
-    expect(render(365).split("<details")[0]).not.toContain("uphill")
-    expect(render(365).split("<details")[1]).toContain("+7 uphill, -9 wind helping, +3 cold (40°F)")
-    expect(render(364)).not.toContain("plays 364")
+  it("ResultCard: plays shows only when it differs by 2 yd or more; with no green it is one inline row", () => {
+    expect(renderToStaticMarkup(card({ pinPlaysLike: { plays: 366 } }))).toContain("plays 366")
+    expect(renderToStaticMarkup(card({ pinPlaysLike: { plays: 365 } }))).not.toContain("plays")
+    const noGreen = renderToStaticMarkup(card({ greenYards: null, pinPlaysLike: { plays: 370 } })).replace(/<!-- -->/g, "")
+    expect(noGreen).toContain("To pin")
+    expect(noGreen).toContain("364")
+    expect(noGreen).toContain("· plays 370")
+    expect(noGreen).not.toContain("Front")
   })
 
-  it("ResultCard: with no mapped green the center is the pin distance and front and back are blank", () => {
-    const html = renderToStaticMarkup(card({ greenYards: null })).split("<details")[0]
-    expect(html).toContain("364")
-    expect(html.match(/–/g)).toHaveLength(2)
+  it("ResultCard: a picked club offers the way back; Smart play or Go for it is named only when they differ", () => {
+    const picked = renderToStaticMarkup(card({ chosen: threeWood, clubChoice: "3-Wood", atBestAim: false }))
+    expect(picked).toContain("Back to best club")
+    expect(picked).toContain("Use best aim")
+    const options = { safer: fourIron, lowest: threeWood, same: false } as never
+    expect(renderToStaticMarkup(card({ options }))).toContain("Smart play")
+    expect(renderToStaticMarkup(card({ options: { safer: fourIron, lowest: fourIron, same: true } as never }))).not.toContain("Smart play")
   })
 
-  it("ScoringDetails: the aim-line and aim-to-pin distances live in the details", () => {
-    const html = renderToStaticMarkup(<ScoringDetails distAim={190} aimToPin={188} aimIsPin={false} baselineHandicap={null} onCourseSpread={1.2} />)
-    expect(html).toContain("Aim line 190 yd")
-    expect(html).toContain("Aim to pin 188 yd")
+  it("ResultCard: more than 25% unmapped puts one warning icon beside the club, with no text", () => {
+    const withUnmapped = (share: number): OptimizedClubPlan => ({ ...fourIron, plan: { ...fourIron.plan, unmappedShare: share } })
+    expect(renderToStaticMarkup(card({ chosen: withUnmapped(0.25) }))).not.toContain("unmapped")
+    const html = renderToStaticMarkup(card({ chosen: withUnmapped(0.47) }))
+    expect(html).toContain('aria-label="47% unmapped. Show why"')
+    expect(html).not.toContain(">47%")
   })
 
-  it("StrategyToggle: both plays with strokes and penalty share", () => {
-    const html = renderToStaticMarkup(
-      <StrategyToggle
-        options={{ safer: pw, lowest: fourIron, same: false } as never}
-        chosen={fourIron}
-        onPick={() => {}}
-        compact
-      />
-    )
+  it("DetailsPanel: Conditions, Map and How it's scored", () => {
+    const html = renderToStaticMarkup(details()).replace(/<!-- -->/g, "")
+    for (const text of ["Conditions", "Map", "How it’s scored", "+7 uphill, -9 wind, +3 cold", "Plays like on", "Water not mapped", "Mark water"]) expect(html).toContain(text)
+    expect(html).toContain('Expected strokes</span> <span class="tabular-nums text-fg-2">4.6<')
+    expect(html).toContain("a 10.0 handicap")
+    expect(html).toContain("Handicap estimate")
+    expect(html).toContain("Every shot is placed on the map") // the existing method text
+    expect(html).not.toContain("Carry / finish") // carry and finish are the same here, so one number
+    expect(renderToStaticMarkup(details({ open: false }))).toBe("")
+  })
+
+  it("DetailsPanel: the difference to the other option is a difference, never two strokes numbers", () => {
+    const html = renderToStaticMarkup(details({ chosen: threeWood, chosenLive: plan("3-Wood", 4.61, 0.03, 243), atBestAim: false, chosenAtAim: 4.71 }))
+    expect(html).toContain("vs 4-Iron")
+    expect(html).toContain("+0.01")
+    expect(html).toContain("a tie, within the noise")
+    expect(html).toContain("+0.10") // at your aim
+  })
+
+  it("StrategyToggle: both plays, one line each: club and its risk", () => {
+    const risky: OptimizedClubPlan = { ...pw, plan: { ...pw.plan, lieShare: { ...pw.plan.lieShare, oob: 0.04 } } }
+    const html = renderToStaticMarkup(<StrategyToggle options={{ safer: risky, lowest: fourIron, same: false } as never} chosen={fourIron} onPick={() => {}} compact />)
     expect(html).toContain("Smart play")
     expect(html).toContain("Go for it")
-    expect(html).toContain("4.60 strokes")
-  })
-
-  it("unmapped warning: above 25% the recommendation stays and the warning sits in Why", () => {
-    const render = (share: number) => {
-      const p: OptimizedClubPlan = { ...fourIron, plan: { ...fourIron.plan, unmappedShare: share } }
-      return renderToStaticMarkup(card({ best: p, chosen: p, chosenLive: p.plan }))
-    }
-    const [visible, why] = render(0.47).split("<details")
-    expect(visible).toContain("4-Iron")
-    expect(visible).not.toContain("unmapped")
-    expect(why).toContain("47%")
-    expect(why).toContain("of this pattern is on unmapped ground")
-    expect(why).toContain("Check the")
-    expect(render(0.25)).not.toContain("of this pattern is on unmapped ground")
-    expect(render(0.26)).toContain("of this pattern is on unmapped ground")
+    expect(html).toContain("4% OB")
+    expect(html).not.toContain("strokes")
   })
 
   it("StrategyToggle: flags the chosen play when much of it is on unmapped ground", () => {
     const html = renderToStaticMarkup(
-      <StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true } as never} chosen={fourIron} onPick={() => {}} compact unmappedWarning={0.54} />
+      <StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true } as never} chosen={fourIron} onPick={() => {}} compact unmappedWarning={0.54} onUnmapped={() => {}} />
     )
     expect(html).toContain("Best play")
     expect(html).toContain('aria-label="54% unmapped. Show why"')
     expect(html).not.toContain(">54% unmapped<") // the words live in the icon, not on the card
+  })
+
+  it("ClubChips: the best three, a tie marked, then More", () => {
+    const tied: OptimizedClubPlan = { ...pw, plan: { ...pw.plan, expectedStrokes: 4.61, strokesSe: 0.03 } }
+    const html = renderToStaticMarkup(<ClubChips ranking={[fourIron, tied, threeWood, pw]} chosen={fourIron} onPick={() => {}} onMore={() => {}} />)
+    for (const text of ["4-Iron", "PW", "3-Wood", "More"]) expect(html).toContain(text)
+    expect(html.match(/≈/g)).toHaveLength(2) // PW and 3-Wood are within the noise of the best
+    expect(html).not.toContain("aria-hidden") // no rank numerals
+    const ninth: OptimizedClubPlan = { ...pw, club: "9-Iron" }
+    const fourth = renderToStaticMarkup(<ClubChips ranking={[fourIron, tied, threeWood, ninth]} chosen={ninth} onPick={() => {}} onMore={() => {}} />)
+    expect(fourth).toContain("9-Iron") // a pick from the table takes the third chip
+    expect(fourth).not.toContain("3-Wood")
   })
 
   it("phone dock: three fixed rows, cards of two truncating lines, nothing that can wrap", () => {
@@ -193,8 +227,8 @@ describe("planner components render (smoke)", () => {
       <PlayDock
         scoring={false}
         status={<button>Start round</button>}
-        plays={<StrategyToggle options={{ safer: sevenWood, lowest: sevenWood, same: false } as never} chosen={sevenWood} onPick={() => {}} compact unmappedWarning={0.43} />}
-        chips={<ClubChips ranking={[sevenWood, pw]} chosen={sevenWood} onPick={() => {}} className="flex min-w-0 flex-1 gap-1.5" />}
+        plays={<StrategyToggle options={{ safer: sevenWood, lowest: sevenWood, same: false } as never} chosen={sevenWood} onPick={() => {}} compact unmappedWarning={0.43} onUnmapped={() => {}} />}
+        chips={<ClubChips ranking={[sevenWood, pw]} chosen={sevenWood} onPick={() => {}} onMore={() => {}} className="flex min-w-0 flex-1 gap-1.5" />}
       />
     )
     for (const text of ["Smart play", "Go for it", "7-Wood", "43% unmapped"]) expect(html).toContain(text)
@@ -213,7 +247,7 @@ describe("planner components render (smoke)", () => {
     }
 
     // Each card is as tall as the plays row, with exactly two lines that both truncate.
-    const cards = [...html.matchAll(/<button[^>]*aria-pressed[^>]*class="([^"]*)"[^>]*>(.*?)<\/button>/g)].filter(([, , inner]) => inner.includes("strokes"))
+    const cards = [...html.matchAll(/<button[^>]*aria-pressed[^>]*class="([^"]*)"[^>]*>(.*?)<\/button>/g)].filter(([, , inner]) => inner.includes("Smart play") || inner.includes("Go for it"))
     expect(cards).toHaveLength(2)
     for (const [, cls, inner] of cards) {
       expect(cls.split(" ")).toEqual(expect.arrayContaining(["h-full", "overflow-hidden"]))

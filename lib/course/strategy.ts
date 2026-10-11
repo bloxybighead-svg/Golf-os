@@ -6,7 +6,7 @@
 //    share of shots out of bounds or in water. Every extra point of penalty
 //    costs a smooth amount, so a club never flips on a tiny change. Trees are
 //    already scored by cost.ts (the recovery column); they are shown as
-//    troubleShare but are not in this objective. Each club is first aimed by
+//    the card's risk line but are not in this objective. Each club is first aimed by
 //    the same objective. A club + aim above SMART_MAX_PENALTY_RATE is only
 //    chosen when nothing is under it.
 // The card shows both and the golfer taps the one that fits how they feel.
@@ -118,11 +118,6 @@ export const OB_SCAN_HALF_WIDTH_YDS = 60
 /** Share of a plan's finishing spots that cost a penalty stroke: out of bounds and water. */
 export function penaltyShare(plan: { lieShare: { oob: number; water: number } }): number {
   return plan.lieShare.oob + plan.lieShare.water
-}
-
-/** Share finishing in trees. Shown beside the penalty, not part of it: cost.ts already charges trees the recovery column. */
-export function troubleShare(plan: { lieShare: { trees?: number } }): number {
-  return plan.lieShare.trees ?? 0
 }
 
 /** Offline spread x `spread` about each club's own mean offline: wider misses, same natural bias. */

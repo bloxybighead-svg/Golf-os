@@ -127,6 +127,8 @@ interface Props {
   holeBearingDeg: number | null
   /** The wind in use (speed, and the compass direction it blows from), drawn as an arrow on the map. Null hides it. */
   wind?: { speedMph: number; fromDeg: number } | null
+  /** The wind badge was tapped. */
+  onWindClick?: () => void
   onBall: (p: LatLng) => void
   onAim: (p: LatLng) => void
   onPin: (p: LatLng) => void
@@ -722,7 +724,7 @@ export default function CourseMap(props: Props) {
         </p>
       )}
       {props.holeBearingDeg != null && <CompassOverlay rotationDeg={rotation} />}
-      {props.wind && props.wind.speedMph > 0 && <WindArrow wind={props.wind} rotationDeg={rotation} />}
+      {props.wind && props.wind.speedMph > 0 && <WindArrow wind={props.wind} rotationDeg={rotation} onClick={props.onWindClick} />}
       <div className="absolute bottom-6 right-2 z-[1050] flex flex-col gap-2">
         {viewDirty && (
           <button type="button" onClick={recenter} aria-label="Re-center on the hole" title="Re-center" className={glass}>
@@ -764,17 +766,19 @@ function CompassOverlay({ rotationDeg }: { rotationDeg: number }) {
 
 // Which way the wind blows, as an arrow on the map (outside Leaflet's own DOM, like the compass).
 // The map is turned by `rotationDeg`, so the arrow turns with it: it points the way the wind is going.
-function WindArrow({ wind, rotationDeg }: { wind: { speedMph: number; fromDeg: number }; rotationDeg: number }) {
+function WindArrow({ wind, rotationDeg, onClick }: { wind: { speedMph: number; fromDeg: number }; rotationDeg: number; onClick?: () => void }) {
   const toward = (wind.fromDeg + 180 + rotationDeg) % 360
   return (
-    <div
-      className="pointer-events-none absolute bottom-24 left-2 z-[1050] flex flex-col items-center rounded-lg border border-white/25 bg-black/60 px-2 py-1 text-white backdrop-blur-sm"
-      title={`Wind ${wind.speedMph} mph, from ${Math.round(wind.fromDeg)}° (compass)`}
+    <button
+      type="button"
+      onClick={onClick}
+      className="absolute bottom-24 left-2 z-[1050] flex flex-col items-center rounded-lg border border-white/25 bg-black/60 px-2 py-1 text-white backdrop-blur-sm"
+      title={`Wind ${wind.speedMph} mph, from ${Math.round(wind.fromDeg)}° (compass). Tap for conditions`}
     >
       <svg viewBox="0 0 24 24" className="h-6 w-6" style={{ transform: `rotate(${toward}deg)` }} aria-hidden>
         <path d="M12 2 L18 12 L13 12 L13 22 L11 22 L11 12 L6 12 Z" fill="currentColor" />
       </svg>
       <span className="text-[11px] font-semibold leading-none tabular-nums">{wind.speedMph} mph</span>
-    </div>
+    </button>
   )
 }

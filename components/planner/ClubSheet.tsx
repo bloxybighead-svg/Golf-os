@@ -1,8 +1,7 @@
 "use client"
 
-// Phones: the full club table as a full-screen sheet (it covers the map, so every
-// club fits without a scroll fighting the map). Opened from the dock's "All clubs"
-// button; picking a club closes it. The closed state is the dock (PlannerView).
+// The full club table: a full-screen sheet on phones (it covers the map, so every club fits without a
+// scroll fighting the map), a centred panel from tablet up. Opened by "More" in the club row; picking a club closes it.
 
 import type { ReactNode } from "react"
 import { X } from "lucide-react"
@@ -21,7 +20,7 @@ export function ClubSheet({
 }) {
   if (!open) return null
   return (
-    <div role="dialog" aria-modal="true" aria-label="All clubs" className="fixed inset-0 z-[1200] !mt-0 flex flex-col bg-page pt-[env(safe-area-inset-top)] md:hidden">
+    <div role="dialog" aria-modal="true" aria-label="All clubs" className="fixed inset-0 z-[1200] !mt-0 flex flex-col bg-page pt-[env(safe-area-inset-top)] md:inset-x-auto md:inset-y-16 md:left-1/2 md:w-[min(92vw,720px)] md:-translate-x-1/2 md:rounded-2xl md:border md:border-fg/[0.1] md:pt-0">
       <button
         type="button"
         onClick={onToggle}
@@ -30,8 +29,6 @@ export function ClubSheet({
       >
         <span className="flex min-w-0 items-center gap-1.5 truncate text-xs tabular-nums">
           <span className="font-semibold text-fg">{chosen?.club ?? "–"}</span>
-          <span className="text-muted">·</span>
-          <span className="text-fg-3">{chosen ? `${chosen.plan.expectedStrokes.toFixed(2)} strokes` : "–"}</span>
           <span className="text-muted">·</span>
           <span className="text-fg-3">All clubs</span>
         </span>

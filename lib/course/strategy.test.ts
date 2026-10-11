@@ -19,7 +19,6 @@ import {
   SMART_MAX_PENALTY_RATE,
   SMART_RISK_STROKES,
   smartRule,
-  troubleShare,
   widenShots,
 } from "./strategy"
 import { clampRisk } from "./riskSetting"
@@ -98,11 +97,9 @@ describe("the two options", () => {
     expect(r?.same).toBe(false) // same club, different aim: two options
   })
 
-  it("penalty share is OB + water; trees are a separate trouble share", () => {
+  it("penalty share is OB + water; trees are not in it", () => {
     const plan = { lieShare: { oob: 0.04, water: 0.01, trees: 0.18 } }
     expect(penaltyShare(plan)).toBeCloseTo(0.05, 10)
-    expect(troubleShare(plan)).toBeCloseTo(0.18, 10)
-    expect(troubleShare({ lieShare: {} })).toBe(0) // trees absent counts as none
   })
 
   it("with no penalty risk anywhere there is one option: the best by strokes", () => {
