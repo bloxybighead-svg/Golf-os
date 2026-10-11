@@ -55,9 +55,9 @@ export function ResultCard({
     <div className="rounded-2xl border border-fg/[0.07] bg-surface p-4">
       <div className="flex items-baseline gap-2">
         <p className="min-w-0 truncate text-5xl font-semibold leading-none tracking-tight text-fg tabular-nums">{chosen.club}</p>
-        {label && <p className="shrink-0 text-xs text-muted">{label}</p>}
-        <p className="ml-auto shrink-0 text-2xl font-semibold leading-none text-accent tabular-nums">
-          {chosen.plan.expectedStrokes.toFixed(1)}
+        <p className="ml-auto shrink-0 text-right">
+          <span className="block text-4xl font-semibold leading-none text-accent tabular-nums">{chosen.plan.expectedStrokes.toFixed(1)}</span>
+          <span className="block text-[11px] text-muted">Expected strokes</span>
         </p>
         {isLowConfidence(chosen.plan) && (
           <button
@@ -89,6 +89,7 @@ export function ResultCard({
       {risk && <p className={`mt-2 text-sm tabular-nums ${risk.warn ? "text-warn" : "text-fg-2"}`}>{risk.text}</p>}
 
       <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 md:min-h-9">
+        {label && <p className="text-xs text-muted">{label}</p>}
         {!atBestAim && (
           <button
             onClick={() => onAimAtBest(chosen)}
