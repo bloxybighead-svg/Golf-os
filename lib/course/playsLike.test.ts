@@ -227,7 +227,7 @@ describe("the ranking sees plays-like", () => {
   it("the worker takes the conditions, and they are part of what a ranking is keyed on", () => {
     const inputs: LieInputs = { origin: ORIGIN, features: [{ kind: "fairway", ring: [at(-40, 0), at(40, 0), at(40, 450), at(-40, 450)] as LatLng[] }], coast: [], zones: [], extras: {} }
     const msg = (conditions: ShotConditions | null): RankMessage => ({
-      type: "rank", id: 1, liesVersion: 1, bagVersion: 1, from: at(0, 0), aim: at(0, 150), pin: at(0, 150), startLie: "fairway", line: [at(0, 0), at(0, 150)], handicap: 3, spread: 1.25, par: 4, yards: 150, conditions,
+      type: "rank", id: 1, liesVersion: 1, bagVersion: 1, from: at(0, 0), aim: at(0, 150), pin: at(0, 150), startLie: "fairway", line: [at(0, 0), at(0, 150)], handicap: 3, spread: 1.25, conditions,
     })
     const handle = createRankHandler()
     handle({ type: "lies", version: 1, inputs })

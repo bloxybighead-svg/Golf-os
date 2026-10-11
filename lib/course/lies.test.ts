@@ -151,16 +151,16 @@ describe("water drop at the entry point", () => {
 
   it("plays from the entry distance, still one penalty stroke", () => {
     const plan = evaluateClub({ club: "7-Iron", shots }, { from: ORIGIN, aim: pin, pin, lies })
-    // this shot + penalty + fairway from ~110 yd (entry at 140, pin at 250), not from 80 yd (where it landed)
-    expect(plan.expectedStrokes).toBeCloseTo(1 + 1 + tourExpected("fairway", 110), 1)
-    expect(plan.expectedStrokes).toBeGreaterThan(1 + 1 + tourExpected("fairway", 85))
+    // this shot + penalty + rough from ~110 yd (entry at 140, pin at 250), not from 80 yd (where it landed)
+    expect(plan.expectedStrokes).toBeCloseTo(1 + 1 + tourExpected("rough", 110), 1)
+    expect(plan.expectedStrokes).toBeGreaterThan(1 + 1 + tourExpected("rough", 85))
   })
 
   it("falls back to the landing distance when there's no dry ground behind the shot", () => {
     const allWater = buildLieMap(ORIGIN, [{ kind: "water", ring: rect(-100, -50, 100, 300) }])
     expect(waterEntryPoint(ORIGIN, at(0, 170), at(0, 170), allWater)).toBeNull()
     const plan = evaluateClub({ club: "7-Iron", shots }, { from: ORIGIN, aim: pin, pin, lies: allWater })
-    expect(plan.expectedStrokes).toBeCloseTo(1 + 1 + tourExpected("fairway", 80), 5)
+    expect(plan.expectedStrokes).toBeCloseTo(1 + 1 + tourExpected("rough", 80), 5)
   })
 })
 

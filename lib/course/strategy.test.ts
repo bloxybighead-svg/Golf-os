@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { distanceYds, fromLocal, type LatLng } from "./geo"
 import { buildLieMap } from "./lies"
-import { buildLookahead } from "./lookahead"
+import { buildLookahead, longestTotalYds } from "./lookahead"
 import { hasOobBesideLine, obBand, obBandsFor, obZonesFor } from "./obTags"
 import { bestAim, evaluateClub, type ClubShots, type OptimizedClubPlan } from "./plan"
 import { createRankHandler, rankKey, type LieInputs, type RankMessage } from "./rankRequest"
@@ -111,12 +111,10 @@ describe("the two options", () => {
     expect(r?.lowest.club).toBe("Driver")
   })
 
-  it("only par 5s and par 4s over 440 yd look ahead", () => {
-    expect(needsLookahead(5, 480)).toBe(true)
-    expect(needsLookahead(4, 441)).toBe(true)
-    expect(needsLookahead(4, 440)).toBe(false)
-    expect(needsLookahead(3, 230)).toBe(false)
-    expect(needsLookahead(null, 600)).toBe(false)
+  it("looks ahead only when the pin is past 1.05 x the longest club's mean total", () => {
+    expect(needsLookahead(300, 280)).toBe(true)
+    expect(needsLookahead(294, 280)).toBe(false)
+    expect(needsLookahead(230, 280)).toBe(false)
   })
 
   it("keeps the spread setting inside 1.0 to 1.5", () => {
@@ -236,7 +234,7 @@ describe("OB tags", () => {
 
 // ---- look-ahead ---------------------------------------------------------------
 
-describe("look-ahead on long holes", () => {
+describe("look-ahead on shots that cannot reach the pin", () => {
   const bag = sampleBag(300, 3)
   const lies = buildLieMap(
     ORIGIN,
@@ -301,6 +299,27 @@ describe("look-ahead on long holes", () => {
     expect(grid.valueAt(land(267, "trees", 5))).toBeNull()
   })
 
+  it("counts the driver in the longest total from the tee only, with its roll", () => {
+    const clubs = [
+      { club: "Driver", shots: [{ carryYds: 260, offlineYds: 0 }] },
+      { club: "7-Iron", shots: [{ carryYds: 160, offlineYds: 0 }] },
+    ]
+    expect(longestTotalYds(clubs, "tee")).toBe(280)
+    expect(longestTotalYds(clubs, "fairway")).toBe(160)
+  })
+
+  it("a par-5 second shot from 280 yd leaves a full-wedge number rather than a long club that leaves about 60", () => {
+    const noWoods = bag.filter((c) => c.club !== "Driver" && c.club !== "3-Wood")
+    const ctx = { from: at(0, 277), aim: at(0, 557), pin: at(0, 557), lies, startLie: "fairway" as const, baseline: base }
+    const left = (r: OptimizedClubPlan) => 280 - r.plan.meanTotalYds
+    const plain = rankWithSpread(noWoods, ctx, { spread: 1, line: holeLine })[0]
+    const rows = rankWithSpread(noWoods, ctx, { spread: 1, line: holeLine, lookahead: (clubs) => buildLookahead({ ...args, clubs, from: ctx.from }) })
+    expect(left(plain)).toBeLessThan(80)
+    expect(left(rows[0])).toBeGreaterThan(80)
+    expect(left(rows[0])).toBeLessThan(130)
+    expect(rows[0].plan.expectedStrokes).toBeLessThan(rows.find((r) => r.club === plain.club)!.plan.expectedStrokes)
+  })
+
   it("the tee shot ranking changes when it looks ahead", () => {
     const ctx = { from: at(0, 0), aim: at(0, 557), pin: at(0, 557), lies, startLie: "tee" as const, baseline: base }
     const plain = rankWithSpread(bag, ctx, { spread: 1, line: holeLine })
@@ -313,20 +332,18 @@ describe("look-ahead on long holes", () => {
 describe("the ranking worker's spread messages", () => {
   const lies = buildLieMap(ORIGIN, [{ kind: "fairway", ring: box(-30, 0, 30, 420) }], [], [{ id: "ob", lie: "oob", ring: box(34, 0, 200, 420) }])
   const inputs: LieInputs = { origin: ORIGIN, features: [{ kind: "fairway", ring: box(-30, 0, 30, 420) }], coast: [], zones: [{ id: "ob", lie: "oob", ring: box(34, 0, 200, 420) }], extras: {} }
-  const rank = (spread: number | undefined): RankMessage => ({
+  const rank = (spread: number | undefined, pinY = 420): RankMessage => ({
     type: "rank",
     id: 1,
     liesVersion: 1,
     bagVersion: 1,
     from: at(0, 0),
     aim: at(0, 300),
-    pin: at(0, 420),
+    pin: at(0, pinY),
     startLie: "tee",
-    line: [at(0, 0), at(0, 420)],
+    line: [at(0, 0), at(0, pinY)],
     handicap: 3,
     spread,
-    par: 4,
-    yards: 420,
   })
   const clubs: ClubShots[] = [
     { club: "Driver", shots: cloud(260, 14, 5, 0, 500) },
@@ -338,8 +355,9 @@ describe("the ranking worker's spread messages", () => {
     const handle = createRankHandler()
     handle({ type: "lies", version: 1, inputs })
     handle({ type: "bag", version: 1, clubs })
-    const narrow = handle(rank(1))!
-    const wide = handle(rank(1.5))!
+    // A pin the driver reaches, so no look-ahead re-aims the clubs and only the spread differs.
+    const narrow = handle(rank(1, 280))!
+    const wide = handle(rank(1.5, 280))!
     const pen = (r: typeof wide) => r.results!.reduce((a, x) => a + penaltyShare(x.plan), 0)
     expect(pen(wide)).toBeGreaterThanOrEqual(pen(narrow))
   })

@@ -283,8 +283,6 @@ export function usePlan({
     compareAgainst === "tour" ? null : trackedHandicap ?? baseline?.handicapIndex ?? (Number.isFinite(handicap) ? handicap : DEFAULT_BASELINE_HANDICAP)
   const scoreBaseline = getBaseline(baselineHandicap)
 
-  // Long holes (par 5s, par 4s over 440 yd) value the tee shot by what it leaves for the next one.
-  const holeYards = hole && pin ? hole.yardageYds ?? Math.round(distanceYds(hole.line[0], pin)) : null
   const rankingRequest: RankingRequest | null = useMemo(
     () =>
       ball && pin && defaultAim
@@ -298,14 +296,12 @@ export function usePlan({
             handicap: baselineHandicap,
             spread: onCourseSpread,
             risk: smartRisk,
-            par: hole?.par ?? null,
-            yards: holeYards,
             conditions,
             conditionsKey: conditionsId,
           }
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap, onCourseSpread, smartRisk, holeYards, conditionsId]
+    [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap, onCourseSpread, smartRisk, conditionsId]
   )
   const rankState = useClubRanking(lieInputs, clubShots, rankingRequest)
   // The ranking is by expected strokes, with the spread applied. The card offers two options from it: smart play (the

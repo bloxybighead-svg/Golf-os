@@ -1,24 +1,26 @@
-// One shot of look-ahead for the tee shot on long holes.
+// One shot of look-ahead for any shot that cannot reach the pin.
 //
 // The plain value of a spot is a table lookup: strokes to hole out from this
 // lie at this distance. That table assumes the distance can be played, so a
-// tee shot that leaves 330 yd to the pin on a par 5 is valued as if you could
-// just hit it. Here every spot a tee shot can finish gets a value from the best
+// shot that leaves 330 yd to the pin is valued as if you could just hit it.
+// Here every spot the shot can finish gets a value from the best
 // NEXT shot instead: each club (a few samples, its own best aim among a few),
 // played from that spot and scored with the same baseline as the tee shot
 // itself; the best club's expected strokes is the spot's value. A cell holds one value per lie in it, so a bunker
-// inside a fairway cell is not valued as fairway. A tee shot is
+// inside a fairway cell is not valued as fairway. The shot is
 // then worth the average grid value at its finish spots.
 //
-// The grid depends on the hole, pin, map and bag, not on where the
-// ball is, so the worker builds it once per hole and reuses it.
+// The grid is laid out around the ball, so the worker keeps one per hole and
+// ball cell (rankRequest.ts) rather than rebuilding it as the ball is dragged.
 
 import { bearingDeg, distanceYds, fromLocal, toLocal, type LatLng } from "./geo"
 import { projectOnLine } from "./aim"
 import type { Baseline } from "./baseline"
+import type { StartLie } from "./cost"
 import type { Lie, LieMap } from "./lies"
 import type { ShotConditions } from "./playsLike"
 import { evaluateClub, isTeeOnly, type ClubShots, type Landing } from "./plan"
+import { BASE_ROLL_YDS, clubGroup } from "./roll"
 import {
   LOOKAHEAD_AIM_OFFSETS,
   LOOKAHEAD_CELL_YDS,
@@ -26,8 +28,8 @@ import {
   LOOKAHEAD_MAX_CELLS,
   LOOKAHEAD_MAX_CLUBS,
   LOOKAHEAD_MAX_VALUATIONS,
-  LOOKAHEAD_MAX_TEE_FACTOR,
-  LOOKAHEAD_MIN_TEE_YDS,
+  LOOKAHEAD_MAX_FACTOR,
+  LOOKAHEAD_MIN_YDS,
   LOOKAHEAD_SAMPLES,
   LOOKAHEAD_SEED,
 } from "./strategy"
@@ -36,7 +38,7 @@ import { seededSample } from "@/lib/dispersion/stats"
 export interface LookaheadArgs {
   /** The bag, with the on-course spread already applied. */
   clubs: ClubShots[]
-  /** Where the tee shot is hit from (the grid is laid out in local yards around it). */
+  /** Where the ball is: the grid is laid out in local yards around it. */
   from: LatLng
   pin: LatLng
   /** The hole's centreline: the grid covers LOOKAHEAD_LATERAL_YDS either side of it. */
@@ -62,6 +64,14 @@ interface Candidate {
   club: string
   carry: number
   shots: ClubShots
+}
+
+/** The longest mean total (carry + fairway roll) of any club hit from `startLie`: tee-only clubs count only from the tee. */
+export function longestTotalYds(clubs: ClubShots[], startLie: StartLie): number {
+  const totals = clubs
+    .filter((c) => c.shots.length > 0 && (startLie === "tee" || !isTeeOnly(c.club)))
+    .map((c) => c.shots.reduce((a, s) => a + s.carryYds, 0) / c.shots.length + BASE_ROLL_YDS[clubGroup(c.club)])
+  return Math.max(0, ...totals)
 }
 
 /** The best next shot from `at` (strokes to hole out, this shot included), or null with no clubs. */
@@ -96,11 +106,11 @@ export function buildLookahead(args: LookaheadArgs): Lookahead {
   if (cands.length === 0 || args.line.length < 2) return empty
 
   const longest = Math.max(...played.map((c) => c.shots.reduce((a, s) => a + s.carryYds, 0) / c.shots.length))
-  const lo = LOOKAHEAD_MIN_TEE_YDS
-  const hi = longest * LOOKAHEAD_MAX_TEE_FACTOR
+  const lo = LOOKAHEAD_MIN_YDS
+  const hi = longest * LOOKAHEAD_MAX_FACTOR
   const origin = args.from
 
-  // Cell centres: within [lo, hi] of the tee and LOOKAHEAD_LATERAL_YDS of the hole line. A cell is valued once per playable
+  // Cell centres: within [lo, hi] of the ball and LOOKAHEAD_LATERAL_YDS of the hole line. A cell is valued once per playable
   // lie found inside it (a 3x3 sample), so a bunker in a fairway cell gets its own value. The cell grows until both the
   // cell count and the number of valuations fit their caps.
   const line = args.line.map((p) => toLocal(origin, p))

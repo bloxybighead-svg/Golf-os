@@ -12,7 +12,7 @@ import { getBaseline } from "./baseline"
 import { assessHoleDataQuality, estimatedFairwayCorridor } from "./dataQuality"
 import { distanceYds, type LatLng } from "./geo"
 import { buildLieMap, type UserZone } from "./lies"
-import { buildLookahead } from "./lookahead"
+import { buildLookahead, longestTotalYds } from "./lookahead"
 import { obZonesFor, type ObTag } from "./obTags"
 import type { CourseFeature, CourseHole } from "./overpass"
 import type { ClubShots, OptimizedClubPlan } from "./plan"
@@ -34,7 +34,7 @@ export function coltsNeckHole(ref: number) {
   const hole = (fixture.holes as unknown as CourseHole[]).find((h) => h.ref === ref) as CourseHole
   const features = fixture.features as unknown as CourseFeature[]
   const pin = holePinFor(hole, features)
-  return { hole, features, pin, par: hole.par ?? 4, yards: Math.round(distanceYds(hole.line[0], pin)) }
+  return { hole, features, pin }
 }
 
 export interface Case {
@@ -47,7 +47,7 @@ export interface Case {
 
 /** Rank the bag from the tee of a Colts Neck hole, as the planner does (estimated fairway corridor, OB tags as zones). */
 export function rankColtsNeck(ref: number, tags: ObTag[], opts: { spread?: number; clubs?: ClubShots[]; lookahead?: boolean; conditions?: ShotConditions | null } = {}): Case {
-  const { hole, features, pin, par, yards } = coltsNeckHole(ref)
+  const { hole, features, pin } = coltsNeckHole(ref)
   // His own hand-drawn marks for these holes (fairways, trees, out of bounds): what the planner has when he plays there.
   const marks = zonesFile.zones as UserZone[]
   const quality = assessHoleDataQuality(hole, features, marks)
@@ -63,8 +63,9 @@ export function rankColtsNeck(ref: number, tags: ObTag[], opts: { spread?: numbe
   const baseline = getBaseline(TEST_HANDICAP)
   const from = hole.line[0]
   const t0 = performance.now()
-  const useLook = opts.lookahead ?? needsLookahead(par, yards)
-  const ranking = rankWithSpread(opts.clubs ?? sampleBag(), { from, aim: pin, pin, lies, startLie: "tee", baseline, conditions: opts.conditions }, {
+  const bag = opts.clubs ?? sampleBag()
+  const useLook = opts.lookahead ?? needsLookahead(distanceYds(from, pin), longestTotalYds(bag, "tee"))
+  const ranking = rankWithSpread(bag, { from, aim: pin, pin, lies, startLie: "tee", baseline, conditions: opts.conditions }, {
     spread: opts.spread ?? ON_COURSE_SPREAD,
     line: hole.line,
     lookahead: useLook ? (clubs) => buildLookahead({ clubs, from, pin, line: hole.line, lies, baseline, conditions: opts.conditions }) : undefined,

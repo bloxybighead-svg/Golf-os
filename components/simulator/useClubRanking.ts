@@ -39,9 +39,6 @@ export interface RankingRequest {
   spread: number
   /** Smart play's risk, strokes per unit of OB/water share (You -> Planner). */
   risk: number
-  /** The hole's par and yardage: long holes look one shot ahead from the tee. */
-  par: number | null
-  yards: number | null
   /** Wind and ground height (null = still air, level ground) and the key that tells a changed one apart. */
   conditions: ShotConditions | null
   conditionsKey: string

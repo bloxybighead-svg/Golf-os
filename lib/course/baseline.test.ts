@@ -60,6 +60,16 @@ describe("handicap baseline calibration", () => {
     }
   })
 
+  it("a water drop is a penalty stroke plus a shot from the rough, tour and handicap alike", () => {
+    for (const h of [null, 3, 15]) {
+      const b = getBaseline(h)
+      for (const d of [60, 150, 300]) {
+        expect(b.expectedStrokesRemaining("water", d)).toBeCloseTo(1 + b.expectedStrokesRemaining("rough", d), 10)
+        expect(b.expectedStrokesRemaining("water", 400, undefined, d)).toBeCloseTo(1 + b.expectedStrokesRemaining("rough", d), 10)
+      }
+    }
+  })
+
   it("keeps fairway < rough < sand and rough < trees at every distance", () => {
     for (const h of [0, 5, 10, 20]) {
       const b = getBaseline(h)

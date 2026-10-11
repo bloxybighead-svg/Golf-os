@@ -222,16 +222,16 @@ describe("second shots on a long hole", () => {
   })
 
   it("values a lay-up by what it leaves when no club reaches the pin", () => {
-    const rankWith = (par: number | null) => {
+    const rankWith = (spread: number | undefined) => {
       const handle = createRankHandler()
       handle({ type: "lies", version: 1, inputs: doglegInputs })
       handle({ type: "bag", version: 1, clubs: bag })
-      const msg = { type: "rank", id: 1, liesVersion: 1, bagVersion: 1, from: ball, aim: pin, pin, startLie: "fairway", line, spread: 1, par, yards: 560 } as RankMessage
+      const msg = { type: "rank", id: 1, liesVersion: 1, bagVersion: 1, from: ball, aim: pin, pin, startLie: "fairway", line, spread } as RankMessage
       return handle(msg)!.results!
     }
-    const par5 = rankWith(5)
-    const plain = rankWith(null)
-    expect(par5.map((r) => r.club)).not.toContain("Driver")
-    expect(par5.find((r) => r.club === "3-Wood")!.plan.expectedStrokes).not.toBeCloseTo(plain.find((r) => r.club === "3-Wood")!.plan.expectedStrokes, 3)
+    const looking = rankWith(1)
+    const plain = rankWith(undefined)
+    expect(looking.map((r) => r.club)).not.toContain("Driver")
+    expect(looking.find((r) => r.club === "3-Wood")!.plan.expectedStrokes).not.toBeCloseTo(plain.find((r) => r.club === "3-Wood")!.plan.expectedStrokes, 3)
   })
 })

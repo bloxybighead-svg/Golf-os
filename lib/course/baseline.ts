@@ -167,7 +167,7 @@ function handicapBaseline(h: number): Baseline {
       case "trees":
         return offGreen("recovery", d, h)
       case "water":
-        return 1 + offGreen("fairway", waterDropDistYds ?? d, h)
+        return 1 + offGreen("rough", waterDropDistYds ?? d, h)
       case "oob":
         return 1 + fromStart(origin.lie, origin.distYds)
     }

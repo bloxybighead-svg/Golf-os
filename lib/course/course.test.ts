@@ -400,9 +400,10 @@ describe("Broadie baseline (published PGA TOUR tables)", () => {
     expect(tourPutting(0)).toBeCloseTo(1, 5)
     expect(tourPutting(150)).toBeGreaterThan(tourPutting(90))
   })
-  it("a green landing is putting distance in feet, and water costs a stroke plus a drop", () => {
+  it("a green landing is putting distance in feet, and water costs a stroke plus a drop from the rough", () => {
     expect(expectedStrokesRemaining("green", 10 / 3)).toBeCloseTo(1.61, 2)
-    expect(expectedStrokesRemaining("water", 120)).toBeCloseTo(1 + 2.85, 5)
+    expect(expectedStrokesRemaining("water", 120)).toBeCloseTo(1 + tourExpected("rough", 120), 5)
+    expect(expectedStrokesRemaining("water", 120)).toBeGreaterThan(1 + tourExpected("fairway", 120))
   })
   it("strokes gained = expected before - expected after - 1 (sanity)", () => {
     // Holing a 100 yd shot from the fairway would be gaining 2.80 - 0 - 1 = 1.80.

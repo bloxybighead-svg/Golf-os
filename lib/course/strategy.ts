@@ -60,10 +60,10 @@ export const SPREAD_MIN = 1.0
 export const SPREAD_MAX = 1.5
 export const SPREAD_STEP = 0.05
 
-// ---- Look ahead (par 5s and long par 4s) ----------------------------------
+// ---- Look ahead (shots that cannot reach the pin) --------------------------
 
-/** Holes this long (par 4) or any par 5 get the one-shot look-ahead. ESTIMATE (spec): where the green is out of reach in two. */
-export const LOOKAHEAD_PAR4_MIN_YDS = 440
+/** A shot looks ahead when the pin is farther than this multiple of the longest club's mean total (carry + roll). ESTIMATE: a 5% margin, so a club that only just gets there is not treated as a lay-up. */
+export const LOOKAHEAD_REACH_FACTOR = 1.05
 
 /** Next-shot samples per club per aim. SPEED SETTING: more is smoother and slower. */
 export const LOOKAHEAD_SAMPLES = 60
@@ -80,16 +80,15 @@ export const LOOKAHEAD_MAX_CELLS = 160
 /** Most next-shot valuations (one per playable lie per cell) a grid may need: twice the cell cap, so lies cost at most 2x the one-lie grid. SPEED SETTING. */
 export const LOOKAHEAD_MAX_VALUATIONS = 2 * LOOKAHEAD_MAX_CELLS
 
-/** How far either side of the hole line the look-ahead grid reaches, yards. A tee shot finishing farther out is valued with the plain table. */
+/** How far either side of the hole line the look-ahead grid reaches, yards. A shot finishing farther out is valued with the plain table. */
 export const LOOKAHEAD_LATERAL_YDS = 60
 
 /** Seed for which shots the look-ahead samples, so the grid repeats. */
 export const LOOKAHEAD_SEED = 29
 
-/** True when the hole is long enough that the tee shot should be valued by what it leaves for the next one. */
-export function needsLookahead(par: number | null | undefined, yards: number | null | undefined): boolean {
-  if (par == null) return false
-  return par >= 5 || (par === 4 && (yards ?? 0) > LOOKAHEAD_PAR4_MIN_YDS)
+/** True when no club reaches the pin, so the shot should be valued by what it leaves for the next one. */
+export function needsLookahead(distToPinYds: number, longestTotalYds: number): boolean {
+  return distToPinYds > LOOKAHEAD_REACH_FACTOR * longestTotalYds
 }
 
 // ---- OB tags -------------------------------------------------------------
@@ -178,8 +177,8 @@ export function penaltyWord(plan: { lieShare: { oob: number; water: number } }):
   return plan.lieShare.oob >= plan.lieShare.water ? "OB" : "water"
 }
 
-/** The look-ahead grid only covers where a tee shot can finish: from this far from the tee. ESTIMATE: nobody tees off with less than a long iron on a par 5. */
-export const LOOKAHEAD_MIN_TEE_YDS = 120
+/** The look-ahead grid only covers where a shot can finish: from this far from the ball. ESTIMATE: nobody lays up with less than a long iron. */
+export const LOOKAHEAD_MIN_YDS = 120
 
 /** ...out to this multiple of the longest club's carry (carry + roll + a long one). ESTIMATE. */
-export const LOOKAHEAD_MAX_TEE_FACTOR = 1.15
+export const LOOKAHEAD_MAX_FACTOR = 1.15
