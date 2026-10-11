@@ -140,7 +140,7 @@ describe("planner components render (smoke)", () => {
   it("StrategyToggle: both plays with strokes and penalty share", () => {
     const html = renderToStaticMarkup(
       <StrategyToggle
-        options={{ safer: pw, lowest: fourIron, same: false, noSafeOption: false } as never}
+        options={{ safer: pw, lowest: fourIron, same: false } as never}
         chosen={fourIron}
         onPick={() => {}}
         compact
@@ -195,7 +195,7 @@ describe("planner components render (smoke)", () => {
 
   it("StrategyToggle: flags the chosen play when much of it is on unmapped ground", () => {
     const html = renderToStaticMarkup(
-      <StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true, noSafeOption: false } as never} chosen={fourIron} onPick={() => {}} compact unmappedWarning={0.54} />
+      <StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true } as never} chosen={fourIron} onPick={() => {}} compact unmappedWarning={0.54} />
     )
     expect(html).toContain("Best play")
     expect(html).toContain("54% unmapped")

@@ -11,8 +11,9 @@ import { CALIBRATED_DEFAULT_BAG, DEFAULT_BAG, normalizeBag } from "@/lib/golfer/
 import type { MyProfile, ShotSource } from "@/lib/planner/types"
 import { ONBOARDED_KEY, SETTINGS_KEY, applyBaselineToDevice, cleanCarries, type Baseline } from "@/lib/golfer/baseline"
 import { COMPARE_AGAINST_EVENT, COMPARE_AGAINST_KEY, readCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
+import { readRisk, RISK_EVENT, RISK_KEY } from "@/lib/course/riskSetting"
 import { readSpread, SPREAD_EVENT, SPREAD_KEY } from "@/lib/course/spreadSetting"
-import { ON_COURSE_SPREAD } from "@/lib/course/strategy"
+import { ON_COURSE_SPREAD, SMART_RISK_STROKES } from "@/lib/course/strategy"
 import { RECENT_KEY, type CourseHit } from "@/lib/planner/storage"
 import { BAG_SYNC_DEBOUNCE_MS, SETTINGS_STAMP_KEY, decideSync, stampMs, type SyncedSettings } from "@/lib/golfer/bagSync"
 import { bannerVisible, readPrompt, recordView, writePrompt } from "@/lib/planner/setupPrompt"
@@ -94,6 +95,21 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     window.addEventListener("storage", onStorage)
     return () => {
       window.removeEventListener(SPREAD_EVENT, sync)
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [])
+  // How many strokes a point of OB/water share costs Smart play (You -> Planner), saved per device.
+  const [smartRisk, setSmartRisk] = useState(SMART_RISK_STROKES)
+  useEffect(() => {
+    const sync = () => setSmartRisk(readRisk())
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === RISK_KEY) sync()
+    }
+    sync()
+    window.addEventListener(RISK_EVENT, sync)
+    window.addEventListener("storage", onStorage)
+    return () => {
+      window.removeEventListener(RISK_EVENT, sync)
       window.removeEventListener("storage", onStorage)
     }
   }, [])
@@ -266,6 +282,7 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     bag,
     compareAgainst,
     onCourseSpread,
+    smartRisk,
     recent,
     hydrated,
     loadFromDevice,

@@ -48,7 +48,7 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
                 {LIE_SHORT[l]}
               </th>
             ))}
-            <th className="px-1 py-2.5 text-right font-medium" title="Share of shots out of bounds, in water or in trees (a drop, punch-out or lost ball). Red = over the safe limit">
+            <th className="px-1 py-2.5 text-right font-medium" title="Share of shots out of bounds or in water (a penalty stroke). Trees are the Tre column. Red = over the limit Smart play allows">
               Pen
             </th>
             <th

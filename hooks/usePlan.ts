@@ -20,7 +20,7 @@ import { useHoleElevation } from "@/hooks/useHoleElevation"
 import { usePlaysLikeSetting } from "@/hooks/usePlaysLikeSetting"
 import { useWind } from "@/hooks/useWind"
 import { goRows, optionsFor, smartRows, tradeoffText } from "@/lib/course/rankOptions"
-import { widenShots } from "@/lib/course/strategy"
+import { smartRule, widenShots } from "@/lib/course/strategy"
 import { obBandsFor, type ObBand, type ObTag } from "@/lib/course/obTags"
 import { DEFAULT_BASELINE_HANDICAP, getBaseline, type CompareAgainst } from "@/lib/course/baseline"
 import { seededSample } from "@/lib/dispersion/stats"
@@ -69,6 +69,8 @@ export interface PlanInputs {
   showRings: boolean
   /** The offline-spread multiplier applied to every club (You -> Planner). */
   onCourseSpread: number
+  /** Smart play's risk, strokes per unit of OB/water share (You -> Planner). */
+  smartRisk: number
   /** The golfer's OB tags for the current hole (saved per course + hole). */
   obTags: ObTag[]
   /** A round is being played: the wind is refreshed every 15 minutes. */
@@ -103,6 +105,7 @@ export function usePlan({
   showTrouble,
   showRings,
   onCourseSpread,
+  smartRisk,
   obTags,
   roundActive,
 }: PlanInputs) {
@@ -285,6 +288,7 @@ export function usePlan({
             line: hole?.line ?? null,
             handicap: baselineHandicap,
             spread: onCourseSpread,
+            risk: smartRisk,
             par: hole?.par ?? null,
             yards: holeYards,
             conditions,
@@ -292,14 +296,14 @@ export function usePlan({
           }
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap, onCourseSpread, holeYards, conditionsId]
+    [holeId, ball, pin, defaultAim, startLie, hole, baselineHandicap, onCourseSpread, smartRisk, holeYards, conditionsId]
   )
   const rankState = useClubRanking(lieInputs, clubShots, rankingRequest)
   // The ranking is by expected strokes, with the spread applied. The card offers two options from it: smart play (the
   // default: safer, but never far from the lowest strokes) and go for it (the lowest strokes). Smart play goes first,
   // so "auto" picks it; the golfer taps Go for it (or any club) to change.
   const rankRaw = rankState.results ?? []
-  const options = useMemo(() => optionsFor(rankRaw), [rankRaw])
+  const options = useMemo(() => optionsFor(rankRaw, smartRule(smartRisk)), [rankRaw, smartRisk])
   // Smart play (the default) shows every club at its safe aim, best first; Go for it shows every club at its
   // strokes-best aim. Which one is on is part of the club choice (lib/planner/clubChoice.ts).
   const strategyMode = choiceMode(clubChoice)

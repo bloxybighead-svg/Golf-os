@@ -9,7 +9,7 @@ import type { LatLng } from "./geo"
 import { buildLieMap, type LieMap, type LieMapExtras, type UserZone } from "./lies"
 import type { StartLie } from "./cost"
 import type { CourseFeature } from "./overpass"
-import { SMART_MAX_PENALTY_RATE } from "./strategy"
+import { smartRule } from "./strategy"
 import { rankClubsOptimized, type ClubShots, type OptimizedClubPlan, type RankOptions } from "./plan"
 import { getBaseline } from "./baseline"
 import { buildLookahead, type Lookahead } from "./lookahead"
@@ -45,6 +45,8 @@ export type RankMessage =
        * tee shot also looks one shot ahead. Absent = the plain ranking (raw shots, no look-ahead) this protocol started with.
        */
       spread?: number
+      /** Smart play's risk, strokes per unit of OB/water share (strategy.ts SMART_RISK_STROKES). Absent = the default. */
+      risk?: number
       /** The hole's par and yardage, which decide whether the tee shot looks ahead. */
       par?: number | null
       yards?: number | null
@@ -80,11 +82,13 @@ export function rankKey(k: {
   handicap?: number | null
   /** The offline-spread multiplier. */
   spread?: number
+  /** Smart play's risk (strokes per unit of penalty share): it moves each club's safe aim. */
+  risk?: number
   /** conditionsKey() of the wind and ground height the ranking was made for. */
   conditionsKey?: string
 }): string {
   const pt = (p: LatLng) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`
-  return [k.liesVersion, k.bagVersion, k.holeId ?? "-", k.startLie, pt(k.from), pt(k.pin), k.handicap ?? "tour", k.spread ?? "-", k.conditionsKey ?? "-"].join("|")
+  return [k.liesVersion, k.bagVersion, k.holeId ?? "-", k.startLie, pt(k.from), pt(k.pin), k.handicap ?? "tour", k.spread ?? "-", k.risk ?? "-", k.conditionsKey ?? "-"].join("|")
 }
 
 /** A small least-recently-used cache. */
@@ -141,7 +145,7 @@ export function createRankHandler(now: () => number = () => performance.now()) {
     const conditions = msg.conditions ?? null
     const ctx = { from: msg.from, aim: msg.aim, pin: msg.pin, lies: lies.map, startLie: msg.startLie, baseline, conditions }
     if (msg.spread === undefined) {
-      const results = rankClubsOptimized(bag.clubs, ctx, { maxPenalty: SMART_MAX_PENALTY_RATE, ...msg.opts, line: msg.line })
+      const results = rankClubsOptimized(bag.clubs, ctx, { smart: smartRule(msg.risk), ...msg.opts, line: msg.line })
       return { id: msg.id, results, ms: now() - t0 }
     }
 
@@ -161,7 +165,7 @@ export function createRankHandler(now: () => number = () => performance.now()) {
       }
       valueAt = grid.valueAt
     }
-    const results = rankClubsOptimized(clubs, { ...ctx, valueAt }, { maxPenalty: SMART_MAX_PENALTY_RATE, ...msg.opts, line: msg.line, skipAtAim: true })
+    const results = rankClubsOptimized(clubs, { ...ctx, valueAt }, { smart: smartRule(msg.risk), ...msg.opts, line: msg.line, skipAtAim: true })
     return { id: msg.id, results, ms: now() - t0 }
   }
 }
