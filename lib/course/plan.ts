@@ -122,6 +122,9 @@ export function isLowConfidence(plan: Pick<ClubPlan, "unmappedShare">): boolean 
   return plan.unmappedShare > UNMAPPED_LOW_CONFIDENCE
 }
 
+/** The driver is a tee club: nobody hits it off the ground, so it is only ranked (or looked ahead to) from the tee. */
+export const isTeeOnly = (club: string) => club === "Driver"
+
 /** Step size, yards, when walking back along a shot to find where it went into the water. */
 const WATER_ENTRY_STEP_YDS = 5
 /** Halvings after that step brackets the water's edge: 5 yd / 2^4 = about a third of a yard. */
@@ -553,7 +556,7 @@ export function rankClubsOptimized(clubs: ClubShots[], ctx: PlanContext, opts: R
   const cap = opts.shotCap ?? RANKING_SHOT_CAP
   const toPin = distanceYds(ctx.from, ctx.pin)
   return clubsForDistance(clubs, toPin)
-    .filter((c) => c.shots.length > 0)
+    .filter((c) => c.shots.length > 0 && (!isTeeOnly(c.club) || (ctx.startLie ?? "fairway") === "tee"))
     .map((c) => {
       let { search, confirm } = rankingSplit(c, cap)
       // How far this club goes (carry + roll) decides where on the centreline its search is centred.

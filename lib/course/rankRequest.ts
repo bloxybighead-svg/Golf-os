@@ -5,12 +5,12 @@
 // position with an old map. Kept free of any worker API so tests (and a
 // browser without workers) can run it directly.
 
-import type { LatLng } from "./geo"
+import { distanceYds, type LatLng } from "./geo"
 import { buildLieMap, type LieMap, type LieMapExtras, type UserZone } from "./lies"
 import type { StartLie } from "./cost"
 import type { CourseFeature } from "./overpass"
 import { smartRule } from "./strategy"
-import { rankClubsOptimized, type ClubShots, type OptimizedClubPlan, type RankOptions } from "./plan"
+import { isTeeOnly, rankClubsOptimized, type ClubShots, type OptimizedClubPlan, type RankOptions } from "./plan"
 import { getBaseline } from "./baseline"
 import { buildLookahead, type Lookahead } from "./lookahead"
 import { needsLookahead, widenShots } from "./strategy"
@@ -120,6 +120,12 @@ export function buildLieMapFrom(inputs: LieInputs): LieMap {
 /** How many look-ahead grids the handler keeps (the hole's tee, and a recent hole or two). */
 const LOOKAHEAD_CACHE_SIZE = 4
 
+/** True when no club that can be hit off the ground carries to the pin: the shot is a lay-up, valued by what it leaves. */
+function beyondReach(clubs: ClubShots[], from: LatLng, pin: LatLng): boolean {
+  const reach = Math.max(0, ...clubs.filter((c) => c.shots.length > 0 && !isTeeOnly(c.club)).map((c) => c.shots.reduce((a, s) => a + s.carryYds, 0) / c.shots.length))
+  return distanceYds(from, pin) > reach
+}
+
 /** A stateful handler: remembers the latest map and bag, answers "rank" messages. */
 export function createRankHandler(now: () => number = () => performance.now()) {
   let lies: { version: number; map: LieMap } | null = null
@@ -156,7 +162,7 @@ export function createRankHandler(now: () => number = () => performance.now()) {
       widened.set(wk, clubs)
     }
     let valueAt: Lookahead["valueAt"] | undefined
-    if (msg.startLie === "tee" && msg.line && msg.line.length >= 2 && needsLookahead(msg.par, msg.yards)) {
+    if (msg.line && msg.line.length >= 2 && needsLookahead(msg.par, msg.yards) && (msg.startLie === "tee" || beyondReach(clubs, msg.from, msg.pin))) {
       const gk = [msg.spread, lies.version, bag.version, msg.handicap ?? "tour", conditionsKey(conditions), msg.from.lat, msg.from.lng, msg.pin.lat, msg.pin.lng].join("|")
       let grid = grids.get(gk)
       if (!grid) {

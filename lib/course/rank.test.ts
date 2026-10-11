@@ -208,3 +208,30 @@ describe("the ranking worker", () => {
     expect(c.get("c")).toBe(3)
   })
 })
+
+describe("second shots on a long hole", () => {
+  const threeWood: ClubShots = { club: "3-Wood", shots: pattern(230, 8, 10, 6) }
+  const bag = [driver, threeWood, sevenIron]
+  const ball = at(0, 100)
+  const stance = { from: ball, aim: pin, pin, lies: dogleg, startLie: "fairway" as const }
+
+  it("never ranks the driver off the ground, only from the tee", () => {
+    expect(rankClubsOptimized(bag, stance, { line }).map((r) => r.club)).not.toContain("Driver")
+    expect(rankClubsOptimized(bag, { ...stance, startLie: "rough" }, { line }).map((r) => r.club)).not.toContain("Driver")
+    expect(rankClubsOptimized(bag, { ...stance, from: ORIGIN, startLie: "tee" }, { line }).map((r) => r.club)).toContain("Driver")
+  })
+
+  it("values a lay-up by what it leaves when no club reaches the pin", () => {
+    const rankWith = (par: number | null) => {
+      const handle = createRankHandler()
+      handle({ type: "lies", version: 1, inputs: doglegInputs })
+      handle({ type: "bag", version: 1, clubs: bag })
+      const msg = { type: "rank", id: 1, liesVersion: 1, bagVersion: 1, from: ball, aim: pin, pin, startLie: "fairway", line, spread: 1, par, yards: 560 } as RankMessage
+      return handle(msg)!.results!
+    }
+    const par5 = rankWith(5)
+    const plain = rankWith(null)
+    expect(par5.map((r) => r.club)).not.toContain("Driver")
+    expect(par5.find((r) => r.club === "3-Wood")!.plan.expectedStrokes).not.toBeCloseTo(plain.find((r) => r.club === "3-Wood")!.plan.expectedStrokes, 3)
+  })
+})

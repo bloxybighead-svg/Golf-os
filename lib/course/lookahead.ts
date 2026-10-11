@@ -18,7 +18,7 @@ import { projectOnLine } from "./aim"
 import type { Baseline } from "./baseline"
 import type { Lie, LieMap } from "./lies"
 import type { ShotConditions } from "./playsLike"
-import { evaluateClub, type ClubShots, type Landing } from "./plan"
+import { evaluateClub, isTeeOnly, type ClubShots, type Landing } from "./plan"
 import {
   LOOKAHEAD_AIM_OFFSETS,
   LOOKAHEAD_CELL_YDS,
@@ -83,8 +83,10 @@ export function bestNextShot(at: LatLng, lie: Lie, cands: Candidate[], args: Loo
 }
 
 export function buildLookahead(args: LookaheadArgs): Lookahead {
-  const cands: Candidate[] = args.clubs
-    .filter((c) => c.shots.length > 0)
+  const played = args.clubs.filter((c) => c.shots.length > 0)
+  // Next shots are played off the ground, so tee clubs are not candidates (they still set how far a tee shot can finish).
+  const cands: Candidate[] = played
+    .filter((c) => !isTeeOnly(c.club))
     .map((c) => ({
       club: c.club,
       carry: c.shots.reduce((a, s) => a + s.carryYds, 0) / c.shots.length,
@@ -93,7 +95,7 @@ export function buildLookahead(args: LookaheadArgs): Lookahead {
   const empty: Lookahead = { valueAt: () => null, cells: 0 }
   if (cands.length === 0 || args.line.length < 2) return empty
 
-  const longest = Math.max(...cands.map((c) => c.carry))
+  const longest = Math.max(...played.map((c) => c.shots.reduce((a, s) => a + s.carryYds, 0) / c.shots.length))
   const lo = LOOKAHEAD_MIN_TEE_YDS
   const hi = longest * LOOKAHEAD_MAX_TEE_FACTOR
   const origin = args.from
