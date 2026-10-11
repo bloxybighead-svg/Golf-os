@@ -196,16 +196,6 @@ describe("planner components render (smoke)", () => {
     expect(render(0.26)).toContain("of this pattern is on unmapped ground")
   })
 
-  it("ResultCard: no Mark links when the account can't mark areas", () => {
-    const p: OptimizedClubPlan = { ...fourIron, plan: { ...fourIron.plan, unmappedShare: 0.47 } }
-    const html = renderToStaticMarkup(
-      <ResultCard best={p} chosen={p} chosenLive={p.plan} clubChoice="auto" fromLabel="the tee" hole={null} baselineHandicap={10} atBestAim chosenAtAim={4.6} distAim={190} distPin={364} aimToPin={188} aimIsPin={false} avgLeft={187} estimateNotes={{}} holeQuality={null} geometry={null} onEditHole={() => {}} onConfirmHazard={() => {}} onAimAtBest={() => {}} onBackToBest={() => {}} options={null} onPickOption={() => {}} />
-    )
-    expect(html).toContain("of this pattern is on unmapped ground")
-    expect(html).not.toContain(">trees<")
-    expect(html).not.toContain(">OB<")
-  })
-
   it("StrategyToggle: flags the chosen play when much of it is on unmapped ground", () => {
     const html = renderToStaticMarkup(
       <StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true } as never} chosen={fourIron} onPick={() => {}} compact unmappedWarning={0.54} />

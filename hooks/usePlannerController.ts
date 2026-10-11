@@ -66,7 +66,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const [clubChoice, setClubChoice] = useState<string>("auto")
   const zoneState = useZones({ supabase, authUser, course })
   const {
-    canMark, zones, noHazard, setNoHazard, drawKind, setDrawKind,
+    zones, noHazard, setNoHazard, drawKind, setDrawKind,
     pendingPoints, setPendingPoints, startDraw, addDrawPoint,
     undoDrawPoint, cancelDraw, finishDraw, deleteZone,
   } = zoneState
@@ -374,7 +374,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     setShowZones, setSource, setTendency, sevenIronCarry, sheetOpen, showCarry, showLayersMenu, showMarks,
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
-    toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones, canMark,
+    toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
     pinPlaysLike, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
     onCourseSpread: settings.onCourseSpread,

@@ -36,8 +36,7 @@ export interface ResultCardProps {
   holeQuality: HoleDataQuality | null
   geometry: CourseGeometry | null
   onEditHole: () => void
-  /** Absent when this account can't mark areas. */
-  onStartDraw?: (lie: Lie) => void
+  onStartDraw: (lie: Lie) => void
   onConfirmHazard: (hazard: ConfirmableHazard, value: boolean) => void
   onAimAtBest: (r: OptimizedClubPlan) => void
   onBackToBest: () => void
@@ -181,41 +180,29 @@ export function ResultCard({
       {isLowConfidence(chosen.plan) ? (
         <p className="mt-2 text-xs text-fg-2" data-testid="unmapped-warning">
           <span className="font-semibold text-warn">{pct(chosen.plan.unmappedShare)}</span> of this pattern is on unmapped ground. Check the
-          map.
-          {onStartDraw && (
-            <>
-              {" "}
-              Mark{" "}
-              <button onClick={() => onStartDraw("trees")} className="font-semibold text-accent hover:underline">
-                trees
-              </button>
-              /
-              <button onClick={() => onStartDraw("oob")} className="font-semibold text-accent hover:underline">
-                OB
-              </button>{" "}
-              if needed.
-            </>
-          )}
+          map, mark{" "}
+          <button onClick={() => onStartDraw("trees")} className="font-semibold text-accent hover:underline">
+            trees
+          </button>
+          /
+          <button onClick={() => onStartDraw("oob")} className="font-semibold text-accent hover:underline">
+            OB
+          </button>{" "}
+          if needed.
         </p>
       ) : (
         flagsUnmapped(chosenLive) && (
         <p className="mt-2 text-[11px] text-fg-3">
           <span className="font-semibold text-warn">{pct(chosenLive.unmappedShare)}</span> of shots landed on unmapped ground.
-          {onStartDraw ? (
-            <>
-              Draw{" "}
-              <button onClick={() => onStartDraw("trees")} className="font-semibold text-accent hover:underline">
-                trees
-              </button>{" "}
-              or{" "}
-              <button onClick={() => onStartDraw("oob")} className="font-semibold text-accent hover:underline">
-                out of bounds
-              </button>{" "}
-              to sharpen this.
-            </>
-          ) : (
-            "Check the map."
-          )}
+          Draw{" "}
+          <button onClick={() => onStartDraw("trees")} className="font-semibold text-accent hover:underline">
+            trees
+          </button>{" "}
+          or{" "}
+          <button onClick={() => onStartDraw("oob")} className="font-semibold text-accent hover:underline">
+            out of bounds
+          </button>{" "}
+          to sharpen this.
         </p>
         )
       )}
@@ -275,32 +262,26 @@ export function ResultCard({
             {boundaryStatus(geometry) === "missing" && (
               <p>
                 No course boundary mapped: nothing counts as out of bounds unless you mark it.{" "}
-                {onStartDraw && (
-                  <button onClick={() => onStartDraw("oob")} className="font-semibold text-accent hover:underline">
-                    Mark out of bounds
-                  </button>
-                )}
+                <button onClick={() => onStartDraw("oob")} className="font-semibold text-accent hover:underline">
+                  Mark out of bounds
+                </button>
               </p>
             )}
             {holeQuality.fairway === "estimated" && (
               <p>
                 Fairway estimated.{" "}
-                {onStartDraw && (
-                  <button onClick={() => onStartDraw("fairway")} className="font-semibold text-accent hover:underline">
-                    Mark fairway
-                  </button>
-                )}
+                <button onClick={() => onStartDraw("fairway")} className="font-semibold text-accent hover:underline">
+                  Mark fairway
+                </button>
               </p>
             )}
             {holeQuality.bunkers === "missing" && (
               <p>
                 Bunkers not mapped.{" "}
-                {onStartDraw && (
-                  <button onClick={() => onStartDraw("bunker")} className="font-semibold text-accent hover:underline">
-                    Mark bunkers
-                  </button>
-                )}
-                {onStartDraw && " · "}
+                <button onClick={() => onStartDraw("bunker")} className="font-semibold text-accent hover:underline">
+                  Mark bunkers
+                </button>
+                {" · "}
                 <button onClick={() => onConfirmHazard("bunkers", true)} className="hover:text-fg hover:underline">
                   None here
                 </button>
@@ -309,12 +290,10 @@ export function ResultCard({
             {holeQuality.water === "missing" && (
               <p>
                 Water not mapped.{" "}
-                {onStartDraw && (
-                  <button onClick={() => onStartDraw("water")} className="font-semibold text-accent hover:underline">
-                    Mark water
-                  </button>
-                )}
-                {onStartDraw && " · "}
+                <button onClick={() => onStartDraw("water")} className="font-semibold text-accent hover:underline">
+                  Mark water
+                </button>
+                {" · "}
                 <button onClick={() => onConfirmHazard("water", true)} className="hover:text-fg hover:underline">
                   None here
                 </button>
@@ -323,11 +302,9 @@ export function ResultCard({
             {holeQuality.greens === "missing" && (
               <p>
                 Green not mapped.{" "}
-                {onStartDraw && (
-                  <button onClick={() => onStartDraw("green")} className="font-semibold text-accent hover:underline">
-                    Mark green
-                  </button>
-                )}
+                <button onClick={() => onStartDraw("green")} className="font-semibold text-accent hover:underline">
+                  Mark green
+                </button>
               </p>
             )}
           </div>
