@@ -36,6 +36,7 @@ import { ClubChips } from "@/components/planner/ClubChips"
 import { ObBanner } from "@/components/planner/ObBanner"
 import { WindControl } from "@/components/planner/WindControl"
 import { CoursePickerSheet } from "@/components/planner/CoursePickerSheet"
+import { MARKS_USER_ID } from "@/lib/planner/marks"
 import { MapView } from "@/components/planner/MapView"
 
 const CourseMap = dynamic(() => import("@/components/simulator/CourseMap"), {
@@ -68,6 +69,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     pinPlaysLike, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
   } = vm
+
+  const isOwner = authUser?.id === MARKS_USER_ID
 
   // First-visit intro: decided once, when Play first renders in the browser.
   // Never mid-round (read straight from storage, not from state that may not
@@ -166,7 +169,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
       onToggleRings={() => setShowRings((v) => !v)}
       showCarry={showCarry}
       onToggleCarry={() => setShowCarry((v) => !v)}
-      hasZones={zones.length > 0}
+      hasZones={isOwner && zones.length > 0}
       showZones={showZones}
       onToggleZones={() => setShowZones((v) => !v)}
       drawKind={drawKind}
@@ -439,10 +442,9 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           mapContent={mapContent}
           planReady={planReady}
           showTrouble={showTrouble}
-          zones={zones}
+          zones={isOwner ? zones : []}
           showMarks={showMarks}
           onToggleMarks={() => setShowMarks((v) => !v)}
-          signedIn={!!authUser}
           onDeleteZone={deleteZone}
         />
         {/* ---- shot plan (tablet/desktop: everything inline, including the table) ---- */}

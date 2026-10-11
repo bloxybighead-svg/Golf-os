@@ -39,7 +39,6 @@ export interface MapViewProps {
   zones: UserZone[]
   showMarks: boolean
   onToggleMarks: () => void
-  signedIn: boolean
   onDeleteZone: (id: string) => void
 }
 
@@ -67,7 +66,6 @@ export function MapView({
   zones,
   showMarks,
   onToggleMarks,
-  signedIn,
   onDeleteZone,
 }: MapViewProps) {
   const glass = "flex h-11 w-11 items-center justify-center rounded-lg border bg-black/60 backdrop-blur-sm md:h-9 md:w-9"
@@ -204,14 +202,6 @@ export function MapView({
             <div className="mt-1.5 space-y-2">
               {zones.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                  {!signedIn && (
-                    <span className="text-muted">
-                      On this device only.{" "}
-                      <Link href="/login" className="text-accent hover:underline">
-                        Sign in to sync
-                      </Link>
-                    </span>
-                  )}
                   {zones.map((z) => (
                     <span
                       key={z.id}
