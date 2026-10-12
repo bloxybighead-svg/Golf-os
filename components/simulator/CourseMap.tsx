@@ -719,13 +719,13 @@ export default function CourseMap(props: Props) {
         style={{ cursor: props.drawKind ? "crosshair" : undefined, background: satelliteDown ? "rgb(var(--surface-3))" : undefined }}
       />
       {satelliteDown && (
-        <p role="status" className="pointer-events-none absolute bottom-6 left-2 z-[1050] max-w-[60%] rounded-lg bg-page/90 px-2.5 py-1.5 text-xs text-fg-2">
+        <p role="status" className="pointer-events-none absolute bottom-6 left-[var(--map-inset,0.5rem)] z-[1050] max-w-[60%] rounded-lg bg-page/90 px-2.5 py-1.5 text-xs text-fg-2">
           Satellite needs signal. Course shapes still work.
         </p>
       )}
       {props.holeBearingDeg != null && <CompassOverlay rotationDeg={rotation} />}
       {props.wind && props.wind.speedMph > 0 && <WindArrow wind={props.wind} rotationDeg={rotation} onClick={props.onWindClick} />}
-      <div className="absolute bottom-6 right-2 z-[1050] flex flex-col gap-2">
+      <div className="absolute bottom-6 right-[var(--map-inset,0.5rem)] z-[1050] flex flex-col gap-2">
         {viewDirty && (
           <button type="button" onClick={recenter} aria-label="Re-center on the hole" title="Re-center" className={glass}>
             <LocateFixed size={18} />
@@ -751,7 +751,7 @@ export default function CourseMap(props: Props) {
 function CompassOverlay({ rotationDeg }: { rotationDeg: number }) {
   return (
     <div
-      className="pointer-events-none absolute right-2 top-2 z-[1050] flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/60 backdrop-blur-sm"
+      className="pointer-events-none absolute right-[var(--map-inset,0.5rem)] top-[var(--map-inset,0.5rem)] z-[1050] flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/60 backdrop-blur-sm"
       title={`North is ${Math.round(((rotationDeg % 360) + 360) % 360)}° clockwise from the top`}
     >
       <div className="absolute inset-0" style={{ transform: `rotate(${rotationDeg}deg)` }}>
@@ -772,7 +772,7 @@ function WindArrow({ wind, rotationDeg, onClick }: { wind: { speedMph: number; f
     <button
       type="button"
       onClick={onClick}
-      className="absolute bottom-24 left-2 z-[1050] flex flex-col items-center rounded-lg border border-white/25 bg-black/60 px-2 py-1 text-white backdrop-blur-sm"
+      className="absolute bottom-24 left-[var(--map-inset,0.5rem)] z-[1050] flex flex-col items-center rounded-lg border border-white/25 bg-black/60 px-2 py-1 text-white backdrop-blur-sm"
       title={`Wind ${wind.speedMph} mph, from ${Math.round(wind.fromDeg)}° (compass). Tap for conditions`}
     >
       <svg viewBox="0 0 24 24" className="h-6 w-6" style={{ transform: `rotate(${toward}deg)` }} aria-hidden>

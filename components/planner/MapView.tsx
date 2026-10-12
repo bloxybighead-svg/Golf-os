@@ -40,6 +40,8 @@ export interface MapViewProps {
   showMarks: boolean
   onToggleMarks: () => void
   onDeleteZone: (id: string) => void
+  /** The round screen: the map fills its grid cell edge to edge (no gutters, corners or border), and the legend and marks list stay out of it. */
+  fill?: boolean
 }
 
 export function MapView({
@@ -67,21 +69,26 @@ export function MapView({
   showMarks,
   onToggleMarks,
   onDeleteZone,
+  fill = false,
 }: MapViewProps) {
   const glass = "flex h-11 w-11 items-center justify-center rounded-lg border bg-black/60 backdrop-blur-sm md:h-9 md:w-9"
   return (
-    <div className="min-w-0 space-y-2.5">
+    <div className={fill ? "h-full min-w-0" : "min-w-0 space-y-2.5"}>
       {/* The map. Phones: as tall as the screen allows (never more than 60%) once the header, the bottom dock
           and the tab bar are taken out (--map-h, from lib/planner/dock.ts), so it is the same height whether or not a sheet is open. Everything
           the golfer touches sits on top of it. */}
       <div
         ref={mapWrapRef}
-        className="relative isolate h-[min(60dvh,var(--map-h))] min-h-[260px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
+        className={
+          fill
+            ? "relative isolate h-full overflow-hidden bg-page"
+            : "relative isolate h-[min(60dvh,var(--map-h))] min-h-[260px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
+        }
       >
         {mapContent}
 
         {/* Top left: messages (setup prompt, loading, GPS, drawing instructions). */}
-        <div className="pointer-events-none absolute left-2 right-16 top-2 z-[1100] space-y-1.5 [&>*]:pointer-events-auto">
+        <div className="pointer-events-none absolute left-[var(--map-inset,0.5rem)] right-16 top-[var(--map-inset,0.5rem)] z-[1100] space-y-1.5 [&>*]:pointer-events-auto">
           {notices}
           {gpsError && <p className="rounded-md bg-black/70 px-2 py-1 text-xs text-white">{gpsError}</p>}
           {gpsNote && !gpsError && (
@@ -105,7 +112,7 @@ export function MapView({
         </div>
 
         {/* Top right, under the compass: Reset aim and Layers. */}
-        <div className="absolute right-2 top-[3.75rem] z-[1100] flex flex-col gap-2">
+        <div className="absolute right-[var(--map-inset,0.5rem)] top-[calc(var(--map-inset,0.5rem)*2+2.75rem)] z-[1100] flex flex-col gap-2">
           {aimIsManual && (
             <button type="button" onClick={onResetAim} aria-label="Reset aim" title="Reset aim" className={`${glass} border-white/25 text-white`}>
               <RotateCcw size={16} />
@@ -127,7 +134,7 @@ export function MapView({
 
         {/* Bottom left: what a tap on the map moves. */}
         {!drawKind && (
-          <div role="group" aria-label="What a tap on the map moves" className="absolute bottom-6 left-2 z-[1100] flex overflow-hidden rounded-lg border border-white/25 bg-black/60 text-xs backdrop-blur-sm">
+          <div role="group" aria-label="What a tap on the map moves" className="absolute bottom-6 left-[var(--map-inset,0.5rem)] z-[1100] flex overflow-hidden rounded-lg border border-white/25 bg-black/60 text-xs backdrop-blur-sm">
             {(["ball", "aim", "pin"] as Placing[]).map((p) => (
               <button
                 key={p}
@@ -144,7 +151,7 @@ export function MapView({
 
         {/* Drawing controls, pinned over the map so a thumb never has to leave it to tap Finish. */}
         {drawKind && (
-          <div className="absolute bottom-6 left-2 right-16 z-[1100] flex items-center gap-2">
+          <div className="absolute bottom-6 left-[var(--map-inset,0.5rem)] right-16 z-[1100] flex items-center gap-2">
             <button
               onClick={onUndoDraw}
               disabled={pendingPoints.length === 0}
@@ -167,7 +174,7 @@ export function MapView({
       </div>
       {layersMenu}
 
-      {planReady && (
+      {planReady && !fill && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-fg-3">
           {LIES.map((l) => (
             <span key={l} className="flex items-center gap-1.5">
@@ -187,7 +194,7 @@ export function MapView({
         </div>
       )}
 
-      {zones.length > 0 && (
+      {zones.length > 0 && !fill && (
         <div className="text-xs">
           <button
             type="button"

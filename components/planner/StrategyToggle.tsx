@@ -1,7 +1,8 @@
 "use client"
 
 // Smart play / Go for it: the two clubs worth choosing between, each with its biggest risk. One tap picks that
-// club, aimed at its best. A segmented control above the card on tablets and desktops, and in the dock on phones.
+// club, aimed at its best. A segmented control above the card on tablets and desktops, and in the dock on phones
+// (compact: club and name on line one, expected strokes and the biggest risk on line two).
 
 import { AlertTriangle } from "lucide-react"
 import { riskLine } from "@/lib/planner/cardLines"
@@ -51,11 +52,26 @@ export function StrategyToggle({
                   selected ? "border-accent bg-accent/10" : "border-fg/[0.1] hover:bg-fg/[0.04]"
                 }`}
               >
-                <span className="block truncate text-xs font-medium leading-4 text-muted">{name}</span>
-                <span className="block truncate text-sm leading-5 tabular-nums">
-                  <span className="font-semibold text-fg">{r.club}</span>
-                  {risk && <span className={risk.warn ? " text-warn" : " text-fg-3"}> {risk.text}</span>}
-                </span>
+                {compact ? (
+                  <>
+                    <span className="block truncate text-sm leading-5">
+                      <span className="font-semibold text-fg">{r.club}</span>
+                      <span className="text-xs text-muted"> {name}</span>
+                    </span>
+                    <span className="block truncate text-xs leading-4 tabular-nums">
+                      <span className="text-fg-2">{r.plan.expectedStrokes.toFixed(1)}</span>
+                      {risk && <span className={risk.warn ? "text-warn" : "text-fg-3"}> · {risk.text}</span>}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="block truncate text-xs font-medium leading-4 text-muted">{name}</span>
+                    <span className="block truncate text-sm leading-5 tabular-nums">
+                      <span className="font-semibold text-fg">{r.club}</span>
+                      {risk && <span className={risk.warn ? " text-warn" : " text-fg-3"}> {risk.text}</span>}
+                    </span>
+                  </>
+                )}
               </button>
               {warned && onUnmapped && (
                 <button

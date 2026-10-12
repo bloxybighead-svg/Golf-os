@@ -21,7 +21,7 @@ async function withStrokeIndexes<T extends { hole_number: number; stroke_index?:
   }
 }
 import { summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
-import { describeOrder, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
+import { describeOrder, formatToPar, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, scoreToParLabel, type ActiveRound } from "@/lib/rounds/activeRound"
 import { recommendTee, type TeeOption } from "@/lib/tbox/estimate"
 import { driveYdsFor, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
 import { loadTeeChoice, saveTeeChoice } from "@/lib/planner/storage"
@@ -33,6 +33,7 @@ import { queueJob } from "@/lib/offline/outbox"
 import { ROUND_JOB, type RoundPayload } from "@/lib/offline/jobs"
 import { SyncStatus } from "@/components/pwa/SyncStatus"
 import { Toast } from "@/components/play/Toast"
+import { RoundBar } from "@/components/play/RoundBar"
 
 export type PlayView = "map" | "score"
 
@@ -64,10 +65,11 @@ interface Props {
   obAnswered?: (holeNumber: number) => boolean
   /** Saves the answer to "Penalty on hole 7. Was it OB left or right?" as an OB tag for that hole. */
   onObAnswer?: (holeNumber: number, side: "left" | "right") => void
-}
-
-function relLabel(n: number) {
-  return n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`
+  /** On the round screen, which has its own Map | Score bar and header: only the offline toast and the score pad render. */
+  embedded?: boolean
+  /** Set by "End round" in the hole menu: the score pad opens on its delete confirmation, then calls onEndHandled. */
+  endRequested?: boolean
+  onEndHandled?: () => void
 }
 
 function localToday() {
@@ -153,32 +155,10 @@ export function PlayRound(props: Props) {
   const scored = round.holes.filter((h): h is ScoredHole => h.strokes != null)
   const summary = summarizeHoles(scored)
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div role="tablist" aria-label="Round" className="flex shrink-0 overflow-hidden rounded-lg border border-fg/[0.08]">
-          {(["map", "score"] as PlayView[]).map((v) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={view === v}
-              onClick={() => onViewChange(v)}
-              className={`h-10 px-5 text-sm font-semibold capitalize ${
-                view === v ? "bg-accent text-on-accent" : "bg-surface text-fg-3 hover:text-fg"
-              }`}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-        <p className="min-w-0 truncate text-sm text-fg-3 tabular-nums">
-          {round.teeName ? `${round.teeName} · ` : ""}
-          {scored.length === 0 ? `Holes ${describeOrder(round.holes.map((h) => h.hole_number))}` : `Thru ${scored.length} · ${relLabel(summary.score - summary.par)}`}
-        </p>
-      </div>
-
+  const body = (
+    <>
       {offlineToast && props.offlineReport && (
-        <Toast ms={props.offlineReport.failed.length > 0 ? OFFLINE_FAILED_TOAST_MS : OFFLINE_TOAST_MS} onDone={clearOfflineToast}>
+        <Toast ms={props.offlineReport.failed.length > 0 ? OFFLINE_FAILED_TOAST_MS : OFFLINE_TOAST_MS} onDone={clearOfflineToast} top={props.embedded}>
           {props.offlineReport.failed.length > 0
             ? `Not saved for offline: ${props.offlineReport.failed.join(", ")}. Start with signal to save them.`
             : "Saved for offline: course map, tees, your shots."}
@@ -196,6 +176,21 @@ export function PlayRound(props: Props) {
           }}
         />
       )}
+    </>
+  )
+  // On the round screen the bar and header are the screen's own: only the toast and the score pad remain.
+  if (props.embedded) return body
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <RoundBar variant="segmented" view={view} onViewChange={onViewChange} scoreLabel={scoreToParLabel(round)} />
+        <p className="min-w-0 truncate text-sm text-fg-3 tabular-nums">
+          {round.teeName ? `${round.teeName} · ` : ""}
+          {scored.length === 0 ? `Holes ${describeOrder(round.holes.map((h) => h.hole_number))}` : `Thru ${scored.length} · ${formatToPar(summary.score - summary.par)}`}
+        </p>
+      </div>
+      {body}
     </div>
   )
 }
@@ -407,6 +402,8 @@ function ScorePanel({
   userId,
   obAnswered,
   onObAnswer,
+  endRequested,
+  onEndHandled,
   onSaved,
 }: Props & { round: ActiveRound; onSaved: () => void }) {
   // Tee-shot penalties to ask about once the round is saved (hole numbers); null = not asking.
@@ -426,6 +423,14 @@ function ScorePanel({
     if (currentHole != null && round.holes.some((h) => h.hole_number === currentHole)) setHoleNumber(currentHole)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentHole])
+
+  useEffect(() => {
+    if (!endRequested) return
+    openFinish()
+    setConfirmEnd(true)
+    onEndHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endRequested])
 
   const index = Math.max(0, order.indexOf(holeNumber))
   const hole = round.holes[index]
@@ -537,7 +542,7 @@ function ScorePanel({
           {scored.length > 0 ? (
             <p className="mt-1 flex items-baseline gap-3 tabular-nums">
               <span className="text-5xl font-semibold tracking-tight text-fg">{summary.score}</span>
-              <span className="text-lg text-fg-2">{relLabel(summary.score - summary.par)}</span>
+              <span className="text-lg text-fg-2">{formatToPar(summary.score - summary.par)}</span>
               <span className="text-sm text-muted">
                 {scored.length} hole{scored.length === 1 ? "" : "s"}
               </span>

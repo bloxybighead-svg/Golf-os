@@ -5,6 +5,8 @@ import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Flag, Map as MapIcon, User } from "lucide-react"
 import { APP_NAME } from "@/lib/brand"
+import { useIsCompact } from "@/hooks/useIsCompact"
+import { useRoundMode } from "@/hooks/useRoundMode"
 import { SETUP_PROMPT_EVENT, dotVisible, readPrompt } from "@/lib/planner/setupPrompt"
 
 // Three main tabs. "match" lists extra path prefixes that keep a tab lit:
@@ -22,6 +24,10 @@ function isActive(pathname: string, href: string, match: readonly string[]) {
 
 export default function NavBar() {
   const pathname = usePathname()
+  // Round mode: the screen belongs to the round. CSS (data-round-chrome) already hid these before hydration.
+  const { on } = useRoundMode()
+  const compact = useIsCompact()
+  const hideChrome = on && compact
   // The setup banner on Play collapses to this dot on the You tab after it was dismissed or shown 3 times.
   const [setupDot, setSetupDot] = useState(false)
   useEffect(() => {
@@ -38,9 +44,11 @@ export default function NavBar() {
     }
   }, [pathname])
 
+  if (hideChrome) return null
+
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-fg/[0.08] bg-page/90 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+      <header data-round-chrome className="fixed top-0 left-0 right-0 z-50 border-b border-fg/[0.08] bg-page/90 backdrop-blur-md pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-12 max-w-[1280px] items-center px-4 md:h-16 md:px-6">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-on-accent">
@@ -55,6 +63,7 @@ export default function NavBar() {
           laid over the right side of the top bar on desktop. It sits outside the
           header because the header's backdrop-blur would trap a fixed child. */}
       <nav
+        data-round-chrome
         aria-label="Main"
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-fg/[0.08] bg-page/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:pointer-events-none md:bottom-auto md:top-[env(safe-area-inset-top)] md:border-0 md:bg-transparent md:pb-0 md:backdrop-blur-none"
       >

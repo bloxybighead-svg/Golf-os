@@ -218,10 +218,27 @@ describe("planner components render (smoke)", () => {
     expect(html).not.toContain(">54% unmapped<") // the words live in the icon, not on the card
   })
 
-  it("ClubChips: the best three, a tie marked, then More", () => {
+  it("ClubChips: with all, every club is a chip in a strip that scrolls, and All clubs sits outside it", () => {
+    const ranking = [fourIron, threeWood, pw, { ...pw, club: "9-Iron" }, { ...pw, club: "SW" }]
+    const html = renderToStaticMarkup(<ClubChips ranking={ranking} chosen={fourIron} onPick={() => {}} onMore={() => {}} all />)
+    for (const c of ranking) expect(html).toContain(c.club)
+    expect(html.indexOf("SW")).toBeLessThan(html.indexOf("</div>")) // the last club is inside the strip
+    expect(html.indexOf("</div>")).toBeLessThan(html.indexOf("All clubs")) // the button is after the strip closes
+    expect(html).toContain("overflow-x-auto")
+  })
+
+  it("StrategyToggle (compact): club on line one, strokes and the biggest risk on line two", () => {
+    const risky: OptimizedClubPlan = { ...pw, plan: { ...pw.plan, lieShare: { ...pw.plan.lieShare, oob: 0.04 } } }
+    const html = renderToStaticMarkup(<StrategyToggle options={{ safer: risky, lowest: fourIron, same: false } as never} chosen={fourIron} onPick={() => {}} compact />).replace(/<!-- -->/g, "")
+    expect(html).toContain('5.1</span><span class="text-fg-3"> · 4% OB')
+    expect(html).toMatch(/PW<\/span><span class="text-xs text-muted"> Smart play/)
+    expect(html.match(/class="block truncate/g)).toHaveLength(4) // two lines on each of two cards
+  })
+
+  it("ClubChips: the best three, a tie marked, then All clubs", () => {
     const tied: OptimizedClubPlan = { ...pw, plan: { ...pw.plan, expectedStrokes: 4.61, strokesSe: 0.03 } }
     const html = renderToStaticMarkup(<ClubChips ranking={[fourIron, tied, threeWood, pw]} chosen={fourIron} onPick={() => {}} onMore={() => {}} />)
-    for (const text of ["4-Iron", "PW", "3-Wood", "More"]) expect(html).toContain(text)
+    for (const text of ["4-Iron", "PW", "3-Wood", "All clubs"]) expect(html).toContain(text)
     expect(html.match(/≈/g)).toHaveLength(2) // PW and 3-Wood are within the noise of the best
     expect(html).not.toContain("aria-hidden") // no rank numerals
     const ninth: OptimizedClubPlan = { ...pw, club: "9-Iron" }

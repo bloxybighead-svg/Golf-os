@@ -3,7 +3,7 @@
 // the same createRound as the round form.
 
 import type { CourseRef } from "@/lib/golfer/baseline"
-import { blankHoles, type HoleEntry } from "./holes"
+import { blankHoles, summarizeHoles, type HoleEntry, type ScoredHole } from "./holes"
 
 export const ACTIVE_ROUND_KEY = "golfos.activeRound.v1"
 
@@ -78,6 +78,19 @@ export function newRoundId(): string {
   bytes[8] = (bytes[8] & 0x3f) | 0x80
   const h = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+}
+
+/** Strokes against par as golfers write it: E, +2, -1. */
+export function formatToPar(n: number): string {
+  return n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`
+}
+
+/** The round so far against par ("+2"); null until a hole is scored. */
+export function scoreToParLabel(round: ActiveRound): string | null {
+  const scored = round.holes.filter((h): h is ScoredHole => h.strokes != null)
+  if (scored.length === 0) return null
+  const { score, par } = summarizeHoles(scored)
+  return formatToPar(score - par)
 }
 
 /** The next hole to score: the first one without a score, or null when all are in. */

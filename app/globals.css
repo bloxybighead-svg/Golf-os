@@ -161,6 +161,18 @@ html { -webkit-text-size-adjust: 100%; }
   a[class*="rounded"] { min-height: 36px; }
 }
 
+/* Round mode (hooks/useRoundMode.ts sets html[data-round] before first paint): on a phone the
+   header and tab bar give way to the round screen, and the page padding around it goes. The query
+   is ROUND_COMPACT_QUERY (lib/rounds/roundMode.ts). */
+@media (max-width: 767px), (max-height: 500px) {
+  html[data-round="1"] [data-round-chrome] { display: none; }
+  html[data-round="1"] main { padding: 0; }
+}
+/* A round going but not on screen: the slim "Round in progress" bar sits above the tab bar. */
+@media (max-width: 767px) {
+  html[data-round="resume"] { --resume-h: 40px; }
+}
+
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 

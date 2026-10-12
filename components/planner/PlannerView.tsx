@@ -18,6 +18,14 @@ import dynamic from "next/dynamic"
 import { distanceYds } from "@/lib/course/geo"
 import { dismissed as promptDismissed, readPrompt, writePrompt } from "@/lib/planner/setupPrompt"
 import { useIsPhone } from "@/hooks/useIsPhone"
+import { useIsCompact } from "@/hooks/useIsCompact"
+import { useRoundMode } from "@/hooks/useRoundMode"
+import { setRoundPaused } from "@/lib/rounds/roundMode"
+import { scoreToParLabel } from "@/lib/rounds/activeRound"
+import { RoundBar } from "@/components/play/RoundBar"
+import { RoundDock } from "@/components/play/RoundDock"
+import { RoundScreen } from "@/components/play/RoundScreen"
+import { ShotSheet } from "@/components/play/ShotSheet"
 import { StrategyToggle } from "@/components/planner/StrategyToggle"
 import { PlayDock } from "@/components/planner/PlayDock"
 import { dockCssVars } from "@/lib/planner/dock"
@@ -30,7 +38,7 @@ import { ClubTable } from "@/components/planner/ClubTable"
 import { ResultCard } from "@/components/planner/ResultCard"
 import { isLowConfidence } from "@/lib/course/plan"
 import { LayersMenu } from "@/components/planner/LayersMenu"
-import { HoleHeader } from "@/components/planner/HoleHeader"
+import { HoleHeader, type HoleMenuItem } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
 import { ClubChips } from "@/components/planner/ClubChips"
 import { ObBanner } from "@/components/planner/ObBanner"
@@ -83,15 +91,21 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     setIntroOpen(false)
   }
 
-  const [details, setDetails] = useState<{ open: boolean; section: DetailsSection }>({ open: false, section: "scoring" })
-  const openDetails = (section: DetailsSection) => setDetails({ open: true, section })
+  // Round mode on a phone: the round screen replaces the page (hooks/useRoundMode.ts).
+  const { on: roundMode } = useRoundMode()
+  const compact = useIsCompact()
+  const roundScreen = roundMode && compact && hydrated && !!roundHere
+  const [shotOpen, setShotOpen] = useState(false)
+  const [endRequested, setEndRequested] = useState(false)
 
-  const planCard =
+  const [details, setDetails] = useState<{ open: boolean; section: DetailsSection }>({ open: false, section: "scoring" })
+  const openDetails = (section: DetailsSection) => {
+    setShotOpen(false)
+    setDetails({ open: true, section })
+  }
+
+  const resultCard =
     best && chosen && chosenLive ? (
-      <>
-      {noObMapped && holeId && <ObBanner onAnswer={(a) => void obTags.answer(holeId, a)} />}
-      {optionsNote && <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} className="hidden md:grid" />}
-      <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} onMore={() => setSheetOpen(true)} className="hidden md:flex gap-1.5" />
       <ResultCard
         best={best}
         chosen={chosen}
@@ -109,6 +123,10 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         }}
         onOpenDetails={openDetails}
       />
+    ) : null
+
+  const detailsPanel =
+    best && chosen && chosenLive ? (
       <DetailsPanel
         open={details.open}
         section={details.section}
@@ -139,7 +157,18 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         estimateNotes={estimateNotes}
         onCourseSpread={vm.onCourseSpread}
         onShowIntro={() => setIntroOpen(true)}
+              sheet={roundScreen}
       />
+    ) : null
+
+  const planCard =
+    best && chosen && chosenLive ? (
+      <>
+      {noObMapped && holeId && <ObBanner onAnswer={(a) => void obTags.answer(holeId, a)} />}
+      {optionsNote && <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} className="hidden md:grid" />}
+      <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} onMore={() => setSheetOpen(true)} className="hidden md:flex gap-1.5" />
+      {resultCard}
+      {detailsPanel}
       </>
     ) : null
 
@@ -303,7 +332,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
   // Messages that sit over the top-left of the map, so they never push it down or around.
   const notices = (
     <>
-      {showSetupPrompt && (
+      {showSetupPrompt && !roundScreen && (
         <div className="flex h-9 items-center justify-between gap-2 rounded-lg border border-white/20 bg-black/70 pl-3 text-sm text-white">
           <span>Plan with your own clubs.</span>
           <span className="flex shrink-0 items-center">
@@ -346,122 +375,111 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     </>
   )
 
-  return (
-    <div className="space-y-3 pb-[calc(var(--dock-h)+1rem)] md:pb-0" style={dockCssVars}>
-      {introOpen && <IntroCards onClose={closeIntro} />}
-      {/* ---- header: "H7 · P3 · 108" and the course name; opens the course/hole sheet ---- */}
-      <HoleHeader
-        title={holeTitle}
-        courseName={headerCourseName}
-        onOpenPicker={() => setPickerOpen(true)}
-        showArrows={holes.length > 1}
-        onStep={stepHole}
-        holeLabel={holeLabel}
+  const holeMenu: HoleMenuItem[] | undefined = roundHere
+    ? [
+        { label: "Scorecard", onSelect: () => changePlayView("score") },
+        ...(hole ? [{ label: "Edit hole", onSelect: () => setEditingHole(true) }] : []),
+        ...(compact ? [{ label: "Pause round", onSelect: () => setRoundPaused(true) }] : []),
+        {
+          label: "End round",
+          danger: true,
+          onSelect: () => {
+            changePlayView("score")
+            setEndRequested(true)
+          },
+        },
+      ]
+    : undefined
+
+  const holeHeader = (inRoundScreen: boolean) => (
+    <HoleHeader
+      title={holeTitle}
+      courseName={headerCourseName}
+      onOpenPicker={() => setPickerOpen(true)}
+      showArrows={holes.length > 1}
+      onStep={stepHole}
+      holeLabel={holeLabel}
+      menu={holeMenu}
+      inRoundScreen={inRoundScreen}
+    />
+  )
+
+  const mapView = (fill: boolean) => (
+    <MapView
+      placing={placing}
+      onPlacingChange={setPlacing}
+      drawKind={drawKind}
+      pendingPoints={pendingPoints}
+      aimIsManual={aimState.mode === "manual"}
+      onResetAim={aimAtBest}
+      layersRef={layersMenuRef}
+      layersActive={showLayersMenu || showTrouble || following || !!drawKind}
+      onLayersClick={() => {
+        if (!showLayersMenu && layersMenuRef.current) {
+          const r = layersMenuRef.current.getBoundingClientRect()
+          setLayersMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 224) })
+        }
+        setShowLayersMenu((v) => !v)
+      }}
+      layersMenu={layersMenu}
+      gpsError={gpsError}
+      gpsNote={gpsNote}
+      notices={notices}
+      onUndoDraw={undoDrawPoint}
+      onFinishDraw={finishDraw}
+      onCancelDraw={cancelDraw}
+      mapWrapRef={mapWrapRef}
+      mapContent={mapContent}
+      planReady={planReady}
+      showTrouble={showTrouble}
+      zones={isOwner ? zones : []}
+      showMarks={showMarks}
+      onToggleMarks={() => setShowMarks((v) => !v)}
+      onDeleteZone={deleteZone}
+      fill={fill}
+    />
+  )
+
+  const playRound = (embedded: boolean) =>
+    hydrated &&
+    course && (
+      <PlayRound
+        course={course}
+        courseHoles={holes}
+        currentHole={hole?.ref ?? null}
+        round={round}
+        onRoundChange={changeRound}
+        view={playView}
+        onViewChange={changePlayView}
+        onGoToHole={goToHoleNumber}
+        onResume={(c, n) => void loadCourse(c, { autoHoleRef: n })}
+        driverCarryYds={bagDriverCarry}
+        handicapIndex={source === "handicap" ? handicap : trackedHandicap}
+        signedIn={!!authUser}
+        userId={authUser?.id ?? null}
+        offlineReport={offlineReport}
+        savedNote={savedNote}
+        onSavedNote={setSavedNote}
+        obAnswered={(n) => {
+          const h = holes.find((x) => x.ref === n)
+          return !!h && (obTags.obTagMap[h.id]?.length ?? 0) > 0
+        }}
+        onObAnswer={(n, side) => {
+          const h = holes.find((x) => x.ref === n)
+          if (h) void obTags.toggleTag(h.id, side)
+        }}
+        embedded={embedded}
+        endRequested={endRequested}
+        onEndHandled={() => setEndRequested(false)}
       />
+    )
 
-      {course && loadState !== "error" && (
-        <PlayDock
-          scoring={scoring}
-          status={
-            <>
-              {!roundHere && (
-                <TeeLine
-                  courseId={course.id}
-                  courseName={course.name}
-                  driverCarryYds={bagDriverCarry}
-                  handicapIndex={source === "handicap" ? handicap : trackedHandicap}
-                  compact={phone && !scoring}
-                />
-              )}
-              {hydrated && (
-                <PlayRound
-                  course={course}
-                  courseHoles={holes}
-                  currentHole={hole?.ref ?? null}
-                  round={round}
-                  onRoundChange={changeRound}
-                  view={playView}
-                  onViewChange={changePlayView}
-                  onGoToHole={goToHoleNumber}
-                  onResume={(c, n) => void loadCourse(c, { autoHoleRef: n })}
-                  driverCarryYds={bagDriverCarry}
-                  handicapIndex={source === "handicap" ? handicap : trackedHandicap}
-                  signedIn={!!authUser}
-                  userId={authUser?.id ?? null}
-                  offlineReport={offlineReport}
-                  savedNote={savedNote}
-                  onSavedNote={setSavedNote}
-                  obAnswered={(n) => {
-                    const h = holes.find((x) => x.ref === n)
-                    return !!h && (obTags.obTagMap[h.id]?.length ?? 0) > 0
-                  }}
-                  onObAnswer={(n, side) => {
-                    const h = holes.find((x) => x.ref === n)
-                    if (h) void obTags.toggleTag(h.id, side)
-                  }}
-                />
-              )}
-            </>
-          }
-          plays={
-            optionsNote && chosen && (
-              <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} onUnmapped={() => openDetails("map")} />
-            )
-          }
-          chips={
-            <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} onMore={() => setSheetOpen(true)} className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" />
-          }
-        />
-      )}
+  const clubChips = (all: boolean) => (
+    <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} onMore={() => setSheetOpen(true)} all={all} className="flex min-w-0 flex-1 gap-1.5" />
+  )
 
-      {/* Scoring a hole hides the map (kept mounted, so it comes back as it was). */}
-      <div className={scoring ? "hidden" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]"}>
-        {/* ---- map ---- (min-w-0 stops a wide child from stretching the page on phones) */}
-        <MapView
-          placing={placing}
-          onPlacingChange={setPlacing}
-          drawKind={drawKind}
-          pendingPoints={pendingPoints}
-          aimIsManual={aimState.mode === "manual"}
-          onResetAim={aimAtBest}
-          layersRef={layersMenuRef}
-          layersActive={showLayersMenu || showTrouble || following || !!drawKind}
-          onLayersClick={() => {
-            if (!showLayersMenu && layersMenuRef.current) {
-              const r = layersMenuRef.current.getBoundingClientRect()
-              setLayersMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 224) })
-            }
-            setShowLayersMenu((v) => !v)
-          }}
-          layersMenu={layersMenu}
-          gpsError={gpsError}
-          gpsNote={gpsNote}
-          notices={notices}
-          onUndoDraw={undoDrawPoint}
-          onFinishDraw={finishDraw}
-          onCancelDraw={cancelDraw}
-          mapWrapRef={mapWrapRef}
-          mapContent={mapContent}
-          planReady={planReady}
-          showTrouble={showTrouble}
-          zones={isOwner ? zones : []}
-          showMarks={showMarks}
-          onToggleMarks={() => setShowMarks((v) => !v)}
-          onDeleteZone={deleteZone}
-        />
-        {/* ---- shot plan (tablet/desktop: everything inline, including the table) ---- */}
-        <aside className="hidden min-w-0 space-y-3 md:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
-          {placePrompt}
-          {planCard}
-        </aside>
-
-        {/* ---- shot plan (phone: table moves into a bottom sheet so the map stays dominant) ---- */}
-        <div className="min-w-0 space-y-3 md:hidden">
-          {placePrompt}
-          {planCard}
-        </div>
-      </div>
-
+  const overlays = (
+    <>
       {/* Phones: "All clubs" opens the full club table as a full-screen list (it covers the map, so every
           club fits without a scroll fighting the map). Picking a club closes it. */}
       {planReady && ranking.length > 0 && !scoring && (
@@ -486,10 +504,99 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         />
       )}
       {correctionNote && (
-        <div className="fixed bottom-20 left-1/2 z-[1400] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl border border-accent/30 bg-surface px-4 py-3 text-center text-sm text-fg shadow-2xl md:bottom-6">
+        <div
+          className={`fixed z-[1400] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl border border-accent/30 bg-surface px-4 py-3 text-center text-sm text-fg shadow-2xl left-1/2 ${
+            roundScreen ? "top-[calc(52px+env(safe-area-inset-top)+0.75rem)]" : "bottom-20 md:bottom-6"
+          }`}
+        >
           {correctionNote}
         </div>
       )}
+    </>
+  )
+
+  if (roundScreen) {
+    return (
+      <>
+        <RoundScreen
+          scoring={scoring}
+          header={holeHeader(true)}
+          map={mapView(true)}
+          dock={
+            <RoundDock
+              plays={
+                optionsNote && chosen ? (
+                  <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact className="landscape:grid-cols-1" unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} onUnmapped={() => openDetails("map")} />
+                ) : (
+                  placePrompt
+                )
+              }
+              chips={clubChips(true)}
+              onDetails={resultCard ? () => setShotOpen(true) : null}
+            />
+          }
+          score={playRound(true)}
+          bar={<RoundBar variant="bar" view={playView} onViewChange={changePlayView} scoreLabel={scoreToParLabel(roundHere)} />}
+        />
+        <ShotSheet open={shotOpen} onClose={() => setShotOpen(false)}>
+          {resultCard}
+        </ShotSheet>
+        {detailsPanel}
+        {overlays}
+      </>
+    )
+  }
+
+  return (
+    <div className="space-y-3 pb-[calc(var(--dock-h)+1rem)] md:pb-0" style={dockCssVars}>
+      {introOpen && <IntroCards onClose={closeIntro} />}
+      {/* ---- header: "H7 · P3 · 108" and the course name; opens the course/hole sheet ---- */}
+      {holeHeader(false)}
+
+      {course && loadState !== "error" && (
+        <PlayDock
+          scoring={scoring}
+          status={
+            <>
+              {!roundHere && (
+                <TeeLine
+                  courseId={course.id}
+                  courseName={course.name}
+                  driverCarryYds={bagDriverCarry}
+                  handicapIndex={source === "handicap" ? handicap : trackedHandicap}
+                  compact={phone && !scoring}
+                />
+              )}
+              {playRound(false)}
+            </>
+          }
+          plays={
+            optionsNote && chosen && (
+              <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} onUnmapped={() => openDetails("map")} />
+            )
+          }
+          chips={clubChips(false)}
+        />
+      )}
+
+      {/* Scoring a hole hides the map (kept mounted, so it comes back as it was). */}
+      <div className={scoring ? "hidden" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]"}>
+        {/* ---- map ---- (min-w-0 stops a wide child from stretching the page on phones) */}
+        {mapView(false)}
+        {/* ---- shot plan (tablet/desktop: everything inline, including the table) ---- */}
+        <aside className="hidden min-w-0 space-y-3 md:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
+          {placePrompt}
+          {planCard}
+        </aside>
+
+        {/* ---- shot plan (phone: table moves into a bottom sheet so the map stays dominant) ---- */}
+        <div className="min-w-0 space-y-3 md:hidden">
+          {placePrompt}
+          {planCard}
+        </div>
+      </div>
+
+      {overlays}
     </div>
   )
 }

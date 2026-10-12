@@ -15,9 +15,9 @@ const TOP_NAV_PX = 56
 const HOLE_HEADER_PX = 48
 const GAP_PX = 12
 
-/** Set on the Play page: --dock-h and --tab-h place the dock and toasts, --map-h is the map's height on phones. */
+/** Set on the Play page: --dock-h and --tab-h place the dock and toasts, --map-h is the map's height on phones. --resume-h (globals.css) is the slim "Round in progress" bar when it is showing above the tab bar. */
 export const dockCssVars = {
   "--dock-h": `${DOCK_HEIGHT_PX}px`,
-  "--tab-h": `${TAB_BAR_PX}px`,
-  "--map-h": `calc(100dvh - ${TOP_NAV_PX + HOLE_HEADER_PX + GAP_PX + DOCK_HEIGHT_PX + TAB_BAR_PX}px - env(safe-area-inset-top) - env(safe-area-inset-bottom))`,
+  "--tab-h": `calc(${TAB_BAR_PX}px + var(--resume-h, 0px))`,
+  "--map-h": `calc(100dvh - ${TOP_NAV_PX + HOLE_HEADER_PX + GAP_PX + DOCK_HEIGHT_PX + TAB_BAR_PX}px - var(--resume-h, 0px) - env(safe-area-inset-top) - env(safe-area-inset-bottom))`,
 } as CSSProperties

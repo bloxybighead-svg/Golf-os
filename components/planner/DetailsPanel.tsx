@@ -68,6 +68,8 @@ export interface DetailsPanelProps {
   estimateNotes: Record<string, string>
   onCourseSpread: number
   onShowIntro: () => void
+  /** The round screen: a bottom sheet at every width (otherwise it sits inline from tablet up). */
+  sheet?: boolean
 }
 
 export function DetailsPanel(p: DetailsPanelProps) {
@@ -91,11 +93,13 @@ export function DetailsPanel(p: DetailsPanelProps) {
 
   return (
     <>
-      <button type="button" aria-label="Close details" onClick={p.onClose} className="fixed inset-0 z-[1240] bg-black/40 md:hidden" />
+      <button type="button" aria-label="Close details" onClick={p.onClose} className={`fixed inset-0 z-[1240] bg-black/40 ${p.sheet ? "" : "md:hidden"}`} />
       <div
         role="dialog"
         aria-label="Details"
-        className="fixed inset-x-0 bottom-0 z-[1250] max-h-[80dvh] space-y-4 overflow-y-auto rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 text-xs md:static md:z-auto md:max-h-none md:overflow-visible md:rounded-2xl md:border-b md:px-4 md:pb-3"
+        className={`fixed inset-x-0 bottom-0 z-[1250] max-h-[80dvh] space-y-4 overflow-y-auto rounded-t-2xl border border-b-0 border-fg/[0.1] bg-surface px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 text-xs ${
+          p.sheet ? "" : "md:static md:z-auto md:max-h-none md:overflow-visible md:rounded-2xl md:border-b md:px-4 md:pb-3"
+        }`}
       >
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-fg">Details</p>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { describeOrder, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "./activeRound"
+import { describeOrder, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, scoreToParLabel, type ActiveRound } from "./activeRound"
 
 describe("playOrder", () => {
   it("plays 18 from the first", () => {
@@ -60,5 +60,27 @@ describe("newRoundId", () => {
     const ids = Array.from({ length: 50 }, () => newRoundId())
     expect(ids.every((id) => UUID.test(id))).toBe(true)
     expect(new Set(ids).size).toBe(50)
+  })
+})
+
+describe("scoreToParLabel", () => {
+  const base: ActiveRound = {
+    id: "r1",
+    course: { id: "c1", name: "Pebble Beach" } as ActiveRound["course"],
+    date: "2026-10-11",
+    teeName: null,
+    courseRating: null,
+    slopeRating: null,
+    startHole: 1,
+    holes: holesFor([1, 2], { 1: 4, 2: 3 }),
+  }
+  it("is null until a hole is scored", () => {
+    expect(scoreToParLabel(base)).toBeNull()
+  })
+  it("is the score against the par of the holes played", () => {
+    const scored = (...strokes: number[]) => ({ ...base, holes: base.holes.map((h, i) => ({ ...h, strokes: strokes[i] ?? null })) })
+    expect(scoreToParLabel(scored(6))).toBe("+2")
+    expect(scoreToParLabel(scored(4, 3))).toBe("E")
+    expect(scoreToParLabel(scored(3, 3))).toBe("-1")
   })
 })
