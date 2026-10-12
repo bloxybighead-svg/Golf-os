@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { weakestCategory, recommendDrills } from "./drillRecommendations"
+import { drillTrends, weakestCategory, recommendDrills } from "./drillRecommendations"
+import { SG_CATEGORIES, type SgSummary } from "./rounds/strokesGained"
 import type { CategoryTrend } from "./sgBenchmarks"
 
 const trend = (category: CategoryTrend["category"], avgDeltaSg: number): CategoryTrend => ({
@@ -18,6 +19,26 @@ describe("weakestCategory", () => {
 
   it("returns null with no trend data", () => {
     expect(weakestCategory([])).toBeNull()
+  })
+})
+
+describe("drillTrends", () => {
+  const estimate = [trend("putting", -0.5), trend("approach", 0.2)]
+  const real = (per18: Record<string, number>): SgSummary => ({
+    rounds: 5,
+    holesCounted: 80,
+    categories: SG_CATEGORIES.map((category) => ({ category, total: 0, shots: 10, per18: per18[category] ?? 0 })),
+  })
+
+  it("uses the scorecard estimate until there is shot data", () => {
+    expect(drillTrends(null, estimate)).toBe(estimate)
+  })
+
+  it("uses strokes gained from shots when there is, so the weakest area follows it", () => {
+    const trends = drillTrends(real({ off_tee: -1.4, putting: 0.3 }), estimate)
+    expect(trends).toHaveLength(4)
+    expect(weakestCategory(trends)?.category).toBe("off_tee")
+    expect(trends.find((t) => t.category === "putting")).toMatchObject({ avgDeltaSg: 0.3, roundsCounted: 5 })
   })
 })
 

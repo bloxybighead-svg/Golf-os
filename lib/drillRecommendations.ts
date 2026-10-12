@@ -1,4 +1,5 @@
 import type { CategoryTrend, SgCategory } from "./sgBenchmarks"
+import type { SgSummary } from "./rounds/strokesGained"
 
 export const CATEGORY_LABEL: Record<SgCategory, string> = {
   off_tee: "Off-Tee",
@@ -9,6 +10,15 @@ export const CATEGORY_LABEL: Record<SgCategory, string> = {
 
 /** The order the drill picker lists them in. */
 export const DRILL_CATEGORIES: readonly SgCategory[] = ["putting", "approach", "off_tee", "short_game"]
+
+/**
+ * What drills are picked from: strokes gained from recorded shots against the
+ * golfer's own handicap when there are some, else the scorecard estimate.
+ */
+export function drillTrends(real: SgSummary | null, estimate: CategoryTrend[]): CategoryTrend[] {
+  if (!real) return estimate
+  return real.categories.map((c) => ({ category: c.category, avgUserSg: c.per18, avgBenchmarkSg: 0, avgDeltaSg: c.per18, roundsCounted: real.rounds }))
+}
 
 /** The category with the most negative average delta vs. the golfer's handicap bracket. */
 export function weakestCategory(trends: readonly CategoryTrend[]): CategoryTrend | null {

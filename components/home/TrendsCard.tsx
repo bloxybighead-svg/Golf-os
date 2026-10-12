@@ -75,6 +75,7 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
         </p>
         <p className="text-xs text-muted">last {trends[0].roundsCounted} rounds</p>
       </div>
+      <p className="mt-1 text-xs text-muted">Estimate from your scorecard</p>
 
       {/* Compact summary, always visible; the full breakdown opens below it on every screen size */}
       <p className="mt-2 text-sm text-fg-3">

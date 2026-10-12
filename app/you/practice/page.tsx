@@ -2,12 +2,13 @@ import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { loadCategoryTrends } from "@/lib/supabase/loadCategoryTrends"
+import { loadShotSg } from "@/lib/supabase/loadShotSg"
 import { RecommendedDrills } from "@/components/you/RecommendedDrills"
 import { DrillHistory } from "@/components/you/DrillHistory"
 import { SubPageHeader } from "@/components/you/SubPageHeader"
 import type { HandicapEntry, LibraryDrill, UserDrillRun } from "@/lib/supabase/types"
 import type { SgCategory } from "@/lib/sgBenchmarks"
-import { DRILL_CATEGORIES, weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
+import { DRILL_CATEGORIES, drillTrends, weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
 
 export default async function PracticePage() {
   const supabase = await createClient()
@@ -30,15 +31,17 @@ export default async function PracticePage() {
     loadCategoryTrends(supabase),
   ])
 
-  // Drills open on the weakest category on the Strengths & Weaknesses card;
-  // the other three are ready for the golfer to switch to.
+  // Drills open on the weakest category on the Strengths & Weaknesses card (strokes gained from
+  // recorded shots when there are some); the other three are ready for the golfer to switch to.
+  const handicapIndex = (latestHandicap as Pick<HandicapEntry, "handicap_index"> | null)?.handicap_index ?? null
+  const shotSg = await loadShotSg(supabase, handicapIndex)
+  const trends = drillTrends(shotSg?.mine?.summary ?? null, categoryTrends)
   const drillRuns = (drillRunsData ?? []) as unknown as UserDrillRun[]
-  const focusArea = weakestCategory(categoryTrends)
+  const focusArea = weakestCategory(trends)
   const library = (libraryData ?? []) as LibraryDrill[]
   const drillsByCategory = Object.fromEntries(
     DRILL_CATEGORIES.map((c) => [c, recommendDrills(library, c, drillRuns)])
   ) as Record<SgCategory, LibraryDrill[]>
-  const handicapIndex = (latestHandicap as Pick<HandicapEntry, "handicap_index"> | null)?.handicap_index ?? null
 
   return (
     <div className="space-y-6 pt-4">
@@ -46,7 +49,7 @@ export default async function PracticePage() {
 
       <RecommendedDrills
         focus={focusArea}
-        trends={categoryTrends}
+        trends={trends}
         handicapIndex={handicapIndex}
         drillsByCategory={drillsByCategory}
         signedIn={!!user}

@@ -171,3 +171,32 @@ export function toDbRow(roundId: string, userId: string, s: RoundShot) {
     penalty_strokes: s.penaltyStrokes,
   }
 }
+
+/** A round_shots row as it comes back from Supabase. */
+export interface RoundShotRow {
+  hole_number: number
+  shot_number: number
+  club: string
+  from_lat: number | null
+  from_lng: number | null
+  from_lie: ShotLie
+  to_lat: number | null
+  to_lng: number | null
+  to_lie: ShotLie
+  penalty_strokes: number
+}
+
+const point = (lat: number | null, lng: number | null): LatLng | null => (lat != null && lng != null ? { lat, lng } : null)
+
+export function fromDbRow(r: RoundShotRow): RoundShot {
+  return {
+    holeNumber: r.hole_number,
+    shotNumber: r.shot_number,
+    club: r.club,
+    from: point(r.from_lat, r.from_lng),
+    fromLie: r.from_lie,
+    to: point(r.to_lat, r.to_lng),
+    toLie: r.to_lie,
+    penaltyStrokes: r.penalty_strokes,
+  }
+}

@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { loadCategoryTrends } from "@/lib/supabase/loadCategoryTrends"
+import { loadShotSg } from "@/lib/supabase/loadShotSg"
+import { ShotSgCard } from "@/components/you/ShotSgCard"
 import { HandicapCard } from "@/components/home/HandicapCard"
 import { TrendsCard } from "@/components/home/TrendsCard"
 import { TrendsPanel } from "@/components/you/TrendsPanel"
@@ -34,6 +36,8 @@ export default async function StatsPage() {
     [...rounds].reverse().slice(0, 20).map((r) => r.differential).filter((d): d is number => d != null)
   )
 
+  const shotSg = await loadShotSg(supabase, latestHandicap?.handicap_index ?? liveEstimate)
+
   return (
     <div className="space-y-6 pt-4">
       <SubPageHeader title="Stats" />
@@ -41,7 +45,7 @@ export default async function StatsPage() {
       {/* Side by side on wide screens so desktop isn't a stretched phone column */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 lg:gap-4">
         <HandicapCard latest={latestHandicap} liveEstimate={liveEstimate} signedIn={!!user} />
-        <TrendsCard trends={categoryTrends} />
+        {shotSg ? <ShotSgCard data={shotSg} /> : <TrendsCard trends={categoryTrends} />}
       </div>
 
       <TrendsPanel rounds={rounds} milestones={(milestonesData ?? []) as Milestone[]} />

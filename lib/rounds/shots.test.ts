@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { distanceYds, landingPoint } from "@/lib/course/geo"
 import { NEW_SHOT_YDS } from "@/lib/planner/clubChoice"
-import { describeShot, editLastShot, lastShotOn, PUTTER, shotsToSave, toDbRow, trackBallMove, type BallMove, type SwingShot } from "./shots"
+import { describeShot, editLastShot, fromDbRow, lastShotOn, PUTTER, shotsToSave, toDbRow, trackBallMove, type BallMove, type RoundShotRow, type SwingShot } from "./shots"
 
 const tee = { lat: 40, lng: -74 }
 const pin = landingPoint(tee, 0, 400, 0)
@@ -114,6 +114,13 @@ describe("toDbRow", () => {
       round_id: "r1", user_id: "u1", hole_number: 4, shot_number: 2, club: PUTTER,
       from_lat: at(380).lat, from_lie: "green", to_lat: null, to_lng: null, to_lie: "green", penalty_strokes: 0,
     })
+  })
+})
+
+describe("fromDbRow", () => {
+  it("reads back what toDbRow wrote", () => {
+    const rows = shotsToSave(swing({ to: at(380), toLie: "green" }), new Map([[4, 2]]))
+    for (const r of rows) expect(fromDbRow(toDbRow("r1", "u1", r) as RoundShotRow)).toEqual(r)
   })
 })
 
