@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 
 // Pages that only show the signed-in golfer's own records. Play works without
 // an account, and You carries its own sign-in card, so neither needs this.
-const ACCOUNT_PAGES = ["/rounds", "/log"]
+const ACCOUNT_PAGES = ["/rounds"]
 
 // The one sign-in prompt, rendered from the root layout rather than repeated per page.
 export function SignInBanner({ signedIn }: { signedIn: boolean }) {

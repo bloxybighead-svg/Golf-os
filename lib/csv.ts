@@ -1,4 +1,4 @@
-// Client-side CSV generation shared by the Trends and Log exports.
+// Client-side CSV generation for the Rounds export.
 
 export function csvCell(value: unknown): string {
   if (value == null) return ""

@@ -48,7 +48,7 @@ export interface RecommendableDrill {
 }
 
 export interface DrillRun {
-  drill_id: string
+  drill_id: string | null
   completed_at: string | null
 }
 
@@ -65,7 +65,7 @@ export function recommendDrills<T extends RecommendableDrill>(
 ): T[] {
   const lastCompleted = new Map<string, number>()
   for (const run of history) {
-    if (!run.completed_at) continue
+    if (!run.completed_at || !run.drill_id) continue
     const t = new Date(run.completed_at).getTime()
     if (t > (lastCompleted.get(run.drill_id) ?? -Infinity)) lastCompleted.set(run.drill_id, t)
   }

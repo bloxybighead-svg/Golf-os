@@ -33,7 +33,7 @@ const nextConfig = {
   async redirects() {
     return [
       // Practice tab -> You
-      { source: "/log", destination: "/you", permanent: false },
+      { source: "/log/:path*", destination: "/you/practice", permanent: false },
       { source: "/drills", destination: "/you", permanent: false },
       { source: "/trends", destination: "/you", permanent: false },
       // The planner is the Play tab itself now

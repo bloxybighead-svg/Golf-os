@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { ChevronDown, History } from "lucide-react"
 import { EmptyHint } from "@/components/EmptyHint"
 import type { SgCategory, UserDrillRun } from "@/lib/supabase/types"
@@ -76,7 +77,7 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
                   <li key={r.id} className="py-2.5">
                     <div className="flex items-baseline justify-between gap-3">
                       <p className="min-w-0 truncate text-sm font-medium text-fg">
-                        {r.drill_library?.name ?? "Drill"}
+                        {r.drill_library?.name ?? "Free practice"}
                       </p>
                       <span className="shrink-0 text-xs text-muted">
                         {mounted &&
@@ -90,6 +91,8 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
                       ) : (
                         <span className="text-warn">Not finished</span>
                       )}
+                      {r.minutes != null && <span className="text-fg-3">{r.minutes} min</span>}
+                      {r.rating != null && <span className="text-fg-3">{r.rating}/5</span>}
                       {r.reps_completed != null && <span className="text-fg-3">{r.reps_completed} reps</span>}
                     </div>
                     {r.notes && <p className="mt-1 text-xs italic text-muted">{r.notes}</p>}
@@ -100,6 +103,10 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
           </>
         )}
       </div>
+
+      <Link href="/you/practice/older" className="mt-3 flex min-h-[44px] items-center text-sm font-semibold text-accent hover:underline md:min-h-0">
+        Older sessions
+      </Link>
     </div>
   )
 }

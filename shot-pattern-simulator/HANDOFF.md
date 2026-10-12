@@ -2334,3 +2334,9 @@ automatically at ≤5 clubs.
   eyeballing plots — take those objections seriously and go measure.
 - Early-intermediate Python; comfortable with pandas, learning classes
   and git. Explain concepts concretely using his own data.
+
+## Practice log replaced (2026-10-12)
+
+- Deleted the legacy logger (`app/log/*`, `components/log/*`, `components/drills/*`, `app/drills/actions.ts`) and the types only they used. `/log/*` redirects to `/you/practice`.
+- `/you/practice` has a "Log practice" sheet (library drill or Free practice, minutes, rating 1-5, notes) that writes a completed `user_drills` row (`app/drills/library-actions.ts` `logPractice`). Needs `supabase/migrations/20261012000100_log_practice.sql`.
+- `practice_sessions`, `session_blocks` and `drills` data is untouched; old sessions are listed read-only at `/you/practice/older`.

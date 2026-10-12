@@ -19,7 +19,7 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: "Play", url: "/" },
-      { name: "Log a session", url: "/log/new" },
+      { name: "Log practice", url: "/you/practice" },
     ],
   }
 }

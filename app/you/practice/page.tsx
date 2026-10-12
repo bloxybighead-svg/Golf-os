@@ -1,9 +1,8 @@
-import Link from "next/link"
-import { ChevronRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { loadCategoryTrends } from "@/lib/supabase/loadCategoryTrends"
 import { loadShotSg } from "@/lib/supabase/loadShotSg"
 import { RecommendedDrills } from "@/components/you/RecommendedDrills"
+import { LogPracticeSheet } from "@/components/you/LogPracticeSheet"
 import { DrillHistory } from "@/components/you/DrillHistory"
 import { SubPageHeader } from "@/components/you/SubPageHeader"
 import type { HandicapEntry, LibraryDrill, UserDrillRun } from "@/lib/supabase/types"
@@ -25,7 +24,7 @@ export default async function PracticePage() {
     supabase.from("drill_library").select("*"),
     supabase
       .from("user_drills")
-      .select("id, drill_id, started_at, completed_at, reps_completed, notes, drill_library(name, category)")
+      .select("id, drill_id, started_at, completed_at, reps_completed, minutes, rating, notes, drill_library(name, category)")
       .order("started_at", { ascending: false })
       .limit(50),
     loadCategoryTrends(supabase),
@@ -56,13 +55,7 @@ export default async function PracticePage() {
 
       <DrillHistory runs={drillRuns} />
 
-      <Link
-        href="/log/new"
-        className="group flex min-h-[56px] items-center justify-between rounded-xl border border-fg/[0.06] bg-surface px-5 py-3 transition-colors hover:bg-fg/[0.03]"
-      >
-        <span className="text-sm font-semibold text-fg">Log a session</span>
-        <ChevronRight size={16} className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
-      </Link>
+      <LogPracticeSheet library={library} signedIn={!!user} />
     </div>
   )
 }
