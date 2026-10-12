@@ -25,7 +25,8 @@ import { smartRule, widenShots } from "@/lib/course/strategy"
 import { obBandsFor, type ObBand, type ObTag } from "@/lib/course/obTags"
 import { DEFAULT_BASELINE_HANDICAP, getBaseline, type CompareAgainst } from "@/lib/course/baseline"
 import { seededSample } from "@/lib/dispersion/stats"
-import { generateCustomGolferShots, type Tendency } from "@/lib/golfer/build"
+import type { Tendency } from "@/lib/golfer/build"
+import { blendHandicapFor, fullBagShots, typedCarries } from "@/lib/golfer/bagShots"
 import type { Club } from "@/lib/golfer/tables"
 import { fillBag } from "@/lib/golfer/bag"
 import type { Baseline } from "@/lib/golfer/baseline"
@@ -40,7 +41,6 @@ import { generateMyBag } from "@/lib/golfer/shotProfile"
 import { PARTIAL_CARRY_RATIO, parsePartial, withPartials, type PartialName } from "@/lib/golfer/partials"
 
 const DOTS_SHOWN = 400
-const HANDICAP_SHOTS_PER_CLUB = 1000
 
 export interface PlanInputs {
   calibrated: CalibratedClub[] | null
@@ -125,37 +125,20 @@ export function usePlan({
   // My shots: fitted clubs from the golfer's profile, thin clubs blended with a
   // handicap profile, the rest estimated (lib/golfer/shotProfile.ts). The handicap
   // that blends in is the tracked one, else the setup one, else the device's.
-  const blendHandicap = Math.round(trackedHandicap ?? baseline?.handicapIndex ?? handicap)
+  const blendHandicap = blendHandicapFor(trackedHandicap ?? baseline?.handicapIndex ?? null, handicap)
+  // Blank or out-of-range carries are ignored, so a half-typed number doesn't warp the bag.
+  const typed = useMemo(() => typedCarries(driverCarry, sevenIronCarry, extraCarries), [driverCarry, sevenIronCarry, extraCarries])
   const myBag = useMemo(
-    () => (source === "calibrated" && myProfile ? generateMyBag(myProfile.fits, bag, blendHandicap) : null),
+    () => (source === "calibrated" && myProfile ? generateMyBag(myProfile.fits, bag, blendHandicap, undefined, undefined, typed) : null),
     // The profile object is replaced whenever it is re-fitted.
-    [source, myProfile, bag, blendHandicap]
+    [source, myProfile, bag, blendHandicap, typed]
   )
   const fullShots: ClubShots[] = useMemo(() => {
-    if (myBag) return myBag.clubs.map((c) => ({ club: c.club, shots: c.shots }))
     if (calibratedBag) {
       return calibratedBag.map((c) => ({ club: c.club, shots: c.shots }))
     }
-    // Blank or out-of-range carries are ignored, so a half-typed number doesn't warp the bag.
-    const known: Partial<Record<Club, number>> = { ...extraCarries }
-    const d = Number(driverCarry)
-    const i7 = Number(sevenIronCarry)
-    if (d >= 120 && d <= 380) known.Driver = d
-    if (i7 >= 60 && i7 <= 240) known["7-Iron"] = i7
-    const all = generateCustomGolferShots(
-      { handicapIndex: handicap, knownCarries: known, tendency },
-      HANDICAP_SHOTS_PER_CLUB * bag.length,
-      42,
-      bag
-    )
-    const by = new Map<string, { carryYds: number; offlineYds: number }[]>()
-    for (const s of all) {
-      const list = by.get(s.club) ?? []
-      list.push({ carryYds: s.carryYds, offlineYds: s.offlineYds })
-      by.set(s.club, list)
-    }
-    return Array.from(by, ([club, shots]) => ({ club, shots }))
-  }, [myBag, calibratedBag, handicap, driverCarry, sevenIronCarry, extraCarries, tendency, bag])
+    return fullBagShots({ myBag, handicap, typed, tendency, bag })
+  }, [myBag, calibratedBag, handicap, typed, tendency, bag])
   // Every full wedge also plays as a 3/4 and a 1/2 swing (lib/golfer/partials.ts); the ranking drops them far from the pin.
   const clubShots: ClubShots[] = useMemo(() => withPartials(fullShots, wedgeCarries), [fullShots, wedgeCarries])
 

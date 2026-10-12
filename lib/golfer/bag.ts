@@ -13,9 +13,12 @@ export const CALIBRATED_DEFAULT_BAG: Club[] = [
   "Driver", "3-Wood", "7-Wood", "4-Iron", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW",
 ]
 
-/** Maps a stored club name onto the catalog: "56 (SW)" -> "SW", "60 (LW)" -> "LW". */
+/** Maps a stored club name onto the catalog: "56 (SW)" -> "SW", "60 (LW)" -> "LW", "3H" -> "3-Hybrid", a bare "Hybrid" -> "3-Hybrid". */
 export function canonicalClub(name: string): Club | null {
   if ((BAG_ORDER as readonly string[]).includes(name)) return name as Club
+  const hybrid = name.trim().match(/^([34])\s*-?\s*(?:h|hybrid)$/i)
+  if (hybrid) return `${hybrid[1]}-Hybrid` as Club
+  if (/^hybrid$/i.test(name.trim())) return "3-Hybrid"
   const wedge = name.match(/\b(PW|GW|SW|LW)\b/)
   return wedge ? (wedge[1] as Club) : null
 }

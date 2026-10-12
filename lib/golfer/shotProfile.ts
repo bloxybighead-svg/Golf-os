@@ -245,16 +245,22 @@ export interface MyBag {
  * data from the handicap profile scaled to the golfer's carries. Reproducible
  * from the seed; each club's seed depends only on the club, so changing the bag
  * never changes another club's shots.
+ *
+ * `typed` are carries the golfer typed. Shots they actually hit outrank them: a
+ * club with at least THIN_BELOW shots ignores its typed number, a thin club
+ * leans on it by (1 - n / THIN_BELOW), and a club with no shots uses it as its
+ * carry (and as an anchor for the estimated clubs around it).
  */
 export function generateMyBag(
   fits: ClubFit[],
   bag: readonly Club[],
   handicapIndex: number,
   perClub: number = MY_SHOTS_PER_CLUB,
-  seed: number = MY_SHOTS_SEED
+  seed: number = MY_SHOTS_SEED,
+  typed: Partial<Record<Club, number>> = {}
 ): MyBag {
   const byClub = new Map(fits.map((f) => [f.club, f]))
-  const knownCarries: Partial<Record<Club, number>> = {}
+  const knownCarries: Partial<Record<Club, number>> = { ...typed }
   for (const f of fits) knownCarries[f.club] = f.profile.mean_carry
   const anchored = scaleProfilesToCarries(profilesForHandicap(handicapIndex), knownCarries)
 
@@ -271,7 +277,10 @@ export function generateMyBag(
     } else if (fit) {
       basis[club] = "blended"
       notes[club] = `Only ${fit.nShots} ${club} shot${fit.nShots === 1 ? "" : "s"} on record: your numbers blended with a handicap-${Math.round(handicapIndex)} golfer's`
-      clubs.push(...generateFromFittedProfile({ [club]: blendThin(fit, anchored[club]) }, perClub, clubSeed))
+      const typedCarry = typed[club]
+      const w = fit.nShots / THIN_BELOW
+      const leaned = typedCarry == null ? fit : { ...fit, profile: { ...fit.profile, mean_carry: w * fit.profile.mean_carry + (1 - w) * typedCarry } }
+      clubs.push(...generateFromFittedProfile({ [club]: blendThin(leaned, anchored[club]) }, perClub, clubSeed))
     } else {
       basis[club] = "estimated"
       notes[club] = `No ${club} shots on record: estimated from a handicap-${Math.round(handicapIndex)} golfer scaled to your carries`

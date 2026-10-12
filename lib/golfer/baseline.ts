@@ -33,8 +33,8 @@ export const HOME_COURSE_KEY = "golfos.homeCourse.v1"
 /** "1" once setup ran on this device, "dismissed" if the golfer waved the prompt away. */
 export const ONBOARDED_KEY = "golfos.onboarded.v1"
 
-const MIN_CARRY = 40
-const MAX_CARRY = 400
+export const MIN_CARRY = 40
+export const MAX_CARRY = 400
 
 /** Keeps catalog clubs with a plausible carry, rounded to the yard. */
 export function cleanCarries(raw: Record<string, unknown>): Partial<Record<Club, number>> {

@@ -1,9 +1,9 @@
 // Ported from shot-pattern-simulator/synthetic_golfer.py's handicap/band
 // path (DEFAULT_PROFILES, profiles_for_handicap, scale_profiles_to_carries).
 // Keep this in sync with that file -- it's the source of truth and carries
-// the citations for every number here -- except the 7-Wood and LW entries,
-// which exist only in this port (added so a real bag can hold them) and are
-// interpolated from their neighbours, not sourced. This port intentionally excludes
+// the citations for every number here -- except the 7-Wood, 3-Hybrid, 4-Hybrid
+// and LW entries, which exist only in this port (added so a real bag can hold
+// them) and are interpolated from their neighbours, not sourced. This port intentionally excludes
 // from_profile_json/calibrate.py (real-shot calibration), which has no
 // browser equivalent since it needs a real golfer's launch-monitor history.
 
@@ -14,19 +14,21 @@ export interface ClubProfile {
 }
 
 export const BAG_ORDER = [
-  "Driver", "3-Wood", "5-Wood", "7-Wood", "4-Iron", "5-Iron", "6-Iron",
+  "Driver", "3-Wood", "5-Wood", "7-Wood", "3-Hybrid", "4-Hybrid", "4-Iron", "5-Iron", "6-Iron",
   "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW",
 ] as const
 export type Club = (typeof BAG_ORDER)[number]
 
 const CLUB_DIRECTION_RATIO: Record<Club, number> = {
   Driver: 1.0, "3-Wood": 0.95, "5-Wood": 0.9, "7-Wood": 0.87, // 7-Wood: between 5-Wood and 4-Iron (assumed)
+  "3-Hybrid": 0.86, "4-Hybrid": 0.855, // hybrids: between 7-Wood and 4-Iron (ESTIMATE)
   "4-Iron": 0.85, "5-Iron": 0.82, "6-Iron": 0.8, "7-Iron": 0.77,
   "8-Iron": 0.75, "9-Iron": 0.73, PW: 0.7, GW: 0.7, SW: 0.7, LW: 0.7, // LW: same as the other wedges (assumed)
 }
 
 export const CLUB_CURVE_SHARE: Record<Club, number> = {
   Driver: 0.7, "3-Wood": 0.68, "5-Wood": 0.64, "7-Wood": 0.62, // 7-Wood, LW: continue the trend (assumed)
+  "3-Hybrid": 0.61, "4-Hybrid": 0.605, // hybrids: between 7-Wood and 4-Iron (ESTIMATE)
   "4-Iron": 0.6, "5-Iron": 0.57, "6-Iron": 0.55, "7-Iron": 0.53,
   "8-Iron": 0.47, "9-Iron": 0.42, PW: 0.36, GW: 0.31, SW: 0.26, LW: 0.22,
 }
@@ -62,6 +64,7 @@ const TIER_LONG_CLUBS: Record<Tier, { Driver: number; "3-Wood": number; "5-Wood"
 
 const CLUB_DISTANCE_RATIO: Record<Club, number> = {
   Driver: 1.0, "3-Wood": 0.95, "5-Wood": 0.93, "7-Wood": 0.85, // 7-Wood, LW: continue the trend (assumed)
+  "3-Hybrid": 0.82, "4-Hybrid": 0.78, // hybrids: between 7-Wood and 4-Iron (ESTIMATE)
   "4-Iron": 0.75, "5-Iron": 0.65, "6-Iron": 0.63, "7-Iron": 0.65,
   "8-Iron": 0.72, "9-Iron": 0.8, PW: 0.88, GW: 0.95, SW: 1.0, LW: 1.05,
 }
@@ -82,6 +85,10 @@ function buildTierCarries(): Record<Tier, Record<Club, number>> {
     row["7-Iron"] = anchor
     // 7-Wood: halfway between the 5-Wood and the 4-Iron (assumed).
     row["7-Wood"] = Math.round(((row["5-Wood"] + row["4-Iron"]) / 2) * 10) / 10
+    // Hybrids: a third and two thirds of the way from the 7-Wood down to the 4-Iron (ESTIMATE).
+    const step = (row["7-Wood"] - row["4-Iron"]) / 3
+    row["3-Hybrid"] = Math.round((row["7-Wood"] - step) * 10) / 10
+    row["4-Hybrid"] = Math.round((row["7-Wood"] - 2 * step) * 10) / 10
     carries[tier] = row
   }
   return carries

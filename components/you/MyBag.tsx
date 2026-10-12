@@ -1,18 +1,22 @@
 "use client"
 
-// My bag summary: the clubs in the bag with their carries, how much of the
-// golfer's own shot data stands behind each (Solid / OK / Thin, from 13c), and
-// the home course. Editing happens on /welcome in edit mode and returns here.
+// My bag: each club with the carry and total the planner decides from, where
+// that number comes from, and any gapping problem between neighbours. Tap a
+// row to type your own carry; the home course is edited on /welcome.
 
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import type { CourseRef } from "@/lib/golfer/baseline"
+import { carryRange, typedCarries, validTypedCarry } from "@/lib/golfer/bagShots"
 import { PARTIAL_CARRY_RATIO, PARTIAL_WEDGES, SWING_LENGTHS, cleanWedgeCarries, partialName, type PartialName } from "@/lib/golfer/partials"
-import { readDeviceBag, writeWedgeCarries, type DeviceBag } from "@/lib/you/deviceBag"
-import { buildBagRows, type BagRow, type FittedClub } from "@/lib/you/hub"
-import { BadgePill } from "@/components/shots/ui"
+import { THIN_BELOW, type ClubFit } from "@/lib/golfer/shotProfile"
+import type { Club } from "@/lib/golfer/tables"
+import { buildBagNumbers, gapNotes, sourceLabel, type BagNumber } from "@/lib/you/bagNumbers"
+import { readDeviceBag, writeClubCarry, writeWedgeCarries, type DeviceBag } from "@/lib/you/deviceBag"
 
+/** Play's starting handicap, used until the golfer sets one. */
+const PLAY_START_HANDICAP = 10
 const EDIT_HREF = "/welcome?edit=1&return=%2Fyou%2Fbag"
 
 function LinkRow({ href, title, blurb }: { href: string; title: string; blurb: string }) {
@@ -31,7 +35,7 @@ function LinkRow({ href, title, blurb }: { href: string; title: string; blurb: s
 }
 
 /** Carries for the partial wedge swings: a typed number replaces the one derived from the full club. */
-function WedgeNumbers({ rows, initial }: { rows: BagRow[]; initial: Partial<Record<PartialName, number>> }) {
+function WedgeNumbers({ rows, initial }: { rows: BagNumber[]; initial: Partial<Record<PartialName, number>> }) {
   const [typed, setTyped] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, String(v)])))
   const wedges = PARTIAL_WEDGES.filter((w) => rows.some((r) => r.club === w))
   if (wedges.length === 0) return null
@@ -76,28 +80,91 @@ function WedgeNumbers({ rows, initial }: { rows: BagRow[]; initial: Partial<Reco
   )
 }
 
+/** Tap to type a carry for this club; "Reset" returns it to the number derived from your shots or handicap. */
+function ClubEditor({ row, onSave, onCancel }: { row: BagNumber; onSave: (carry: number | null) => void; onCancel: () => void }) {
+  const [draft, setDraft] = useState(row.source === "typed" ? String(row.carryYds) : "")
+  const [invalid, setInvalid] = useState(false)
+  const [lo, hi] = carryRange(row.club)
+  return (
+    <form
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 pb-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        const v = validTypedCarry(row.club, draft)
+        if (v == null) setInvalid(true)
+        else onSave(v)
+      }}
+    >
+      <input
+        type="text"
+        inputMode="numeric"
+        autoFocus
+        aria-label={`${row.club} carry in yards`}
+        placeholder={String(row.carryYds)}
+        value={draft}
+        onChange={(e) => {
+          setInvalid(false)
+          setDraft(e.target.value.replace(/\D/g, "").slice(0, 3))
+        }}
+        className="h-11 w-24 rounded-lg border border-fg/[0.12] bg-transparent px-3 text-right text-base text-fg tabular-nums placeholder:text-faint"
+      />
+      <span className="text-sm text-muted">yd carry</span>
+      <button type="submit" className="flex min-h-[44px] items-center text-sm font-semibold text-accent hover:underline">
+        Save
+      </button>
+      <button type="button" onClick={onCancel} className="flex min-h-[44px] items-center text-sm text-muted hover:underline">
+        Cancel
+      </button>
+      {row.source === "typed" && (
+        <button type="button" onClick={() => onSave(null)} className="flex min-h-[44px] items-center text-sm text-muted hover:underline">
+          Reset
+        </button>
+      )}
+      {row.source === "shots" && (row.nShots ?? 0) >= THIN_BELOW && (
+        <p className="basis-full text-xs text-muted">Your {row.nShots} shots outweigh a typed number for this club.</p>
+      )}
+      {invalid && <p className="basis-full text-xs text-danger">Enter {lo} to {hi} yards.</p>}
+    </form>
+  )
+}
+
 export function MyBag({
-  fitted,
-  defaultSource,
+  fits,
+  accountHandicap,
   serverHomeCourse,
 }: {
-  fitted: FittedClub[] | null
-  defaultSource: "calibrated" | "handicap"
+  fits: ClubFit[] | null
+  /** The golfer's tracked or setup handicap, which thin clubs blend toward. */
+  accountHandicap: number | null
   serverHomeCourse: CourseRef | null
 }) {
   const [device, setDevice] = useState<DeviceBag | null>(null)
-  useEffect(() => setDevice(readDeviceBag(defaultSource, fitted?.map((f) => f.club) ?? [])), [defaultSource, fitted])
+  const [editing, setEditing] = useState<Club | null>(null)
+  const read = () => readDeviceBag(fits ? "calibrated" : "handicap", fits?.map((f) => f.club) ?? [])
+  useEffect(() => setDevice(read()), [fits]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fitted shots are the golfer's own, so they only back a bag that plays from them.
+  const rows = useMemo(() => {
+    if (!device) return []
+    const { Driver, "7-Iron": seven, ...others } = device.carries
+    return buildBagNumbers({
+      bag: device.bag,
+      fits: device.source === "calibrated" ? fits : null,
+      handicap: device.handicap ?? PLAY_START_HANDICAP,
+      accountHandicap,
+      typed: typedCarries(Driver, seven, others),
+    })
+  }, [device, fits, accountHandicap])
 
   if (!device) return <p className="py-6 text-sm text-muted">Loading…</p>
 
-  // Fitted shots are the golfer's own, so they only back a bag that plays from them.
-  const rows = buildBagRows({
-    bag: device.bag,
-    carries: device.carries,
-    fitted: device.source === "calibrated" ? fitted : null,
-  })
   const home = serverHomeCourse ?? device.course
-  const anyBadge = rows.some((r) => r.badge)
+  const notes = gapNotes(rows)
+  const save = (club: Club, carry: number | null) => {
+    writeClubCarry(club, carry)
+    setEditing(null)
+    setDevice(read())
+  }
 
   return (
     <div className="space-y-5">
@@ -109,26 +176,46 @@ export function MyBag({
           </Link>
         </div>
         <ul className="mt-1 divide-y divide-fg/[0.04]">
-          {rows.map((r) => (
-            <li key={r.club} className="flex min-h-[44px] items-center gap-3 px-5 py-2.5">
-              <span className="min-w-0 flex-1 text-sm font-medium text-fg">{r.club}</span>
-              {r.badge && <BadgePill badge={r.badge} />}
-              <span className="w-16 shrink-0 text-right text-sm text-fg-3 tabular-nums">
-                {r.carryYds != null ? `${r.carryYds} yd` : "typical"}
-              </span>
-            </li>
-          ))}
+          {rows.map((r) => {
+            const note = notes.find((n) => n.upper === r.club)
+            return (
+              <li key={r.club}>
+                <button
+                  type="button"
+                  aria-expanded={editing === r.club}
+                  onClick={() => setEditing(editing === r.club ? null : r.club)}
+                  className="flex min-h-[56px] w-full items-center gap-3 px-5 py-2.5 text-left"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-fg">{r.club}</span>
+                    <span className="block text-xs text-muted">{sourceLabel(r)}</span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-xl font-semibold text-fg tabular-nums">{r.carryYds}</span>
+                    <span className="block text-xs text-muted tabular-nums">{r.totalYds} total</span>
+                  </span>
+                </button>
+                {editing === r.club && <ClubEditor row={r} onSave={(c) => save(r.club, c)} onCancel={() => setEditing(null)} />}
+                {note && (
+                  <p className="px-5 pb-2 text-xs text-warn">
+                    {r.club} to {note.lower}: {note.text}
+                  </p>
+                )}
+              </li>
+            )
+          })}
         </ul>
-        {anyBadge ? (
-          <p className="px-5 pb-4 pt-2 text-xs text-muted">Solid, OK and Thin show how many of your own shots back each club.</p>
-        ) : (
-          <p className="px-5 pb-4 pt-2 text-xs text-muted">
-            Clubs marked typical use average distances for your handicap.{" "}
-            <Link href="/you/bag/shots" className="font-semibold text-accent hover:underline">
-              Add your shots
-            </Link>
-          </p>
-        )}
+        <p className="px-5 pb-4 pt-2 text-xs text-muted">
+          Carry in yards; total adds roll on a fairway. Tap a club to type your own carry.
+          {rows.some((r) => r.source === "typical") && (
+            <>
+              {" "}
+              <Link href="/you/bag/shots" className="font-semibold text-accent hover:underline">
+                Add your shots
+              </Link>
+            </>
+          )}
+        </p>
       </section>
 
       <WedgeNumbers rows={rows} initial={device.wedgeCarries} />

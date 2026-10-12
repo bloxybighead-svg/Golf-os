@@ -92,3 +92,22 @@ export function writeWedgeCarries(carries: Partial<Record<PartialName, number>>)
     /* storage blocked: the numbers just are not remembered */
   }
 }
+
+/** Saves one club's typed carry (null clears it back to the derived number) into this device's Play settings and stamps the change, so Play pushes it to the account's golfer_baseline. */
+export function writeClubCarry(club: Club, carry: number | null): void {
+  try {
+    const existing = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") ?? {}
+    if (club === "Driver" || club === "7-Iron") {
+      existing[club === "Driver" ? "driverCarry" : "sevenIronCarry"] = carry == null ? "" : String(carry)
+    } else {
+      const carries = { ...(existing.carries ?? {}) }
+      if (carry == null) delete carries[club]
+      else carries[club] = carry
+      existing.carries = carries
+    }
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(existing))
+    localStorage.setItem(SETTINGS_STAMP_KEY, String(Date.now()))
+  } catch {
+    /* storage blocked: the number just is not remembered */
+  }
+}

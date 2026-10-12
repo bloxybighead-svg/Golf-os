@@ -31,7 +31,14 @@ describe("bags", () => {
     expect(canonicalClub("56 (SW)")).toBe("SW")
     expect(canonicalClub("60 (LW)")).toBe("LW")
     expect(canonicalClub("7-Iron")).toBe("7-Iron")
-    expect(canonicalClub("Hybrid")).toBeNull()
+    expect(canonicalClub("Putter")).toBeNull()
+  })
+
+  it("maps hybrid names onto the two hybrids", () => {
+    for (const raw of ["3H", "3h", "3 Hybrid", "3-Hybrid", " 3-hybrid "]) expect(canonicalClub(raw)).toBe("3-Hybrid")
+    for (const raw of ["4H", "4 hybrid", "4-Hybrid"]) expect(canonicalClub(raw)).toBe("4-Hybrid")
+    expect(canonicalClub("Hybrid")).toBe("3-Hybrid")
+    expect(canonicalClub("5H")).toBeNull()
   })
 
   it("normalizeBag drops unknown names and duplicates and sorts longest first", () => {
