@@ -251,7 +251,6 @@ describe("planner components render (smoke)", () => {
     const sevenWood: OptimizedClubPlan = { ...fourIron, club: "7-Wood", plan: { ...plan("7-Wood", 4.6, 0.02, 200), unmappedShare: 0.43 } }
     const html = renderToStaticMarkup(
       <PlayDock
-        scoring={false}
         status={<button>Start round</button>}
         plays={<StrategyToggle options={{ safer: sevenWood, lowest: sevenWood, same: false } as never} chosen={sevenWood} onPick={() => {}} compact unmappedWarning={0.43} onUnmapped={() => {}} />}
         chips={<ClubChips ranking={[sevenWood, pw]} chosen={sevenWood} onPick={() => {}} onMore={() => {}} className="flex min-w-0 flex-1 gap-1.5" />}

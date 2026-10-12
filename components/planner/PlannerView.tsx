@@ -21,8 +21,7 @@ import { useIsPhone } from "@/hooks/useIsPhone"
 import { useIsCompact } from "@/hooks/useIsCompact"
 import { useRoundMode } from "@/hooks/useRoundMode"
 import { setRoundPaused } from "@/lib/rounds/roundMode"
-import { scoreToParLabel } from "@/lib/rounds/activeRound"
-import { RoundBar } from "@/components/play/RoundBar"
+import { holeToScore, scoreToParLabel } from "@/lib/rounds/activeRound"
 import { RoundDock } from "@/components/play/RoundDock"
 import { RoundScreen } from "@/components/play/RoundScreen"
 import { ShotSheet } from "@/components/play/ShotSheet"
@@ -57,15 +56,15 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     mapTapGuardUntil,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimState, atBestAim, authUser, avgLeft, bag,
-    bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,
+    bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changeRound, holeTitle, headerCourseName,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
     deleteZone, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
     mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
-    placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
-    refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, dispatchAim,
+    placing, planReady, query, rankState, ranking, rankingPending, recent, refreshCourseData,
+    refreshing, rings, round, roundHere, scoreBaseline, searched, searching, dispatchAim,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
     optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
     setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
@@ -75,6 +74,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, aimLie,
+    roundSheet, setRoundSheet, holeOffer, answerHoleOffer,
   } = vm
 
   const isOwner = authUser?.id === MARKS_USER_ID
@@ -96,7 +96,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
   const compact = useIsCompact()
   const roundScreen = roundMode && compact && hydrated && !!roundHere
   const [shotOpen, setShotOpen] = useState(false)
-  const [endRequested, setEndRequested] = useState(false)
 
   const [details, setDetails] = useState<{ open: boolean; section: DetailsSection }>({ open: false, section: "scoring" })
   const openDetails = (section: DetailsSection) => {
@@ -377,16 +376,13 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
 
   const holeMenu: HoleMenuItem[] | undefined = roundHere
     ? [
-        { label: "Scorecard", onSelect: () => changePlayView("score") },
+        { label: roundHere.holes.some((h) => h.strokes != null) ? `Scorecard · ${scoreToParLabel(roundHere)}` : "Scorecard", onSelect: () => setRoundSheet({ kind: "card" }) },
         ...(hole ? [{ label: "Edit hole", onSelect: () => setEditingHole(true) }] : []),
         ...(compact ? [{ label: "Pause round", onSelect: () => setRoundPaused(true) }] : []),
         {
           label: "End round",
           danger: true,
-          onSelect: () => {
-            changePlayView("score")
-            setEndRequested(true)
-          },
+          onSelect: () => setRoundSheet({ kind: "finish", ending: true }),
         },
       ]
     : undefined
@@ -449,8 +445,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         currentHole={hole?.ref ?? null}
         round={round}
         onRoundChange={changeRound}
-        view={playView}
-        onViewChange={changePlayView}
+        sheet={roundSheet}
+        onSheetChange={setRoundSheet}
         onGoToHole={goToHoleNumber}
         onResume={(c, n) => void loadCourse(c, { autoHoleRef: n })}
         driverCarryYds={bagDriverCarry}
@@ -468,9 +464,9 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           const h = holes.find((x) => x.ref === n)
           if (h) void obTags.toggleTag(h.id, side)
         }}
+        holeOffer={holeOffer}
+        onHoleOffer={answerHoleOffer}
         embedded={embedded}
-        endRequested={endRequested}
-        onEndHandled={() => setEndRequested(false)}
       />
     )
 
@@ -482,7 +478,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     <>
       {/* Phones: "All clubs" opens the full club table as a full-screen list (it covers the map, so every
           club fits without a scroll fighting the map). Picking a club closes it. */}
-      {planReady && ranking.length > 0 && !scoring && (
+      {planReady && ranking.length > 0 && (
         <ClubSheet open={sheetOpen} onToggle={() => setSheetOpen((v) => !v)} chosen={chosen}>
           {clubTable}
         </ClubSheet>
@@ -519,7 +515,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     return (
       <>
         <RoundScreen
-          scoring={scoring}
           header={holeHeader(true)}
           map={mapView(true)}
           dock={
@@ -533,10 +528,10 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
               }
               chips={clubChips(true)}
               onDetails={resultCard ? () => setShotOpen(true) : null}
+              onHoleDone={() => setRoundSheet({ kind: "hole", hole: holeToScore(roundHere, hole?.ref ?? null), advance: true })}
             />
           }
-          score={playRound(true)}
-          bar={<RoundBar variant="bar" view={playView} onViewChange={changePlayView} scoreLabel={scoreToParLabel(roundHere)} />}
+          round={playRound(true)}
         />
         <ShotSheet open={shotOpen} onClose={() => setShotOpen(false)}>
           {resultCard}
@@ -555,7 +550,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
 
       {course && loadState !== "error" && (
         <PlayDock
-          scoring={scoring}
           status={
             <>
               {!roundHere && (
@@ -564,7 +558,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
                   courseName={course.name}
                   driverCarryYds={bagDriverCarry}
                   handicapIndex={source === "handicap" ? handicap : trackedHandicap}
-                  compact={phone && !scoring}
+                  compact={phone}
                 />
               )}
               {playRound(false)}
@@ -579,8 +573,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         />
       )}
 
-      {/* Scoring a hole hides the map (kept mounted, so it comes back as it was). */}
-      <div className={scoring ? "hidden" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]"}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)]">
         {/* ---- map ---- (min-w-0 stops a wide child from stretching the page on phones) */}
         {mapView(false)}
         {/* ---- shot plan (tablet/desktop: everything inline, including the table) ---- */}

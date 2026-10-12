@@ -1,5 +1,5 @@
 // Round mode, rendered the way the layout composes it: the tab bar and the "Round in progress" bar come from the
-// layout, the round screen (with its Map | Score bar) from Play. Rendered to HTML (no browser needed); the
+// layout, the round screen (header, map, dock with "Hole done") from Play. Rendered to HTML (no browser needed); the
 // hooks are replaced by ones that read the real round-mode state, so setRoundPaused is the same call "Pause round" makes.
 
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -16,7 +16,6 @@ vi.mock("@/hooks/useRoundMode", () => ({
 
 import NavBar from "@/components/NavBar"
 import { ResumeBar } from "@/components/play/ResumeBar"
-import { RoundBar } from "@/components/play/RoundBar"
 import { RoundDock } from "@/components/play/RoundDock"
 import { RoundScreen } from "@/components/play/RoundScreen"
 import { HoleHeader } from "@/components/planner/HoleHeader"
@@ -42,7 +41,6 @@ function phone() {
       <ResumeBar />
       {on && (
         <RoundScreen
-          scoring={false}
           header={
             <HoleHeader
               inRoundScreen
@@ -56,9 +54,8 @@ function phone() {
             />
           }
           map={<div />}
-          dock={<RoundDock plays={<div />} chips={<div />} onDetails={() => {}} />}
-          score={null}
-          bar={<RoundBar variant="bar" view="map" onViewChange={() => {}} scoreLabel="+2" />}
+          dock={<RoundDock plays={<div />} chips={<div />} onDetails={() => {}} onHoleDone={() => {}} />}
+          round={null}
         />
       )}
     </>
@@ -78,9 +75,8 @@ describe("round mode on a phone", () => {
     expect(html).not.toContain('aria-label="Main"') // the tab list
     expect(html).not.toContain("data-round-chrome") // the header and tab bar are gone, not hidden
     expect(html).not.toContain("Round in progress")
-    expect(html).toContain('aria-label="Round"') // Map | Score
-    expect(html).toContain('aria-label="Map"')
-    expect(html).toContain("+2") // Score shows the score to par
+    expect(html).toContain("Hole done")
+    expect(html).not.toContain('aria-label="Round"')
     expect(html).toContain('aria-label="Round menu"')
     expect(html).toContain("H7 · P4 · 412")
   })
@@ -115,23 +111,24 @@ describe("round mode on a phone", () => {
 
 describe("round screen pieces", () => {
   it("the dock is exactly two rows", () => {
-    const html = renderToStaticMarkup(<RoundDock plays={<div />} chips={<div />} onDetails={null} />)
+    const html = renderToStaticMarkup(<RoundDock plays={<div />} chips={<div />} onDetails={null} onHoleDone={() => {}} />)
     expect(html.match(/data-dock-row="/g)).toHaveLength(2)
     expect(html).toContain(DOCK_ROW_CLASS.plays)
     expect(html).toContain(DOCK_ROW_CLASS.chips)
     expect(html).not.toContain("Shot details") // nothing to show yet
+    expect(html).toContain("Hole done") // in row 1, beside the plays
+    expect(html.indexOf("Hole done")).toBeLessThan(html.indexOf('data-dock-row="chips"'))
   })
 
-  it("the grid rows are the header, the map's remainder, the dock's own height and the bar", () => {
-    const html = renderToStaticMarkup(<RoundScreen scoring={false} header={null} map={null} dock={null} score={null} bar={null} />)
-    expect(html).toContain("grid-rows-[52px_minmax(0,1fr)_auto_calc(56px+env(safe-area-inset-bottom))]")
+  it("the grid rows are the header, the map's remainder and the dock's own height", () => {
+    const html = renderToStaticMarkup(<RoundScreen header={null} map={null} dock={null} round={null} />)
+    expect(html).toContain("grid-rows-[52px_minmax(0,1fr)_auto]")
     expect(html).toContain("h-[100dvh]")
   })
 
-  it("scoring hides the map and the dock and gives the score pad their rows", () => {
-    const html = renderToStaticMarkup(<RoundScreen scoring header={null} map={<i id="m" />} dock={<i id="d" />} score={<i id="s" />} bar={null} />)
-    expect(html.match(/class="hidden"/g)).toHaveLength(2) // kept mounted, not removed
-    expect(html).toContain("row-span-2")
+  it("the map and the dock are always on screen", () => {
+    const html = renderToStaticMarkup(<RoundScreen header={null} map={<i id="m" />} dock={<i id="d" />} round={null} />)
+    expect(html).not.toContain("hidden")
   })
 
   it("the hole header has a menu only during a round", () => {

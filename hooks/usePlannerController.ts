@@ -14,8 +14,9 @@ import { type ConfirmableHazard } from "@/lib/course/dataQuality"
 import { type CourseHole } from "@/lib/course/overpass"
 import type { Club } from "@/lib/golfer/tables"
 import { type HoleCorrectionSubmission } from "@/components/simulator/EditHoleModal"
-import { type PlayView } from "@/components/play/PlayRound"
+import { type RoundSheet } from "@/components/play/RoundSheets"
 import { loadActiveRound, nextUnscored, saveActiveRound, type ActiveRound } from "@/lib/rounds/activeRound"
+import { nextHoleTarget } from "@/lib/rounds/holeOffer"
 import { type Placing } from "@/components/simulator/courseColors"
 import { shortCourseName } from "@/lib/planner/labels"
 import { AUTO_AIM, aimReducer } from "@/lib/planner/aimMode"
@@ -29,6 +30,7 @@ import { useZones } from "@/hooks/useZones"
 import { useBallPosition } from "@/hooks/useBallPosition"
 import { usePlan } from "@/hooks/usePlan"
 import { useObTags } from "@/hooks/useObTags"
+import { useNextHoleOffer } from "@/hooks/useNextHoleOffer"
 import { hasOobBesideLine } from "@/lib/course/obTags"
 import { hasAnswered } from "@/lib/planner/obTagStore"
 import { kvDelete, kvGet, kvSet } from "@/lib/offline/db"
@@ -55,10 +57,10 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     tendency, setTendency, extraCarries, wedgeCarries, showSetupPrompt, setShowSetupPrompt, bag, compareAgainst, recent,
     hydrated, remember,
   } = settings
-  // A round being scored (kept on the device) and which side of it is showing.
+  // A round being scored (kept on the device) and which of its sheets is open.
   const [round, setRound] = useState<ActiveRound | null>(null)
   const [homeChosen, setHomeChosen] = useState(true) // read from the device on mount
-  const [playView, setPlayView] = useState<PlayView>("map")
+  const [roundSheet, setRoundSheet] = useState<RoundSheet | null>(null)
 
   // --- positions ---
   const [holeId, setHoleId] = useState<string | null>(null)
@@ -239,11 +241,6 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     saveActiveRound(next)
     void (next ? kvSet(ACTIVE_ROUND_IDB_KEY, next) : kvDelete(ACTIVE_ROUND_IDB_KEY))
   }
-  function changePlayView(v: PlayView) {
-    setPlayView(v)
-    // The map was hidden, not unmounted: have Leaflet re-measure itself.
-    if (v === "map") setTimeout(() => window.dispatchEvent(new Event("resize")), 0)
-  }
   function chooseCourse(c: CourseHit) {
     setQuery("")
     setPickerOpen(false)
@@ -267,7 +264,13 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   useEffect(() => {
     if (!round) setOfflineReport(null)
   }, [round])
-  const scoring = !!roundHere && playView === "score"
+
+  // "On hole 8?": offered once this hole is scored and the golfer's GPS has sat at the next tee. Never switches by itself.
+  const nextHoleOffer = useNextHoleOffer(ballState.fix, nextHoleTarget(roundHere, hole?.ref ?? null, holes))
+  function answerHoleOffer(accepted: boolean) {
+    if (accepted && nextHoleOffer.offer != null) goToHoleNumber(nextHoleOffer.offer)
+    nextHoleOffer.answer()
+  }
 
   const obTags = useObTags({ supabase, authUser, course })
   const plan = usePlan({
@@ -368,17 +371,18 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   return {
     mapTapGuardUntil,
     offlineReport,
+    roundSheet, setRoundSheet, holeOffer: nextHoleOffer.offer, answerHoleOffer,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimLie, aimState, atBestAim, authUser, avgLeft, bag,
-    bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,
+    bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changeRound, holeTitle, headerCourseName,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
     deleteZone, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
     mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
-    placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
-    refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, dispatchAim,
+    placing, planReady, query, rankState, ranking, rankingPending, recent, refreshCourseData,
+    refreshing, rings, round, roundHere, scoreBaseline, searched, searching, dispatchAim,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
     setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
     setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowSetupPrompt, setShowTrouble,

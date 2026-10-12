@@ -15,6 +15,7 @@ export function useBallPosition({ setFit, onBallMoved }: { setFit: (fit: FitRequ
   const [ball, setBall] = useState<LatLng | null>(null)
   const [following, setFollowing] = useState(false)
   const [gpsAccuracyYds, setGpsAccuracyYds] = useState<number | null>(null)
+  const [fix, setFix] = useState<GpsFix | null>(null) // the latest accepted fix while following
   const watchId = useRef<number | null>(null)
   const lastFollowAt = useRef(0)
   const [gpsError, setGpsError] = useState("")
@@ -34,6 +35,7 @@ export function useBallPosition({ setFit, onBallMoved }: { setFit: (fit: FitRequ
     watchId.current = null
     setFollowing(false)
     setGpsAccuracyYds(null)
+    setFix(null)
     setGpsNote("")
     gpsTrack.current = EMPTY_TRACK
   }
@@ -88,6 +90,7 @@ export function useBallPosition({ setFit, onBallMoved }: { setFit: (fit: FitRequ
         }
         lastFollowAt.current = now
         setGpsNote("")
+        setFix(next)
         moveBallTo({ lat: next.lat, lng: next.lng })
       },
       (err) => {
@@ -148,5 +151,5 @@ export function useBallPosition({ setFit, onBallMoved }: { setFit: (fit: FitRequ
     }, 10000)
   }
 
-  return { ball, setBall, following, gpsAccuracyYds, gpsError, gpsNote, stopFollowing, moveBallTo, toggleFollow, useMyLocation }
+  return { ball, setBall, following, fix, gpsAccuracyYds, gpsError, gpsNote, stopFollowing, moveBallTo, toggleFollow, useMyLocation }
 }

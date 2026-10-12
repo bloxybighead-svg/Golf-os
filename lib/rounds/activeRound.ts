@@ -98,6 +98,11 @@ export function nextUnscored(round: ActiveRound): number | null {
   return round.holes.find((h) => h.strokes == null)?.hole_number ?? null
 }
 
+/** The hole "Hole done" scores: the one the map is on when it is in the round, else the next one without a score. */
+export function holeToScore(round: ActiveRound, mapHole: number | null): number {
+  return mapHole != null && round.holes.some((h) => h.hole_number === mapHole) ? mapHole : (nextUnscored(round) ?? round.holes[0].hole_number)
+}
+
 export function loadActiveRound(): ActiveRound | null {
   try {
     const r = JSON.parse(localStorage.getItem(ACTIVE_ROUND_KEY) ?? "null") as ActiveRound | null

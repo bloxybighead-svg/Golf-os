@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { describeOrder, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, scoreToParLabel, type ActiveRound } from "./activeRound"
+import { describeOrder, holeToScore, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, scoreToParLabel, type ActiveRound } from "./activeRound"
 
 describe("playOrder", () => {
   it("plays 18 from the first", () => {
@@ -82,5 +82,21 @@ describe("scoreToParLabel", () => {
     expect(scoreToParLabel(scored(6))).toBe("+2")
     expect(scoreToParLabel(scored(4, 3))).toBe("E")
     expect(scoreToParLabel(scored(3, 3))).toBe("-1")
+  })
+})
+
+describe("holeToScore", () => {
+  const round = { holes: holesFor(playOrder(10, 3)) } as ActiveRound
+  it("is the hole the map is on when it is in the round", () => {
+    expect(holeToScore(round, 11)).toBe(11)
+  })
+  it("is the next hole without a score when the map is elsewhere or on no hole", () => {
+    round.holes[0].strokes = 4
+    expect(holeToScore(round, 3)).toBe(11)
+    expect(holeToScore(round, null)).toBe(11)
+  })
+  it("falls back to the first hole when every hole is scored", () => {
+    for (const h of round.holes) h.strokes = 4
+    expect(holeToScore(round, null)).toBe(10)
   })
 })
