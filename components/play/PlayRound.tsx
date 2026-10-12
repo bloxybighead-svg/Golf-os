@@ -23,7 +23,8 @@ async function withStrokeIndexes<T extends { hole_number: number; stroke_index?:
 import { summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
 import { describeOrder, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
 import { recommendTee, type TeeOption } from "@/lib/tbox/estimate"
-import { teeChoiceKey, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
+import { driveYdsFor, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
+import { loadTeeChoice, saveTeeChoice } from "@/lib/planner/storage"
 import { createRound } from "@/app/rounds/actions"
 import { Choice, HolePad } from "@/components/rounds/HolePad"
 import { holesToAskAboutOb } from "@/lib/rounds/obQuestions"
@@ -231,14 +232,8 @@ function StartRoundSheet({
         setTees(options)
         if (options.length === 0) return
         // The tee already picked for this course, else the best fit for the bag.
-        let stored: string | null = null
-        try {
-          stored = localStorage.getItem(teeChoiceKey(course.id))
-        } catch {
-          /* no stored choice */
-        }
-        const best =
-          driverCarryYds != null ? recommendTee({ handicapIndex: handicapIndex ?? 0, driverCarryYds }, options).recommended.tee.name : options[0].name
+        const stored = loadTeeChoice(course.id)
+        const best = recommendTee({ handicapIndex: handicapIndex ?? 0, driverCarryYds: driveYdsFor(driverCarryYds, handicapIndex) }, options).recommended.tee.name
         setTeeName(options.some((t) => t.name === stored) ? stored : best)
       })
       .catch(() => !cancelled && setTees([]))
@@ -263,11 +258,7 @@ function StartRoundSheet({
     const parByHole: Record<number, number | null> = {}
     for (const h of courseHoles) if (h.ref != null) parByHole[h.ref] = h.par
     if (tee) {
-      try {
-        localStorage.setItem(teeChoiceKey(course.id), tee.name)
-      } catch {
-        /* the choice still holds for this round */
-      }
+      saveTeeChoice(course.id, tee.name)
     }
     onStart({
       id: newRoundId(), // the round's identity from now on (becomes rounds.id)

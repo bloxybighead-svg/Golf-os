@@ -6,7 +6,8 @@ import { createPortal } from "react-dom"
 import Link from "next/link"
 import { Check, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { courseHandicap, recommendTee, type TeeOption } from "@/lib/tbox/estimate"
-import { neighbourTees, teeChoiceKey as choiceKey, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
+import { driveYdsFor, neighbourTees, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
+import { loadTeeChoice, saveTeeChoice } from "@/lib/planner/storage"
 
 interface Props {
   courseId: string
@@ -29,11 +30,7 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
   useEffect(() => {
     let cancelled = false
     setTees(null)
-    try {
-      setChosen(localStorage.getItem(choiceKey(courseId)))
-    } catch {
-      setChosen(null)
-    }
+    setChosen(loadTeeChoice(courseId))
     // The tees saved at Start round answer when there is no signal.
     fetchWithSnapshot<{ tees?: OpenGolfApiTee[] }>(`/api/courses/${courseId}/tees`, snapshotKeys.tees(courseId))
       .then((d) => !cancelled && setTees(teeOptionsFrom((d?.tees ?? []) as OpenGolfApiTee[])))
@@ -51,18 +48,14 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
   }, [open])
 
   const result = useMemo(() => {
-    if (!tees || tees.length === 0 || driverCarryYds == null) return null
-    return recommendTee({ handicapIndex: handicapIndex ?? 0, driverCarryYds }, tees)
+    if (!tees || tees.length === 0) return null
+    return recommendTee({ handicapIndex: handicapIndex ?? 0, driverCarryYds: driveYdsFor(driverCarryYds, handicapIndex) }, tees)
   }, [tees, driverCarryYds, handicapIndex])
 
   function choose(name: string) {
     setChosen(name)
     setOpen(false)
-    try {
-      localStorage.setItem(choiceKey(courseId), name)
-    } catch {
-      // Storage blocked: the choice still holds for this visit.
-    }
+    saveTeeChoice(courseId, name)
   }
 
   if (tees === null) return null
@@ -178,7 +171,7 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
               </ul>
               <p className="border-t border-fg/[0.06] px-4 py-3 text-xs text-muted tabular-nums">
                 Best fit: the longest tee under {result.recommendedYardage.toLocaleString()} yd, from your{" "}
-                {Math.round(driverCarryYds!)}-yd driver.
+                {Math.round(driveYdsFor(driverCarryYds, handicapIndex))}-yd drive.
               </p>
             </div>
           </div>,

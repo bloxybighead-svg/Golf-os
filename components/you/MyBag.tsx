@@ -137,10 +137,10 @@ export function MyBag({
         <div className="flex items-center justify-between gap-3 px-5 py-4">
           <div className="min-w-0">
             <p className="label-xs">Home course</p>
-            <p className="mt-1 truncate text-sm font-medium text-fg">{home ? home.name : "Not set"}</p>
+            {home && <p className="mt-1 truncate text-sm font-medium text-fg">{home.name}</p>}
           </div>
           <Link href={EDIT_HREF} className="flex min-h-[44px] shrink-0 items-center text-sm font-semibold text-accent hover:underline md:min-h-0">
-            {home ? "Change" : "Set"}
+            {home ? "Change" : "Set home course"}
           </Link>
         </div>
       </section>

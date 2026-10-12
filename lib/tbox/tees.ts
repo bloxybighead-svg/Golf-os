@@ -1,7 +1,18 @@
+import { DEFAULT_BASELINE_HANDICAP } from "@/lib/course/baseline"
+import { BASE_ROLL_YDS } from "@/lib/course/roll"
+import { profilesForHandicap } from "@/lib/golfer/tables"
 import type { TeeOption } from "./estimate"
 
-/** Where the tee a golfer picked for a course is remembered on the device. */
-export const teeChoiceKey = (courseId: string) => `golfos.tee.${courseId}.v1`
+/**
+ * The drive a tee is recommended from. The tee-length guidance is by how far a golfer
+ * drives (carry plus roll), not carry alone, so this adds the driver's roll to the
+ * bag's driver carry, or to the typical carry for the handicap when the bag has no
+ * driver (never its longest iron, which would pick the shortest tee).
+ */
+export function driveYdsFor(driverCarryYds: number | null, handicapIndex: number | null): number {
+  const carry = driverCarryYds ?? profilesForHandicap(handicapIndex ?? DEFAULT_BASELINE_HANDICAP).Driver.mean_carry
+  return carry + BASE_ROLL_YDS.driver
+}
 
 /** One tee as OpenGolfAPI returns it (via /api/courses/[id]/tees). */
 export interface OpenGolfApiTee {

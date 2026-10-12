@@ -461,7 +461,6 @@ export function usePlan({
     landings,
     lieInputs,
     lies,
-    longestCarry,
     pickClub,
     pin,
     planReady,

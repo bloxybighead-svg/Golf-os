@@ -4,7 +4,7 @@
 
 import type { UserZone } from "@/lib/course/lies"
 import type { ConfirmableHazard } from "@/lib/course/dataQuality"
-import { LAST_POSITION_KEY } from "@/lib/golfer/baseline"
+import { HOME_COURSE_KEY, LAST_POSITION_KEY } from "@/lib/golfer/baseline"
 import { DRAW_KINDS } from "./labels"
 
 export interface CourseHit {
@@ -60,6 +60,27 @@ export function saveZoom(courseId: string, zoom: number) {
   }
 }
 
+function teeKey(courseId: string): string {
+  return `golfos.tee.${courseId}.v1`
+}
+
+/** The tee the golfer last picked at a course, or null if they never have. */
+export function loadTeeChoice(courseId: string): string | null {
+  try {
+    return localStorage.getItem(teeKey(courseId))
+  } catch {
+    return null
+  }
+}
+
+export function saveTeeChoice(courseId: string, name: string) {
+  try {
+    localStorage.setItem(teeKey(courseId), name)
+  } catch {
+    /* storage full or blocked: the choice still holds for this visit */
+  }
+}
+
 export type NoHazardMap = Record<string, Partial<Record<ConfirmableHazard, boolean>>> // holeId -> which hazards are confirmed absent
 
 function noHazardKey(courseId: string): string {
@@ -83,6 +104,15 @@ export function saveNoHazard(courseId: string, map: NoHazardMap) {
     localStorage.setItem(noHazardKey(courseId), JSON.stringify(map))
   } catch {
     /* storage full or blocked: the confirmations just won't be remembered */
+  }
+}
+
+/** Whether the golfer has chosen a home course on this device. */
+export function hasHomeCourse(): boolean {
+  try {
+    return localStorage.getItem(HOME_COURSE_KEY) !== null
+  } catch {
+    return false
   }
 }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
-import { neighbourTees, teeOptionsFrom, type OpenGolfApiTee } from "./tees"
+import { driveYdsFor, neighbourTees, teeOptionsFrom, type OpenGolfApiTee } from "./tees"
 import { recommendTee } from "./estimate"
+import { BASE_ROLL_YDS } from "@/lib/course/roll"
 
 // Pebble Beach as OpenGolfAPI returns it (men's and women's ratings per tee).
 const PEBBLE: OpenGolfApiTee[] = [
@@ -48,5 +49,16 @@ describe("recommendation on real tees", () => {
   it("a 264-yd driver (the author's) is steered to the longest tee within reach", () => {
     // 264 x 25 = 6600 yd recommended: Gold (6472) is the longest tee not over it.
     expect(recommendTee({ handicapIndex: 3.5, driverCarryYds: 264 }, teeOptionsFrom(PEBBLE)).recommended.tee.name).toBe("Gold")
+  })
+})
+
+describe("driveYdsFor", () => {
+  it("adds the driver's roll to the bag's driver carry", () => {
+    expect(driveYdsFor(250, 20)).toBe(250 + BASE_ROLL_YDS.driver)
+  })
+
+  it("falls back to the typical driver for the handicap, longer for a lower handicap", () => {
+    expect(driveYdsFor(null, 2)).toBeGreaterThan(driveYdsFor(null, 25))
+    expect(driveYdsFor(null, null)).toBeGreaterThan(150)
   })
 })

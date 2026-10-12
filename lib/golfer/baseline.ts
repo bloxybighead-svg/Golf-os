@@ -28,6 +28,8 @@ export interface Baseline {
 // The planner's device-storage keys (read by CourseMapClient).
 export const SETTINGS_KEY = "golfos.planner.v1"
 export const LAST_POSITION_KEY = "golfos.lastPosition.v1"
+/** The course the golfer chose as home (setup), apart from wherever Play last opened. */
+export const HOME_COURSE_KEY = "golfos.homeCourse.v1"
 /** "1" once setup ran on this device, "dismissed" if the golfer waved the prompt away. */
 export const ONBOARDED_KEY = "golfos.onboarded.v1"
 
@@ -79,7 +81,10 @@ export function applyBaselineToDevice(b: Baseline): void {
         bags: { ...(existing.bags ?? {}), handicap: bagFor(b.carries) },
       })
     )
-    if (b.homeCourse) localStorage.setItem(LAST_POSITION_KEY, JSON.stringify({ course: b.homeCourse, holeId: null }))
+    if (b.homeCourse) {
+      localStorage.setItem(HOME_COURSE_KEY, JSON.stringify(b.homeCourse))
+      localStorage.setItem(LAST_POSITION_KEY, JSON.stringify({ course: b.homeCourse, holeId: null }))
+    } else localStorage.removeItem(HOME_COURSE_KEY)
     localStorage.setItem(ONBOARDED_KEY, "1")
   } catch {
     // Private mode or full storage: Play falls back to its defaults.

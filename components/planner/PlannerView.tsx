@@ -55,7 +55,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
-    longestCarry, mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
+    mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
     placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
     refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, dispatchAim,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
@@ -299,7 +299,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
 
   const phone = useIsPhone()
   const [savedNote, setSavedNote] = useState(false)
-  const roundSource = bagDriverCarry ?? (longestCarry > 0 ? longestCarry : null)
 
   // Messages that sit over the top-left of the map, so they never push it down or around.
   const notices = (
@@ -369,7 +368,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
                 <TeeLine
                   courseId={course.id}
                   courseName={course.name}
-                  driverCarryYds={roundSource}
+                  driverCarryYds={bagDriverCarry}
                   handicapIndex={source === "handicap" ? handicap : trackedHandicap}
                   compact={phone && !scoring}
                 />
@@ -385,7 +384,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
                   onViewChange={changePlayView}
                   onGoToHole={goToHoleNumber}
                   onResume={(c, n) => void loadCourse(c, { autoHoleRef: n })}
-                  driverCarryYds={roundSource}
+                  driverCarryYds={bagDriverCarry}
                   handicapIndex={source === "handicap" ? handicap : trackedHandicap}
                   signedIn={!!authUser}
                   userId={authUser?.id ?? null}

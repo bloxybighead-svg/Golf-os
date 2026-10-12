@@ -5,7 +5,7 @@
 import { CALIBRATED_DEFAULT_BAG, DEFAULT_BAG, normalizeBag } from "@/lib/golfer/bag"
 import { SETTINGS_STAMP_KEY } from "@/lib/golfer/bagSync"
 import { cleanWedgeCarries, type PartialName } from "@/lib/golfer/partials"
-import { LAST_POSITION_KEY, SETTINGS_KEY, cleanCarries, type CourseRef } from "@/lib/golfer/baseline"
+import { HOME_COURSE_KEY, SETTINGS_KEY, cleanCarries, type CourseRef } from "@/lib/golfer/baseline"
 import type { Club } from "@/lib/golfer/tables"
 
 /** "calibrated" is the golfer's own shots (My shot data); "legacy" the old public data; "handicap" an estimate. */
@@ -22,7 +22,7 @@ export interface DeviceBag {
   /** Carries the golfer typed for partial wedge swings. */
   wedgeCarries: Partial<Record<PartialName, number>>
   handicap: number | null
-  /** The course Play last opened, which setup sets to the home course. */
+  /** The home course the golfer chose in setup. */
   course: CourseRef | null
 }
 
@@ -33,19 +33,19 @@ export interface DeviceBag {
  */
 export function parseDeviceBag(
   rawSettings: string | null,
-  rawLast: string | null,
+  rawHome: string | null,
   defaultSource: "calibrated" | "handicap",
   fittedClubs: readonly Club[] = []
 ): DeviceBag {
   let s: Record<string, unknown> = {}
-  let last: { course?: CourseRef } | null = null
+  let home: Partial<CourseRef> | null = null
   try {
     s = JSON.parse(rawSettings ?? "{}") ?? {}
   } catch {
     /* unreadable: fall back to defaults */
   }
   try {
-    last = JSON.parse(rawLast ?? "null")
+    home = JSON.parse(rawHome ?? "null")
   } catch {
     /* ignore */
   }
@@ -62,7 +62,7 @@ export function parseDeviceBag(
   const driver = Number(s.driverCarry)
   const seven = Number(s.sevenIronCarry)
   const withMain = cleanCarries({ ...carries, Driver: driver || undefined, "7-Iron": seven || undefined })
-  const course = last?.course && typeof last.course.id === "string" && typeof last.course.name === "string" ? last.course : null
+  const course = home && typeof home.id === "string" && typeof home.name === "string" ? (home as CourseRef) : null
 
   return {
     source,
@@ -76,7 +76,7 @@ export function parseDeviceBag(
 
 export function readDeviceBag(defaultSource: "calibrated" | "handicap" = "handicap", fittedClubs: readonly Club[] = []): DeviceBag {
   try {
-    return parseDeviceBag(localStorage.getItem(SETTINGS_KEY), localStorage.getItem(LAST_POSITION_KEY), defaultSource, fittedClubs)
+    return parseDeviceBag(localStorage.getItem(SETTINGS_KEY), localStorage.getItem(HOME_COURSE_KEY), defaultSource, fittedClubs)
   } catch {
     return parseDeviceBag(null, null, defaultSource, fittedClubs)
   }

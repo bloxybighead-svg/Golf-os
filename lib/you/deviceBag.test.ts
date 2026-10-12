@@ -13,7 +13,7 @@ describe("parseDeviceBag", () => {
     expect(c.bag).toContain("4-Iron")
   })
 
-  it("reads the saved bag, carries and last course", () => {
+  it("reads the saved bag, carries and home course", () => {
     const settings = JSON.stringify({
       source: "handicap",
       sourceV: 2,
@@ -24,8 +24,8 @@ describe("parseDeviceBag", () => {
       wedgeCarries: { "GW 3/4": 88, "GW 1/2": 3, Nonsense: 50 },
       bags: { handicap: ["PW", "Driver", "7-Iron"] },
     })
-    const last = JSON.stringify({ course: { id: "c1", name: "Home GC", city: null, state: null, par: 72, lat: 1, lng: 2 }, holeId: null })
-    const d = parseDeviceBag(settings, last, "calibrated")
+    const home = JSON.stringify({ id: "c1", name: "Home GC", city: null, state: null, par: 72, lat: 1, lng: 2 })
+    const d = parseDeviceBag(settings, home, "calibrated")
     expect(d.source).toBe("handicap")
     expect(d.bag).toEqual(["Driver", "7-Iron", "PW"]) // normalized to bag order
     expect(d.carries).toEqual({ Driver: 245, "7-Iron": 150, PW: 120 })

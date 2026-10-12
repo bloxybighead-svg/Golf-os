@@ -20,7 +20,7 @@ import { type Placing } from "@/components/simulator/courseColors"
 import { shortCourseName } from "@/lib/planner/labels"
 import { AUTO_AIM, aimReducer } from "@/lib/planner/aimMode"
 import { choiceAfterHolePick } from "@/lib/planner/clubChoice"
-import { DEFAULT_COURSE, DEFAULT_HOLE_REF, loadLastPosition, loadNoHazard, loadZoom, saveLastPosition, updateLastPositionHole, type CourseHit } from "@/lib/planner/storage"
+import { DEFAULT_COURSE, DEFAULT_HOLE_REF, hasHomeCourse, loadLastPosition, loadNoHazard, loadZoom, saveLastPosition, updateLastPositionHole, type CourseHit } from "@/lib/planner/storage"
 import { holeFitPoints, holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import { usePlannerSettings } from "@/hooks/usePlannerSettings"
 import { useAuthUser } from "@/hooks/useAuthUser"
@@ -57,6 +57,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   } = settings
   // A round being scored (kept on the device) and which side of it is showing.
   const [round, setRound] = useState<ActiveRound | null>(null)
+  const [homeChosen, setHomeChosen] = useState(true) // read from the device on mount
   const [playView, setPlayView] = useState<PlayView>("map")
 
   // --- positions ---
@@ -106,6 +107,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     initRef.current = true
     try {
       settings.loadFromDevice() // setup numbers, saved settings, recent courses
+      setHomeChosen(hasHomeCourse())
       // Resume where the golfer left off; a first visit opens on the default hole.
       // A round in progress wins: reopening mid-round lands back on its course.
       const active = loadActiveRound()
@@ -304,7 +306,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const {
     aim, aimAtBest, aimLie, atBestAim, avgLeft, bagDriverCarry, baselineHandicap, best, chosen,
     chosenAtAim, chosenLive, distPin, estimateNotes, fromLabel, holeBearingDeg, holeQuality, labels,
-    landings, longestCarry, pickClub, pin, planReady, rankState, strategyMode, ranking, rankingPending, rings,
+    landings, pickClub, pin, planReady, rankState, strategyMode, ranking, rankingPending, rings,
     scoreBaseline, shownLies, stats, troubleCells, optionsNote, obBands, lies,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
   } = plan
@@ -359,7 +361,9 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
       : holes.length > 0
         ? "Pick a hole"
         : shortCourseName(course.name)
-  const headerCourseName = course && hole ? shortCourseName(course.name) : ""
+  // Pebble Beach is only the first-visit demo: say so until the golfer signs in or sets a home course.
+  const isDemo = !authUser && !homeChosen && !baseline?.homeCourse && course?.id === DEFAULT_COURSE.id
+  const headerCourseName = course && hole ? (isDemo ? "Demo · " : "") + shortCourseName(course.name) : ""
 
   return {
     mapTapGuardUntil,
@@ -372,7 +376,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
-    longestCarry, mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
+    mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
     placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
     refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, dispatchAim,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
