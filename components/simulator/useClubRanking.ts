@@ -47,8 +47,6 @@ export interface RankingRequest {
 export interface ClubRanking {
   /** The latest ranking (kept while a new one is being worked out, so the table doesn't flash). */
   results: OptimizedClubPlan[] | null
-  /** The cache key `results` belong to: changes exactly when a new stance has been ranked. */
-  key: string | null
   /** A newer ranking is on its way. */
   pending: boolean
   /** How long the last fresh ranking took inside the worker, milliseconds. */
@@ -65,7 +63,7 @@ function useVersion(value: unknown): number {
 export function useClubRanking(lieInputs: LieInputs | null, clubs: ClubShots[], request: RankingRequest | null): ClubRanking {
   const liesVersion = useVersion(lieInputs)
   const bagVersion = useVersion(clubs)
-  const [state, setState] = useState<ClubRanking>({ results: null, key: null, pending: false, ms: null })
+  const [state, setState] = useState<ClubRanking>({ results: null, pending: false, ms: null })
 
   const cache = useRef(new LruCache<OptimizedClubPlan[]>(RANK_CACHE_SIZE))
   const worker = useRef<Worker | null>(null)
@@ -87,7 +85,7 @@ export function useClubRanking(lieInputs: LieInputs | null, clubs: ClubShots[], 
       return
     }
     cache.current.set(key, reply.results)
-    setState({ results: reply.results, key, pending: false, ms: reply.ms })
+    setState({ results: reply.results, pending: false, ms: reply.ms })
   })
 
   useEffect(() => {
@@ -120,13 +118,13 @@ export function useClubRanking(lieInputs: LieInputs | null, clubs: ClubShots[], 
 
   useEffect(() => {
     if (!key) {
-      setState({ results: null, key: null, pending: false, ms: null })
+      setState({ results: null, pending: false, ms: null })
       return
     }
     const hit = cache.current.get(key)
     if (hit) {
       lastId.current += 1 // anything still in flight is now out of date
-      setState((s) => ({ results: hit, key, pending: false, ms: s.ms }))
+      setState((s) => ({ results: hit, pending: false, ms: s.ms }))
       return
     }
     setState((s) => ({ ...s, pending: true }))
