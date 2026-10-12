@@ -48,7 +48,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     offlineReport,
     mapTapGuardUntil,
     loadNeedsSignIn, searchError,
-    addDrawPoint, aim, aimAtBest, aimManual, atBestAim, authUser, avgLeft, bag,
+    addDrawPoint, aim, aimAtBest, aimState, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
     deleteZone, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
@@ -57,7 +57,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
     longestCarry, mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
     placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
-    refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, setAimManual,
+    refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, dispatchAim,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
     optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
     setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
@@ -106,7 +106,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         onAimAtBest={aimAtBest}
         onBackToBest={() => {
           setClubChoice("auto")
-          aimAtBest(best)
         }}
         onOpenDetails={openDetails}
       />
@@ -269,7 +268,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         }}
         onAim={(p) => {
           if (Date.now() < mapTapGuardUntil.current) return
-          setAimManual(p)
+          dispatchAim({ type: "drag", point: p })
         }}
         onPin={(p) => {
           if (Date.now() < mapTapGuardUntil.current) return
@@ -424,10 +423,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           onPlacingChange={setPlacing}
           drawKind={drawKind}
           pendingPoints={pendingPoints}
-          aimIsManual={!!aimManual}
-          onResetAim={() => {
-            setAimManual(null)
-          }}
+          aimIsManual={aimState.mode === "manual"}
+          onResetAim={aimAtBest}
           layersRef={layersMenuRef}
           layersActive={showLayersMenu || showTrouble || following || !!drawKind}
           onLayersClick={() => {

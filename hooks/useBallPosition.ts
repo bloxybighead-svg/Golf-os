@@ -11,7 +11,7 @@ import type { FitRequest } from "@/lib/planner/orientation"
 
 const YD_PER_M = 1.09361
 
-export function useBallPosition({ setFit }: { setFit: (fit: FitRequest) => void }) {
+export function useBallPosition({ setFit, onBallMoved }: { setFit: (fit: FitRequest) => void; onBallMoved: () => void }) {
   const [ball, setBall] = useState<LatLng | null>(null)
   const [following, setFollowing] = useState(false)
   const [gpsAccuracyYds, setGpsAccuracyYds] = useState<number | null>(null)
@@ -51,6 +51,7 @@ export function useBallPosition({ setFit }: { setFit: (fit: FitRequest) => void 
   // hole, "Back to best club" or the club leaving the bag reset it (lib/planner/clubChoice.ts).
   function moveBallTo(p: LatLng) {
     setBall(p)
+    onBallMoved()
   }
 
   // Keeps the ball on your live GPS position (about every 2.5 s) so the yardages

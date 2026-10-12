@@ -6,7 +6,7 @@
 // once -- loading a course, picking a hole. Moved verbatim from
 // CourseMapClient.tsx; PlannerView draws what this returns.
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useReducer, useRef, useState } from "react"
 import type { PlannerProps as Props } from "@/lib/planner/types"
 import { bearingDeg, distanceYds, type LatLng } from "@/lib/course/geo"
 import type { FitRequest } from "@/lib/planner/orientation"
@@ -18,6 +18,7 @@ import { type PlayView } from "@/components/play/PlayRound"
 import { loadActiveRound, nextUnscored, saveActiveRound, type ActiveRound } from "@/lib/rounds/activeRound"
 import { type Placing } from "@/components/simulator/courseColors"
 import { shortCourseName } from "@/lib/planner/labels"
+import { AUTO_AIM, aimReducer } from "@/lib/planner/aimMode"
 import { choiceAfterHolePick } from "@/lib/planner/clubChoice"
 import { DEFAULT_COURSE, DEFAULT_HOLE_REF, loadLastPosition, loadNoHazard, loadZoom, saveLastPosition, updateLastPositionHole, type CourseHit } from "@/lib/planner/storage"
 import { holeFitPoints, holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
@@ -60,10 +61,15 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
 
   // --- positions ---
   const [holeId, setHoleId] = useState<string | null>(null)
-  const [aimManual, setAimManual] = useState<LatLng | null>(null)
+  const [aimState, dispatchAim] = useReducer(aimReducer, AUTO_AIM)
   const [pinManual, setPinManual] = useState<LatLng | null>(null)
   const [placing, setPlacing] = useState<Placing>("ball")
-  const [clubChoice, setClubChoice] = useState<string>("auto")
+  const [clubChoice, setClubChoiceRaw] = useState<string>("auto")
+  // A different club puts the aim back on auto.
+  const setClubChoice = (club: string) => {
+    dispatchAim({ type: "reset" })
+    setClubChoiceRaw(club)
+  }
   const zoneState = useZones({ supabase, authUser, course })
   const {
     zones, noHazard, setNoHazard, drawKind, setDrawKind,
@@ -87,7 +93,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const [layersMenuPos, setLayersMenuPos] = useState<{ top: number; left: number } | null>(null)
   const mapWrapRef = useRef<HTMLDivElement>(null)
   const [fit, setFit] = useState<FitRequest>({ points: [], key: "none" })
-  const ballState = useBallPosition({ setFit })
+  const ballState = useBallPosition({ setFit, onBallMoved: () => dispatchAim({ type: "reset" }) })
   const { ball, setBall, following, gpsAccuracyYds, gpsError, gpsNote, stopFollowing, moveBallTo, toggleFollow } = ballState
 
   // ---------- remembered settings and recent courses (this device only) ----------
@@ -159,7 +165,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     setGeometry(null)
     setHoleId(null)
     setBall(null)
-    setAimManual(null)
+    dispatchAim({ type: "reset" })
     setPinManual(null)
     setDrawKind(null)
     setPendingPoints([])
@@ -226,6 +232,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     if (h) pickHole(h)
   }
   function changeRound(next: ActiveRound | null) {
+    dispatchAim({ type: "reset" })
     setRound(next)
     saveActiveRound(next)
     void (next ? kvSet(ACTIVE_ROUND_IDB_KEY, next) : kvDelete(ACTIVE_ROUND_IDB_KEY))
@@ -281,8 +288,8 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     holeId,
     ball,
     pinManual,
-    aimManual,
-    setAimManual,
+    aimState,
+    dispatchAim,
     clubChoice,
     setClubChoice,
     zones,
@@ -320,9 +327,9 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   function pickHole(h: CourseHole, features = geometry?.features ?? []) {
     setHoleId(h.id)
     setBall(h.line[0])
-    setAimManual(null)
+    dispatchAim({ type: "reset" })
     setPinManual(null)
-    setClubChoice((prev) => choiceAfterHolePick(prev, holeId, h.id)) // the same hole keeps a picked club
+    setClubChoiceRaw((prev) => choiceAfterHolePick(prev, holeId, h.id)) // the same hole keeps a picked club
     // Turn the map so the tee is at the bottom and the green at the top, and frame the hole's line, fairway and green.
     const pinPoint = holePinForFeatures(h, features)
     setFit({ points: holeFitPoints(h, features, pinPoint), bearingDeg: bearingDeg(h.line[0], pinPoint), key: `hole-${h.id}` })
@@ -358,7 +365,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     mapTapGuardUntil,
     offlineReport,
     loadNeedsSignIn, searchError,
-    addDrawPoint, aim, aimAtBest, aimLie, aimManual, atBestAim, authUser, avgLeft, bag,
+    addDrawPoint, aim, aimAtBest, aimLie, aimState, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changePlayView, changeRound, holeTitle, headerCourseName,
     chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
     deleteZone, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
@@ -367,7 +374,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
     longestCarry, mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
     placing, planReady, playView, query, rankState, ranking, rankingPending, recent, refreshCourseData,
-    refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, setAimManual,
+    refreshing, rings, round, roundHere, scoreBaseline, scoring, searched, searching, dispatchAim,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
     setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
     setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowSetupPrompt, setShowTrouble,

@@ -30,7 +30,8 @@ import type { Club } from "@/lib/golfer/tables"
 import { fillBag } from "@/lib/golfer/bag"
 import type { Baseline } from "@/lib/golfer/baseline"
 import { ALWAYS_SHOWN, LIES } from "@/lib/planner/labels"
-import { chosenPlan, choiceAfterBallMove, choiceClub, choiceFor, choiceInBag, choiceMode } from "@/lib/planner/clubChoice"
+import { aimFor, type AimAction, type AimState } from "@/lib/planner/aimMode"
+import { chosenPlan, choiceAfterBallMove, choiceFor, choiceInBag, choiceMode } from "@/lib/planner/clubChoice"
 import { holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import type { CourseHit, NoHazardMap } from "@/lib/planner/storage"
 import { useClubRanking, type RankingRequest } from "@/components/simulator/useClubRanking"
@@ -63,8 +64,8 @@ export interface PlanInputs {
   holeId: string | null
   ball: LatLng | null
   pinManual: LatLng | null
-  aimManual: LatLng | null
-  setAimManual: (p: LatLng | null) => void
+  aimState: AimState
+  dispatchAim: (action: AimAction) => void
   clubChoice: string
   setClubChoice: (club: string) => void
   zones: UserZone[]
@@ -101,8 +102,8 @@ export function usePlan({
   holeId,
   ball,
   pinManual,
-  aimManual,
-  setAimManual,
+  aimState,
+  dispatchAim,
   clubChoice,
   setClubChoice,
   zones,
@@ -205,7 +206,6 @@ export function usePlan({
     return pin // anywhere else: aim at the pin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hole, ball, pin, longestCarry, geometry])
-  const aim = aimManual ?? defaultAim
 
   // Which way the hole plays (tee -> green), for the compass overlay -- the hole's own
   // fixed direction, not wherever the golfer currently stands.
@@ -327,6 +327,9 @@ export function usePlan({
   const lastChosen = useRef<OptimizedClubPlan | null>(null)
   const chosen: OptimizedClubPlan | null = chosenPlan(ranking, clubChoice, lastChosen.current)
   lastChosen.current = chosen
+  // On auto the marker sits at the chosen club's best aim, so it follows every new ranking; a drag (manual) holds it.
+  const bestAim = ball && pin && chosen ? aimMarkerFor(ball, pin, chosen) : null
+  const aim = aimFor(aimState, bestAim, defaultAim)
   // The dots and "leaves" use the same widened spread the ranking used.
   const playShots = useMemo(() => clubShots.map((c) => widenShots(c, onCourseSpread)), [clubShots, onCourseSpread])
   const chosenShots = chosen ? playShots.find((c) => c.club === chosen.club) : undefined
@@ -356,7 +359,7 @@ export function usePlan({
     if (!chosenShots || !ball || !aim || !pin || !lies) return null
     return strokesAtAim(chosenShots, { from: ball, aim, pin, lies, startLie, baseline: scoreBaseline, conditions })
   }, [chosenShots, ball, aim, pin, lies, startLie, scoreBaseline, conditions])
-  const atBestAim = !!chosen && !!ball && !!aim && isAtBestAim(ball, aim, chosen)
+  const atBestAim = aimState.mode === "auto" || (!!chosen && !!ball && !!aim && isAtBestAim(ball, aim, chosen))
   // The lie where the chosen club's best aim points (at its reach), for the card's "Aim ..." line.
   const chosenBearing = chosen?.bearingDeg
   const chosenReach = chosen?.plan.meanTotalYds
@@ -365,28 +368,14 @@ export function usePlan({
     [ball, lies, chosenBearing, chosenReach]
   )
 
-  function aimAtBest(r: OptimizedClubPlan) {
-    if (!ball || !pin) return
-    setAimManual(aimMarkerFor(ball, pin, r))
+  function aimAtBest() {
+    dispatchAim({ type: "reset" })
   }
 
   function pickClub(r: OptimizedClubPlan) {
     setClubChoice(choiceFor(r))
     setPickedAt(ball)
-    aimAtBest(r)
   }
-
-  // When a new stance (ball, pin, map or bag) has been ranked, move the aim to
-  // the chosen club's best -- or the best club's, on auto. A drag after that
-  // sticks until the stance changes again.
-  const appliedRankingKey = useRef<string | null>(null)
-  useEffect(() => {
-    if (!rankState.key || appliedRankingKey.current === rankState.key) return
-    appliedRankingKey.current = rankState.key
-    const target = ranking.find((r) => r.club === choiceClub(clubChoice)) ?? ranking[0]
-    if (target) aimAtBest(target)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rankState.key])
 
   const landings = useMemo(() => {
     if (!chosenShots || !ball || !aim || !lies) return []
