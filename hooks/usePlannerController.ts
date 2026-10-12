@@ -17,6 +17,7 @@ import { type HoleCorrectionSubmission } from "@/components/simulator/EditHoleMo
 import { type RoundSheet } from "@/components/play/RoundSheets"
 import { loadActiveRound, nextUnscored, saveActiveRound, type ActiveRound } from "@/lib/rounds/activeRound"
 import { nextHoleTarget } from "@/lib/rounds/holeOffer"
+import { editLastShot, lastShotOn, trackBallMove, type BallMove } from "@/lib/rounds/shots"
 import { type Placing } from "@/components/simulator/courseColors"
 import { shortCourseName } from "@/lib/planner/labels"
 import { AUTO_AIM, aimReducer } from "@/lib/planner/aimMode"
@@ -96,7 +97,20 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const [layersMenuPos, setLayersMenuPos] = useState<{ top: number; left: number } | null>(null)
   const mapWrapRef = useRef<HTMLDivElement>(null)
   const [fit, setFit] = useState<FitRequest>({ points: [], key: "none" })
-  const ballState = useBallPosition({ setFit, onBallMoved: () => dispatchAim({ type: "reset" }) })
+  // What a ball move needs to know to become a shot. Kept in a ref because GPS callbacks outlive the render
+  // that made them; set below, once the plan (lie map, pin, lie underfoot) is worked out.
+  const shotContext = useRef<(Pick<BallMove, "holeNumber" | "choice" | "fromLie" | "pin"> & { round: ActiveRound; lieAt: (p: LatLng) => BallMove["toLie"] }) | null>(null)
+  const ballState = useBallPosition({
+    setFit,
+    onBallMoved: () => dispatchAim({ type: "reset" }),
+    onShotMove: (from, to, following) => {
+      const c = shotContext.current
+      if (!c) return
+      const shots = c.round.shots ?? []
+      const next = trackBallMove(shots, { ...c, from, to, toLie: c.lieAt(to), following })
+      if (next.length !== shots.length || next.some((s, i) => s !== shots[i])) changeRound({ ...c.round, shots: next })
+    },
+  })
   const { ball, setBall, following, gpsAccuracyYds, gpsError, gpsNote, stopFollowing, moveBallTo, toggleFollow } = ballState
 
   // ---------- remembered settings and recent courses (this device only) ----------
@@ -311,8 +325,19 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     chosenAtAim, chosenLive, distPin, estimateNotes, fromLabel, holeBearingDeg, holeQuality, labels,
     landings, pickClub, pin, planReady, rankState, strategyMode, ranking, rankingPending, rings,
     scoreBaseline, shownLies, stats, troubleCells, optionsNote, obBands, lies,
-    pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
+    pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, startLie,
   } = plan
+
+  // Shots are only recorded on a hole of the round in progress, from a pin the plan knows.
+  const holeNumber = hole?.ref ?? null
+  const tracking = !!roundHere && holeNumber != null && roundHere.holes.some((h) => h.hole_number === holeNumber) && !!pin && !!lies
+  shotContext.current = tracking
+    ? { round: roundHere, holeNumber, choice: clubChoice, fromLie: startLie, pin, lieAt: (p) => lies.lieAt(p) }
+    : null
+  const lastShot = roundHere && holeNumber != null ? lastShotOn(roundHere.shots ?? [], holeNumber) : null
+  function editShot(patch: Parameters<typeof editLastShot>[2]) {
+    if (roundHere && holeNumber != null) changeRound({ ...roundHere, shots: editLastShot(roundHere.shots ?? [], holeNumber, patch) })
+  }
 
   // "No OB mapped on this hole": nothing beside the hole's line counts as out of bounds and the golfer hasn't said.
   const holeObTags = obTags.tagsFor(holeId)
@@ -390,7 +415,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
-    optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
+    optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped, lastShot, editShot,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
     onCourseSpread: settings.onCourseSpread,
   }

@@ -31,6 +31,7 @@ import { dockCssVars } from "@/lib/planner/dock"
 import { EditHoleModal } from "@/components/simulator/EditHoleModal"
 import { TeeLine } from "@/components/simulator/TeeLine"
 import { PlayRound } from "@/components/play/PlayRound"
+import { LastShotLine } from "@/components/play/LastShotLine"
 import { saveZoom } from "@/lib/planner/storage"
 import { DetailsPanel, type DetailsSection } from "@/components/planner/DetailsPanel"
 import { ClubTable } from "@/components/planner/ClubTable"
@@ -74,7 +75,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, aimLie,
-    roundSheet, setRoundSheet, holeOffer, answerHoleOffer,
+    roundSheet, setRoundSheet, holeOffer, answerHoleOffer, lastShot, editShot,
   } = vm
 
   const isOwner = authUser?.id === MARKS_USER_ID
@@ -371,6 +372,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         </p>
       )}
       {loadState === "idle" && loadError && <p className="rounded-md bg-black/70 px-2 py-1 text-xs text-white">{loadError}</p>}
+      {lastShot && <LastShotLine shot={lastShot} clubs={bag} onEdit={editShot} />}
     </>
   )
 

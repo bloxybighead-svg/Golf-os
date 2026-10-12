@@ -4,6 +4,7 @@
 
 import type { CourseRef } from "@/lib/golfer/baseline"
 import { blankHoles, summarizeHoles, type HoleEntry, type ScoredHole } from "./holes"
+import type { SwingShot } from "./shots"
 
 export const ACTIVE_ROUND_KEY = "golfos.activeRound.v1"
 
@@ -25,6 +26,8 @@ export interface ActiveRound {
   startHole: number
   /** One entry per hole in play, in the order they're played. */
   holes: HoleEntry[]
+  /** Swing shots recorded as the ball moved; saved with the round. Rounds started before shots were tracked have none. */
+  shots?: SwingShot[]
 }
 
 /**

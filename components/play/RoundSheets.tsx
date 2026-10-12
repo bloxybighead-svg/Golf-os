@@ -11,7 +11,8 @@ import { createRound } from "@/app/rounds/actions"
 import { HolePad } from "@/components/rounds/HolePad"
 import { holesToAskAboutOb } from "@/lib/rounds/obQuestions"
 import { queueJob } from "@/lib/offline/outbox"
-import { ROUND_JOB, type RoundPayload } from "@/lib/offline/jobs"
+import { ROUND_JOB, SHOTS_JOB, shotsKey, type RoundPayload, type ShotsPayload } from "@/lib/offline/jobs"
+import { shotsToSave } from "@/lib/rounds/shots"
 import { BottomSheet } from "@/components/play/BottomSheet"
 
 /** `advance`: opened by "Hole done", so Save moves on to the next hole (fixing an earlier hole from the scorecard does not). */
@@ -187,6 +188,13 @@ export function FinishSheet({
         const payload: RoundPayload = { userId: userId ?? "", input }
         const queued = userId ? await queueJob({ key: round.id, kind: ROUND_JOB, payload }) : false
         if (!queued) await createRound(input)
+        // The shots follow the round into the outbox, so they are only sent once the round has been. Without
+        // IndexedDB (the direct send above) they are dropped: they are an extra, the round is not.
+        const shots = shotsToSave(round.shots ?? [], new Map(scored.map((h) => [h.hole_number, h.putts ?? null])))
+        if (queued && shots.length > 0) {
+          const shotsPayload: ShotsPayload = { userId: userId ?? "", roundId: round.id, shots }
+          await queueJob({ key: shotsKey(round.id), kind: SHOTS_JOB, payload: shotsPayload })
+        }
         const questions = onObAnswer ? holesToAskAboutOb(scored, obAnswered ?? (() => false)) : []
         if (questions.length > 0) setAsking(questions)
         else onSaved()

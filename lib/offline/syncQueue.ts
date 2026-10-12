@@ -1,5 +1,5 @@
 // The outbox: things done on the phone that still have to reach Supabase (a
-// finished round, an OB tag). Pure logic only, so it can be tested without a
+// finished round, its shots, an OB tag). Pure logic only, so it can be tested without a
 // browser: the storage is lib/offline/outbox.ts and the senders are passed in.
 //
 // Rules:
@@ -10,7 +10,7 @@
 //  - A permanent failure (rejected data, signed out) parks that job and the flush
 //    carries on with the rest. Signing in releases the parked ones.
 
-export type JobKind = "round" | "obTags"
+export type JobKind = "round" | "obTags" | "roundShots"
 
 export interface OutboxJob {
   /** Identity for dedupe: the round's own id, or "obTags:<course>:<hole>". */

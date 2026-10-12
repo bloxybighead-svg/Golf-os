@@ -1,7 +1,7 @@
 "use client"
 
 // Mounted once in the root layout: registers the service worker, shows the update
-// toast, and keeps the outbox moving (sends finished rounds and OB tags to Supabase
+// toast, and keeps the outbox moving (sends finished rounds, their shots and OB tags to Supabase
 // whenever there is signal). The rules for when and how often are lib/offline/syncQueue.ts.
 
 import { useEffect } from "react"
@@ -9,7 +9,9 @@ import { createRound } from "@/app/rounds/actions"
 import { createClient } from "@/lib/supabase/client"
 import { runStartupCleanup } from "@/lib/offline/cleanup"
 import { OUTBOX_EVENT, flushOutbox, releaseParked, type Sender } from "@/lib/offline/outbox"
-import { OBTAGS_JOB, ROUND_JOB, type ObTagsPayload, type RoundPayload } from "@/lib/offline/jobs"
+import type { OutboxJob } from "@/lib/offline/syncQueue"
+import { OBTAGS_JOB, ROUND_JOB, SHOTS_JOB, type ObTagsPayload, type RoundPayload, type ShotsPayload } from "@/lib/offline/jobs"
+import { toDbRow } from "@/lib/rounds/shots"
 import { cleanTags } from "@/lib/planner/obTagStore"
 import { useServiceWorker } from "@/hooks/useServiceWorker"
 import { UpdateToast } from "./UpdateToast"
@@ -33,7 +35,7 @@ export function OfflineProvider() {
     const supabase = createClient()
     void runStartupCleanup() // old golfos.course.* copies filled localStorage; IndexedDB is the only course cache now
 
-    const senders: Record<"round" | "obTags", Sender> = {
+    const senders: Record<OutboxJob["kind"], Sender> = {
       [ROUND_JOB]: async (job) => {
         const { userId, input } = job.payload as RoundPayload
         if ((await currentUserId(supabase)) !== userId) throw new Error(WRONG_ACCOUNT)
@@ -49,6 +51,16 @@ export function OfflineProvider() {
           const ins = await supabase
             .from("hole_ob_tags")
             .insert(tags.map((t) => ({ user_id: p.userId, course_id: p.courseId, hole_id: p.holeId, side: t.side, margin_yds: t.marginYds })))
+          if (ins.error) throw new Error(ins.error.message)
+        }
+      },
+      [SHOTS_JOB]: async (job) => {
+        const p = job.payload as ShotsPayload
+        if ((await currentUserId(supabase)) !== p.userId) throw new Error(WRONG_ACCOUNT)
+        const del = await supabase.from("round_shots").delete().eq("round_id", p.roundId)
+        if (del.error) throw new Error(del.error.message)
+        if (p.shots.length > 0) {
+          const ins = await supabase.from("round_shots").insert(p.shots.map((s) => toDbRow(p.roundId, p.userId, s)))
           if (ins.error) throw new Error(ins.error.message)
         }
       },

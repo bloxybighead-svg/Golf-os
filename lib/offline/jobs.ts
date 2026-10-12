@@ -4,9 +4,11 @@
 
 import type { ObTag } from "@/lib/course/obTags"
 import type { RoundInput } from "@/app/rounds/actions"
+import type { RoundShot } from "@/lib/rounds/shots"
 
 export const ROUND_JOB = "round" as const
 export const OBTAGS_JOB = "obTags" as const
+export const SHOTS_JOB = "roundShots" as const
 
 export interface RoundPayload {
   userId: string
@@ -24,3 +26,13 @@ export interface ObTagsPayload {
 
 /** Queue key for a hole's tags: a newer set for the same hole replaces the one still waiting. */
 export const obTagKey = (courseId: string, holeId: string) => `obTags:${courseId}:${holeId}`
+
+export interface ShotsPayload {
+  userId: string
+  roundId: string
+  /** The round's complete shot list (replaces what is saved). */
+  shots: RoundShot[]
+}
+
+/** Queue key for a round's shots; queued after the round itself, so it is sent after it. */
+export const shotsKey = (roundId: string) => `roundShots:${roundId}`
