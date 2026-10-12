@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { readCompareAgainst, saveCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
 import { readRisk, saveRisk } from "@/lib/course/riskSetting"
-import { readSpread, saveSpread } from "@/lib/course/spreadSetting"
+import { clampSpread, readSpread, saveSpread } from "@/lib/course/spreadSetting"
+import type { SpreadSuggestion } from "@/lib/rounds/spreadCalibration"
 import { ON_COURSE_SPREAD, RISK_STOPS, SPREAD_MAX, SPREAD_MIN, SPREAD_STEP } from "@/lib/course/strategy"
 
 const OPTIONS: { value: CompareAgainst; label: string }[] = [
@@ -12,7 +13,7 @@ const OPTIONS: { value: CompareAgainst; label: string }[] = [
 ]
 
 /** "Compare against: My handicap / Tour" for the Play planner's strokes. Saved on this device. */
-export function PlannerSetting() {
+export function PlannerSetting({ spreadSuggestion }: { spreadSuggestion: SpreadSuggestion | null }) {
   // Saved in the browser only, so nothing is highlighted until mount (same as Appearance).
   const [choice, setChoice] = useState<CompareAgainst | null>(null)
   useEffect(() => setChoice(readCompareAgainst()), [])
@@ -91,6 +92,27 @@ export function PlannerSetting() {
         <p className="mt-1 text-xs text-muted">
           Range data is tighter than real rounds. Raise this if your misses on the course are wider than the app shows.
         </p>
+        {spreadSuggestion && (
+          <div className="mt-3 border-t border-fg/[0.06] pt-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-w-0 text-xs text-fg-2">
+                Your on-course spread: <span className="tabular-nums font-semibold text-fg">{spreadSuggestion.ratio.toFixed(2)}x</span> (from {spreadSuggestion.shots} shots)
+              </p>
+              <button
+                onClick={() => {
+                  const v = clampSpread(spreadSuggestion.ratio)
+                  saveSpread(v)
+                  setSpread(v)
+                }}
+                disabled={shownSpread === clampSpread(spreadSuggestion.ratio)}
+                className="h-11 shrink-0 rounded-lg border border-accent/40 bg-accent/10 px-4 text-xs font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-50"
+              >
+                Apply
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-muted">{spreadSuggestion.groups.map((g) => `${g.label} ${g.ratio.toFixed(2)}x`).join(" · ")}</p>
+          </div>
+        )}
       </div>
     </div>
   )
