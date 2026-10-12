@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { drillTrends, weakestCategory, recommendDrills } from "./drillRecommendations"
+import { drillTrends, weakestCategory, focusAreas, recommendDrills } from "./drillRecommendations"
 import { SG_CATEGORIES, type SgSummary } from "./rounds/strokesGained"
 import type { CategoryTrend } from "./sgBenchmarks"
 
-const trend = (category: CategoryTrend["category"], avgDeltaSg: number): CategoryTrend => ({
-  category, avgDeltaSg, avgUserSg: 0, avgBenchmarkSg: 0, roundsCounted: 10,
+const trend = (category: CategoryTrend["category"], avgDeltaSg: number, roundsCounted = 10): CategoryTrend => ({
+  category, avgDeltaSg, avgUserSg: 0, avgBenchmarkSg: 0, roundsCounted,
 })
 
 describe("weakestCategory", () => {
@@ -19,6 +19,35 @@ describe("weakestCategory", () => {
 
   it("returns null with no trend data", () => {
     expect(weakestCategory([])).toBeNull()
+  })
+
+  it("returns null until a category has 3 rounds", () => {
+    expect(weakestCategory([trend("putting", -1, 2), trend("approach", -0.5, 2)])).toBeNull()
+    expect(weakestCategory([trend("putting", -1, 3)])?.category).toBe("putting")
+  })
+
+  it("ignores a worse category that has fewer than 3 rounds", () => {
+    expect(weakestCategory([trend("putting", -2, 2), trend("approach", -0.1, 5)])?.category).toBe("approach")
+  })
+})
+
+describe("focusAreas", () => {
+  it("is empty until there is a focus", () => {
+    expect(focusAreas([trend("putting", -1, 2)])).toEqual([])
+  })
+
+  it("is just the weakest when the next is more than 0.3 away", () => {
+    const areas = focusAreas([trend("approach", -0.5), trend("short_game", -0.1)])
+    expect(areas.map((t) => t.category)).toEqual(["approach"])
+  })
+
+  it("adds the runner-up when within 0.3 strokes, 0.3 included", () => {
+    const areas = focusAreas([trend("putting", 0.5), trend("short_game", -0.4), trend("approach", -0.1)])
+    expect(areas.map((t) => t.category)).toEqual(["short_game", "approach"])
+  })
+
+  it("does not count a runner-up with fewer than 3 rounds", () => {
+    expect(focusAreas([trend("approach", -0.5), trend("short_game", -0.45, 2)]).map((t) => t.category)).toEqual(["approach"])
   })
 })
 

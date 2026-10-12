@@ -20,10 +20,25 @@ export function drillTrends(real: SgSummary | null, estimate: CategoryTrend[]): 
   return real.categories.map((c) => ({ category: c.category, avgUserSg: c.per18, avgBenchmarkSg: 0, avgDeltaSg: c.per18, roundsCounted: real.rounds }))
 }
 
-/** The category with the most negative average delta vs. the golfer's handicap bracket. */
+/** Rounds with a category's stats before it can be called the focus area. */
+export const MIN_ROUNDS_FOR_FOCUS = 3
+
+/** Two categories this close (strokes) are a close call, not a clear weakest. */
+const CLOSE_CALL_STROKES = 0.3
+
+/** The category with the most negative average delta vs. the golfer's handicap bracket; null until one has enough rounds. */
 export function weakestCategory(trends: readonly CategoryTrend[]): CategoryTrend | null {
-  if (trends.length === 0) return null
-  return trends.reduce((worst, t) => (t.avgDeltaSg < worst.avgDeltaSg ? t : worst))
+  return trends
+    .filter((t) => t.roundsCounted >= MIN_ROUNDS_FOR_FOCUS)
+    .reduce<CategoryTrend | null>((worst, t) => (!worst || t.avgDeltaSg < worst.avgDeltaSg ? t : worst), null)
+}
+
+/** The weakest category, plus the next one when it is within CLOSE_CALL_STROKES of it. Empty until there is a focus. */
+export function focusAreas(trends: readonly CategoryTrend[]): CategoryTrend[] {
+  const weakest = weakestCategory(trends)
+  if (!weakest) return []
+  const next = weakestCategory(trends.filter((t) => t !== weakest))
+  return next && next.avgDeltaSg - weakest.avgDeltaSg <= CLOSE_CALL_STROKES + 1e-9 ? [weakest, next] : [weakest]
 }
 
 export interface RecommendableDrill {

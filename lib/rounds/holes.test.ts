@@ -63,7 +63,7 @@ describe("summarizeHoles", () => {
   it("feeds the saved round's short-game numbers the same way the proxy reads them", () => {
     const s = summarizeHoles(holes)
     expect(upAndDownPct({ ...s })).toBe(50)
-    const sg = computeUserSg({ holesPlayed: 4, fairwaysPct: s.fairways_pct, girPct: s.gir_pct, totalPutts: s.total_putts, upAndDowns: s.up_and_downs })
+    const sg = computeUserSg({ holesPlayed: 4, fairwaysPct: s.fairways_pct, girPct: s.gir_pct, totalPutts: s.total_putts, upAndDowns: s.up_and_downs, teePenalties: 0 })
     expect(sg.map((c) => c.category)).toEqual(["off_tee", "approach", "short_game", "putting"])
   })
 })

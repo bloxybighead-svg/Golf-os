@@ -34,15 +34,22 @@ const FAIRWAY_OPPORTUNITIES_PER_18 = 14 // typical par-4/par-5 count on an 18-ho
 const STROKES_PER_MISSED_FAIRWAY = 0.2
 const STROKES_PER_MISSED_GREEN = 0.5
 const STROKES_PER_FAILED_UP_AND_DOWN = 0.5
+// ESTIMATE: a tee-shot penalty costs the stroke itself, plus the replay or drop
+// from a worse spot, so about one stroke over a normal tee shot. Not measured.
+const STROKES_PER_TEE_PENALTY = 1.0
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-/** Off-tee proxy: fairways-hit gap vs. scratch, over this round's own par-4/5 opportunity count. */
-function offTeeSg(fairwaysPct: number, holesPlayed: number): number {
+/**
+ * Off-tee proxy: fairways-hit gap vs. scratch, over this round's own par-4/5
+ * opportunity count, minus the cost of tee penalties (counted, not scaled by holes).
+ */
+function offTeeSg(fairwaysPct: number, holesPlayed: number, teePenalties: number): number {
   const opportunities = FAIRWAY_OPPORTUNITIES_PER_18 * (holesPlayed / 18)
-  return round2(((fairwaysPct - SCRATCH_FAIRWAY_PCT) / 100) * opportunities * STROKES_PER_MISSED_FAIRWAY)
+  const fairwayGap = ((fairwaysPct - SCRATCH_FAIRWAY_PCT) / 100) * opportunities * STROKES_PER_MISSED_FAIRWAY
+  return round2(fairwayGap - teePenalties * STROKES_PER_TEE_PENALTY)
 }
 
 /** Approach proxy: GIR gap vs. scratch, over every hole actually played. */
@@ -75,6 +82,8 @@ export interface RoundStatsForSg {
   girPct: number | null
   totalPutts: number | null
   upAndDowns: number | null
+  /** Holes with round_holes.penalty_shot = 'tee'. */
+  teePenalties: number
 }
 
 export interface CategorySg {
@@ -90,7 +99,7 @@ export interface CategorySg {
 export function computeUserSg(stats: RoundStatsForSg): CategorySg[] {
   const out: CategorySg[] = []
   if (stats.fairwaysPct != null) {
-    out.push({ category: "off_tee", userSg: offTeeSg(stats.fairwaysPct, stats.holesPlayed) })
+    out.push({ category: "off_tee", userSg: offTeeSg(stats.fairwaysPct, stats.holesPlayed, stats.teePenalties) })
   }
   if (stats.girPct != null) {
     out.push({ category: "approach", userSg: approachSg(stats.girPct, stats.holesPlayed) })

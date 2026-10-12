@@ -8,7 +8,7 @@ import { DrillHistory } from "@/components/you/DrillHistory"
 import { SubPageHeader } from "@/components/you/SubPageHeader"
 import type { HandicapEntry, LibraryDrill, UserDrillRun } from "@/lib/supabase/types"
 import type { SgCategory } from "@/lib/sgBenchmarks"
-import { DRILL_CATEGORIES, drillTrends, weakestCategory, recommendDrills } from "@/lib/drillRecommendations"
+import { DRILL_CATEGORIES, drillTrends, focusAreas, recommendDrills } from "@/lib/drillRecommendations"
 
 export default async function PracticePage() {
   const supabase = await createClient()
@@ -31,13 +31,13 @@ export default async function PracticePage() {
     loadCategoryTrends(supabase),
   ])
 
-  // Drills open on the weakest category on the Strengths & Weaknesses card (strokes gained from
-  // recorded shots when there are some); the other three are ready for the golfer to switch to.
+  // Drills follow the weakest category on the Strengths & Weaknesses card (strokes gained from
+  // recorded shots when there are some).
   const handicapIndex = (latestHandicap as Pick<HandicapEntry, "handicap_index"> | null)?.handicap_index ?? null
   const shotSg = await loadShotSg(supabase, handicapIndex)
   const trends = drillTrends(shotSg?.mine?.summary ?? null, categoryTrends)
   const drillRuns = (drillRunsData ?? []) as unknown as UserDrillRun[]
-  const focusArea = weakestCategory(trends)
+  const focus = focusAreas(trends)
   const library = (libraryData ?? []) as LibraryDrill[]
   const drillsByCategory = Object.fromEntries(
     DRILL_CATEGORIES.map((c) => [c, recommendDrills(library, c, drillRuns)])
@@ -48,8 +48,7 @@ export default async function PracticePage() {
       <SubPageHeader title="Practice" />
 
       <RecommendedDrills
-        focus={focusArea}
-        trends={trends}
+        focus={focus}
         handicapIndex={handicapIndex}
         drillsByCategory={drillsByCategory}
         signedIn={!!user}

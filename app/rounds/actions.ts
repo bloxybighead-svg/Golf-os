@@ -125,6 +125,7 @@ async function saveRoundAnalysis(
   roundId: string,
   userId: string,
   data: Pick<Round, "holes_played" | "fairways_pct" | "gir_pct" | "total_putts" | "up_and_downs">,
+  holes: ScoredHole[] | null,
   handicapIndex: number | null
 ) {
   await supabase.from("round_analysis").delete().eq("round_id", roundId)
@@ -136,6 +137,7 @@ async function saveRoundAnalysis(
     girPct: data.gir_pct,
     totalPutts: data.total_putts,
     upAndDowns: data.up_and_downs,
+    teePenalties: holes?.filter((h) => h.penalty_shot === "tee").length ?? 0,
   })
   if (userSg.length === 0) return
 
@@ -204,7 +206,7 @@ export async function createRound(input: RoundInput) {
     if (!existing) await supabase.from("rounds").delete().eq("id", inserted.id)
     throw e
   }
-  await saveRoundAnalysis(supabase, inserted.id, user.id, inserted as Round, handicapIndex)
+  await saveRoundAnalysis(supabase, inserted.id, user.id, inserted as Round, holes, handicapIndex)
   await syncCalculatedHandicap(supabase, user.id)
   revalidatePath("/rounds")
   revalidatePath("/you")
@@ -231,7 +233,7 @@ export async function updateRound(id: string, input: RoundInput) {
   if (error) throw new Error(error.message)
 
   if (holes || hadHoles) await saveHoles(supabase, id, user.id, holes)
-  await saveRoundAnalysis(supabase, id, user.id, updated as Round, existing?.handicap_index ?? null)
+  await saveRoundAnalysis(supabase, id, user.id, updated as Round, holes, existing?.handicap_index ?? null)
   await syncCalculatedHandicap(supabase, user.id)
   revalidatePath("/rounds")
   revalidatePath("/you")
