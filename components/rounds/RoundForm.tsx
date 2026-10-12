@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react"
 import type { Round } from "@/lib/supabase/types"
 import { BREAKDOWN_TAGS } from "@/lib/supabase/types"
 import { calcDifferential } from "@/lib/handicap"
+import { localISODate } from "@/lib/dates"
 import { createRound, getRoundHoles, updateRound } from "@/app/rounds/actions"
 import { blankHoles, summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
 import { Choice, HolePad } from "./HolePad"
@@ -41,10 +42,6 @@ interface Draft {
   current: number
 }
 
-function todayISO() {
-  return new Date().toISOString().split("T")[0]
-}
-
 const inputCls =
   "w-full rounded-lg border border-fg/[0.08] bg-surface-3 px-3 py-2.5 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none transition-colors"
 
@@ -73,7 +70,7 @@ function fullHoles(from: HoleEntry[]): HoleEntry[] {
 export function RoundForm({ round, onDone, signedIn = true }: Props) {
   const [isCompetitive, setIsCompetitive] = useState(round?.is_competitive ?? false)
   const [breakdownTags, setBreakdownTags] = useState<string[]>(round?.breakdown_tags ?? [])
-  const [date, setDate] = useState(round?.date ?? todayISO())
+  const [date, setDate] = useState(round?.date ?? localISODate())
   const [course, setCourse] = useState(round?.course_name ?? "")
   // Picked from course search: its OpenGolfAPI id, its tees (with ratings) and the tee chosen.
   const [courseId, setCourseId] = useState<string | null>(round?.course_id ?? null)
@@ -231,7 +228,7 @@ export function RoundForm({ round, onDone, signedIn = true }: Props) {
     } catch {
       /* nothing stored */
     }
-    setDate(todayISO())
+    setDate(localISODate())
     setCourse("")
     setCourseId(null)
     setTeeName(null)

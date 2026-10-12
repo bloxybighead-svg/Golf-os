@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { MoreHorizontal } from "lucide-react"
 import type { Round } from "@/lib/supabase/types"
 import { toCSV, downloadCSV } from "@/lib/csv"
+import { localISODate } from "@/lib/dates"
 import { RoundCard } from "./RoundCard"
 import { RoundForm } from "./RoundForm"
 import { SignInToSave } from "./SignInToSave"
@@ -55,7 +56,7 @@ export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = fa
 
   // The most recent 20 rounds (the list arrives date-descending from the page).
   function exportLast20() {
-    const stamp = new Date().toISOString().split("T")[0]
+    const stamp = localISODate()
     downloadCSV(`golf-os-last-20-rounds-${stamp}.csv`, toCSV(rounds.slice(0, 20) as unknown as Record<string, unknown>[]))
     setMenuOpen(false)
   }

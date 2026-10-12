@@ -11,6 +11,7 @@ import {
 import type { Round, Milestone } from "@/lib/supabase/types"
 import { createMilestone, deleteMilestone } from "@/app/you/milestone-actions"
 import { cssColor, useThemeColor } from "@/lib/theme/tokens"
+import { localISODate } from "@/lib/dates"
 import { InfoTip } from "@/components/InfoTip"
 
 type Metric = "scores" | "putts" | "fairways" | "greens"
@@ -124,7 +125,7 @@ function Empty({ children, action = "Add round" }: { children: React.ReactNode; 
 // ── milestone manager ────────────────────────────────────────────
 function MilestoneManager({ milestones }: { milestones: Milestone[] }) {
   const [open, setOpen] = useState(false)
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0])
+  const [date, setDate] = useState(localISODate())
   const [label, setLabel] = useState("")
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)

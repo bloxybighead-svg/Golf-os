@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { localISODate } from "@/lib/dates"
 import type { SessionBlock, Drill, Location, SessionType, ClubWorkEntry } from "@/lib/supabase/types"
 import { BlockForm } from "@/components/log/BlockForm"
 import { BlockCard } from "@/components/log/BlockCard"
@@ -25,10 +26,6 @@ const SESSION_TYPES: SessionType[] = [
   "Mixed",
 ]
 
-function todayISO() {
-  return new Date().toISOString().split("T")[0]
-}
-
 function nowTime() {
   const d = new Date()
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
@@ -49,7 +46,7 @@ export default function NewSessionPage() {
   const [quickDuration, setQuickDuration] = useState("")
 
   // Header
-  const [date, setDate] = useState(todayISO())
+  const [date, setDate] = useState(localISODate())
   const [startTime, setStartTime] = useState(nowTime())
   const [locations, setLocations] = useState<Location[]>([])
   const [sessionType, setSessionType] = useState<SessionType>("Mixed")
