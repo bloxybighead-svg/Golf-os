@@ -5,18 +5,15 @@
 // course picker and the hole-correction dialog. Moved verbatim from
 // CourseMapClient.tsx.
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type { PlannerProps as Props } from "@/lib/planner/types"
-import { hasSeenIntro, markIntroSeen, shouldShowIntro } from "@/lib/planner/intro"
-import { loadActiveRound } from "@/lib/rounds/activeRound"
-import { IntroCards } from "@/components/planner/IntroCards"
+import { FirstRun } from "@/components/welcome/FirstRun"
 import type { PlannerVM } from "@/hooks/usePlannerController"
 import Link from "next/link"
 import { MAP_TAP_GUARD_MS } from "@/lib/planner/clubChoice"
-import { Loader2, X } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { distanceYds } from "@/lib/course/geo"
-import { dismissed as promptDismissed, readPrompt, writePrompt } from "@/lib/planner/setupPrompt"
 import { useIsPhone } from "@/hooks/useIsPhone"
 import { useIsCompact } from "@/hooks/useIsCompact"
 import { useRoundMode } from "@/hooks/useRoundMode"
@@ -69,9 +66,9 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
     optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
     setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
-    setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowSetupPrompt, setShowTrouble,
+    setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowTrouble,
     setShowZones, setSource, setTendency, sevenIronCarry, sheetOpen, showCarry, showLayersMenu, showMarks,
-    showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
+    showRings, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, aimLie,
@@ -79,18 +76,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
   } = vm
 
   const isOwner = authUser?.id === MARKS_USER_ID
-
-  // First-visit intro: decided once, when Play first renders in the browser.
-  // Never mid-round (read straight from storage, not from state that may not
-  // have loaded yet), and skipping or finishing both mark it seen.
-  const [introOpen, setIntroOpen] = useState(false)
-  useEffect(() => {
-    if (shouldShowIntro({ seen: hasSeenIntro(), roundActive: loadActiveRound() != null })) setIntroOpen(true)
-  }, [])
-  function closeIntro() {
-    markIntroSeen()
-    setIntroOpen(false)
-  }
 
   // Round mode on a phone: the round screen replaces the page (hooks/useRoundMode.ts).
   const { on: roundMode } = useRoundMode()
@@ -156,7 +141,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         avgLeft={avgLeft}
         estimateNotes={estimateNotes}
         onCourseSpread={vm.onCourseSpread}
-        onShowIntro={() => setIntroOpen(true)}
               sheet={roundScreen}
       />
     ) : null
@@ -332,26 +316,6 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
   // Messages that sit over the top-left of the map, so they never push it down or around.
   const notices = (
     <>
-      {showSetupPrompt && !roundScreen && (
-        <div className="flex h-9 items-center justify-between gap-2 rounded-lg border border-white/20 bg-black/70 pl-3 text-sm text-white">
-          <span>Plan with your own clubs.</span>
-          <span className="flex shrink-0 items-center">
-            <Link href="/welcome" className="flex h-9 items-center px-2 font-semibold text-accent-hi hover:underline">
-              Set up
-            </Link>
-            <button
-              onClick={() => {
-                setShowSetupPrompt(false)
-                writePrompt(promptDismissed(readPrompt().state)) // collapses to a dot on the You tab
-              }}
-              aria-label="Dismiss"
-              className="flex h-9 w-9 items-center justify-center text-white/70 hover:text-white"
-            >
-              <X size={16} />
-            </button>
-          </span>
-        </div>
-      )}
       {loadState === "loading" && course && (
         <p className="flex w-fit items-center gap-1.5 rounded-md bg-black/70 px-2 py-1 text-xs text-white">
           <Loader2 size={12} className="animate-spin" /> {loadError || "Loading course…"}
@@ -546,7 +510,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
 
   return (
     <div className="space-y-3 pb-[calc(var(--dock-h)+1rem)] md:pb-0" style={dockCssVars}>
-      {introOpen && <IntroCards onClose={closeIntro} />}
+      {vm.firstRun && <FirstRun onDone={vm.finishFirstRun} onDemo={vm.startDemo} />}
       {/* ---- header: "H7 · P3 · 108" and the course name; opens the course/hole sheet ---- */}
       {holeHeader(false)}
 

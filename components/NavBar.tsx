@@ -1,13 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Flag, Map as MapIcon, User } from "lucide-react"
 import { APP_NAME } from "@/lib/brand"
 import { useIsCompact } from "@/hooks/useIsCompact"
 import { useRoundMode } from "@/hooks/useRoundMode"
-import { SETUP_PROMPT_EVENT, dotVisible, readPrompt } from "@/lib/planner/setupPrompt"
 
 // Three main tabs. "match" lists extra path prefixes that keep a tab lit:
 // Play is the course planner itself, You covers everything under /you (stats, practice, bag, settings, lab).
@@ -28,22 +26,6 @@ export default function NavBar() {
   const { on } = useRoundMode()
   const compact = useIsCompact()
   const hideChrome = on && compact
-  // The setup banner on Play collapses to this dot on the You tab after it was dismissed or shown 3 times.
-  const [setupDot, setSetupDot] = useState(false)
-  useEffect(() => {
-    const sync = () => {
-      const { state, setupDone } = readPrompt()
-      setSetupDot(dotVisible(state, setupDone))
-    }
-    sync()
-    window.addEventListener(SETUP_PROMPT_EVENT, sync)
-    window.addEventListener("storage", sync)
-    return () => {
-      window.removeEventListener(SETUP_PROMPT_EVENT, sync)
-      window.removeEventListener("storage", sync)
-    }
-  }, [pathname])
-
   if (hideChrome) return null
 
   return (
@@ -81,15 +63,10 @@ export default function NavBar() {
                     active ? "text-accent md:font-semibold md:text-fg" : "text-muted md:hover:text-fg-2",
                   ].join(" ")}
                 >
-                  <span className="relative">
-                    <Icon
-                      strokeWidth={active ? 2.4 : 1.8}
-                      className={`h-5 w-5 md:h-4 md:w-4 ${active ? "text-accent" : ""}`}
-                    />
-                    {label === "You" && setupDot && (
-                      <span aria-label="Finish setup" className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-accent ring-2 ring-page" />
-                    )}
-                  </span>
+                  <Icon
+                    strokeWidth={active ? 2.4 : 1.8}
+                    className={`h-5 w-5 md:h-4 md:w-4 ${active ? "text-accent" : ""}`}
+                  />
                   {label}
                   <span
                     className={[

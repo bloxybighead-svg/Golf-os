@@ -67,7 +67,6 @@ export interface DetailsPanelProps {
   avgLeft: number | null
   estimateNotes: Record<string, string>
   onCourseSpread: number
-  onShowIntro: () => void
   /** The round screen: a bottom sheet at every width (otherwise it sits inline from tablet up). */
   sheet?: boolean
 }
@@ -290,7 +289,7 @@ export function DetailsPanel(p: DetailsPanelProps) {
           {p.estimateNotes[chosen.club] && <p className="text-fg-3">{p.estimateNotes[chosen.club]}.</p>}
           {options?.tradeoff && <p className="text-fg-2">{options.tradeoff}</p>}
           <div className="pt-2">
-            <ScoringDetails baselineHandicap={p.baselineHandicap} onCourseSpread={p.onCourseSpread} onShowIntro={p.onShowIntro} />
+            <ScoringDetails baselineHandicap={p.baselineHandicap} onCourseSpread={p.onCourseSpread} />
           </div>
         </section>
       </div>
