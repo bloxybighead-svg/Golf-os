@@ -31,8 +31,8 @@ export function ScoringDetails({
         they exist. The extra penalty for bad lies is an estimate.
       </p>
       <p>
-        The card gives two options from the same ranking. <strong className="font-medium text-fg-2">Go for it</strong> is the
-        club with the fewest expected strokes. <strong className="font-medium text-fg-2">Smart play</strong> (the default)
+        The card gives two options from the same ranking. <strong className="font-semibold text-fg-2">Go for it</strong> is the
+        club with the fewest expected strokes. <strong className="font-semibold text-fg-2">Smart play</strong> (the default)
         is the safe, set-up-for-par play: the club and aim with the lowest strokes plus a charge for every
         shot out of bounds or in the water (a penalty stroke). How big that charge is is the Risk setting on You, under
         Planner. Trees are already in the strokes, so they are shown beside the penalty but not charged twice. Each club

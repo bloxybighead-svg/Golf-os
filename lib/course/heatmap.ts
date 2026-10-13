@@ -2,7 +2,7 @@
 //  - a "trouble map": every spot around the hole coloured by how many strokes
 //    a ball costs you there compared with lying in the fairway at the same
 //    distance (green cells are better than the fairway, red are worse)
-//  - dispersion rings: where 50% and 90% of a club's shots land
+//  - a dispersion ellipse: where 80% of a club's shots land
 // Pure geometry so it can be tested without a browser.
 
 import type { StartLie } from "./cost"
@@ -74,11 +74,11 @@ export function deltaColor(delta: number): { color: string; opacity: number } {
   return { color: t < 0.5 ? "map-caution" : "map-worse", opacity: 0.14 + 0.3 * t }
 }
 
-/**
- * Ellipse (as lat/lng points) covering a fraction of a bivariate-normal cloud.
- * `k` is the Mahalanobis radius: 1.177 covers 50% of shots, 2.146 covers 90%.
- */
-export function dispersionRing(points: LatLng[], k: number, steps = 48): LatLng[] {
+/** Mahalanobis radius that covers 80% of a bivariate-normal cloud. */
+const ELLIPSE_80_K = Math.sqrt(-2 * Math.log(0.2))
+
+/** Ellipse (as lat/lng points) covering 80% of the shots' bivariate-normal cloud. */
+export function dispersionEllipse(points: LatLng[], steps = 48): LatLng[] {
   const n = points.length
   if (n < 5) return []
   const origin = points[0]
@@ -103,8 +103,8 @@ export function dispersionRing(points: LatLng[], k: number, steps = 48): LatLng[
   const l1 = tr / 2 + disc
   const l2 = Math.max(tr / 2 - disc, 0)
   const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy)
-  const a = k * Math.sqrt(l1)
-  const b = k * Math.sqrt(l2)
+  const a = ELLIPSE_80_K * Math.sqrt(l1)
+  const b = ELLIPSE_80_K * Math.sqrt(l2)
   const ring: LatLng[] = []
   for (let i = 0; i <= steps; i++) {
     const t = (i / steps) * 2 * Math.PI

@@ -32,7 +32,7 @@ export default async function YouPage() {
 
   return (
     <div className="space-y-6 pt-4">
-      <h2 className="text-2xl font-bold tracking-tight text-fg">You</h2>
+      <h2 className="text-2xl font-semibold tracking-tight text-fg">You</h2>
 
       {!user && (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-fg/[0.08] bg-surface px-4 py-3">

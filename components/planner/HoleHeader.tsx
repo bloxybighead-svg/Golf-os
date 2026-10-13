@@ -83,7 +83,7 @@ export function HoleHeader({ title, courseName, onOpenPicker, showArrows, onStep
       }
     >
       <button type="button" onClick={onOpenPicker} aria-haspopup="dialog" className="flex h-11 min-w-0 flex-1 items-center gap-2 text-left">
-        <span className="shrink-0 whitespace-nowrap text-lg font-semibold tracking-tight text-fg tabular-nums">{title}</span>
+        <span className="shrink-0 whitespace-nowrap text-lg font-semibold tracking-tight text-fg">{title}</span>
         {courseName && <span className="min-w-0 truncate text-sm text-muted">{courseName}</span>}
         <ChevronDown size={18} className="shrink-0 text-muted" />
       </button>

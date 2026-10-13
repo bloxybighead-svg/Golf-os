@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Geist } from "next/font/google";
 import NavBar from "@/components/NavBar";
 import { ResumeBar } from "@/components/play/ResumeBar";
 import { SignInBanner } from "@/components/auth/SignInBanner";
@@ -7,6 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 import { APP_NAME, BRAND } from "@/lib/brand";
 import { THEME_INIT_SCRIPT } from "@/lib/theme/themeScript";
 import "./globals.css";
+
+const geist = Geist({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-geist-sans" });
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -42,7 +45,7 @@ export default async function RootLayout({
   return (
     // data-theme is set before first paint by the script below when the golfer
     // pinned Light or Dark on the You page; without it the CSS follows the system.
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={geist.variable} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

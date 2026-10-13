@@ -19,9 +19,6 @@
  * override -- so keep the two blocks in sync.
  */
 :root {
-  --font-geist-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-geist-mono: ui-monospace, monospace;
-
   color-scheme: light;
 
   /* Neutrals, back to front */
@@ -131,7 +128,8 @@
 body {
   background-color: rgb(var(--page));
   color: rgb(var(--fg-2));
-  font-family: var(--font-geist-sans);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -144,7 +142,7 @@ body {
 
 /* Type scale helpers */
 .label-xs {
-  @apply text-xs font-medium uppercase tracking-widest text-muted;
+  @apply text-xs font-normal uppercase tracking-widest text-muted;
 }
 
 /* ---- Phone / touch ---- */
@@ -157,8 +155,8 @@ html { -webkit-text-size-adjust: 100%; }
 
 /* Fingers need bigger targets than mouse pointers */
 @media (pointer: coarse) {
-  button, select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) { min-height: 40px; }
-  a[class*="rounded"] { min-height: 36px; }
+  button, select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) { min-height: 44px; }
+  a[class*="rounded"] { min-height: 44px; }
 }
 
 /* Round mode (hooks/useRoundMode.ts sets html[data-round] before first paint): on a phone the
@@ -170,7 +168,7 @@ html { -webkit-text-size-adjust: 100%; }
 }
 /* A round going but not on screen: the slim "Round in progress" bar sits above the tab bar. */
 @media (max-width: 767px) {
-  html[data-round="resume"] { --resume-h: 40px; }
+  html[data-round="resume"] { --resume-h: 44px; }
 }
 
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }

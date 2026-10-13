@@ -92,8 +92,8 @@ export function ManualEntry({ busy, onSave }: { busy: boolean; onSave: (session:
               {shots.map((s, i) => (
                 <li key={i} className="flex items-center gap-3 px-3 py-1.5">
                   <span className="w-16 text-fg">{s.club}</span>
-                  <span className="tabular-nums">{s.carryYds} yd</span>
-                  <span className="tabular-nums text-muted">{s.offlineYds >= 0 ? `${s.offlineYds} R` : `${Math.abs(s.offlineYds)} L`}</span>
+                  <span>{s.carryYds} yd</span>
+                  <span className="text-muted">{s.offlineYds >= 0 ? `${s.offlineYds} R` : `${Math.abs(s.offlineYds)} L`}</span>
                   <button type="button" className="ml-auto text-muted hover:text-danger" onClick={() => setShots(shots.filter((_, j) => j !== i))}>
                     Remove
                   </button>

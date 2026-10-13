@@ -21,7 +21,7 @@ const MAIN_CLUBS: Club[] = ["Driver", "7-Iron"]
 const OTHER_CLUBS = CLUB_CATALOG.filter((c) => !MAIN_CLUBS.includes(c))
 
 const INPUT =
-  "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg tabular-nums placeholder:text-faint focus:border-accent/60 focus:outline-none"
+  "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
 
 export function WelcomeClient({
   initial,
@@ -140,7 +140,7 @@ export function WelcomeClient({
   if (step === "rounds") {
     return (
       <div className="mx-auto max-w-lg space-y-5 pt-4">
-        <h2 className="text-2xl font-bold tracking-tight text-fg">Got past rounds?</h2>
+        <h2 className="text-2xl font-semibold tracking-tight text-fg">Got past rounds?</h2>
         <p className="text-sm text-fg-3">Adding them fills in your handicap and trends.</p>
         <div className="flex flex-wrap gap-2">
           {signedIn ? (
@@ -171,7 +171,7 @@ export function WelcomeClient({
 
   return (
     <div className="mx-auto max-w-lg space-y-7 pt-4">
-      <h2 className="text-2xl font-bold tracking-tight text-fg">{editing ? "Edit your bag" : "Set up"}</h2>
+      <h2 className="text-2xl font-semibold tracking-tight text-fg">{editing ? "Edit your bag" : "Set up"}</h2>
 
       <section className="space-y-2">
         <p className="label-xs">Handicap</p>

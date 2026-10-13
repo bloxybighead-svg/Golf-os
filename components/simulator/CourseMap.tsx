@@ -109,7 +109,7 @@ interface Props {
   /** Front/center/back of the green, drawn on it once the golfer zooms in past the hole fit. */
   greenLabel?: { at: LatLng; text: string } | null
   cells: { sw: LatLng; ne: LatLng; color: string; opacity: number }[]
-  rings: LatLng[][]
+  ellipse: LatLng[]
   zones: UserZone[]
   /** Where the golfer's OB tags put the stakes: solid red lines. */
   obEdges?: LatLng[][]
@@ -198,7 +198,7 @@ export default function CourseMap(props: Props) {
     landings: L.LayerGroup
     labels: L.LayerGroup
     cells: L.LayerGroup
-    rings: L.LayerGroup
+    ellipse: L.LayerGroup
     zones: L.LayerGroup
     drawing: L.LayerGroup
     ball?: L.Marker
@@ -439,7 +439,7 @@ export default function CourseMap(props: Props) {
       cells: L.layerGroup().addTo(map),
       zones: L.layerGroup().addTo(map),
       landings: L.layerGroup().addTo(map),
-      rings: L.layerGroup().addTo(map),
+      ellipse: L.layerGroup().addTo(map),
       drawing: L.layerGroup().addTo(map),
       labels: L.layerGroup().addTo(map),
     }
@@ -618,21 +618,19 @@ export default function CourseMap(props: Props) {
     }
   }, [props.pendingPoints, props.drawKind])
 
-  // Dispersion rings.
+  // Dispersion ellipse.
   useEffect(() => {
-    const g = layers.current?.rings
+    const g = layers.current?.ellipse
     if (!g) return
     g.clearLayers()
-    props.rings.forEach((r, i) => {
-      L.polyline(r.map(ll), {
-        color: readColor("map-marker"),
-        weight: i === 0 ? 2 : 1.5,
-        opacity: i === 0 ? 0.95 : 0.7,
-        dashArray: i === 0 ? undefined : "5 5",
-        interactive: false,
-      }).addTo(g)
-    })
-  }, [props.rings])
+    if (props.ellipse.length === 0) return
+    L.polyline(props.ellipse.map(ll), {
+      color: readColor("map-marker"),
+      weight: 2,
+      opacity: 0.95,
+      interactive: false,
+    }).addTo(g)
+  }, [props.ellipse])
 
   // Yardage labels on the ball->aim and aim->pin lines, slid off the green and the pin so they never cover the target.
   useEffect(() => {
@@ -755,7 +753,7 @@ function CompassOverlay({ rotationDeg }: { rotationDeg: number }) {
       title={`North is ${Math.round(((rotationDeg % 360) + 360) % 360)}° clockwise from the top`}
     >
       <div className="absolute inset-0" style={{ transform: `rotate(${rotationDeg}deg)` }}>
-        <span className="absolute left-1/2 top-0.5 -translate-x-1/2 text-[9px] font-bold leading-none text-white">N</span>
+        <span className="absolute left-1/2 top-0.5 -translate-x-1/2 text-[9px] font-semibold leading-none text-white">N</span>
       </div>
       <svg viewBox="0 0 24 24" className="h-5 w-5">
         <path d="M12 3 L17 17 L12 13.5 L7 17 Z" style={{ fill: cssColor("map-aim") }} />
@@ -778,7 +776,7 @@ function WindArrow({ wind, rotationDeg, onClick }: { wind: { speedMph: number; f
       <svg viewBox="0 0 24 24" className="h-6 w-6" style={{ transform: `rotate(${toward}deg)` }} aria-hidden>
         <path d="M12 2 L18 12 L13 12 L13 22 L11 22 L11 12 L6 12 Z" fill="currentColor" />
       </svg>
-      <span className="text-[11px] font-semibold leading-none tabular-nums">{wind.speedMph} mph</span>
+      <span className="text-[11px] font-semibold leading-none">{wind.speedMph} mph</span>
     </button>
   )
 }

@@ -73,7 +73,7 @@ export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = fa
   return (
     <div className="space-y-6 pt-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold tracking-tight text-fg">Rounds</h2>
+        <h2 className="text-2xl font-semibold tracking-tight text-fg">Rounds</h2>
         {rounds.length > 0 && (
           <div className="flex items-center gap-2">
             {addButton}
@@ -90,14 +90,14 @@ export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = fa
                 <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-fg/[0.1] bg-page p-1.5 shadow-2xl">
                   <button
                     onClick={exportLast20}
-                    className="flex min-h-[40px] w-full items-center rounded-md px-2.5 text-left text-sm text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
+                    className="flex min-h-[44px] w-full items-center rounded-md px-2.5 text-left text-sm text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
                   >
                     Export last 20 (CSV)
                   </button>
                   {signedIn && (
                     <button
                       onClick={recalculate}
-                      className="flex min-h-[40px] w-full items-center rounded-md px-2.5 text-left text-sm text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
+                      className="flex min-h-[44px] w-full items-center rounded-md px-2.5 text-left text-sm text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
                     >
                       Recalculate all rounds
                     </button>

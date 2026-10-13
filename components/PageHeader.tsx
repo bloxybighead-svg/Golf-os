@@ -20,7 +20,7 @@ export default function PageHeader({
           <Icon size={20} />
         </span>
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight text-fg md:text-2xl">{title}</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-fg md:text-2xl">{title}</h1>
           {subtitle && <div className="mt-0.5 max-w-2xl text-xs leading-relaxed text-muted md:text-sm">{subtitle}</div>}
         </div>
       </div>

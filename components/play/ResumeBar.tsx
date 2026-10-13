@@ -23,9 +23,9 @@ export function ResumeBar() {
         setRoundPaused(false)
         if (pathname !== "/") router.push("/")
       }}
-      className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex h-10 items-center justify-between border-t border-fg/[0.08] bg-surface px-4 text-sm md:bottom-0 md:pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex h-11 items-center justify-between border-t border-fg/[0.08] bg-surface px-4 text-sm md:bottom-0 md:pb-[env(safe-area-inset-bottom)]"
     >
-      <span className="min-w-0 truncate text-fg tabular-nums">Round in progress · H{nextUnscored(round) ?? round.startHole}</span>
+      <span className="min-w-0 truncate text-fg">Round in progress · H{nextUnscored(round) ?? round.startHole}</span>
       <span className="shrink-0 font-semibold text-accent">Resume</span>
     </button>
   )

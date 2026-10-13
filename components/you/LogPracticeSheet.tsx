@@ -128,7 +128,7 @@ export function LogPracticeSheet({ library, signedIn }: { library: LibraryDrill[
               min={1}
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
-              className={`${FIELD} tabular-nums`}
+              className={`${FIELD}`}
             />
           </div>
 
@@ -143,7 +143,7 @@ export function LogPracticeSheet({ library, signedIn }: { library: LibraryDrill[
                   aria-checked={rating === n}
                   onClick={() => setRating(n)}
                   className={[
-                    "h-11 rounded-lg border text-sm font-semibold tabular-nums transition-colors",
+                    "h-11 rounded-lg border text-sm font-semibold transition-colors",
                     rating === n ? "border-accent bg-accent text-on-accent" : "border-fg/[0.08] bg-surface text-fg hover:bg-fg/[0.04]",
                   ].join(" ")}
                 >

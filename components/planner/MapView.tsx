@@ -141,7 +141,7 @@ export function MapView({
                 onClick={() => onPlacingChange(p)}
                 aria-pressed={placing === p}
                 title={`Tap the map to move the ${p}`}
-                className={`h-11 px-3.5 font-medium capitalize md:h-9 ${placing === p ? "bg-accent text-on-accent" : "text-white/80 hover:text-white"}`}
+                className={`h-11 px-3.5 font-normal capitalize md:h-9 ${placing === p ? "bg-accent text-on-accent" : "text-white/80 hover:text-white"}`}
               >
                 {p}
               </button>
@@ -155,7 +155,7 @@ export function MapView({
             <button
               onClick={onUndoDraw}
               disabled={pendingPoints.length === 0}
-              className="flex h-11 items-center gap-1 rounded-full border border-white/25 bg-black/80 px-4 text-xs font-medium text-white backdrop-blur-sm disabled:opacity-30"
+              className="flex h-11 items-center gap-1 rounded-full border border-white/25 bg-black/80 px-4 text-xs font-normal text-white backdrop-blur-sm disabled:opacity-30"
             >
               <Undo2 size={13} /> Undo
             </button>
@@ -166,7 +166,7 @@ export function MapView({
             >
               <Check size={13} /> Finish
             </button>
-            <button onClick={onCancelDraw} className="flex h-11 items-center gap-1 rounded-full border border-white/25 bg-black/80 px-4 text-xs font-medium text-white backdrop-blur-sm">
+            <button onClick={onCancelDraw} className="flex h-11 items-center gap-1 rounded-full border border-white/25 bg-black/80 px-4 text-xs font-normal text-white backdrop-blur-sm">
               <X size={13} /> Cancel
             </button>
           </div>
@@ -202,7 +202,7 @@ export function MapView({
             aria-expanded={showMarks}
             className="flex min-h-[44px] items-center gap-1.5 text-fg-3 hover:text-fg md:min-h-0"
           >
-            Your marks · <span className="tabular-nums">{zones.length}</span>
+            Your marks · <span>{zones.length}</span>
             <ChevronDown size={14} className={`transition-transform ${showMarks ? "rotate-180" : ""}`} />
           </button>
           {showMarks && (

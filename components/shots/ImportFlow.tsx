@@ -125,7 +125,7 @@ export function ImportFlow({ busy, onSave }: { busy: boolean; onSave: (session: 
 
           {loaded.detected.kind === "table" && mapping && (
             <details open={!mapped} className="rounded-lg border border-fg/[0.06] p-3">
-              <summary className="cursor-pointer text-xs font-medium text-fg-2">Columns</summary>
+              <summary className="cursor-pointer text-xs font-normal text-fg-2">Columns</summary>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                 {FIELDS.map((f) => (
                   <label key={f.key} className="flex flex-col gap-1.5">
@@ -167,7 +167,7 @@ export function ImportFlow({ busy, onSave }: { busy: boolean; onSave: (session: 
               <SessionFields value={meta} onChange={setMeta} />
 
               <div>
-                <p className="text-xs font-medium text-fg-2">
+                <p className="text-xs font-normal text-fg-2">
                   {result.shots.length} shots found{result.skipped > 0 && `, ${result.skipped} rows skipped (no usable carry or direction)`}
                 </p>
                 {Object.keys(result.unknownClubs).length > 0 && (
@@ -183,10 +183,10 @@ export function ImportFlow({ busy, onSave }: { busy: boolean; onSave: (session: 
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="text-muted">
-                        <th className="py-1 pr-3 font-medium">Club</th>
-                        <th className="px-3 py-1 font-medium">Shots</th>
-                        <th className="px-3 py-1 font-medium">Flagged</th>
-                        <th className="px-3 py-1 font-medium">Will save</th>
+                        <th className="py-1 pr-3 font-normal">Club</th>
+                        <th className="px-3 py-1 font-normal">Shots</th>
+                        <th className="px-3 py-1 font-normal">Flagged</th>
+                        <th className="px-3 py-1 font-normal">Will save</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -205,7 +205,7 @@ export function ImportFlow({ busy, onSave }: { busy: boolean; onSave: (session: 
 
               {flagged.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-fg-2">Flagged shots ({flagged.length}): tick to leave out</p>
+                  <p className="text-xs font-normal text-fg-2">Flagged shots ({flagged.length}): tick to leave out</p>
                   <p className="mt-1 text-xs text-muted">
                     Short of the club&rsquo;s usual carry: likely a partial swing, a top or a duff. They start ticked. Untick any that were real full swings.
                   </p>
@@ -215,8 +215,8 @@ export function ImportFlow({ busy, onSave }: { busy: boolean; onSave: (session: 
                         <label className="flex cursor-pointer items-center gap-3 px-3 py-1.5 text-xs text-fg-2">
                           <input type="checkbox" checked={r.excluded} onChange={(e) => setOverrides({ ...overrides, [i]: e.target.checked })} />
                           <span className="w-16 text-fg">{r.shot.club}</span>
-                          <span className="tabular-nums">{r.shot.carryYds.toFixed(0)} yd</span>
-                          <span className="tabular-nums text-muted">{r.shot.offlineYds >= 0 ? `${r.shot.offlineYds.toFixed(0)} R` : `${Math.abs(r.shot.offlineYds).toFixed(0)} L`}</span>
+                          <span>{r.shot.carryYds.toFixed(0)} yd</span>
+                          <span className="text-muted">{r.shot.offlineYds >= 0 ? `${r.shot.offlineYds.toFixed(0)} R` : `${Math.abs(r.shot.offlineYds).toFixed(0)} L`}</span>
                           <span className="ml-auto text-muted">{r.flag === "outlier" ? "far short: top or duff?" : "partial?"}</span>
                         </label>
                       </li>

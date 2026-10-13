@@ -10,15 +10,15 @@ export const BUTTON_PRIMARY = "h-11 rounded-lg bg-accent px-4 text-sm font-semib
 export const CARD = "rounded-xl border border-fg/[0.06] bg-surface p-4"
 
 const BADGE_STYLE: Record<Badge, { label: string; cls: string; hint: string }> = {
-  solid: { label: "Solid", cls: "bg-accent/15 text-accent", hint: "Enough shots for the mean carry to be within about 2 yd" },
-  ok: { label: "OK", cls: "bg-info/15 text-info", hint: "15 or more shots: usable, still firming up" },
-  thin: { label: "Thin", cls: "bg-warn/15 text-warn", hint: "Under 15 shots: the planner blends this club with a handicap estimate" },
+  solid: { label: "Solid", cls: "text-accent", hint: "Enough shots for the mean carry to be within about 2 yd" },
+  ok: { label: "OK", cls: "text-info", hint: "15 or more shots: usable, still firming up" },
+  thin: { label: "Thin", cls: "text-warn", hint: "Under 15 shots: the planner blends this club with a handicap estimate" },
 }
 
-export function BadgePill({ badge }: { badge: Badge }) {
+export function BadgeLabel({ badge }: { badge: Badge }) {
   const b = BADGE_STYLE[badge]
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${b.cls}`} title={b.hint}>
+    <span className={`inline-block text-[11px] font-semibold ${b.cls}`} title={b.hint}>
       {b.label}
     </span>
   )

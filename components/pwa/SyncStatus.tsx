@@ -21,7 +21,7 @@ export function SyncStatus({ className = "" }: { className?: string }) {
           ? "Saved on phone · will sync"
           : "Saved on phone · will sync when online"
   return (
-    <span role="status" className={`inline-flex items-center gap-1.5 text-xs tabular-nums ${state === "synced" ? "text-accent" : "text-fg-3"} ${className}`}>
+    <span role="status" className={`inline-flex items-center gap-1.5 text-xs ${state === "synced" ? "text-accent" : "text-fg-3"} ${className}`}>
       <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${state === "synced" ? "bg-accent" : state === "blocked" ? "bg-warn" : "bg-fg-3"}`} />
       {text}
     </span>

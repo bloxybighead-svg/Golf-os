@@ -66,7 +66,7 @@ const SAVED_TOAST_MS = 6000
 const HOLE_OFFER_TOAST_MS = 10000
 
 const INPUT =
-  "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg tabular-nums placeholder:text-faint focus:border-accent/60 focus:outline-none"
+  "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
 
 /**
  * Keeping score on Play. No round: a "Start round" button (tees, how many
@@ -92,7 +92,7 @@ export function PlayRound(props: Props) {
               setSavedNote(false)
               setStarting(true)
             }}
-            className="h-10 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent transition-all hover:brightness-110"
+            className="h-11 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent transition-all hover:brightness-110"
           >
             Start round
           </button>
@@ -124,7 +124,7 @@ export function PlayRound(props: Props) {
     return (
       <p className="flex min-w-0 items-center gap-x-3 text-sm text-fg-2">
         <span className="min-w-0 truncate">Round in progress at {round.course.name}.</span>
-        <button onClick={() => onResume(round.course, nextUnscored(round) ?? round.startHole)} className="h-10 shrink-0 font-semibold text-accent hover:underline">
+        <button onClick={() => onResume(round.course, nextUnscored(round) ?? round.startHole)} className="h-11 shrink-0 font-semibold text-accent hover:underline">
           Resume
         </button>
       </p>
@@ -194,7 +194,7 @@ export function PlayRound(props: Props) {
         >
           Hole done
         </button>
-        <p className="min-w-0 truncate text-sm tabular-nums text-fg-3">
+        <p className="min-w-0 truncate text-sm text-fg-3">
           {round.teeName ? `${round.teeName} · ` : ""}
           {scored.length === 0 ? `Holes ${describeOrder(round.holes.map((h) => h.hole_number))}` : `Thru ${scored.length} · ${formatToPar(summary.score - summary.par)}`}
         </p>
@@ -285,7 +285,7 @@ function StartRoundSheet({
       onClose={onClose}
       footer={
         <>
-          <p className="text-sm text-fg-3 tabular-nums">
+          <p className="text-sm text-fg-3">
             {countOk
               ? [
                   `${count} hole${count === 1 ? "" : "s"}: ${describeOrder(order)}`,
@@ -318,7 +318,7 @@ function StartRoundSheet({
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-fg">{t.name}</span>
-                    <span className="block text-xs text-muted tabular-nums">
+                    <span className="block text-xs text-muted">
                       {t.totalYardage.toLocaleString()} yd · {t.courseRating} / {t.slopeRating}
                     </span>
                   </span>

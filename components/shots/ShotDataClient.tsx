@@ -16,7 +16,7 @@ import { baselineFromSessions, INDOOR_TEMP_F, parseSessionTemperature, SESSION_T
 import type { NewSession, ParsedShot, SessionMeta, StoredShot } from "@/lib/shots/types"
 import { ImportFlow } from "./ImportFlow"
 import { ManualEntry } from "./ManualEntry"
-import { BadgePill, BUTTON, CARD, INPUT } from "./ui"
+import { BadgeLabel, BUTTON, CARD, INPUT } from "./ui"
 
 export interface ShotData {
   sessions: SessionMeta[]
@@ -147,7 +147,7 @@ export function ShotDataClient({ userId, initial }: { userId: string; initial: S
                 <thead>
                   <tr className="text-muted">
                     {["Club", "Shots", "Avg carry", "Carry SD", "Start-line bias", "Offline SD", "Trust"].map((h) => (
-                      <th key={h} className="whitespace-nowrap px-2 py-1 font-medium first:pl-0">
+                      <th key={h} className="whitespace-nowrap px-2 py-1 font-normal first:pl-0">
                         {h}
                       </th>
                     ))}
@@ -163,13 +163,13 @@ export function ShotDataClient({ userId, initial }: { userId: string; initial: S
                         className={`cursor-pointer border-t border-fg/[0.04] text-fg-2 hover:bg-fg/[0.03] ${selected?.club === s.club ? "bg-accent/10" : ""}`}
                       >
                         <td className="whitespace-nowrap py-1.5 pl-0 pr-2 font-semibold text-fg">{s.club}</td>
-                        <td className="px-2 tabular-nums">{s.n}</td>
-                        <td className="px-2 tabular-nums">{s.meanCarry.toFixed(0)} yd</td>
-                        <td className="px-2 tabular-nums">{s.carrySd.toFixed(1)}</td>
-                        <td className="px-2 tabular-nums">{s.startLineBias == null ? "–" : `${s.startLineBias >= 0 ? "+" : ""}${s.startLineBias.toFixed(1)}°`}</td>
-                        <td className="px-2 tabular-nums">{s.offlineSd.toFixed(1)} yd</td>
+                        <td className="px-2">{s.n}</td>
+                        <td className="px-2">{s.meanCarry.toFixed(0)} yd</td>
+                        <td className="px-2">{s.carrySd.toFixed(1)}</td>
+                        <td className="px-2">{s.startLineBias == null ? "–" : `${s.startLineBias >= 0 ? "+" : ""}${s.startLineBias.toFixed(1)}°`}</td>
+                        <td className="px-2">{s.offlineSd.toFixed(1)} yd</td>
                         <td className="whitespace-nowrap px-2">
-                          <BadgePill badge={badgeFor(s.club, s.n)} />
+                          <BadgeLabel badge={badgeFor(s.club, s.n)} />
                           {fit?.matIndoorOnly && (
                             <span className="ml-2 text-[11px] text-muted" title="No outdoor-grass shots for this club, so it is fitted only from mat or indoor data">
                               mat/indoor only
@@ -234,7 +234,7 @@ export function ShotDataClient({ userId, initial }: { userId: string; initial: S
                       <input type="checkbox" checked={!s.excluded} disabled={busy} onChange={(e) => patch(s.id, { excluded: !e.target.checked })} />
                     </label>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-fg">{s.label}</p>
+                      <p className="truncate text-sm font-semibold text-fg">{s.label}</p>
                       <p className="text-xs text-muted">
                         {s.date ?? "no date"} · {c?.n ?? 0} shots · {c ? Array.from(c.clubs).join(", ") : "no clubs"}
                       </p>

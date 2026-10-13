@@ -43,7 +43,7 @@ export function PlannerSetting({ spreadSuggestion }: { spreadSuggestion: SpreadS
               role="radio"
               aria-checked={active}
               onClick={() => choose(value)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${active ? "bg-surface text-fg" : "text-muted hover:text-fg"}`}
+              className={`rounded-md px-3 py-1.5 text-xs font-normal transition-colors ${active ? "bg-surface text-fg" : "text-muted hover:text-fg"}`}
             >
               {label}
             </button>
@@ -62,7 +62,7 @@ export function PlannerSetting({ spreadSuggestion }: { spreadSuggestion: SpreadS
                 saveRisk(strokes)
                 setRisk(strokes)
               }}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${risk === strokes ? "bg-surface text-fg" : "text-muted hover:text-fg"}`}
+              className={`rounded-md px-3 py-1.5 text-xs font-normal transition-colors ${risk === strokes ? "bg-surface text-fg" : "text-muted hover:text-fg"}`}
             >
               {label}
             </button>
@@ -73,7 +73,7 @@ export function PlannerSetting({ spreadSuggestion }: { spreadSuggestion: SpreadS
       <div className="w-full">
         <label htmlFor="on-course-spread" className="flex items-baseline justify-between text-xs text-fg-2">
           <span>On-course spread</span>
-          <span className="tabular-nums font-semibold text-fg">{shownSpread.toFixed(2)}x</span>
+          <span className="font-semibold text-fg">{shownSpread.toFixed(2)}x</span>
         </label>
         <input
           id="on-course-spread"
@@ -96,7 +96,7 @@ export function PlannerSetting({ spreadSuggestion }: { spreadSuggestion: SpreadS
           <div className="mt-3 border-t border-fg/[0.06] pt-3">
             <div className="flex items-center justify-between gap-3">
               <p className="min-w-0 text-xs text-fg-2">
-                Your on-course spread: <span className="tabular-nums font-semibold text-fg">{spreadSuggestion.ratio.toFixed(2)}x</span> (from {spreadSuggestion.shots} shots)
+                Your on-course spread: <span className="font-semibold text-fg">{spreadSuggestion.ratio.toFixed(2)}x</span> (from {spreadSuggestion.shots} shots)
               </p>
               <button
                 onClick={() => {

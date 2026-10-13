@@ -58,29 +58,25 @@ Weather screen than to a SaaS dashboard.
 - Golfer words, not model words: "your misses" not "dispersion model",
   "shots" not "simulated shots".
 
-## Where the app stands (2026-09-28)
+## Where the app stands (2026-10-13)
 
-Done: three-tab nav (R1), drills under You, bag tools under `/you/bag`,
-every color a token (R2), system light/dark with the Appearance toggle,
-paper palette at 7:1, one accent, decorative gradients removed. R3: Play
-is the planner at `/` and opens on a real hole with a recommendation
-(Pebble Beach 7 for a first visit, about 0.9s); the title line
-("Pebble Beach · Hole 7 · Par 3 · 108") opens one sheet for course, hole
-and shots; ball/aim/pin are a ball, crosshair and flag; the planner's
-instructions, tagline and "How it works" card are gone; handicap and
-strengths/weaknesses moved to You.
+Done: three-tab nav, drills under You, bag tools under `/you/bag`, every
+color a token, system light/dark with the Appearance toggle, paper palette
+at 7:1, one accent, decorative gradients removed. Play is the planner at `/`
+and opens on a real hole with a recommendation. Geist is the only face
+(loaded with `next/font/google`, 400 and 600 only), tabular figures are on
+for the whole app, coarse pointers get 44px minimum targets, the planner
+draws one 80% dispersion ellipse, and status badges on rounds and shot data
+are plain text instead of pills.
 
-Not yet applied (candidates for the next R-steps):
+Not yet applied:
 
-- **Typography:** Geist isn't actually loaded (system UI font), no
-  tabular figures, and 500/700 weights are used widely.
-- **Cards and decoration:** the app is card-based with `shadow-sm`, pill
-  chips, and icons beside most labels.
+- **Cards:** most screens still sit on bordered `surface` cards rather than
+  rows with hairline dividers. Only `shadow-2xl` remains, on floating menus
+  and modals. Selectable chips (club chips, tee and wind controls, drawn-area
+  chips) are still pills because they are controls.
 - **Copy:** the bag tools still say "Shot Dispersion Simulator" and
   "simulated shots"; empty states elsewhere are longer than five words.
-- **Dispersion ellipse:** the planner still draws two rings (50% and 90%),
-  not one ellipse.
-- **Touch targets:** `globals.css` enforces 40px on coarse pointers, not 44px.
 
 ## Tokens
 

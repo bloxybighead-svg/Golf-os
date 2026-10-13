@@ -183,7 +183,7 @@ describe("planner components render (smoke)", () => {
   it("DetailsPanel: Conditions, Map and How it's scored", () => {
     const html = renderToStaticMarkup(details()).replace(/<!-- -->/g, "")
     for (const text of ["Conditions", "Map", "How it’s scored", "+7 uphill, -9 wind, +3 cold", "Plays like on", "Water not mapped", "Mark water"]) expect(html).toContain(text)
-    expect(html).toContain('Expected strokes</span> <span class="tabular-nums text-fg-2">4.6<')
+    expect(html).toContain('Expected strokes</span> <span class="text-fg-2">4.6<')
     expect(html).toContain("a 10.0 handicap")
     expect(html).toContain("Handicap estimate")
     expect(html).toContain("Every shot is placed on the map") // the existing method text

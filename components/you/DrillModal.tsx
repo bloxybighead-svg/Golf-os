@@ -83,7 +83,7 @@ export function DrillModal({
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-fg/[0.06] px-5 pb-3 pt-[calc(1rem+env(safe-area-inset-top))] md:pt-4">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-widest text-accent">
+            <p className="text-xs font-normal uppercase tracking-widest text-accent">
               {CATEGORY_LABEL[drill.category]} · {drill.difficulty}
             </p>
             <h2 className="mt-0.5 text-lg font-semibold text-fg">{drill.name}</h2>
@@ -116,14 +116,14 @@ export function DrillModal({
           {phase !== "ready" && startedAt != null && (
             <div className="rounded-xl bg-surface-3 px-4 py-3 text-center">
               <p className="label-xs">Elapsed</p>
-              <p className="mt-1 font-mono text-3xl font-bold text-fg">{fmtElapsed(now - startedAt)}</p>
+              <p className="mt-1 text-3xl font-semibold text-fg">{fmtElapsed(now - startedAt)}</p>
             </div>
           )}
 
           {phase === "finishing" && (
             <div className="space-y-3">
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-fg-3">Reps completed</span>
+                <span className="text-xs font-normal text-fg-3">Reps completed</span>
                 <input
                   type="number" inputMode="numeric" min={0}
                   value={reps} onChange={(e) => setReps(e.target.value)}
@@ -131,7 +131,7 @@ export function DrillModal({
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-fg-3">How did it go? (optional)</span>
+                <span className="text-xs font-normal text-fg-3">How did it go? (optional)</span>
                 <textarea
                   value={notes} onChange={(e) => setNotes(e.target.value)}
                   rows={3}

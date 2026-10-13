@@ -36,7 +36,7 @@ export function AppearanceSetting() {
               role="radio"
               aria-checked={active}
               onClick={() => choose(value)}
-              className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-normal transition-colors ${
                 active ? "bg-surface text-fg" : "text-muted hover:text-fg"
               }`}
             >

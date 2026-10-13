@@ -16,7 +16,7 @@ export function LastShotLine({ shot, clubs, onEdit }: { shot: SwingShot; clubs: 
       <p className="flex w-fit max-w-full items-center rounded-md bg-black/70 pl-2 text-xs text-white">
         <span className="min-w-0 truncate">Last shot: {describeShot(shot)}</span>
         <span aria-hidden className="shrink-0 px-1 text-white/60">·</span>
-        <button onClick={() => setOpen(true)} className="flex h-9 shrink-0 items-center pr-2 font-semibold text-white underline">
+        <button onClick={() => setOpen(true)} className="flex h-11 shrink-0 items-center pr-2 font-semibold text-white underline">
           Edit
         </button>
       </p>

@@ -62,7 +62,7 @@ export default function LoginForm() {
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-on-accent">
           <Flag size={16} strokeWidth={2.6} />
         </span>
-        <span className="text-base font-bold tracking-tight text-fg">{APP_NAME}</span>
+        <span className="text-base font-semibold tracking-tight text-fg">{APP_NAME}</span>
       </Link>
 
       <div className="w-full rounded-2xl border border-fg/[0.07] bg-surface p-5">
@@ -76,7 +76,7 @@ export default function LoginForm() {
                 setError("")
                 setCheckEmail(false)
               }}
-              className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${
+              className={`flex-1 rounded-md py-1.5 font-normal transition-colors ${
                 mode === m ? "bg-accent text-on-accent" : "text-fg-3 hover:text-fg"
               }`}
             >
@@ -93,7 +93,7 @@ export default function LoginForm() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted">Email</span>
+              <span className="text-xs font-normal text-muted">Email</span>
               <input
                 type="email"
                 required
@@ -104,7 +104,7 @@ export default function LoginForm() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted">Password</span>
+              <span className="text-xs font-normal text-muted">Password</span>
               <input
                 type="password"
                 required

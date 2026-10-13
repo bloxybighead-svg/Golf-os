@@ -62,7 +62,7 @@ export function SimulatorClient({ clubs, shots, golferName }: Props) {
 
       <div className="flex flex-wrap items-end gap-6 rounded-xl border border-fg/[0.06] bg-surface p-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted">Club</span>
+          <span className="text-xs font-normal text-muted">Club</span>
           <select
             value={selectedClub}
             onChange={(e) => setSelectedClub(e.target.value)}
@@ -77,7 +77,7 @@ export function SimulatorClient({ clubs, shots, golferName }: Props) {
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted">
+          <span className="text-xs font-normal text-muted">
             Target width at tee: {fairwayWidthYds}y
           </span>
           <input

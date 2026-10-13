@@ -27,7 +27,7 @@ export function ClubSheet({
         aria-expanded
         className="flex min-h-[3.25rem] shrink-0 items-center justify-between gap-2 border-b border-fg/[0.08] px-4 text-left"
       >
-        <span className="flex min-w-0 items-center gap-1.5 truncate text-xs tabular-nums">
+        <span className="flex min-w-0 items-center gap-1.5 truncate text-xs">
           <span className="font-semibold text-fg">{chosen?.club ?? "–"}</span>
           <span className="text-muted">·</span>
           <span className="text-fg-3">All clubs</span>

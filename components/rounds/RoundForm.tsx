@@ -48,7 +48,7 @@ const inputCls =
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1.5 flex items-baseline gap-2 text-xs font-medium uppercase tracking-widest text-muted">
+      <label className="mb-1.5 flex items-baseline gap-2 text-xs font-normal uppercase tracking-widest text-muted">
         {label}
         {hint && <span className="normal-case tracking-normal text-muted">{hint}</span>}
       </label>
@@ -387,7 +387,7 @@ export function RoundForm({ round, onDone, signedIn = true }: Props) {
             <Field label="Tees" hint="fills rating and slope">
               <div className="flex flex-wrap gap-2">
                 {scorecard.tees.map((t) => (
-                  <Choice key={t.label} selected={teeName === t.label} onClick={() => pickTee(t)} className="px-3 text-xs font-medium">
+                  <Choice key={t.label} selected={teeName === t.label} onClick={() => pickTee(t)} className="px-3 text-xs font-normal">
                     {t.label} · {t.courseRating}/{t.slopeRating}
                   </Choice>
                 ))}
@@ -420,7 +420,7 @@ export function RoundForm({ round, onDone, signedIn = true }: Props) {
                     </Choice>
                   ))}
                 </div>
-                <p className="text-sm text-fg-3 tabular-nums">
+                <p className="text-sm text-fg-3">
                   {scored.length === 0
                     ? "Not started"
                     : `Thru ${scored.length} · ${summary.score} · ${relLabel(summary.score - summary.par)}`}
@@ -438,7 +438,7 @@ export function RoundForm({ round, onDone, signedIn = true }: Props) {
                     aria-label={`Hole ${h.hole_number}${h.strokes != null ? `, ${h.strokes}` : ""}`}
                     aria-current={i === current}
                     className={[
-                      "flex h-12 w-11 shrink-0 flex-col items-center justify-center rounded-lg border tabular-nums transition-colors",
+                      "flex h-12 w-11 shrink-0 flex-col items-center justify-center rounded-lg border transition-colors",
                       i === current ? "border-accent" : "border-fg/[0.08]",
                     ].join(" ")}
                   >
@@ -475,7 +475,7 @@ export function RoundForm({ round, onDone, signedIn = true }: Props) {
 
               {/* What the taps add up to: the numbers saved with the round */}
               {scored.length > 0 && (
-                <dl className="grid grid-cols-4 gap-2 border-t border-fg/[0.06] pt-4 text-center tabular-nums">
+                <dl className="grid grid-cols-4 gap-2 border-t border-fg/[0.06] pt-4 text-center">
                   {[
                     ["Fairways", summary.fairways_pct],
                     ["Greens", summary.gir_pct],
@@ -551,7 +551,7 @@ export function RoundForm({ round, onDone, signedIn = true }: Props) {
 
           {/* Rel to par + differential */}
           {(relToPar !== null || differential !== null) && (
-            <p className="text-sm text-fg-2 tabular-nums">
+            <p className="text-sm text-fg-2">
               {relToPar !== null && (relToPar === 0 ? "Even par" : relToPar > 0 ? `${relToPar} over par` : `${-relToPar} under par`)}
               {relToPar !== null && differential !== null && " · "}
               {differential !== null && `Differential about ${differential.toFixed(1)}`}
@@ -583,7 +583,7 @@ export function RoundForm({ round, onDone, signedIn = true }: Props) {
                 </svg>
               )}
             </span>
-            <span className="font-medium">Competitive round</span>
+            <span className="font-semibold">Competitive round</span>
           </button>
 
           {/* What broke down — competitive rounds only, max 2 */}
@@ -598,7 +598,7 @@ export function RoundForm({ round, onDone, signedIn = true }: Props) {
                       type="button"
                       onClick={() => toggleBreakdownTag(tag)}
                       className={[
-                        "min-h-[36px] rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                        "min-h-[44px] rounded-full border px-3 py-1.5 text-xs font-normal transition-colors",
                         selected
                           ? "border-warn/50 bg-warn/15 text-warn"
                           : "border-fg/[0.08] bg-surface-3 text-muted hover:border-fg/20 hover:text-fg",

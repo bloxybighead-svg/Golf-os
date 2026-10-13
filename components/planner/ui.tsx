@@ -8,12 +8,12 @@ export function Stat({ label, value, big, plays }: { label: string; value: numbe
   return (
     <div className="px-2">
       <dt className="text-[11px] uppercase tracking-wide text-muted">{label}</dt>
-      <dd className={`font-semibold leading-tight tabular-nums ${big ? "text-4xl text-fg" : "text-xl text-fg-2"}`}>
+      <dd className={`font-semibold leading-tight ${big ? "text-4xl text-fg" : "text-xl text-fg-2"}`}>
         {value ?? "–"}
         <span className="ml-0.5 text-xs font-normal text-muted">yd</span>
       </dd>
       {plays != null && (
-        <dd className="text-xs text-accent tabular-nums" title="The distance as it plays for this club, with the height change and wind">
+        <dd className="text-xs text-accent" title="The distance as it plays for this club, with the height change and wind">
           plays {plays}
         </dd>
       )}
@@ -39,7 +39,7 @@ export function ToolButton({
       aria-pressed={active}
       aria-label={label}
       title={label}
-      className={`flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border font-medium transition-colors md:h-9 md:w-auto md:px-3 ${
+      className={`flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border font-normal transition-colors md:h-9 md:w-auto md:px-3 ${
         active ? "border-accent text-accent" : "border-fg/[0.08] text-fg-3 hover:border-fg/20 hover:text-fg"
       }`}
     >
@@ -55,7 +55,7 @@ export function LayerMenuItem({ onClick, label, active }: { onClick: () => void;
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`flex min-h-[40px] w-full items-center justify-between gap-2 rounded-md px-2.5 text-left text-sm ${
+      className={`flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md px-2.5 text-left text-sm ${
         active ? "text-accent" : "text-fg-2 hover:bg-fg/[0.06] hover:text-fg"
       }`}
     >

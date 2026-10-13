@@ -86,7 +86,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     undoDrawPoint, cancelDraw, finishDraw, deleteZone,
   } = zoneState
   const [showTrouble, setShowTrouble] = useState(false)
-  const [showRings, setShowRings] = useState(true)
+  const [showEllipse, setShowEllipse] = useState(true)
   const [showCarry, setShowCarry] = useState(false) // dots are where shots stop; this adds where they landed
   const [showZones, setShowZones] = useState(false) // marked outlines start hidden; they still count in the plan
   const [pickerOpen, setPickerOpen] = useState(false) // the course/hole/golfer sheet behind the title line
@@ -334,7 +334,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     zones,
     noHazard,
     showTrouble,
-    showRings,
+    showEllipse,
     onCourseSpread: settings.onCourseSpread,
     smartRisk: settings.smartRisk,
     obTags: obTags.tagsFor(holeId),
@@ -343,7 +343,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const {
     aim, aimAtBest, aimLie, atBestAim, avgLeft, bagDriverCarry, baselineHandicap, best, chosen,
     chosenAtAim, chosenLive, distPin, estimateNotes, fromLabel, holeBearingDeg, holeQuality, labels,
-    landings, pickClub, pin, planReady, rankState, strategyMode, ranking, rankingPending, rings,
+    landings, pickClub, pin, planReady, rankState, strategyMode, ranking, rankingPending, ellipse,
     scoreBaseline, shownLies, stats, troubleCells, optionsNote, obBands, lies,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, startLie,
   } = plan
@@ -427,12 +427,12 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
     mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
     placing, planReady, query, rankState, ranking, rankingPending, recent, refreshCourseData,
-    refreshing, rings, round, roundHere, scoreBaseline, searched, searching, dispatchAim,
+    refreshing, ellipse, round, roundHere, scoreBaseline, searched, searching, dispatchAim,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
     setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
-    setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowTrouble,
+    setShowCarry, setShowLayersMenu, setShowMarks, setShowEllipse, setShowTrouble,
     setShowZones, setSource, setTendency, sevenIronCarry, sheetOpen, showCarry, showLayersMenu, showMarks,
-    showRings, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
+    showEllipse, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped, lastShot, editShot,

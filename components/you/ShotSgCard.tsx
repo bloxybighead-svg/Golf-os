@@ -21,8 +21,8 @@ function Rows({ summary }: { summary: SgSummary }) {
         return (
           <div key={c.category}>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm font-medium text-fg">{CATEGORY_LABEL[c.category]}</span>
-              <span className={["text-xs font-semibold tabular-nums", positive ? "text-accent" : "text-danger"].join(" ")}>{fmt(c.per18)} SG</span>
+              <span className="text-sm font-semibold text-fg">{CATEGORY_LABEL[c.category]}</span>
+              <span className={["text-xs font-semibold", positive ? "text-accent" : "text-danger"].join(" ")}>{fmt(c.per18)} SG</span>
             </div>
             <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface-3">
               <div
@@ -30,7 +30,7 @@ function Rows({ summary }: { summary: SgSummary }) {
                 style={{ width: `${Math.max(Math.min(Math.abs(c.per18) / BAR_SCALE_MAX, 1) * 100, 3)}%` }}
               />
             </div>
-            <p className="mt-1 text-xs tabular-nums text-muted">{c.shots} shots</p>
+            <p className="mt-1 text-xs text-muted">{c.shots} shots</p>
           </div>
         )
       })}
@@ -62,7 +62,7 @@ export function ShotSgCard({ data }: { data: ShotSgData }) {
               role="radio"
               aria-checked={vsMine === mine}
               onClick={() => setVsMine(mine)}
-              className={`min-h-[44px] rounded-md px-3 text-xs font-medium transition-colors md:min-h-[32px] ${vsMine === mine ? "bg-surface text-fg" : "text-muted hover:text-fg"}`}
+              className={`min-h-[44px] rounded-md px-3 text-xs font-normal transition-colors md:min-h-[32px] ${vsMine === mine ? "bg-surface text-fg" : "text-muted hover:text-fg"}`}
             >
               {label}
             </button>
