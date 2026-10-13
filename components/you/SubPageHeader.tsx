@@ -9,7 +9,7 @@ export function SubPageHeader({ title, back = { href: "/you", label: "You" } }: 
         <ArrowLeft size={14} />
         {back.label}
       </Link>
-      <h2 className="text-2xl font-bold tracking-tight text-fg">{title}</h2>
+      <h2 className="text-2xl font-semibold tracking-tight text-fg">{title}</h2>
     </div>
   )
 }

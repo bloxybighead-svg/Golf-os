@@ -100,27 +100,27 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
       data-rank-ms={rankMs != null ? Math.round(rankMs) : undefined}
     >
       {pending && <p className="px-3 pt-2 text-[11px] text-muted">Ranking…</p>}
-      <table className="w-full text-xs tabular-nums">
+      <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-fg/[0.06] text-left text-muted">
-            <th className="px-3 py-2.5 font-medium">Club</th>
-            <th className="px-1 py-2.5 text-right font-medium" title="Each club's own best aim: yards left or right of the hole's centre line at its distance">
+            <th className="px-3 py-2.5 font-normal">Club</th>
+            <th className="px-1 py-2.5 text-right font-normal" title="Each club's own best aim: yards left or right of the hole's centre line at its distance">
               Aim
             </th>
-            <th className="px-1 py-2.5 text-right font-medium">Carry</th>
-            <th className="px-1 py-2.5 text-right font-medium" title="Carry plus roll">
+            <th className="px-1 py-2.5 text-right font-normal">Carry</th>
+            <th className="px-1 py-2.5 text-right font-normal" title="Carry plus roll">
               Total
             </th>
             {shownLies.map((l) => (
-              <th key={l} className="px-1 py-2.5 text-right font-medium" title={LIE_LABEL[l]}>
+              <th key={l} className="px-1 py-2.5 text-right font-normal" title={LIE_LABEL[l]}>
                 {LIE_SHORT[l]}
               </th>
             ))}
-            <th className="px-1 py-2.5 text-right font-medium" title="Share of shots out of bounds or in water (a penalty stroke). Trees are the Tre column. Red = over the limit Smart play allows">
+            <th className="px-1 py-2.5 text-right font-normal" title="Share of shots out of bounds or in water (a penalty stroke). Trees are the Tre column. Red = over the limit Smart play allows">
               Pen
             </th>
             <th
-              className="px-3 py-2.5 text-right font-medium"
+              className="px-3 py-2.5 text-right font-normal"
               title={`Extra strokes to hole out vs the best club here (${best?.club ?? "—"}), each club at its own best aim, scored for ${baselineLabel === "PGA TOUR" ? "the PGA TOUR" : `a ${baselineLabel}`}. "~ tie" = within the noise of the shot samples`}
             >
               vs {best?.club ?? "best"}

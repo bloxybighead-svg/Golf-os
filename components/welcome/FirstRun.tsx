@@ -11,7 +11,7 @@ import { cleanCarries, cleanHandicap } from "@/lib/golfer/baseline"
 type Hit = CourseRef & { distanceMi?: number | null }
 
 const INPUT =
-  "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg tabular-nums placeholder:text-faint focus:border-accent/60 focus:outline-none"
+  "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
 
 export function FirstRun({ onDone, onDemo }: { onDone: (course: CourseRef, baseline: Baseline) => Promise<void>; onDemo: () => void }) {
   const [course, setCourse] = useState<CourseRef | null>(null)
@@ -102,7 +102,7 @@ export function FirstRun({ onDone, onDemo }: { onDone: (course: CourseRef, basel
                   <li key={h.id}>
                     <button onClick={() => setCourse({ id: h.id, name: h.name, city: h.city, state: h.state, par: h.par, lat: h.lat, lng: h.lng })} className="flex min-h-[44px] w-full items-baseline gap-2 px-3 py-2 text-left hover:bg-fg/[0.04]">
                       <span className="min-w-0 flex-1 truncate text-sm text-fg">{h.name}</span>
-                      <span className="shrink-0 text-xs text-muted tabular-nums">
+                      <span className="shrink-0 text-xs text-muted">
                         {h.distanceMi != null ? `${h.distanceMi.toFixed(1)} mi` : [h.city, h.state].filter(Boolean).join(", ")}
                       </span>
                     </button>

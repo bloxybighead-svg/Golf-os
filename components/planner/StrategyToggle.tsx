@@ -58,15 +58,15 @@ export function StrategyToggle({
                       <span className="font-semibold text-fg">{r.club}</span>
                       <span className="text-xs text-muted"> {name}</span>
                     </span>
-                    <span className="block truncate text-xs leading-4 tabular-nums">
+                    <span className="block truncate text-xs leading-4">
                       <span className="text-fg-2">{r.plan.expectedStrokes.toFixed(1)}</span>
                       {risk && <span className={risk.warn ? "text-warn" : "text-fg-3"}> · {risk.text}</span>}
                     </span>
                   </>
                 ) : (
                   <>
-                    <span className="block truncate text-xs font-medium leading-4 text-muted">{name}</span>
-                    <span className="block truncate text-sm leading-5 tabular-nums">
+                    <span className="block truncate text-xs font-normal leading-4 text-muted">{name}</span>
+                    <span className="block truncate text-sm leading-5">
                       <span className="font-semibold text-fg">{r.club}</span>
                       {risk && <span className={risk.warn ? " text-warn" : " text-fg-3"}> {risk.text}</span>}
                     </span>
@@ -78,7 +78,7 @@ export function StrategyToggle({
                   type="button"
                   onClick={onUnmapped}
                   aria-label={`${Math.round(unmappedWarning * 100)}% unmapped. Show why`}
-                  className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center text-warn"
+                  className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-warn"
                 >
                   <AlertTriangle size={16} />
                 </button>

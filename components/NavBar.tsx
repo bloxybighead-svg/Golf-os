@@ -32,11 +32,11 @@ export default function NavBar() {
     <>
       <header data-round-chrome className="fixed top-0 left-0 right-0 z-50 border-b border-fg/[0.08] bg-page/90 backdrop-blur-md pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-12 max-w-[1280px] items-center px-4 md:h-16 md:px-6">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex min-h-[44px] items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-on-accent">
               <Flag size={15} strokeWidth={2.6} />
             </span>
-            <span className="whitespace-nowrap text-sm font-bold tracking-tight text-fg">{APP_NAME}</span>
+            <span className="whitespace-nowrap text-sm font-semibold tracking-tight text-fg">{APP_NAME}</span>
           </Link>
         </div>
       </header>
@@ -58,7 +58,7 @@ export default function NavBar() {
                   href={href}
                   aria-current={active ? "page" : undefined}
                   className={[
-                    "group relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
+                    "group relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-normal transition-colors",
                     "md:h-auto md:flex-row md:gap-2 md:px-3.5 md:py-2 md:text-sm",
                     active ? "text-accent md:font-semibold md:text-fg" : "text-muted md:hover:text-fg-2",
                   ].join(" ")}

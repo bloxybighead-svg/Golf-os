@@ -62,13 +62,13 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     initialZoom, labels, landings, layersMenuPos, layersMenuRef, loadCourse, loadError, loadState,
     mapWrapRef, moveBallTo, pendingPoints, pickClub, pickHole, pickerOpen, pin,
     placing, planReady, query, rankState, ranking, rankingPending, recent, refreshCourseData,
-    refreshing, rings, round, roundHere, scoreBaseline, searched, searching, dispatchAim,
+    refreshing, ellipse, round, roundHere, scoreBaseline, searched, searching, dispatchAim,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
     optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
     setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
-    setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowTrouble,
+    setShowCarry, setShowLayersMenu, setShowMarks, setShowEllipse, setShowTrouble,
     setShowZones, setSource, setTendency, sevenIronCarry, sheetOpen, showCarry, showLayersMenu, showMarks,
-    showRings, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
+    showEllipse, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, aimLie,
@@ -192,8 +192,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
       gpsNote={gpsNote}
       showTrouble={showTrouble}
       onToggleTrouble={() => setShowTrouble((v) => !v)}
-      showRings={showRings}
-      onToggleRings={() => setShowRings((v) => !v)}
+      showEllipse={showEllipse}
+      onToggleEllipse={() => setShowEllipse((v) => !v)}
       showCarry={showCarry}
       onToggleCarry={() => setShowCarry((v) => !v)}
       hasZones={isOwner && zones.length > 0}
@@ -258,7 +258,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         landings={landings}
         showCarry={showCarry}
         cells={troubleCells}
-        rings={rings}
+        ellipse={ellipse}
         zones={showZones ? zones : []}
         obEdges={obBands.map((b) => b.edge)}
         drawKind={drawKind}

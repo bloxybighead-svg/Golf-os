@@ -74,13 +74,13 @@ export function RoundsSummary({ rounds }: { rounds: Round[] }) {
   return hero ? (
     <section>
       <p className="label-xs">{hero.label}</p>
-      <p className="mt-1 text-5xl font-semibold leading-none tracking-tight text-fg tabular-nums">{hero.value}</p>
+      <p className="mt-1 text-5xl font-semibold leading-none tracking-tight text-fg">{hero.value}</p>
       <p className="mt-2 text-xs text-muted">{hero.sub}</p>
       <dl className="mt-4 grid grid-cols-3 gap-y-3 border-y border-fg/[0.08] py-3 sm:grid-cols-5">
         {supporting.map((s) => (
           <div key={s.label}>
             <dt className="text-[11px] uppercase tracking-wide text-muted">{s.label}</dt>
-            <dd className="text-lg font-semibold text-fg tabular-nums">{s.value}</dd>
+            <dd className="text-lg font-semibold text-fg">{s.value}</dd>
           </div>
         ))}
       </dl>

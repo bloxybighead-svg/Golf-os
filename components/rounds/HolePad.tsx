@@ -26,7 +26,7 @@ export function Choice({
       aria-label={label}
       {...rest}
       className={[
-        "flex h-11 min-w-[44px] items-center justify-center rounded-lg border px-2 text-sm font-semibold tabular-nums transition-colors",
+        "flex h-11 min-w-[44px] items-center justify-center rounded-lg border px-2 text-sm font-semibold transition-colors",
         selected ? "border-accent bg-accent text-on-accent" : "border-fg/[0.08] bg-surface text-fg-2 hover:border-fg/20 hover:text-fg",
         className,
       ].join(" ")}
@@ -112,7 +112,7 @@ export function HolePad({ hole, onChange }: { hole: HoleEntry; onChange: (patch:
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold tabular-nums text-fg">
+        <h3 className="text-lg font-semibold text-fg">
           Hole {hole.hole_number}
           <span className="ml-2 text-sm font-normal text-fg-3">
             Par {hole.par}
@@ -154,7 +154,7 @@ export function HolePad({ hole, onChange }: { hole: HoleEntry; onChange: (patch:
                 onChange({ stroke_index: Number.isInteger(v) && v >= 1 && v <= 18 ? v : null })
               }}
               aria-label={`Hole ${hole.hole_number} stroke index`}
-              className="h-11 w-12 rounded-lg border border-fg/[0.08] bg-surface px-1 text-center text-sm text-fg tabular-nums focus:border-accent focus:outline-none"
+              className="h-11 w-12 rounded-lg border border-fg/[0.08] bg-surface px-1 text-center text-sm text-fg focus:border-accent focus:outline-none"
             />
           </label>
         </div>

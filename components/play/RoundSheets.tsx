@@ -25,7 +25,7 @@ interface SheetProps {
 }
 
 const INPUT =
-  "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg tabular-nums placeholder:text-faint focus:border-accent/60 focus:outline-none"
+  "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
 const PRIMARY = "flex h-11 w-full items-center justify-center rounded-lg bg-accent text-sm font-semibold text-on-accent transition-all hover:brightness-110 disabled:opacity-50"
 
 const scoredHoles = (round: ActiveRound) => round.holes.filter((h): h is ScoredHole => h.strokes != null)
@@ -33,7 +33,7 @@ const scoredHoles = (round: ActiveRound) => round.holes.filter((h): h is ScoredH
 function RoundStats({ holes }: { holes: ScoredHole[] }) {
   const summary = summarizeHoles(holes)
   return (
-    <dl className="grid grid-cols-4 gap-2 text-center tabular-nums">
+    <dl className="grid grid-cols-4 gap-2 text-center">
       {(
         [
           ["Fairways", summary.fairways_pct != null ? `${Math.round(summary.fairways_pct)}%` : null],
@@ -109,7 +109,7 @@ export function ScorecardSheet({ round, onSheetChange }: Pick<SheetProps, "round
         </button>
       }
     >
-      <p className="tabular-nums text-fg-3">
+      <p className="text-fg-3">
         {scored.length === 0 ? "Not started" : `Thru ${scored.length} · ${summary.score} · ${formatToPar(summary.score - summary.par)}`}
       </p>
       <div className="grid grid-cols-6 gap-1.5" aria-label="Holes">
@@ -119,7 +119,7 @@ export function ScorecardSheet({ round, onSheetChange }: Pick<SheetProps, "round
             type="button"
             onClick={() => onSheetChange({ kind: "hole", hole: h.hole_number })}
             aria-label={`Hole ${h.hole_number}${h.strokes != null ? `, ${h.strokes}` : ""}`}
-            className="flex h-12 flex-col items-center justify-center rounded-lg border border-fg/[0.08] tabular-nums transition-colors hover:border-fg/20"
+            className="flex h-12 flex-col items-center justify-center rounded-lg border border-fg/[0.08] transition-colors hover:border-fg/20"
           >
             <span className="text-[11px] text-muted">{h.hole_number}</span>
             <span className="text-sm font-semibold text-fg">{h.strokes ?? "·"}</span>
@@ -260,7 +260,7 @@ export function FinishSheet({
       <div>
         <p className="label-xs">Finish round</p>
         {scored.length > 0 ? (
-          <p className="mt-1 flex items-baseline gap-3 tabular-nums">
+          <p className="mt-1 flex items-baseline gap-3">
             <span className="text-5xl font-semibold tracking-tight text-fg">{summary.score}</span>
             <span className="text-lg text-fg-2">{formatToPar(summary.score - summary.par)}</span>
             <span className="text-sm text-muted">
@@ -295,7 +295,7 @@ export function FinishSheet({
               <input type="number" inputMode="numeric" value={slope} onChange={(e) => setSlope(e.target.value)} className={INPUT} />
             </label>
           </div>
-          <p className="text-sm text-fg-3 tabular-nums">
+          <p className="text-sm text-fg-3">
             {round.teeName && round.courseRating != null
               ? scored.length < 18
                 ? `${round.teeName} tees. Rating is the ${scored.length}-hole share of ${round.courseRating}; use the scorecard's if it differs.`

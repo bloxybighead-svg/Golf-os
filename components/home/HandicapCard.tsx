@@ -75,7 +75,7 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
           </p>
           {displayIndex != null ? (
             <>
-              <p className="text-5xl font-semibold leading-tight tracking-tight text-fg tabular-nums">{fmtIndex(displayIndex)}</p>
+              <p className="text-5xl font-semibold leading-tight tracking-tight text-fg">{fmtIndex(displayIndex)}</p>
               <p className="mt-1 text-xs text-muted">
                 {latest
                   ? `${latest.source === "manual" ? "Entered by hand" : `From your last ${latest.rounds_used} rounds`}${mounted ? ` · ${formatDate(latest.calculation_date)}` : ""}`

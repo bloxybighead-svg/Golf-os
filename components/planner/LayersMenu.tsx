@@ -18,8 +18,8 @@ export interface LayersMenuProps {
   gpsNote: string
   showTrouble: boolean
   onToggleTrouble: () => void
-  showRings: boolean
-  onToggleRings: () => void
+  showEllipse: boolean
+  onToggleEllipse: () => void
   showCarry: boolean
   onToggleCarry: () => void
   hasZones: boolean
@@ -39,8 +39,8 @@ export function LayersMenu({
   gpsNote,
   showTrouble,
   onToggleTrouble,
-  showRings,
-  onToggleRings,
+  showEllipse,
+  onToggleEllipse,
   showCarry,
   onToggleCarry,
   hasZones,
@@ -81,11 +81,11 @@ export function LayersMenu({
         />
         <LayerMenuItem
           onClick={() => {
-            onToggleRings()
+            onToggleEllipse()
             onClose()
           }}
-          active={showRings}
-          label="Shot rings"
+          active={showEllipse}
+          label="Shot spread"
         />
         <LayerMenuItem
           onClick={() => {
@@ -105,7 +105,7 @@ export function LayersMenu({
             label="My marks"
           />
         )}
-        <p className="px-2.5 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wider text-muted">Mark an area</p>
+        <p className="px-2.5 pb-1 pt-2.5 text-[11px] font-normal uppercase tracking-wider text-muted">Mark an area</p>
         {DRAW_KINDS.map((k) => (
           <LayerMenuItem
             key={k}

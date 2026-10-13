@@ -53,8 +53,8 @@ function WedgeNumbers({ rows, initial }: { rows: BagNumber[]; initial: Partial<R
           const full = rows.find((r) => r.club === w)?.carryYds ?? null
           return (
             <Fragment key={w}>
-              <span className="font-medium text-fg">{w}</span>
-              <span className="text-right text-fg-3 tabular-nums">{full ?? "–"}</span>
+              <span className="font-semibold text-fg">{w}</span>
+              <span className="text-right text-fg-3">{full ?? "–"}</span>
               {SWING_LENGTHS.map((l) => {
                 const name = partialName(w, l)
                 return (
@@ -67,7 +67,7 @@ function WedgeNumbers({ rows, initial }: { rows: BagNumber[]; initial: Partial<R
                     value={typed[name] ?? ""}
                     onChange={(e) => setTyped((t) => ({ ...t, [name]: e.target.value.replace(/\D/g, "").slice(0, 3) }))}
                     onBlur={save}
-                    className="h-11 w-full min-w-0 rounded-lg border border-fg/[0.12] bg-transparent px-2 text-right text-base text-fg tabular-nums placeholder:text-faint"
+                    className="h-11 w-full min-w-0 rounded-lg border border-fg/[0.12] bg-transparent px-2 text-right text-base text-fg placeholder:text-faint"
                   />
                 )
               })}
@@ -106,7 +106,7 @@ function ClubEditor({ row, onSave, onCancel }: { row: BagNumber; onSave: (carry:
           setInvalid(false)
           setDraft(e.target.value.replace(/\D/g, "").slice(0, 3))
         }}
-        className="h-11 w-24 rounded-lg border border-fg/[0.12] bg-transparent px-3 text-right text-base text-fg tabular-nums placeholder:text-faint"
+        className="h-11 w-24 rounded-lg border border-fg/[0.12] bg-transparent px-3 text-right text-base text-fg placeholder:text-faint"
       />
       <span className="text-sm text-muted">yd carry</span>
       <button type="submit" className="flex min-h-[44px] items-center text-sm font-semibold text-accent hover:underline">
@@ -187,12 +187,12 @@ export function MyBag({
                   className="flex min-h-[56px] w-full items-center gap-3 px-5 py-2.5 text-left"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-fg">{r.club}</span>
+                    <span className="block text-sm font-semibold text-fg">{r.club}</span>
                     <span className="block text-xs text-muted">{sourceLabel(r)}</span>
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block text-xl font-semibold text-fg tabular-nums">{r.carryYds}</span>
-                    <span className="block text-xs text-muted tabular-nums">{r.totalYds} total</span>
+                    <span className="block text-xl font-semibold text-fg">{r.carryYds}</span>
+                    <span className="block text-xs text-muted">{r.totalYds} total</span>
                   </span>
                 </button>
                 {editing === r.club && <ClubEditor row={r} onSave={(c) => save(r.club, c)} onCancel={() => setEditing(null)} />}
@@ -224,7 +224,7 @@ export function MyBag({
         <div className="flex items-center justify-between gap-3 px-5 py-4">
           <div className="min-w-0">
             <p className="label-xs">Home course</p>
-            {home && <p className="mt-1 truncate text-sm font-medium text-fg">{home.name}</p>}
+            {home && <p className="mt-1 truncate text-sm font-semibold text-fg">{home.name}</p>}
           </div>
           <Link href={EDIT_HREF} className="flex min-h-[44px] shrink-0 items-center text-sm font-semibold text-accent hover:underline md:min-h-0">
             {home ? "Change" : "Set home course"}

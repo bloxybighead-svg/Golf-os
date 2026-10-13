@@ -163,7 +163,7 @@ export function CoursePickerSheet({
                             onClose()
                           }}
                           aria-pressed={h.id === holeId}
-                          className={`flex h-12 flex-col items-center justify-center rounded-lg tabular-nums transition-colors ${
+                          className={`flex h-12 flex-col items-center justify-center rounded-lg transition-colors ${
                             h.id === holeId ? "bg-accent text-on-accent" : "bg-surface text-fg hover:bg-fg/[0.06]"
                           }`}
                         >
@@ -277,7 +277,7 @@ export function CoursePickerSheet({
                   )}
                   <div>
                     <p className="text-xs text-muted">
-                      Bag · <span className="tabular-nums">{bag.length}</span> clubs
+                      Bag · <span>{bag.length}</span> clubs
                     </p>
                     <div className="mt-1.5 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
                       {CLUB_CATALOG.map((c) => {
@@ -287,7 +287,7 @@ export function CoursePickerSheet({
                             key={c}
                             onClick={() => onToggleClub(c)}
                             aria-pressed={on}
-                            className={`h-11 rounded-lg text-xs font-medium transition-colors md:h-9 ${
+                            className={`h-11 rounded-lg text-xs font-normal transition-colors md:h-9 ${
                               on ? "bg-accent text-on-accent" : "bg-surface text-fg-3 hover:text-fg"
                             }`}
                           >
@@ -307,7 +307,7 @@ export function CoursePickerSheet({
                 {course && geometry && (
                   <section className="space-y-2 border-t border-fg/[0.06] p-4 text-xs text-fg-3">
                     <p className="label-xs">Course data</p>
-                    <p className="tabular-nums">
+                    <p>
                       {holes.length} holes · {stats.greens} greens · {stats.fairways} fairways · {stats.bunkers} bunkers ·{" "}
                       {stats.water} water · {stats.trees} tree areas
                     </p>

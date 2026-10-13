@@ -36,7 +36,7 @@ export function ClubChips({
           type="button"
           aria-pressed={chosen?.club === r.club}
           onClick={() => onPick(r)}
-          className={`shrink-0 rounded-full border px-3 py-1.5 text-sm tabular-nums ${
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${
             chosen?.club === r.club ? "border-accent bg-accent text-on-accent" : "border-fg/[0.12] text-fg-2"
           }`}
         >

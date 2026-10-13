@@ -88,22 +88,22 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
         <button
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
-          className={`flex min-w-0 items-center gap-1.5 text-sm md:min-h-[32px] ${compact ? "h-10" : "min-h-[44px]"}`}
+          className={`flex min-w-0 items-center gap-1.5 text-sm md:min-h-[32px] ${compact ? "h-11" : "min-h-[44px]"}`}
         >
           <span className="shrink-0 text-fg-3">{isBest ? "Play" : "Playing"}</span>
           <span className="min-w-0 truncate font-semibold text-fg">{selected.name}</span>
-          <span className="shrink-0 text-muted tabular-nums">· {selected.totalYardage.toLocaleString()}</span>
+          <span className="shrink-0 text-muted">· {selected.totalYardage.toLocaleString()}</span>
           <ChevronDown size={15} className="shrink-0 text-muted" />
         </button>
         {compact ? (
           <>
             {shorter && (
-              <button onClick={() => choose(shorter.name)} aria-label={`Shorter tee: ${shorter.name}`} title={`Shorter: ${shorter.name}`} className="flex h-10 w-9 shrink-0 items-center justify-center text-fg-3">
+              <button onClick={() => choose(shorter.name)} aria-label={`Shorter tee: ${shorter.name}`} title={`Shorter: ${shorter.name}`} className="flex h-11 w-11 shrink-0 items-center justify-center text-fg-3">
                 <ChevronLeft size={18} />
               </button>
             )}
             {longer && (
-              <button onClick={() => choose(longer.name)} aria-label={`Longer tee: ${longer.name}`} title={`Longer: ${longer.name}`} className="flex h-10 w-9 shrink-0 items-center justify-center text-fg-3">
+              <button onClick={() => choose(longer.name)} aria-label={`Longer tee: ${longer.name}`} title={`Longer: ${longer.name}`} className="flex h-11 w-11 shrink-0 items-center justify-center text-fg-3">
                 <ChevronRight size={18} />
               </button>
             )}
@@ -154,7 +154,7 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
                             {t.name}
                             {t.name === best.name && <span className="ml-2 text-xs font-normal text-accent">Best fit</span>}
                           </span>
-                          <span className="block text-xs text-muted tabular-nums">
+                          <span className="block text-xs text-muted">
                             {t.totalYardage.toLocaleString()} yd · {t.courseRating}/{t.slopeRating}
                             {c != null && ` · course handicap ${c}`}
                           </span>
@@ -165,7 +165,7 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
                   )
                 })}
               </ul>
-              <p className="border-t border-fg/[0.06] px-4 py-3 text-xs text-muted tabular-nums">
+              <p className="border-t border-fg/[0.06] px-4 py-3 text-xs text-muted">
                 Best fit: the longest tee under {result.recommendedYardage.toLocaleString()} yd, from your{" "}
                 {Math.round(driveYdsFor(driverCarryYds, handicapIndex))}-yd drive.
               </p>

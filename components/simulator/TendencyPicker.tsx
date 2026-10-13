@@ -23,7 +23,7 @@ export function TendencyPicker({ value, onChange }: { value: Tendency; onChange:
   return (
     <>
       <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-muted">Miss tendency</span>
+        <span className="text-xs font-normal text-muted">Miss tendency</span>
         <select value={value.side} onChange={(e) => onChange({ ...value, side: e.target.value as TendencySide })} className={selectClass}>
           {SIDES.map((s) => (
             <option key={s.value} value={s.value}>
@@ -34,7 +34,7 @@ export function TendencyPicker({ value, onChange }: { value: Tendency; onChange:
       </label>
       {needsStrength && (
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted">How much</span>
+          <span className="text-xs font-normal text-muted">How much</span>
           <select
             value={value.strength}
             onChange={(e) => onChange({ ...value, strength: e.target.value as TendencyStrength })}

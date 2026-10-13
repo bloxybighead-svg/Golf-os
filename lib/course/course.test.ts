@@ -412,9 +412,9 @@ describe("Broadie baseline (published PGA TOUR tables)", () => {
   })
 })
 
-import { buildValueGrid, deltaColor, dispersionRing } from "./heatmap"
+import { buildValueGrid, deltaColor, dispersionEllipse } from "./heatmap"
 
-describe("trouble map and dispersion rings", () => {
+describe("trouble map and dispersion ellipse", () => {
   const pin = fromLocal(ORIGIN, { x: 0, y: 150 })
   const lies = buildLieMap(ORIGIN, [
     { kind: "green", ring: squareAround(pin, 12) },
@@ -445,14 +445,13 @@ describe("trouble map and dispersion rings", () => {
     expect(deltaColor(1.1).color).toBe("map-worse")
   })
 
-  it("50% ring is inside the 90% ring and both are centred on the shots", () => {
+  it("80% ellipse is centred on the shots", () => {
     const pts = Array.from({ length: 400 }, (_, i) => fromLocal(ORIGIN, { x: ((i * 37) % 41) - 20, y: 150 + (((i * 53) % 23) - 11) }))
-    const r50 = dispersionRing(pts, 1.177)
-    const r90 = dispersionRing(pts, 2.146)
-    expect(r50.length).toBe(49)
-    const span = (r: typeof r50) => Math.max(...r.map((p) => toLocal(ORIGIN, p).x)) - Math.min(...r.map((p) => toLocal(ORIGIN, p).x))
-    expect(span(r90)).toBeGreaterThan(span(r50))
-    expect(dispersionRing(pts.slice(0, 3), 1)).toEqual([])
+    const e = dispersionEllipse(pts)
+    expect(e.length).toBe(49)
+    const xs = e.map((p) => toLocal(ORIGIN, p).x)
+    expect((Math.max(...xs) + Math.min(...xs)) / 2).toBeCloseTo(0, 0)
+    expect(dispersionEllipse(pts.slice(0, 3))).toEqual([])
   })
 })
 

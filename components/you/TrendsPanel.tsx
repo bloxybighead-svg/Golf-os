@@ -55,7 +55,7 @@ function ChartTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-lg border border-fg/[0.1] bg-surface-3 px-3 py-2">
-      <p className="mb-1 text-xs font-medium text-fg">{payload[0]?.payload?.date}</p>
+      <p className="mb-1 text-xs font-normal text-fg">{payload[0]?.payload?.date}</p>
       {payload.filter((p: any) => p.value != null).map((p: any) => (
         <p key={p.name} className="text-xs" style={{ color: p.color }}>
           {p.name}: <span className="font-semibold">{p.value}</span>
@@ -183,14 +183,14 @@ function MilestoneManager({ milestones }: { milestones: Milestone[] }) {
           </div>
           {error && <p className="text-xs text-danger">{error}</p>}
           {milestones.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="divide-y divide-fg/[0.06]">
               {milestones.map((ms) => (
                 <span
                   key={ms.id}
-                  className="flex items-center gap-2 rounded-full border border-fg/[0.08] bg-surface-3 px-3 py-1 text-xs text-fg-3"
+                  className="flex items-center gap-2 py-2 text-xs text-fg-3"
                 >
                   <span className="text-muted">{shortDate(ms.date)}</span>
-                  <span className="font-medium text-fg">{ms.label}</span>
+                  <span className="font-semibold text-fg">{ms.label}</span>
                   <button
                     onClick={() => startTransition(async () => {
                       try { await deleteMilestone(ms.id) } catch (e) { setError(e instanceof Error ? e.message : "Couldn't delete that marker.") }
@@ -367,7 +367,7 @@ export function TrendsPanel({ rounds, milestones }: Props) {
               value={metric}
               onChange={(e) => setMetric(e.target.value as Metric)}
               aria-label="Trend to show"
-              className="w-full appearance-none rounded-lg border border-fg/[0.08] bg-surface-3 py-2.5 pl-3 pr-9 text-sm font-medium text-fg focus:border-accent focus:outline-none"
+              className="w-full appearance-none rounded-lg border border-fg/[0.08] bg-surface-3 py-2.5 pl-3 pr-9 text-sm font-normal text-fg focus:border-accent focus:outline-none"
             >
               {METRICS.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>

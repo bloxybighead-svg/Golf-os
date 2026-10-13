@@ -102,7 +102,7 @@ export function EditHoleModal({
 
         <div className="mt-3 space-y-3">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-fg-3">Par</span>
+            <span className="text-xs font-normal text-fg-3">Par</span>
             <select
               value={par}
               onChange={(e) => setPar(Number(e.target.value))}
@@ -118,7 +118,7 @@ export function EditHoleModal({
 
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-fg-3">Tee latitude</span>
+              <span className="text-xs font-normal text-fg-3">Tee latitude</span>
               <input
                 value={teeLat}
                 onChange={(e) => setTeeLat(e.target.value)}
@@ -128,7 +128,7 @@ export function EditHoleModal({
               {errors.teeLat && <span className="text-[11px] text-danger">{errors.teeLat}</span>}
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-fg-3">Tee longitude</span>
+              <span className="text-xs font-normal text-fg-3">Tee longitude</span>
               <input
                 value={teeLng}
                 onChange={(e) => setTeeLng(e.target.value)}
@@ -141,7 +141,7 @@ export function EditHoleModal({
 
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-fg-3">Yardage</span>
+              <span className="text-xs font-normal text-fg-3">Yardage</span>
               <input
                 value={yardage}
                 onChange={(e) => setYardage(e.target.value)}
@@ -151,7 +151,7 @@ export function EditHoleModal({
               {errors.yardageYds && <span className="text-[11px] text-danger">{errors.yardageYds}</span>}
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-fg-3">Handicap (1-18)</span>
+              <span className="text-xs font-normal text-fg-3">Handicap (1-18)</span>
               <input
                 value={strokeIndex}
                 onChange={(e) => setStrokeIndex(e.target.value)}
@@ -164,7 +164,7 @@ export function EditHoleModal({
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-fg-3">Reason (optional)</span>
+            <span className="text-xs font-normal text-fg-3">Reason (optional)</span>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}

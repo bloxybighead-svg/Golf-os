@@ -67,17 +67,17 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-fg">{round.course_name}</p>
             {round.is_competitive && (
-              <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+              <span className="text-xs font-semibold text-accent">
                 Competitive
               </span>
             )}
             {holes !== 18 && (
-              <span className="rounded-full border border-fg/[0.08] bg-surface-3 px-2 py-0.5 text-xs text-muted">
+              <span className="text-xs text-muted">
                 {holes} holes
               </span>
             )}
             {compCollapse && (
-              <span className="rounded-full border border-danger/40 bg-danger/15 px-2 py-0.5 text-xs font-semibold text-danger">
+              <span className="text-xs font-semibold text-danger">
                 Tournament collapse
               </span>
             )}
@@ -89,10 +89,8 @@ export function RoundCard({ round, casualGirAvg }: Props) {
                 <span
                   key={tag}
                   className={[
-                    "rounded-full border px-2 py-0.5 text-xs font-medium",
-                    tag === "None"
-                      ? "border-fg/[0.08] bg-surface-3 text-muted"
-                      : "border-warn/30 bg-warn/10 text-warn",
+                    "text-xs",
+                    tag === "None" ? "text-muted" : "text-warn",
                   ].join(" ")}
                 >
                   {tag}
@@ -102,7 +100,7 @@ export function RoundCard({ round, casualGirAvg }: Props) {
           )}
         </div>
         <div className="flex shrink-0 items-baseline gap-2">
-          <span className="text-2xl font-bold tracking-tight text-fg">{round.score}</span>
+          <span className="text-2xl font-semibold tracking-tight text-fg">{round.score}</span>
           <span className={["text-sm font-semibold", rel.color].join(" ")}>{rel.label}</span>
           {round.adjusted_score != null && round.adjusted_score !== round.score && (
             <span className="text-xs text-muted" title={CAP_TITLE[round.score_cap ?? "none"]}>
@@ -144,7 +142,7 @@ export function RoundCard({ round, casualGirAvg }: Props) {
                 {pct(round.gir_pct)}
               </span>
               {girCollapse && (
-                <span className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
+                <span className="text-xs font-semibold text-danger">
                   ⚠ GIR pressure collapse
                 </span>
               )}
@@ -204,7 +202,7 @@ export function RoundCard({ round, casualGirAvg }: Props) {
             <button
               onClick={() => startTransition(async () => { await deleteRound(round.id) })}
               disabled={isPending}
-              className="text-xs font-medium text-danger hover:text-danger disabled:opacity-50"
+              className="text-xs font-normal text-danger hover:text-danger disabled:opacity-50"
             >
               {isPending ? "…" : "Yes"}
             </button>

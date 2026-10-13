@@ -27,7 +27,7 @@ const signed = (d: number) => `${d < 0 ? "-" : "+"}${Math.abs(d).toFixed(2)}`
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <p>
-      <span className="text-muted">{label}</span> <span className="tabular-nums text-fg-2">{children}</span>
+      <span className="text-muted">{label}</span> <span className="text-fg-2">{children}</span>
     </p>
   )
 }

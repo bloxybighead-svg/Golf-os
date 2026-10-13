@@ -76,7 +76,7 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
                 {filtered.slice(0, SHOW).map((r) => (
                   <li key={r.id} className="py-2.5">
                     <div className="flex items-baseline justify-between gap-3">
-                      <p className="min-w-0 truncate text-sm font-medium text-fg">
+                      <p className="min-w-0 truncate text-sm font-semibold text-fg">
                         {r.drill_library?.name ?? "Free practice"}
                       </p>
                       <span className="shrink-0 text-xs text-muted">

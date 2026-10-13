@@ -43,7 +43,7 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
     <div>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm text-fg tabular-nums">
+          <p className="truncate text-sm text-fg">
             {summary}
             {source && (
               <span className="text-xs text-muted">
@@ -53,7 +53,7 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
               </span>
             )}
           </p>
-          <p className="truncate text-sm text-fg tabular-nums">
+          <p className="truncate text-sm text-fg">
             {temp.temperatureF != null ? `${temp.temperatureF}°F` : "No temperature reading"}
             {tempSource && <span className="text-xs text-muted">{` · ${tempSource}`}</span>}
           </p>
@@ -65,7 +65,7 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
             aria-checked={playsLikeOn}
             onClick={() => onPlaysLikeChange(!playsLikeOn)}
             title="Plays like: change the plan for wind, air temperature and the height change to the target"
-            className={`h-9 rounded-lg border px-3 text-xs font-semibold ${playsLikeOn ? "border-accent text-accent" : "border-fg/[0.08] text-fg-3"}`}
+            className={`h-11 rounded-lg border px-3 text-xs font-semibold ${playsLikeOn ? "border-accent text-accent" : "border-fg/[0.08] text-fg-3"}`}
           >
             Plays like {playsLikeOn ? "on" : "off"}
           </button>
@@ -73,14 +73,14 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="h-9 rounded-lg border border-fg/[0.08] px-3 text-xs text-fg-3 hover:text-fg"
+            className="h-11 rounded-lg border border-fg/[0.08] px-3 text-xs text-fg-3 hover:text-fg"
           >
             {open ? "Done" : "Adjust"}
           </button>
         </div>
       </div>
 
-      {playsLikeOn && breakdown && <p className="mt-1 text-xs tabular-nums text-fg-2">{breakdown}</p>}
+      {playsLikeOn && breakdown && <p className="mt-1 text-xs text-fg-2">{breakdown}</p>}
       {playsLikeOn && !hasElevation && <p className="mt-1 text-[11px] text-fg-3">No ground heights for this hole yet: the ground counts as level.</p>}
 
       {open && (
@@ -93,7 +93,7 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
           />
           <div className="min-w-[10rem] flex-1 space-y-2">
             <label className="block text-xs text-fg-3">
-              Speed <span className="font-semibold text-fg tabular-nums">{speed} mph</span>
+              Speed <span className="font-semibold text-fg">{speed} mph</span>
               <input
                 type="range"
                 min={WIND_MIN_MPH}
@@ -106,7 +106,7 @@ export function WindControl({ wind, holeBearingDeg, playsLikeOn, onPlaysLikeChan
             </label>
             <p className="text-[11px] text-fg-3">Tap the dial where the wind is coming from: top is into your face, along the hole.</p>
             {wind.source === "manual" && (
-              <button type="button" onClick={wind.clearManual} className="h-9 rounded-lg border border-fg/[0.08] px-3 text-xs font-semibold text-accent hover:bg-accent/10">
+              <button type="button" onClick={wind.clearManual} className="h-11 rounded-lg border border-fg/[0.08] px-3 text-xs font-semibold text-accent hover:bg-accent/10">
                 Back to automatic
               </button>
             )}
@@ -145,14 +145,14 @@ function TemperatureField({ wind }: { wind: WindState }) {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => e.key === "Enter" && commit()}
-          className="h-11 w-20 rounded-lg border border-fg/[0.08] bg-page px-3 text-center text-sm text-fg tabular-nums md:h-9"
+          className="h-11 w-20 rounded-lg border border-fg/[0.08] bg-page px-3 text-center text-sm text-fg md:h-9"
         />
         <span className="text-xs text-fg-3">°F</span>
         <button type="button" onClick={() => step(TEMP_STEP_F)} disabled={(current ?? 70) + TEMP_STEP_F > TEMP_MAX_F} aria-label="10 degrees warmer" className="h-11 w-14 rounded-lg border border-fg/[0.08] text-sm font-semibold text-fg-2 hover:text-fg disabled:opacity-40 md:h-9">
           +10
         </button>
         {wind.temperature.source === "manual" && (
-          <button type="button" onClick={wind.clearManualTemperature} className="h-9 rounded-lg border border-fg/[0.08] px-3 text-xs font-semibold text-accent hover:bg-accent/10">
+          <button type="button" onClick={wind.clearManualTemperature} className="h-11 rounded-lg border border-fg/[0.08] px-3 text-xs font-semibold text-accent hover:bg-accent/10">
             Back to automatic
           </button>
         )}

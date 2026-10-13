@@ -29,7 +29,7 @@ function Bar({ trend }: { trend: CategoryTrend }) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-sm font-medium text-fg">{LABEL[trend.category]}</span>
+        <span className="text-sm font-semibold text-fg">{LABEL[trend.category]}</span>
         <span className={["text-xs font-semibold", positive ? "text-accent" : "text-danger"].join(" ")}>
           {fmtDelta(trend.avgDeltaSg)}
         </span>
@@ -84,7 +84,7 @@ export function TrendsCard({ trends }: { trends: CategoryTrend[] }) {
       <button
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="mt-1 flex min-h-[44px] items-center gap-1 text-xs font-medium text-muted hover:text-fg md:min-h-[32px]"
+        className="mt-1 flex min-h-[44px] items-center gap-1 text-xs font-normal text-muted hover:text-fg md:min-h-[32px]"
       >
         <ChevronDown size={13} className={expanded ? "rotate-180 transition-transform" : "transition-transform"} />
         {expanded ? "Hide full breakdown" : "Show full breakdown"}

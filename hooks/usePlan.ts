@@ -2,7 +2,7 @@
 
 // The Play planner's numbers: the golfer's shots, the hole's pin and aim, the
 // lie map, the club ranking (each club at its own best aim, in a Web Worker --
-// see components/simulator/useClubRanking.ts), the chosen club, its dots, rings
+// see components/simulator/useClubRanking.ts), the chosen club, its dots, ellipse
 // and the map labels (moved verbatim from CourseMapClient.tsx).
 
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -11,7 +11,7 @@ import { greenYardages, holeGreen } from "@/lib/course/green"
 import { defaultTeeAim } from "@/lib/course/aim"
 import type { StartLie } from "@/lib/course/cost"
 import { applyConfirmedAbsent, assessHoleDataQuality, estimatedFairwayCorridor, type HoleDataQuality } from "@/lib/course/dataQuality"
-import { buildValueGrid, deltaColor, dispersionRing } from "@/lib/course/heatmap"
+import { buildValueGrid, deltaColor, dispersionEllipse } from "@/lib/course/heatmap"
 import type { Lie, UserZone } from "@/lib/course/lies"
 import type { CourseFeature, CourseGeometry, CourseHole } from "@/lib/course/overpass"
 import { aimMarkerFor, evaluateClub, isAtBestAim, simulateLandings, strokesAtAim, type ClubShots, type OptimizedClubPlan } from "@/lib/course/plan"
@@ -71,7 +71,7 @@ export interface PlanInputs {
   zones: UserZone[]
   noHazard: NoHazardMap
   showTrouble: boolean
-  showRings: boolean
+  showEllipse: boolean
   /** The offline-spread multiplier applied to every club (You -> Planner). */
   onCourseSpread: number
   /** Smart play's risk, strokes per unit of OB/water share (You -> Planner). */
@@ -109,7 +109,7 @@ export function usePlan({
   zones,
   noHazard,
   showTrouble,
-  showRings,
+  showEllipse,
   onCourseSpread,
   smartRisk,
   obTags,
@@ -375,12 +375,11 @@ export function usePlan({
     })
   }, [showTrouble, ball, aim, pin, hole, lies, startLie, scoreBaseline])
 
-  // 50% and 90% dispersion rings around where the chosen club's shots finish.
-  const rings = useMemo(() => {
-    if (!showRings || landings.length < 5) return []
-    const pts = landings.map((l) => l.point)
-    return [dispersionRing(pts, 1.177), dispersionRing(pts, 2.146)].filter((r) => r.length > 0)
-  }, [showRings, landings])
+  // The 80% dispersion ellipse around where the chosen club's shots finish.
+  const ellipse = useMemo(() => {
+    if (!showEllipse || landings.length < 5) return []
+    return dispersionEllipse(landings.map((l) => l.point))
+  }, [showEllipse, landings])
 
   const stats = useMemo(() => {
     const count = (k: string) => (geometry?.features ?? []).filter((f) => f.kind === k).length
@@ -451,7 +450,7 @@ export function usePlan({
     ranking,
     rankingPending,
     rankingRequest,
-    rings,
+    ellipse,
     scoreBaseline,
     shownLies,
     startLie,

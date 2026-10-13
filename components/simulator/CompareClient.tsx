@@ -132,7 +132,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 rounded-xl border border-fg/[0.06] bg-surface p-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted">Golfer A</span>
+          <span className="text-xs font-normal text-muted">Golfer A</span>
           <select
             value={golferAKey}
             onChange={(e) => setGolferAKey(e.target.value)}
@@ -146,7 +146,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
           </select>
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted">Golfer B</span>
+          <span className="text-xs font-normal text-muted">Golfer B</span>
           <select
             value={golferBKey}
             onChange={(e) => setGolferBKey(e.target.value)}
@@ -161,7 +161,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted">Club (clubs both golfers share)</span>
+          <span className="text-xs font-normal text-muted">Club (clubs both golfers share)</span>
           <select
             value={club}
             onChange={(e) => setSelectedClub(e.target.value)}
@@ -176,7 +176,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
         </label>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted">Simulated shots to show</span>
+          <span className="text-xs font-normal text-muted">Simulated shots to show</span>
           <div className="flex gap-3">
             {SAMPLE_SIZES.map((n) => (
               <label key={n} className="flex items-center gap-1.5 text-sm text-fg-2">
@@ -227,7 +227,7 @@ export function CompareClient({ golfers, shots, realShots }: Props) {
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-medium text-muted">
+            <p className="mb-2 text-xs font-normal text-muted">
               How {golferA?.golferName ?? "Golfer A"}&rsquo;s {club} stats stabilize as sample size grows:
             </p>
             <div className="overflow-x-auto rounded-xl border border-fg/[0.06] bg-surface">

@@ -19,9 +19,9 @@ export default async function OlderSessionsPage() {
         <ul className="divide-y divide-fg/[0.06]">
           {sessions.map((s) => (
             <li key={s.id} className="flex items-baseline justify-between gap-3 py-3 text-sm">
-              <span className="tabular-nums text-fg">{s.date}</span>
+              <span className="text-fg">{s.date}</span>
               <span className="min-w-0 flex-1 truncate text-fg-2">{s.session_type}</span>
-              <span className="shrink-0 tabular-nums text-muted">{s.duration_minutes != null ? `${s.duration_minutes} min` : ""}</span>
+              <span className="shrink-0 text-muted">{s.duration_minutes != null ? `${s.duration_minutes} min` : ""}</span>
             </li>
           ))}
         </ul>

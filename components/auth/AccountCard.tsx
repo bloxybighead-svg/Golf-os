@@ -33,14 +33,14 @@ export function AccountCard({ email }: { email: string | null }) {
         </span>
         <div className="min-w-0">
           <p className="text-xs text-muted">{email ? "Signed in as" : "Not signed in"}</p>
-          <p className="truncate text-sm font-medium text-fg">{email ?? "Save your rounds"}</p>
+          <p className="truncate text-sm font-semibold text-fg">{email ?? "Save your rounds"}</p>
         </div>
       </div>
       {email ? (
         <button
           onClick={signOut}
           disabled={signingOut}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-fg/[0.1] px-3 py-1.5 text-xs font-medium text-fg-2 transition-colors hover:border-fg/25 hover:text-fg disabled:opacity-50"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-fg/[0.1] px-3 py-1.5 text-xs font-normal text-fg-2 transition-colors hover:border-fg/25 hover:text-fg disabled:opacity-50"
         >
           <LogOut size={13} />
           {signingOut ? "Signing out…" : "Sign out"}
