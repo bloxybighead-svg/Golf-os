@@ -74,7 +74,7 @@ export function MapView({
   const glass = "flex h-11 w-11 items-center justify-center rounded-lg border bg-black/60 backdrop-blur-sm md:h-9 md:w-9"
   return (
     <div className={fill ? "h-full min-w-0" : "min-w-0 space-y-2.5"}>
-      {/* The map. Phones: as tall as the screen allows (never more than 60%) once the header, the bottom dock
+      {/* The map. Phones: as tall as the screen allows once the hole header, the bottom dock
           and the tab bar are taken out (--map-h, from lib/planner/dock.ts), so it is the same height whether or not a sheet is open. Everything
           the golfer touches sits on top of it. */}
       <div
@@ -82,7 +82,7 @@ export function MapView({
         className={
           fill
             ? "relative isolate h-full overflow-hidden bg-page"
-            : "relative isolate h-[min(60dvh,var(--map-h))] min-h-[260px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
+            : "relative isolate h-[var(--map-h)] min-h-[260px] overflow-hidden rounded-2xl border border-fg/[0.07] bg-page md:h-[70vh] md:min-h-[460px]"
         }
       >
         {mapContent}

@@ -57,7 +57,7 @@ export default async function RootLayout({
         <OfflineProvider />
         <NavBar />
         <ResumeBar />
-        <main className="mx-auto max-w-[1280px] px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(6rem+var(--resume-h,0px)+env(safe-area-inset-bottom))] md:px-6 md:pt-20 md:pb-16">
+        <main className="mx-auto max-w-[1280px] px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] max-md:has-[[data-play-screen]]:pt-0 pb-[calc(6rem+var(--resume-h,0px)+env(safe-area-inset-bottom))] md:px-6 md:pt-20 md:pb-16">
           <SignInBanner signedIn={!!session} />
           {children}
         </main>

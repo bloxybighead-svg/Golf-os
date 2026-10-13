@@ -11,7 +11,6 @@ const DOCK_BORDER_PX = 1
 export const DOCK_HEIGHT_PX = DOCK_ROW_PX.status + DOCK_ROW_PX.plays + DOCK_ROW_PX.chips + DOCK_BORDER_PX
 
 export const TAB_BAR_PX = 56
-const TOP_NAV_PX = 56
 const HOLE_HEADER_PX = 48
 const GAP_PX = 12
 
@@ -19,5 +18,5 @@ const GAP_PX = 12
 export const dockCssVars = {
   "--dock-h": `${DOCK_HEIGHT_PX}px`,
   "--tab-h": `calc(${TAB_BAR_PX}px + var(--resume-h, 0px))`,
-  "--map-h": `calc(100dvh - ${TOP_NAV_PX + HOLE_HEADER_PX + GAP_PX + DOCK_HEIGHT_PX + TAB_BAR_PX}px - var(--resume-h, 0px) - env(safe-area-inset-top) - env(safe-area-inset-bottom))`,
+  "--map-h": `calc(100dvh - ${HOLE_HEADER_PX + GAP_PX + DOCK_HEIGHT_PX + TAB_BAR_PX}px - var(--resume-h, 0px) - env(safe-area-inset-top) - env(safe-area-inset-bottom))`,
 } as CSSProperties

@@ -30,7 +30,7 @@ export default function NavBar() {
 
   return (
     <>
-      <header data-round-chrome className="fixed top-0 left-0 right-0 z-50 border-b border-fg/[0.08] bg-page/90 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+      <header data-round-chrome className={`${pathname === "/" ? "max-md:hidden " : ""}fixed top-0 left-0 right-0 z-50 border-b border-fg/[0.08] bg-page/90 backdrop-blur-md pt-[env(safe-area-inset-top)]`}>
         <div className="mx-auto flex h-12 max-w-[1280px] items-center px-4 md:h-16 md:px-6">
           <Link href="/" className="flex min-h-[44px] items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-on-accent">

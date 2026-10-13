@@ -79,7 +79,7 @@ export function HoleHeader({ title, courseName, onOpenPicker, showArrows, onStep
       className={
         inRoundScreen
           ? "flex h-full items-center gap-2 border-b border-fg/[0.08] bg-page px-3"
-          : "sticky top-[calc(3rem+env(safe-area-inset-top))] z-30 -mx-4 flex h-12 w-[calc(100%+2rem)] items-center gap-2 border-b border-fg/[0.08] bg-page/95 px-4 backdrop-blur-md md:static md:mx-0 md:h-auto md:min-h-[48px] md:w-full md:border-0 md:bg-transparent md:px-0 md:py-1 md:backdrop-blur-none"
+          : "sticky top-0 z-30 -mx-4 flex h-[calc(3rem+env(safe-area-inset-top))] w-[calc(100%+2rem)] items-center gap-2 border-b border-fg/[0.08] bg-page/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md md:static md:mx-0 md:h-auto md:min-h-[48px] md:w-full md:border-0 md:bg-transparent md:px-0 md:py-1 md:backdrop-blur-none"
       }
     >
       <button type="button" onClick={onOpenPicker} aria-haspopup="dialog" className="flex h-11 min-w-0 flex-1 items-center gap-2 text-left">

@@ -509,7 +509,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
   }
 
   return (
-    <div className="space-y-3 pb-[calc(var(--dock-h)+1rem)] md:pb-0" style={dockCssVars}>
+    <div data-play-screen className="space-y-3 pb-[calc(var(--dock-h)+1rem)] md:pb-0" style={dockCssVars}>
       {vm.firstRun && <FirstRun onDone={vm.finishFirstRun} onDemo={vm.startDemo} />}
       {/* ---- header: "H7 · P3 · 108" and the course name; opens the course/hole sheet ---- */}
       {holeHeader(false)}
