@@ -53,10 +53,6 @@ export default async function YouPage() {
         />
         <HubRow href="/you/settings" label="Settings" value={<ThemeLabel />} />
       </nav>
-
-      <Link href="/you/lab" className="flex min-h-[44px] w-fit items-center text-sm font-semibold text-accent hover:underline">
-        Lab: compare, what if, which tees
-      </Link>
     </div>
   )
 }

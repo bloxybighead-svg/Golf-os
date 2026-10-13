@@ -120,10 +120,8 @@ Detailed numeric results for the last three are in [`STATISTICAL_ANALYSIS.md`](s
 
 | Route | Needs seeded Supabase data? |
 |---|---|
-| `/planner/custom` — enter a handicap and carries, generate live in the browser | No — runs fully client-side |
-| `/planner/dispersion` — dispersion charts with polygon QA | Yes |
-| `/planner/compare` — two-golfer overlay + sample-size convergence demo | Yes |
-| `/planner/tbox` — which tee to play, with real course search | Uses your `rounds` table; course search uses a free public API |
+| `/you/bag/misses` — dispersion charts with polygon QA | Yes |
+| `/you/bag/compare` — two-golfer overlay + sample-size convergence demo | Yes |
 | `/planner` — search any course, stand anywhere on a satellite map, see which club to hit | Optional (falls back to a handicap-based golfer); course shapes come from OpenStreetMap |
 
 ## Quick start

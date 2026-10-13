@@ -38,15 +38,17 @@ const nextConfig = {
       { source: "/trends", destination: "/you", permanent: false },
       // The planner is the Play tab itself now
       { source: "/planner", destination: "/", permanent: false },
-      // Course Planner sub-tabs -> the matching tool on /you/bag
-      { source: "/planner/dispersion", destination: "/you/bag?view=dispersion", permanent: false },
-      { source: "/planner/compare", destination: "/you/bag?view=compare", permanent: false },
-      { source: "/planner/custom", destination: "/you/bag?view=custom", permanent: false },
-      { source: "/planner/tbox", destination: "/you/bag?view=tbox", permanent: false },
-      // The original /simulator pages, which later became Course Planner sub-tabs
-      { source: "/simulator", destination: "/you/bag?view=dispersion", permanent: false },
+      // Course Planner sub-tabs and the original /simulator pages -> the matching bag page
+      { source: "/planner/dispersion", destination: "/you/bag/misses", permanent: false },
+      { source: "/planner/compare", destination: "/you/bag/compare", permanent: false },
+      { source: "/planner/:view(custom|tbox)", destination: "/you/bag", permanent: false },
+      { source: "/simulator", destination: "/you/bag/misses", permanent: false },
       { source: "/simulator/course", destination: "/", permanent: false },
-      { source: "/simulator/:view(dispersion|compare|custom|tbox)", destination: "/you/bag?view=:view", permanent: false },
+      { source: "/simulator/dispersion", destination: "/you/bag/misses", permanent: false },
+      { source: "/simulator/compare", destination: "/you/bag/compare", permanent: false },
+      { source: "/simulator/:view(custom|tbox)", destination: "/you/bag", permanent: false },
+      // The retired Lab
+      { source: "/you/lab", destination: "/you/bag", permanent: false },
     ];
   },
 };

@@ -72,9 +72,6 @@ strengths/weaknesses moved to You.
 
 Not yet applied (candidates for the next R-steps):
 
-- **My bag** is "Your Bag" on `/you/bag` with four tools (Dispersion,
-  Compare, Custom, Tee box). Direction: clubs + dispersion, with Compare
-  inside, and no mention of Custom golfer or Tee box.
 - **Typography:** Geist isn't actually loaded (system UI font), no
   tabular figures, and 500/700 weights are used widely.
 - **Cards and decoration:** the app is card-based with `shadow-sm`, pill

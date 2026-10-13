@@ -16,7 +16,7 @@ export async function DispersionSection() {
         <p className="font-semibold">No shot data yet</p>
         <p className="mt-1 text-xs">
           Sign in and upload a launch-monitor file, or type in a few shots, on{" "}
-          <Link href="/you/bag?view=shots" className="underline">
+          <Link href="/you/bag/shots" className="underline">
             My shot data
           </Link>
           .

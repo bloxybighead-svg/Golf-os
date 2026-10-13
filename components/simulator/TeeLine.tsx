@@ -3,7 +3,6 @@
 import { fetchWithSnapshot, snapshotKeys } from "@/lib/offline/snapshots"
 import { useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
-import Link from "next/link"
 import { Check, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { courseHandicap, recommendTee, type TeeOption } from "@/lib/tbox/estimate"
 import { driveYdsFor, neighbourTees, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
@@ -62,10 +61,7 @@ export function TeeLine({ courseId, courseName, driverCarryYds, handicapIndex, c
   if (!result) {
     return (
       <p className="truncate text-sm text-fg-3">
-        {compact ? "No tee data." : "No tee data for this course."}{" "}
-        <Link href="/you/lab?view=tbox" className="font-semibold text-accent hover:underline">
-          Enter tees
-        </Link>
+        {compact ? "No tee data." : "No tee data for this course."}
       </p>
     )
   }

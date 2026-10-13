@@ -5,16 +5,9 @@ import { cleanHandicap, type CourseRef } from "@/lib/golfer/baseline"
 import { MyBag } from "@/components/you/MyBag"
 import { SubPageHeader } from "@/components/you/SubPageHeader"
 
-// Links from before the split: the research tools moved to /you/lab, "Your
-// misses" to /you/bag/misses and "My shot data" to /you/bag/shots.
-const LAB_VIEWS = ["compare", "custom", "tbox"]
-
 export default async function BagPage(props: { searchParams?: Promise<{ view?: string }> }) {
-  const searchParams = await props.searchParams;
-  const view = searchParams?.view
-  if (view && LAB_VIEWS.includes(view)) redirect(`/you/lab?view=${view}`)
-  if (view === "dispersion") redirect("/you/bag/misses")
-  if (view === "shots") redirect("/you/bag/shots")
+  // Old ?view= links land on the bag itself.
+  if ((await props.searchParams)?.view) redirect("/you/bag")
 
   const supabase = await createClient()
   const [profile, { data: baseline }, { data: tracked }] = await Promise.all([

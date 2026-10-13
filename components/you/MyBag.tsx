@@ -234,6 +234,7 @@ export function MyBag({
 
       <LinkRow href="/you/bag/shots" title="My shot data" blurb="Upload your real shots so the planner learns your game" />
       <LinkRow href="/you/bag/misses" title="Your misses" blurb="Where each club's shots land" />
+      <LinkRow href="/you/bag/compare" title="Compare with a handicap" blurb="Your shots next to a typical golfer's" />
     </div>
   )
 }
