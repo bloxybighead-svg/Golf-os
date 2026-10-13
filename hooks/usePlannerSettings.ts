@@ -1,15 +1,16 @@
 "use client"
 
 // The Play planner's golfer settings, saved on this device: whose shots, handicap,
-// carries, tendency, bags, recent courses, the setup prompt and the scoring
+// carries, tendency, bags, recent courses and the scoring
 // baseline choice (moved verbatim from CourseMapClient.tsx). Same localStorage keys.
 
 import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import type { Tendency } from "@/lib/golfer/build"
 import type { Club } from "@/lib/golfer/tables"
 import { CALIBRATED_DEFAULT_BAG, DEFAULT_BAG, normalizeBag } from "@/lib/golfer/bag"
 import type { MyProfile, ShotSource } from "@/lib/planner/types"
-import { ONBOARDED_KEY, SETTINGS_KEY, applyBaselineToDevice, cleanCarries, type Baseline } from "@/lib/golfer/baseline"
+import { HOME_COURSE_KEY, ONBOARDED_KEY, SETTINGS_KEY, applyBaselineToDevice, cleanCarries, type Baseline } from "@/lib/golfer/baseline"
 import { COMPARE_AGAINST_EVENT, COMPARE_AGAINST_KEY, readCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
 import { readRisk, RISK_EVENT, RISK_KEY } from "@/lib/course/riskSetting"
 import { readSpread, SPREAD_EVENT, SPREAD_KEY } from "@/lib/course/spreadSetting"
@@ -17,8 +18,7 @@ import { ON_COURSE_SPREAD, SMART_RISK_STROKES } from "@/lib/course/strategy"
 import { RECENT_KEY, type CourseHit } from "@/lib/planner/storage"
 import { cleanWedgeCarries, type PartialName } from "@/lib/golfer/partials"
 import { BAG_SYNC_DEBOUNCE_MS, SETTINGS_STAMP_KEY, decideSync, stampMs, type SyncedSettings } from "@/lib/golfer/bagSync"
-import { bannerVisible, readPrompt, recordView, writePrompt } from "@/lib/planner/setupPrompt"
-import { saveGolferSettings } from "@/app/welcome/actions"
+import { saveBaseline, saveGolferSettings } from "@/app/welcome/actions"
 
 const SIDES = ["auto", "straight", "left", "right", "both"]
 const STRENGTHS = ["slight", "moderate", "strong"]
@@ -48,7 +48,8 @@ function writeStamp(ms: number) {
   }
 }
 
-export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibrated: unknown[] | null; myProfile: MyProfile | null; baseline: Baseline | null }) {
+export function usePlannerSettings({ calibrated, myProfile, baseline, signedIn }: { calibrated: unknown[] | null; myProfile: MyProfile | null; baseline: Baseline | null; signedIn: boolean }) {
+  const router = useRouter()
   // --- golfer ---
   // Default: the golfer's own shots when they have a profile, else the old public data (?legacy=1), else a handicap estimate.
   const [source, setSource] = useState<ShotSource>(myProfile ? "calibrated" : calibrated ? "legacy" : "handicap")
@@ -60,8 +61,6 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
   const [extraCarries, setExtraCarries] = useState<Partial<Record<Club, number>>>({})
   // Carries typed for partial wedge swings (You -> My bag); a partial without one is derived from its full club.
   const [wedgeCarries, setWedgeCarries] = useState<Partial<Record<PartialName, number>>>({})
-  // First visit on this device with no setup yet: offer it, once.
-  const [showSetupPrompt, setShowSetupPrompt] = useState(false)
   // Which clubs are in the bag, per shot source (the calibrated golfer and a
   // handicap-based one carry different bags). Remembered on this device.
   const [bags, setBags] = useState<Record<ShotSource, Club[]>>({
@@ -129,13 +128,6 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     // first time Play opens here (their home course, their clubs).
     const onboarded = localStorage.getItem(ONBOARDED_KEY)
     if (baseline && onboarded !== "1") applyBaselineToDevice(baseline)
-    else if (!baseline && onboarded !== "1") {
-      // Shown for the first few visits, then it collapses to a dot on the You tab (lib/planner/setupPrompt.ts).
-      const { state } = readPrompt()
-      const next = recordView(state)
-      writePrompt(next)
-      setShowSetupPrompt(bannerVisible(next))
-    }
     const raw = localStorage.getItem(SETTINGS_KEY)
     if (raw) {
       const v = JSON.parse(raw)
@@ -248,6 +240,30 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPush, hydrated, syncedSerial])
 
+  // Set up while signed out, then signed in to an account with no setup: the account takes this device's.
+  const migrated = useRef(false)
+  useEffect(() => {
+    if (!signedIn || baseline || !hydrated || migrated.current) return
+    try {
+      if (localStorage.getItem(ONBOARDED_KEY) !== "1") return
+      migrated.current = true
+      const homeCourse = JSON.parse(localStorage.getItem(HOME_COURSE_KEY) ?? "null")
+      const carries = { ...extraCarries, Driver: driverCarry, "7-Iron": sevenIronCarry }
+      void saveBaseline({ handicapIndex: null, carries, homeCourse })
+        .then(() => saveGolferSettings(synced))
+        .then((res) => {
+          if (res) writeStamp(Date.parse(res.updatedAt))
+          router.refresh()
+        })
+        .catch(() => {
+          migrated.current = false // offline: tried again next visit
+        })
+    } catch {
+      /* storage blocked: nothing to move */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn, baseline, hydrated])
+
   /** Adds or removes a club from the current bag. Returns false when nothing changed (a bag keeps at least one club). */
   function toggleClub(c: Club): boolean {
     const current = bags[source]
@@ -283,8 +299,6 @@ export function usePlannerSettings({ calibrated, myProfile, baseline }: { calibr
     setTendency,
     extraCarries,
     wedgeCarries,
-    showSetupPrompt,
-    setShowSetupPrompt,
     bags,
     bag,
     compareAgainst,

@@ -85,7 +85,6 @@ function details(over: Partial<ComponentProps<typeof DetailsPanel>> = {}) {
       avgLeft={187}
       estimateNotes={{ "4-Iron": "No 4-Iron shots on record: estimated from your 5-Iron" }}
       onCourseSpread={1.2}
-      onShowIntro={() => {}}
       {...over}
     />
   )

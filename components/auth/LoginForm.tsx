@@ -23,11 +23,9 @@ export default function LoginForm() {
   const [error, setError] = useState("")
   const [checkEmail, setCheckEmail] = useState(false)
 
-  // Straight to setup the first time an account signs in (no baseline saved yet),
-  // otherwise wherever they were headed.
-  async function afterSignIn(supabase: Awaited<ReturnType<typeof createClient>>) {
-    const { data } = await supabase.from("golfer_baseline").select("user_id").maybeSingle()
-    router.replace(data ? redirectTo : "/welcome")
+  // A first sign-in needs no setup step: Play asks for it, or moves this device's setup to the account.
+  function afterSignIn() {
+    router.replace(redirectTo)
     router.refresh()
   }
 
@@ -40,7 +38,7 @@ export default function LoginForm() {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        await afterSignIn(supabase)
+        afterSignIn()
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
@@ -48,7 +46,7 @@ export default function LoginForm() {
         if (!data.session) {
           setCheckEmail(true)
         } else {
-          await afterSignIn(supabase)
+          afterSignIn()
         }
       }
     } catch (err) {

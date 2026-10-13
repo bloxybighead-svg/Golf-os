@@ -30,7 +30,7 @@ export const SETTINGS_KEY = "golfos.planner.v1"
 export const LAST_POSITION_KEY = "golfos.lastPosition.v1"
 /** The course the golfer chose as home (setup), apart from wherever Play last opened. */
 export const HOME_COURSE_KEY = "golfos.homeCourse.v1"
-/** "1" once setup ran on this device, "dismissed" if the golfer waved the prompt away. */
+/** "1" once setup ran on this device. */
 export const ONBOARDED_KEY = "golfos.onboarded.v1"
 
 export const MIN_CARRY = 40

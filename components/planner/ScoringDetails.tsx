@@ -5,20 +5,12 @@ import { SMART_MAX_PENALTY_RATE } from "@/lib/course/strategy"
 export function ScoringDetails({
   baselineHandicap,
   onCourseSpread,
-  onShowIntro,
 }: {
   baselineHandicap: number | null
   onCourseSpread: number
-  /** Reopens the first-visit intro. */
-  onShowIntro?: () => void
 }) {
   return (
     <div className="space-y-2 text-xs leading-relaxed text-fg-3">
-      {onShowIntro && (
-        <button onClick={onShowIntro} className="flex min-h-[44px] items-center text-sm font-semibold text-accent hover:underline md:min-h-0">
-          Show the intro again
-        </button>
-      )}
       <p>
         Every shot is placed on the map and given a lie (green, fairway, rough, bunker, trees, water or out of bounds).
         Its value is the average number of strokes to hole out from that lie and distance, plus one for the shot itself.

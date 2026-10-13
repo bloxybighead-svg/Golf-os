@@ -22,6 +22,9 @@ import { type Placing } from "@/components/simulator/courseColors"
 import { shortCourseName } from "@/lib/planner/labels"
 import { AUTO_AIM, aimReducer } from "@/lib/planner/aimMode"
 import { choiceAfterHolePick } from "@/lib/planner/clubChoice"
+import { ONBOARDED_KEY, applyBaselineToDevice, type Baseline, type CourseRef } from "@/lib/golfer/baseline"
+import { isFirstVisit } from "@/lib/planner/firstRun"
+import { saveBaseline } from "@/app/welcome/actions"
 import { DEFAULT_COURSE, DEFAULT_HOLE_REF, hasHomeCourse, loadLastPosition, loadNoHazard, loadZoom, saveLastPosition, updateLastPositionHole, type CourseHit } from "@/lib/planner/storage"
 import { holeFitPoints, holePinFor as holePinForFeatures } from "@/lib/planner/geometry"
 import { usePlannerSettings } from "@/hooks/usePlannerSettings"
@@ -52,15 +55,17 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   } = geo
 
   // --- golfer (whose shots, bag, carries; saved on this device) ---
-  const settings = usePlannerSettings({ calibrated, myProfile, baseline })
+  const settings = usePlannerSettings({ calibrated, myProfile, baseline, signedIn: !!authUser })
   const {
     source, setSource, handicap, setHandicap, driverCarry, setDriverCarry, sevenIronCarry, setSevenIronCarry,
-    tendency, setTendency, extraCarries, wedgeCarries, showSetupPrompt, setShowSetupPrompt, bag, compareAgainst, recent,
+    tendency, setTendency, extraCarries, wedgeCarries, bag, compareAgainst, recent,
     hydrated, remember,
   } = settings
   // A round being scored (kept on the device) and which of its sheets is open.
   const [round, setRound] = useState<ActiveRound | null>(null)
   const [homeChosen, setHomeChosen] = useState(true) // read from the device on mount
+  // A first visit opens the "Find your course" screen instead of the demo hole.
+  const [firstRun, setFirstRun] = useState(false)
   const [roundSheet, setRoundSheet] = useState<RoundSheet | null>(null)
 
   // --- positions ---
@@ -142,6 +147,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
       if (active && last?.course.id !== active.course.id) {
         void loadCourse(active.course, { autoHoleRef: nextUnscored(active) ?? active.startHole })
       } else if (last) void loadCourse(last.course, last.holeId ? { autoHoleId: last.holeId } : { autoFirstHole: true })
+      else if (isFirstVisit({ hasLastCourse: false, onboarded: localStorage.getItem(ONBOARDED_KEY), hasBaseline: !!baseline })) setFirstRun(true)
       else void loadCourse(DEFAULT_COURSE, { autoHoleRef: DEFAULT_HOLE_REF })
     } catch {
       /* private mode or corrupt data: start from defaults */
@@ -254,6 +260,20 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     setRound(next)
     saveActiveRound(next)
     void (next ? kvSet(ACTIVE_ROUND_IDB_KEY, next) : kvDelete(ACTIVE_ROUND_IDB_KEY))
+  }
+  /** The demo choice on the first-run screen: Pebble Beach, as a returning demo visitor would see it. */
+  function startDemo() {
+    setFirstRun(false)
+    void loadCourse(DEFAULT_COURSE, { autoHoleRef: DEFAULT_HOLE_REF })
+  }
+  /** The first-run numbers become this device's setup (and the account's, when signed in), then Play opens on hole 1. */
+  async function finishFirstRun(c: CourseRef, b: Baseline) {
+    applyBaselineToDevice(b)
+    if (authUser) await saveBaseline({ handicapIndex: b.handicapIndex, carries: b.carries, homeCourse: c }).catch(() => {})
+    settings.loadFromDevice()
+    setHomeChosen(true)
+    setFirstRun(false)
+    void loadCourse(c, { autoFirstHole: true })
   }
   function chooseCourse(c: CourseHit) {
     setQuery("")
@@ -400,7 +420,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimLie, aimState, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changeRound, holeTitle, headerCourseName,
-    chooseCourse, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
+    chooseCourse, firstRun, startDemo, finishFirstRun, chosen, chosenAtAim, chosenLive, clubChoice, correctionNote, correctionSubmitting, course,
     deleteZone, distPin, drawKind, driverCarry, editingHole, estimateNotes, extraCarries, finishDraw,
     fit, following, fromLabel, geometry, goToHoleNumber, gpsAccuracyYds, gpsError, gpsNote, handicap,
     hasCourseProblems, hits, hole, holeBearingDeg, holeId, holeLabel, holeQuality, holes, hydrated,
@@ -410,9 +430,9 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     refreshing, rings, round, roundHere, scoreBaseline, searched, searching, dispatchAim,
     setClubChoice, setDriverCarry, setEditingHole, setHandicap, setHazardConfirmed, setLayersMenuPos,
     setPickerOpen, setPinManual, setPlacing, setQuery, setSevenIronCarry, setSheetOpen,
-    setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowSetupPrompt, setShowTrouble,
+    setShowCarry, setShowLayersMenu, setShowMarks, setShowRings, setShowTrouble,
     setShowZones, setSource, setTendency, sevenIronCarry, sheetOpen, showCarry, showLayersMenu, showMarks,
-    showRings, showSetupPrompt, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
+    showRings, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped, lastShot, editShot,
