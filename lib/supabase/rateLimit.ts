@@ -1,5 +1,5 @@
 // Free rate limiting for the course API routes, backed by one Supabase table
-// and function (supabase/api_rate_limits.sql). Called only from server routes
+// and function (supabase/migrations/0001_baseline.sql). Called only from server routes
 // with the service-role key (SUPABASE_SERVICE_ROLE_KEY, server-only).
 //
 // Search, tees and scorecard each have their own per-IP bucket, so typing in

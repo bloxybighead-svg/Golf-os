@@ -172,6 +172,25 @@ Then run the SQL files in [`supabase/`](supabase/) (and `supabase/migrations/`) 
 
 > A one-command seed script is not included yet. The seeded tables were generated from the calibrated profile in the author's own (uncommitted) launch-monitor data.
 
+## Database
+
+The schema lives in [`supabase/migrations/`](supabase/migrations/), applied in filename order with the [Supabase CLI](https://supabase.com/docs/guides/cli). `0001_baseline.sql` is the whole schema as of the move to tracked migrations; the loose SQL files it replaced are in [`supabase/legacy/`](supabase/legacy/) for history.
+
+```bash
+supabase login
+supabase link --project-ref <your-project-ref>
+supabase db push --include-all
+```
+
+On a new, empty project that is all you need. On the existing project, which already has the 0001 schema, mark it applied first instead of running it:
+
+```bash
+supabase migration repair --status applied 0001
+supabase db push --include-all
+```
+
+`--include-all` is needed because the older `2026...` migrations sort after `0001` to `0004`. If those two were applied by hand in the SQL editor, repair them as applied too (`supabase migration repair --status applied 20261012000000 20261012000100`). Add new changes as a new file in `supabase/migrations/` (`supabase migration new <name>`), never by editing an applied one.
+
 ## Limitations
 
 Stated up front, because they bound what the results can claim:

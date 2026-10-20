@@ -56,7 +56,7 @@ describe("QA: real Driver dispersion against a realistic fairway", () => {
   // without depending on live Supabase data. Parameters below are the author's
   // real calibrated Driver stats from club_dispersion: mean 264.1 carry,
   // sd 11.3; offline mean -1.7 (median), sd 27.7 -- see
-  // supabase/simulated_shots_queries.sql query #1 output.
+  // supabase/legacy/simulated_shots_queries.sql query #1 output.
   function mulberry32(seed: number) {
     return function () {
       seed |= 0

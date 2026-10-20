@@ -94,7 +94,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
  * unique (round_id, hole_number), then the holes no longer in the round are
  * removed, so saving the same holes twice leaves exactly one row per hole.
  * penalty_shot is always sent (null when there was none) so an upsert clears an
- * old value; it needs supabase/round_holes_penalty_shot.sql, applied 2026-10-04.
+ * old value; it needs supabase/migrations/0001_baseline.sql, applied 2026-10-04.
  */
 async function saveHoles(supabase: Supabase, roundId: string, userId: string, holes: ScoredHole[] | null) {
   if (!holes || holes.length === 0) {

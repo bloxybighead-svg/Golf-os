@@ -1,6 +1,6 @@
 // The golfer's OB tags per hole (lib/course/obTags.ts makes the zones): the
 // pure edits, the device storage, and the row shape for Supabase
-// (hole_ob_tags, supabase/hole_ob_tags.sql).
+// (hole_ob_tags, supabase/migrations/0001_baseline.sql).
 
 import { clampMargin, type ObAnswer, type ObSide, type ObTag } from "@/lib/course/obTags"
 import { OB_MARGIN_YDS } from "@/lib/course/strategy"

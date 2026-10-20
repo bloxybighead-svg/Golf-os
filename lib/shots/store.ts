@@ -3,7 +3,7 @@
 // session weights are recomputed against today.
 //
 // The logic talks to a small ShotDb so it can be tested without a database;
-// supabaseShotDb() is the real one. Row-level security (supabase/shot_data_13c.sql)
+// supabaseShotDb() is the real one. Row-level security (supabase/migrations/0001_baseline.sql)
 // is what keeps each account to its own rows -- the user_id sent here is only
 // the owner stamp, the database checks it.
 

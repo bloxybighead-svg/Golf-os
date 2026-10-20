@@ -23,7 +23,7 @@ export interface HoleEntry {
   green_miss_side: GreenMiss | null
   putts: number | null
   penalty: boolean
-  /** Which shot took it; null when there was no penalty or it was not said. Needs supabase/round_holes_penalty_shot.sql. */
+  /** Which shot took it; null when there was no penalty or it was not said. Needs supabase/migrations/0001_baseline.sql. */
   penalty_shot?: PenaltyShot | null
   /** The hole's stroke index from the scorecard (1 = hardest), for net double bogey. Optional. */
   stroke_index?: number | null

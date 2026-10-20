@@ -15,7 +15,7 @@ describe("computeUserSg", () => {
   })
 
   it("matches the hand-worked (2,5]-bracket arithmetic used to seed sg_benchmarks", () => {
-    // Same inputs as the (2,5) bracket row in supabase/sg_benchmarks.sql.
+    // Same inputs as the (2,5) bracket row in supabase/migrations/0001_baseline.sql.
     const missedGreens = 18 * (1 - 0.461)
     const result = computeUserSg({
       holesPlayed: 18,

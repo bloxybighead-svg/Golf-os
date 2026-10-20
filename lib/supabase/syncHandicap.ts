@@ -91,7 +91,7 @@ export async function syncCalculatedHandicap(
     const flags = { esr: adjustments.esr, cap: adjustments.cap }
     if (needsNewCalculatedEntry(latest ?? null, index, flags)) {
       const row = { user_id: userId, handicap_index: index, source: "calculated", rounds_used: differentialsUsed }
-      // esr_adjustment / cap_applied come from supabase/handicap_caps.sql; before it has run, record the index without them.
+      // esr_adjustment / cap_applied come from supabase/migrations/0001_baseline.sql; before it has run, record the index without them.
       let { error: insError } = await supabase
         .from("handicap_tracking")
         .insert({ ...row, esr_adjustment: flags.esr, cap_applied: flags.cap === "none" ? null : flags.cap })

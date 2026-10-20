@@ -1,0 +1,1 @@
+Superseded by `../migrations/0001_baseline.sql`. These are the loose, hand-run files the schema was built from, kept for history only; do not run them. Several of them contradict each other (the baseline's header lists which file won each conflict).

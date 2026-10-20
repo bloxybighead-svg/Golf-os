@@ -6,7 +6,7 @@ import { cleanCarries, cleanHandicap, type Baseline, type CourseRef } from "@/li
 import { settingsFromRow } from "@/lib/golfer/bagSync"
 
 // ?legacy=1 loads the old public calibrated profile next to the golfer's own, to compare the two
-// until the old data is removed (supabase/shot_data_13c_lockdown.sql). Without it the page never names a golfer.
+// until the old data is removed (supabase/migrations/0001_baseline.sql). Without it the page never names a golfer.
 export default async function CoursePage(props: { searchParams?: Promise<{ legacy?: string }> }) {
   const searchParams = await props.searchParams;
   const supabase = await createClient()

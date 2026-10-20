@@ -33,7 +33,7 @@ export interface Round {
   handicap_index: number | null   // golfer's tracked index at the time this round was saved
   is_9_hole: boolean              // derived from holes_played, kept only for convenient filtering
   created_at: string
-  // WHS scoring (lib/handicap.ts, filled in by syncCalculatedHandicap). Absent until whs_rounds.sql has run.
+  // WHS scoring (lib/handicap.ts, filled in by syncCalculatedHandicap). Absent until migration 0001 has run.
   adjusted_score?: number | null  // after net double bogey / par + 5; null for score-only rounds
   score_cap?: 'net_double_bogey' | 'par_plus_5' | 'approximate' | 'none' | null
   differential_status?: 'rated' | 'waiting_for_index' | 'no_rating' | 'too_short' | null
@@ -91,7 +91,7 @@ export interface HandicapEntry {
   calculation_date: string
   rounds_used: number | null
   notes: string | null
-  /** Rule 5.9 reductions acting on a calculated index (0 or negative). Absent until handicap_caps.sql has run. */
+  /** Rule 5.9 reductions acting on a calculated index (0 or negative). Absent until migration 0001 has run. */
   esr_adjustment?: number | string | null
   /** Rule 5.8 cap applied to a calculated index. */
   cap_applied?: 'soft' | 'hard' | null

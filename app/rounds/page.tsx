@@ -23,7 +23,7 @@ export default async function RoundsPage(
       <div className="rounded-xl border border-warn/40 bg-warn/10 px-5 py-4 text-sm text-warn">
         <p className="font-semibold">Supabase not connected</p>
         <p className="mt-1 text-xs text-warn">
-          Run supabase/rounds_schema.sql and check your .env.local keys.
+          Run the supabase/migrations and check your .env.local keys.
         </p>
       </div>
     )
