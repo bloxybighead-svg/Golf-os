@@ -19,10 +19,12 @@
 -- Left out on purpose (data fixes or read-only checks, not schema): scale_partial_differentials.sql,
 -- review_round_dates.sql, shot_data_13c_migrate_dillon.sql, simulated_shots_queries.sql, tests/.
 --
--- INFERRED, not in any file: the rounds columns holes_played .. miss_right_pct and session_blocks.drill_id
--- exist in the live app (lib/supabase/types.ts) but no SQL file creates them; their types are read from
--- that code. wedge_reference (RLS-only in per_user_data.sql, unused by the app) is not created.
--- Compare against the live schema (supabase db diff) before relying on this file.
+-- Checked against the live table and column list (2026-10-20). Four things the files did not say, taken from it:
+-- the rounds columns holes_played .. miss_right_pct (no file creates them) and the rounds columns fairways_hit /
+-- fairways_total / gir (gone live, so not here); drills.category also allows 'Mental'; session_blocks has
+-- drill_free_text; wedge_reference exists. The handicap_tracking columns esr_adjustment / cap_applied are not
+-- live yet and are in 0004_handicap_caps.sql. Indexes, policies, functions and views were not read from the live
+-- database, so they are the files' versions.
 
 create extension if not exists pg_cron;
 
@@ -48,9 +50,6 @@ create table if not exists public.rounds (
   up_and_downs   integer,
   miss_left_pct  numeric,
   miss_right_pct numeric,
-  fairways_hit   integer,
-  fairways_total integer,
-  gir            integer check (gir between 0 and 18),
   notes          text,
   handicap_index numeric(4, 1),   -- the golfer's tracked index when the round was saved
   is_9_hole      boolean generated always as (holes_played = 9) stored,
@@ -72,7 +71,7 @@ create table if not exists public.drills (
   id          uuid default gen_random_uuid() primary key,
   user_id     uuid not null references auth.users(id) on delete cascade,
   name        text not null,
-  category    text not null check (category in ('Full Swing','Wedge','Chipping','Bunker','Putting')),
+  category    text not null check (category in ('Full Swing','Wedge','Chipping','Bunker','Putting','Mental')),
   description text,
   target_metric text,
   created_at  timestamptz default now()
@@ -111,6 +110,7 @@ create table if not exists public.session_blocks (
   user_id          uuid not null references auth.users(id) on delete cascade,
   session_id       uuid references public.practice_sessions(id) on delete cascade not null,
   drill_id         uuid references public.drills(id),
+  drill_free_text  text,
   block_order      integer not null default 0,
   block_type       text not null,
   duration_minutes integer,
@@ -153,8 +153,6 @@ create table if not exists public.handicap_tracking (
   calculation_date timestamptz not null default now(),
   rounds_used integer,            -- how many differentials fed a 'calculated' row; null for 'manual'
   notes text,
-  esr_adjustment numeric(3, 1),   -- Rule 5.9 total acting on the index; 0 or negative
-  cap_applied text check (cap_applied is null or cap_applied in ('soft', 'hard')),   -- Rule 5.8
   created_at timestamptz not null default now(),
   unique (user_id, calculation_date)
 );
@@ -207,6 +205,14 @@ create policy "insert own round_holes" on public.round_holes for insert with che
 );
 create policy "update own round_holes" on public.round_holes for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "delete own round_holes" on public.round_holes for delete using (auth.uid() = user_id);
+
+create table if not exists public.wedge_reference (
+  id smallint primary key default 1,
+  updated_at timestamptz default now(),
+  entries jsonb not null default '[]'::jsonb
+);
+alter table public.wedge_reference enable row level security;
+create policy "public read wedge_reference" on public.wedge_reference for select using (true);
 
 -- Strokes-gained proxy and drill library --------------------------------------------------------
 create table if not exists public.sg_benchmarks (
