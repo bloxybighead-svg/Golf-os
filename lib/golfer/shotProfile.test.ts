@@ -91,7 +91,7 @@ describe("recency and surface weighting", () => {
 
 describe("continuity with the committed synthetic profile", () => {
   it("fits the reference shots to the same profile 13b's regression tests use", () => {
-    const rows = parseCsv(readFileSync(path.join(__dirname, "__fixtures__", "synthetic_shots.csv"), "utf8"))
+    const rows = parseCsv(readFileSync(path.join(__dirname, "../../shot-pattern-simulator/reference_data/synthetic_shots.csv"), "utf8"))
     const col = (n: string) => rows[0].indexOf(n)
     const sessions = [session("ref", { date: "2026-10-01" })]
     const shots: StoredShot[] = rows

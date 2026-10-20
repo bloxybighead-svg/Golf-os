@@ -4,12 +4,12 @@ import path from "path"
 import { parseCsv } from "@/lib/shots/parseCsv"
 import { calibrate, type FitShot } from "./calibrate"
 
-// Fixtures: synthetic_shots.csv is shot-pattern-simulator/reference_data/synthetic_shots.csv
-// (a generic 3-handicap from a fixed seed, no real data); synthetic_fit.json is what
+// Fixtures: shot-pattern-simulator/reference_data/synthetic_shots.csv
+// (a generic 3-handicap from a fixed seed, no real data); __fixtures__/synthetic_fit.json is what
 // `python calibrate.py synthetic_shots.csv --min-shots 10` wrote from its full swings.
 // Regenerate both together with `python make_synthetic_fixtures.py` if calibrate.py changes.
 const dir = path.join(__dirname, "__fixtures__")
-const rows = parseCsv(readFileSync(path.join(dir, "synthetic_shots.csv"), "utf8"))
+const rows = parseCsv(readFileSync(path.join(__dirname, "../../shot-pattern-simulator/reference_data/synthetic_shots.csv"), "utf8"))
 const header = rows[0]
 const col = (name: string) => header.indexOf(name)
 const all = rows.slice(1).map((r) => ({

@@ -46,3 +46,6 @@ lib/golfer/__fixtures__/dillon_fit.json
 lib/golfer/__fixtures__/dillon-fitted-profile.json
 shot-pattern-simulator/reference_data/real_shots.csv
 shot-pattern-simulator/reference_data/dillon_profile.json
+
+# generated script output
+*_output.txt

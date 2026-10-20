@@ -1,14 +1,24 @@
-# Golf OS — Shot Pattern Simulator
+# Golf OS
 
 [![CI](https://github.com/bloxybighead-svg/Golf-os/actions/workflows/ci.yml/badge.svg)](https://github.com/bloxybighead-svg/Golf-os/actions/workflows/ci.yml)
 
-Golfers consistently underestimate how widely they miss, and then make course-management decisions (which club, where to aim, which tees to play) based on the shot they *hoped* to hit rather than the pattern they actually produce. Fixing that with data requires thousands of shots per player, which no amateur will ever log.
-
-This project is a **shot-dispersion simulator** that generates statistically realistic synthetic shot data, validated against a golfer's real launch-monitor data, so dispersion analytics, tee-box recommendations, and aim-point optimization can be built and tested before real users have logged a single shot. It lives inside **Golf OS**, a Next.js + Supabase golf-tracking app (see [the original app](#the-golf-os-app) below).
+Golf OS is a golf course-management and tracking app built on a **shot-dispersion simulator**. Golfers consistently underestimate how widely they miss, then pick clubs, aim points and tees for the shot they *hoped* to hit rather than the pattern they produce. The app plans each shot from your real miss pattern, keeps score, tracks your handicap, and shows where your bag leaks strokes. The simulator generates statistically realistic shots, validated against a golfer's launch-monitor data, so the analytics could be built and tested before real users had logged a single shot.
 
 **Live app:** [golf-os-ten.vercel.app](https://golf-os-ten.vercel.app)
 
-Built as a school capstone extension by a 1.9–4 handicap golfer whose own launch-monitor data calibrates and validates the model. Python and Claude Code were used for the coding.
+Built as a school capstone extension by a 1.9-4 handicap golfer whose own launch-monitor data calibrates and validates the model. Python and Claude Code were used for the coding.
+
+## The app
+
+Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS and Supabase, deployed on Vercel. Three tabs:
+
+| Tab | Route | What it does |
+|---|---|---|
+| **Play** | `/` | The course planner. Search any course, stand anywhere on a satellite map, and see which club and aim give the fewest expected strokes for your dispersion. Start a round to keep score hole by hole. Course shapes come from OpenStreetMap; you can mark hazards the map is missing. |
+| **Rounds** | `/rounds` | Logged rounds with differentials. The handicap index follows the World Handicap System and recalculates when rounds change. |
+| **You** | `/you` | Handicap, strokes gained and trends (`/you/stats`), practice and drills (`/you/practice`), your bag (`/you/bag`: your misses, compare, shots) and settings (`/you/settings`). |
+
+Other routes: `/welcome` (first-run setup), `/login`, `/offline`. A round in progress is saved on the device and syncs when the connection returns.
 
 ## What it does
 
@@ -17,10 +27,10 @@ Built as a school capstone extension by a 1.9–4 handicap golfer whose own laun
 | **Synthetic golfer model** (Python) | "Generate realistic shots for a golfer of handicap *H*, or with these carries, or fitted to my real shots." |
 | **Statistical validation** | "Do the simulated shots look like real ones, including on sessions the model never saw? How many real shots does a golfer need before a fitted profile can be trusted?" |
 | **Aim-point optimizer** | "Given my dispersion and this hole's hazards, is aiming at the pin actually the best strategy, and by how much?" |
-| **Browser tools** (`/planner/*`) | Live dispersion charts, two-golfer comparison, a custom-golfer generator, and a tee-box recommender with real course lookup. |
+| **Browser tools** (Play, `/you/bag`) | Course planner with club and aim recommendations, live dispersion charts, two-golfer comparison, and a tee recommender with real course lookup. |
 | **Supabase backend** | Golfer profiles, simulated and real shots, and SQL views for dispersion stats and club-gapping analysis. |
 
-## Key results
+## Simulator research
 
 ### 1. The simulator reproduces real shots, including on unseen sessions
 
@@ -94,9 +104,9 @@ Parameters are anchored to published sources where they exist (Broadie's Golfmet
 | [`shot-pattern-simulator/`](shot-pattern-simulator/) | **The Python project.** The simulator model, calibration, statistical validation, and aim-point analysis. Everything in the research results is produced here. |
 | `shot-pattern-simulator/reference_data/` | Input data: synthetic shots (`synthetic_shots.csv`) and the profile fitted to them (`synthetic_profile.json`), both reproducible with `make_synthetic_fixtures.py`, and a reference synthetic dataset used as a sanity check. Real launch-monitor data is not committed. |
 | `shot-pattern-simulator/output/` | Generated plots and CSVs (git-ignored; recreate by running the scripts). |
-| [`app/`](app/) | The Next.js website. `app/planner/` holds the new pages; `app/api/courses/` proxies the free OpenGolfAPI for course search. The rest is the original Golf OS app. |
-| [`components/simulator/`](components/simulator/) | React components: the SVG dispersion canvas, the two-golfer overlay, and the client pages. |
-| [`lib/`](lib/) | Tested TypeScript logic: `dispersion/` (yards↔pixels, point-in-polygon, stats), `golfer/` (browser port of the handicap model), `tbox/` (USGA Course Handicap and tee recommendation). |
+| [`app/`](app/) | The Next.js routes. `app/api/courses/` proxies the free OpenGolfAPI for course search. |
+| [`components/`](components/) | React components, grouped by screen (`planner/`, `play/`, `rounds/`, `you/`, `bag/`, `simulator/`). |
+| [`lib/`](lib/) | Tested TypeScript logic: `golfer/` (browser port of the handicap model), `course/` (lies, strokes gained, club ranking), `dispersion/`, `rounds/` (including the World Handicap System calculation), `tbox/` (tee recommendation). |
 | [`supabase/`](supabase/) | SQL schemas, analytics views, and example queries. Run manually in the Supabase SQL editor. |
 | [`docs/images/`](docs/images/) | The figures shown in this README. |
 
@@ -116,13 +126,13 @@ Parameters are anchored to published sources where they exist (Broadie's Golfmet
 
 Detailed numeric results for the last three are in [`STATISTICAL_ANALYSIS.md`](shot-pattern-simulator/STATISTICAL_ANALYSIS.md).
 
-### Web app routes
+### Simulator routes
 
 | Route | Needs seeded Supabase data? |
 |---|---|
 | `/you/bag/misses` — dispersion charts with polygon QA | Yes |
 | `/you/bag/compare` — two-golfer overlay + sample-size convergence demo | Yes |
-| `/planner` — search any course, stand anywhere on a satellite map, see which club to hit | Optional (falls back to a handicap-based golfer); course shapes come from OpenStreetMap |
+| `/` — the course planner | Optional (falls back to a handicap-based golfer); course shapes come from OpenStreetMap |
 
 ## Quick start
 
@@ -146,7 +156,7 @@ python aim_point_population.py
 
 ```bash
 npm install
-npm test        # 41 unit tests
+npm test        # 841 unit tests in 66 files
 npm run dev     # http://localhost:3000
 ```
 
@@ -155,9 +165,10 @@ Create a free [Supabase](https://supabase.com) project and add your keys to `.en
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # server only: course cache and API rate limits
 ```
 
-Then run the SQL files in [`supabase/`](supabase/) in the Supabase SQL editor. The simulator pages need `simulated_shots_schema.sql`, `real_shots_schema.sql`, and `simulated_shots_views.sql`.
+Then run the SQL files in [`supabase/`](supabase/) (and `supabase/migrations/`) in the Supabase SQL editor. Personal tables are per-user with row-level security, so sign in at `/login` to log rounds and practice. The simulator pages need `simulated_shots_schema.sql`, `real_shots_schema.sql` and `simulated_shots_views.sql`. `npm run dev:clean` clears `.next` before starting.
 
 > A one-command seed script is not included yet. The seeded tables were generated from the calibrated profile in the author's own (uncommitted) launch-monitor data.
 
@@ -189,7 +200,3 @@ Stated up front, because they bound what the results can claim:
 ## License
 
 Released under the [MIT License](LICENSE). Real-shot data and course data carry the attributions listed above.
-
-## The Golf OS app
-
-Golf OS itself is a personal golf practice and performance tracker: practice-session logging with a Club Work section (carry/dispersion/spin per club), a drill library, round tracking with differentials and pressure-collapse flags, and a trends dashboard with CSV export. Built with **Next.js 14** (App Router, TypeScript), **Tailwind CSS**, and **Supabase**, deployed on Vercel.

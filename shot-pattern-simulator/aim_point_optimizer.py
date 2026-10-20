@@ -4,7 +4,7 @@ mean aiming somewhere else produces a lower EXPECTED score?
 
 HOLE / HAZARD LAYOUT IS ILLUSTRATIVE, NOT A REAL COURSE. No hole/hazard
 geometry exists anywhere in this project yet (the browser renderer's
-"fairway" is a plain placeholder trapezoid too -- see HANDOFF.md). This
+"fairway" is a plain placeholder trapezoid too). This
 builds a plausible example green guarded by a bunker on one side and
 water on the other, using the author's real, calibrated 7-Iron profile so
 the DISPERSION is real even though the HOLE is not.

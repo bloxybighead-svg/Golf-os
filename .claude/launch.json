@@ -4,7 +4,7 @@
     {
       "name": "golf-os-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:fast"],
+      "runtimeArgs": ["run", "dev"],
       "port": 3000
     }
   ]

@@ -9,7 +9,6 @@ counts as a real export, and the fitted profile is calibrate.py's output on it.
 
 Writes (all committed):
     reference_data/synthetic_shots.csv      reference_data/synthetic_profile.json
-    ../lib/golfer/__fixtures__/synthetic_shots.csv
     ../lib/golfer/__fixtures__/synthetic_fit.json
     ../lib/golfer/__fixtures__/synthetic-fitted-profile.json
 
