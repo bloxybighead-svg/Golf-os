@@ -42,6 +42,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Skip static assets and the PWA icon/manifest/service-worker files; everything else runs through.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/|icon.svg|apple-icon.png|manifest.webmanifest|sw.js|swe-worker).*)"],
+  // Skip static assets, the PWA icon/manifest/service-worker files and the public rate-limited
+  // proxies, which never read a session; everything else runs through.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/|icon.svg|apple-icon.png|manifest.webmanifest|sw.js|swe-worker|api/elevation$|api/courses/search$|api/courses/[^/]+/(?:tees|scorecard)$).*)"],
 }
