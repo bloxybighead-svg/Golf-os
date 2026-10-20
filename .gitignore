@@ -49,3 +49,6 @@ shot-pattern-simulator/reference_data/dillon_profile.json
 
 # generated script output
 *_output.txt
+
+# personal Claude Code settings
+.claude/settings.local.json

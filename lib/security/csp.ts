@@ -1,6 +1,6 @@
 // Content-Security-Policy for pages, built per request by middleware.ts so Next.js's own inline
-// scripts can carry a fresh nonce. It is sent REPORT-ONLY (violations are logged in the browser
-// console, nothing is blocked); to enforce, rename the header in middleware.ts.
+// scripts can carry a fresh nonce. It is enforced: a blocked load shows in the browser console as a
+// CSP violation.
 //
 // What the app loads, by directive:
 //   img-src      Esri World Imagery tiles (components/simulator/CourseMap.tsx)

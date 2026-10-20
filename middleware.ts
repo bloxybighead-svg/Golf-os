@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
   // Fresh nonce per request. Next reads it from the request's CSP header and stamps it on its inline scripts.
   const nonce = btoa(crypto.randomUUID())
   const csp = buildCsp(nonce, process.env.NEXT_PUBLIC_SUPABASE_URL)
-  const CSP_HEADER = "Content-Security-Policy-Report-Only" // rename to "Content-Security-Policy" to enforce
+  const CSP_HEADER = "Content-Security-Policy"
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set(CSP_HEADER, csp)
 
