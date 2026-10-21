@@ -1,133 +1,147 @@
 import { describe, it, expect } from "vitest"
 import { distanceYds, landingPoint } from "@/lib/course/geo"
-import { NEW_SHOT_YDS } from "@/lib/planner/clubChoice"
-import { describeShot, editLastShot, fromDbRow, lastShotOn, PUTTER, shotsToSave, toDbRow, trackBallMove, type BallMove, type RoundShotRow, type SwingShot } from "./shots"
+import {
+  addShotAtMidpoint,
+  deleteShot,
+  describeShot,
+  editShot,
+  fromDbRow,
+  isTooLong,
+  lastShotOn,
+  midpoint,
+  moveSplit,
+  recordShot,
+  toDbRow,
+  TOO_LONG_SHARE,
+  UNKNOWN_CLUB,
+  type RoundShotRow,
+  type ShotTap,
+  type SwingShot,
+} from "./shots"
 
 const tee = { lat: 40, lng: -74 }
-const pin = landingPoint(tee, 0, 400, 0)
 const at = (yd: number) => landingPoint(tee, 0, yd, 0)
+const pin = at(400)
 
-function move(over: Partial<BallMove> = {}): BallMove {
-  return { holeNumber: 4, choice: "Driver", from: tee, fromLie: "tee", to: at(250), toLie: "fairway", pin, following: false, ...over }
+function tap(over: Partial<ShotTap> = {}): ShotTap {
+  return { holeNumber: 4, club: "Driver", clubConfirmed: false, at: tee, atLie: "tee", pin, ...over }
 }
 
-function swing(over: Partial<BallMove> = {}, shots: SwingShot[] = []) {
-  return trackBallMove(shots, move(over))
-}
+describe("recordShot", () => {
+  it("one tap makes exactly one shot, starting at the ball, finishing nowhere yet", () => {
+    const shots = recordShot([], tap())
+    expect(shots).toHaveLength(1)
+    expect(shots[0]).toMatchObject({ holeNumber: 4, shotNumber: 1, club: "Driver", from: tee, fromLie: "tee", to: null, clubConfirmed: false })
+  })
 
-describe("trackBallMove", () => {
-  it("records a shot for a picked club and a real walk", () => {
-    expect(trackBallMove([], move({ choice: "7-Iron", to: at(NEW_SHOT_YDS + 5) }))).toHaveLength(1)
-    expect(trackBallMove([], move({ choice: "go:Driver" }))[0].club).toBe("Driver")
+  it("the next tap finishes the shot before it where the ball is, and numbers within the hole", () => {
+    const first = recordShot([], tap())
+    const both = recordShot(first, tap({ club: "7-Iron", clubConfirmed: true, at: at(250), atLie: "fairway" }))
+    expect(both).toHaveLength(2)
+    expect(both[0]).toMatchObject({ to: at(250), toLie: "fairway" })
+    expect(both[1]).toMatchObject({ shotNumber: 2, club: "7-Iron", clubConfirmed: true, from: at(250), to: null })
+    // Another hole starts again at 1.
+    expect(recordShot(both, tap({ holeNumber: 5 })).at(-1)?.shotNumber).toBe(1)
   })
-  it("ignores auto, a nudge, and a move from nowhere", () => {
-    expect(trackBallMove([], move({ choice: "auto" }))).toEqual([])
-    expect(trackBallMove([], move({ choice: "7-Iron", to: at(NEW_SHOT_YDS - 5) }))).toEqual([])
-    expect(trackBallMove([], move({ from: null }))).toEqual([])
-  })
-  it("keeps the finish with the golfer while they walk to the ball with GPS following", () => {
-    const first = trackBallMove([], move({ to: at(40) }))
-    const walked = trackBallMove(first, move({ choice: "auto", from: at(40), to: at(240), toLie: "rough", following: true }))
-    expect(walked).toHaveLength(1)
-    expect(walked[0]).toMatchObject({ to: at(240), toLie: "rough", club: "Driver", from: tee })
-  })
-  it("does not move a finish for a tap, or once the next club is picked", () => {
-    const first = trackBallMove([], move())
-    expect(trackBallMove(first, move({ choice: "auto", from: at(250), to: at(260) }))).toEqual(first)
-    expect(trackBallMove(first, move({ choice: "7-Iron", from: at(250), to: at(255), following: true }))).toEqual(first)
-  })
-})
 
-describe("recording a shot", () => {
-  it("numbers shots within the hole and strips the go-for-it prefix", () => {
-    const a = swing({ choice: "go:Driver" })
-    const b = swing({ choice: "7-Iron", from: at(250), fromLie: "fairway", to: at(380), toLie: "green" }, a)
-    expect(a[0]).toMatchObject({ shotNumber: 1, club: "Driver", fromLie: "tee" })
-    expect(b[1]).toMatchObject({ shotNumber: 2, club: "7-Iron", toLie: "green" })
-  })
-  it("starts the next shot in the lie the golfer corrected the last one to", () => {
-    const first = editLastShot(swing(), 4, { toLie: "rough" })
-    const second = swing({ from: at(250), fromLie: "fairway", to: at(380), toLie: "green" }, first)
+  it("starts the next shot in the lie the golfer corrected the last finish to", () => {
+    const first = recordShot([], tap())
+    const edited = editShot(first, 4, 1, { toLie: "rough" })
+    const second = recordShot(edited, tap({ at: at(250), atLie: "fairway" }))
+    expect(second[0]).toMatchObject({ toLie: "rough" })
     expect(second[1].fromLie).toBe("rough")
   })
-  it("does not start from water or out of bounds", () => {
-    const first = swing({ toLie: "water" })
-    const second = swing({ from: at(200), fromLie: "rough", to: at(380), toLie: "green" }, first)
-    expect(second[1].fromLie).toBe("rough")
-  })
-  it("starts shot numbers again on another hole", () => {
-    const shots = swing({ holeNumber: 3 })
-    expect(swing({ holeNumber: 4 }, shots)[1].shotNumber).toBe(1)
+
+  it("never starts a shot in water or out of bounds", () => {
+    const first = recordShot([], tap())
+    const wet = editShot(first, 4, 1, { toLie: "water" })
+    expect(recordShot(wet, tap({ at: at(180), atLie: "rough" }))[1].fromLie).toBe("rough")
   })
 })
 
-describe("editLastShot", () => {
-  it("changes only the last shot of that hole", () => {
-    const shots = swing({ from: at(250), fromLie: "fairway", to: at(380), toLie: "green" }, swing())
-    const edited = editLastShot(shots, 4, { club: "8-Iron", toLie: "bunker", penaltyStrokes: 1 })
-    expect(edited[0].club).toBe("Driver")
-    expect(edited[1]).toMatchObject({ club: "8-Iron", toLie: "bunker", penaltyStrokes: 1 })
+describe("editShot and deleteShot", () => {
+  const two = () => recordShot(recordShot([], tap()), tap({ club: "7-Iron", at: at(250), atLie: "fairway" }))
+
+  it("changing the club makes it the golfer's own pick; the lie and penalty are bounded", () => {
+    const e = editShot(two(), 4, 1, { club: "3-Wood", penaltyStrokes: 9 })
+    expect(e[0]).toMatchObject({ club: "3-Wood", clubConfirmed: true, penaltyStrokes: 2 })
+    expect(e[1].clubConfirmed).toBe(false)
   })
-  it("keeps penalty strokes within range and ignores a hole with no shots", () => {
-    expect(editLastShot(swing(), 4, { penaltyStrokes: 9 })[0].penaltyStrokes).toBe(2)
-    expect(editLastShot(swing(), 7, { club: "PW" })).toEqual(swing())
+
+  it("deleting a shot lets the one before finish where it did, and renumbers", () => {
+    const three = recordShot(two(), tap({ club: "PW", at: at(380), atLie: "green" }))
+    const d = deleteShot(three, 4, 2)
+    expect(d).toHaveLength(2)
+    expect(d[0]).toMatchObject({ shotNumber: 1, to: at(380), toLie: "green" })
+    expect(d[1]).toMatchObject({ shotNumber: 2, club: "PW" })
+  })
+
+  it("lastShotOn finds the last of the hole", () => {
+    expect(lastShotOn(two(), 4)?.club).toBe("7-Iron")
+    expect(lastShotOn(two(), 9)).toBeNull()
   })
 })
 
-describe("describeShot", () => {
-  it("reads like the line on screen", () => {
-    expect(describeShot(swing({ choice: "7-Iron", to: at(162), toLie: "fairway" })[0])).toBe("7-Iron, fairway, 162 yd")
+describe("too long", () => {
+  const totals = new Map([["7-Iron", 150]])
+  const seven = (yds: number): Pick<SwingShot, "club" | "from" | "to"> => ({ club: "7-Iron", from: tee, to: at(yds) })
+
+  it("flags a shot past 1.15x the club's total, finished or not", () => {
+    expect(isTooLong(seven(150 * TOO_LONG_SHARE - 1), null, totals)).toBe(false)
+    expect(isTooLong(seven(150 * TOO_LONG_SHARE + 2), null, totals)).toBe(true)
+    expect(isTooLong({ club: "7-Iron", from: tee, to: null }, at(200), totals)).toBe(true)
   })
-  it("leaves the distance off when positions are unknown", () => {
-    const [, second] = shotsToSave(swing({ to: at(380), toLie: "green" }), new Map([[4, 2]]))
-    expect(describeShot(second)).toBe("Putter, green")
+
+  it("never flags a club the bag does not know, or a shot with no end yet", () => {
+    expect(isTooLong({ club: "Chip", from: tee, to: at(400) }, null, totals)).toBe(false)
+    expect(isTooLong({ club: "7-Iron", from: tee, to: null }, null, totals)).toBe(false)
   })
 })
 
-describe("shotsToSave", () => {
-  const swings = swing({ to: at(380), toLie: "green" })
-  it("closes the hole with putts: the first from the approach finish, the last at the pin", () => {
-    const rows = shotsToSave(swings, new Map([[4, 3]]))
-    expect(rows.map((r) => [r.shotNumber, r.club])).toEqual([[1, "Driver"], [2, PUTTER], [3, PUTTER], [4, PUTTER]])
-    expect(rows[1]).toMatchObject({ from: at(380), fromLie: "green", to: null, toLie: "green" })
-    expect(rows[2]).toMatchObject({ from: null, to: null })
-    expect(rows[3]).toMatchObject({ from: null, to: pin, toLie: "holed" })
+describe("addShotAtMidpoint", () => {
+  it("splits a long shot at the middle of its line into two, the new one with no known club", () => {
+    const long = recordShot(recordShot([], tap({ club: "7-Iron" })), tap({ club: "PW", at: at(300), atLie: "green" }))
+    const added = addShotAtMidpoint(long, 4, 1, tee, () => "fairway")
+    expect(added).toHaveLength(3)
+    expect(distanceYds(added[0].to!, at(150))).toBeLessThan(1)
+    expect(added[0]).toMatchObject({ toLie: "fairway", club: "7-Iron" })
+    expect(added[1]).toMatchObject({ shotNumber: 2, club: UNKNOWN_CLUB, clubConfirmed: false, fromLie: "fairway", toLie: "green" })
+    expect(added[1].to).toEqual(at(300))
+    expect(added[2]).toMatchObject({ shotNumber: 3, club: "PW" })
   })
-  it("a single putt runs from the approach finish to the pin", () => {
-    const [, putt] = shotsToSave(swings, new Map([[4, 1]]))
-    expect(putt).toMatchObject({ from: at(380), to: pin, toLie: "holed" })
-    expect(distanceYds(putt.from!, putt.to!)).toBeCloseTo(20, 0)
+
+  it("splits the last, unfinished shot using the ball as its end", () => {
+    const one = recordShot([], tap({ club: "7-Iron" }))
+    const added = addShotAtMidpoint(one, 4, 1, at(200), () => "rough")
+    expect(added).toHaveLength(2)
+    expect(distanceYds(added[0].to!, at(100))).toBeLessThan(1)
+    expect(added[1].to).toBeNull()
   })
-  it("keeps only the swings when putts are not known", () => {
-    expect(shotsToSave(swings, new Map([[4, null]]))).toHaveLength(1)
-    expect(shotsToSave(swings, new Map())).toHaveLength(1)
+
+  it("dragging the midpoint moves where the first finishes and the next starts", () => {
+    const one = addShotAtMidpoint(recordShot([], tap()), 4, 1, at(200), () => "rough")
+    const moved = moveSplit(one, 4, 1, at(120), "bunker")
+    expect(moved[0]).toMatchObject({ to: at(120), toLie: "bunker" })
+    expect(moved[1]).toMatchObject({ from: at(120), fromLie: "bunker" })
   })
-  it("leaves the device-only pin out of what is saved", () => {
-    expect(shotsToSave(swings, new Map())[0]).not.toHaveProperty("pin")
+
+  it("midpoint is halfway", () => {
+    expect(distanceYds(midpoint(tee, at(100)), at(50))).toBeLessThan(0.5)
   })
 })
 
-describe("toDbRow", () => {
-  it("maps a shot to its columns, nulls included", () => {
-    const [, putt] = shotsToSave(swing({ to: at(380), toLie: "green" }), new Map([[4, 2]]))
-    expect(toDbRow("r1", "u1", putt)).toMatchObject({
-      round_id: "r1", user_id: "u1", hole_number: 4, shot_number: 2, club: PUTTER,
-      from_lat: at(380).lat, from_lie: "green", to_lat: null, to_lng: null, to_lie: "green", penalty_strokes: 0,
-    })
+describe("describeShot and rows", () => {
+  it("reads club, lie and distance", () => {
+    expect(describeShot({ club: "7-Iron", from: tee, to: at(162), toLie: "fairway" })).toBe("7-Iron, fairway, 162 yd")
+    expect(describeShot({ club: "Chip", from: tee, to: null, toLie: "green" })).toBe("Chip, green")
   })
-})
 
-describe("fromDbRow", () => {
-  it("reads back what toDbRow wrote", () => {
-    const rows = shotsToSave(swing({ to: at(380), toLie: "green" }), new Map([[4, 2]]))
-    for (const r of rows) expect(fromDbRow(toDbRow("r1", "u1", r) as RoundShotRow)).toEqual(r)
-  })
-})
-
-describe("lastShotOn", () => {
-  it("is the latest swing shot on that hole", () => {
-    const shots = swing({ from: at(250), fromLie: "fairway", to: at(380), toLie: "green" }, swing())
-    expect(lastShotOn(shots, 4)?.shotNumber).toBe(2)
-    expect(lastShotOn(shots, 5)).toBeNull()
+  it("round-trips a row, club_confirmed included; an old row without it reads as unconfirmed", () => {
+    const shot = recordShot([], tap({ clubConfirmed: true }))[0]
+    const row = toDbRow("r", "u", shot)
+    expect(row.club_confirmed).toBe(true)
+    expect(fromDbRow(row as unknown as RoundShotRow)).toMatchObject({ club: "Driver", clubConfirmed: true, from: tee, to: null })
+    const old = { ...row, club_confirmed: undefined } as unknown as RoundShotRow
+    expect(fromDbRow(old).clubConfirmed).toBe(false)
   })
 })

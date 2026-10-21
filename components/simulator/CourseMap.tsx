@@ -129,6 +129,9 @@ interface Props {
   wind?: { speedMph: number; fromDeg: number } | null
   /** The wind badge was tapped. */
   onWindClick?: () => void
+  /** Where an added shot splits a long one: a draggable point, shown only while the golfer places it. */
+  splitPoint?: LatLng | null
+  onSplit?: (p: LatLng) => void
   onBall: (p: LatLng) => void
   onAim: (p: LatLng) => void
   onPin: (p: LatLng) => void
@@ -143,7 +146,7 @@ const ll = (p: LatLng): L.LatLngTuple => [p.lat, p.lng]
 /** Failed tile loads in a row before the "Satellite needs signal" note shows. An estimate: one or two can be a blip. */
 const TILE_FAILURES_BEFORE_NOTE = 3
 
-type MarkerKind = "ball" | "aim" | "pin"
+type MarkerKind = "ball" | "aim" | "pin" | "split"
 
 // Real glyphs rather than lettered dots: a white ball with a shadow ring, a
 // crosshair for the aim, and a flag whose base sits exactly on the pin. Each
@@ -154,6 +157,16 @@ function markerIcon(kind: MarkerKind): L.DivIcon {
   const coarse = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches
   const hit = coarse ? 40 : 26
   const edge = cssColor("map-scrim", 0.6)
+
+  if (kind === "split") {
+    const d = coarse ? 22 : 16
+    return L.divIcon({
+      className: "",
+      iconSize: [hit, hit],
+      iconAnchor: [hit / 2, hit / 2],
+      html: `<div style="width:${hit}px;height:${hit}px;display:flex;align-items:center;justify-content:center;${UPRIGHT}"><div style="width:${d}px;height:${d}px;border-radius:50%;background:${cssColor("map-aim")};box-shadow:0 0 0 2px ${edge},0 2px 5px ${cssColor("map-scrim", 0.5)}"></div></div>`,
+    })
+  }
 
   if (kind === "ball") {
     const d = coarse ? 16 : 12
@@ -204,6 +217,7 @@ export default function CourseMap(props: Props) {
     ball?: L.Marker
     aim?: L.Marker
     pin?: L.Marker
+    split?: L.Marker
     path?: L.Polyline
     pinPath?: L.Polyline
   } | null>(null)
@@ -503,7 +517,7 @@ export default function CourseMap(props: Props) {
     const l = layers.current
     if (!map || !l) return
     const upsert = (
-      key: "ball" | "aim" | "pin",
+      key: "ball" | "aim" | "pin" | "split",
       pos: LatLng | null,
       icon: L.DivIcon,
       onMove: (p: LatLng) => void
@@ -528,6 +542,7 @@ export default function CourseMap(props: Props) {
     upsert("ball", props.ball, markerIcon("ball"), (p) => cb.current.onBall(p))
     upsert("aim", props.aim, markerIcon("aim"), (p) => cb.current.onAim(p))
     upsert("pin", props.pin, markerIcon("pin"), (p) => cb.current.onPin(p))
+    upsert("split", props.splitPoint ?? null, markerIcon("split"), (p) => cb.current.onSplit?.(p))
 
     l.path?.remove()
     l.path = undefined
@@ -551,7 +566,7 @@ export default function CourseMap(props: Props) {
         interactive: false,
       }).addTo(map)
     }
-  }, [props.ball, props.aim, props.pin])
+  }, [props.ball, props.aim, props.pin, props.splitPoint])
 
   // Trouble map cells (drawn under everything else on the canvas).
   useEffect(() => {

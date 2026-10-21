@@ -43,16 +43,6 @@ export interface Round {
 
 export type SgCategory = 'off_tee' | 'approach' | 'short_game' | 'putting'
 
-export interface RoundAnalysis {
-  id: string
-  round_id: string
-  category: SgCategory
-  user_sg: number
-  benchmark_sg: number
-  delta_sg: number
-  created_at: string
-}
-
 // Curated shared catalog (drill_library).
 export type DrillDifficulty = 'beginner' | 'intermediate' | 'advanced'
 

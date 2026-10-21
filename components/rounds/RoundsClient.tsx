@@ -6,6 +6,9 @@ import type { Round } from "@/lib/supabase/types"
 import { toCSV, downloadCSV } from "@/lib/csv"
 import { localISODate } from "@/lib/dates"
 import { RoundCard } from "./RoundCard"
+import { useSgResults } from "@/hooks/useSgResults"
+import type { ClubFit } from "@/lib/golfer/shotProfile"
+import type { SgRoundData } from "@/lib/supabase/loadSgData"
 import { RoundForm } from "./RoundForm"
 import { SignInToSave } from "./SignInToSave"
 import { recalculateAllRounds } from "@/app/rounds/actions"
@@ -17,9 +20,16 @@ interface Props {
   summary: ReactNode
   initialAdding?: boolean
   signedIn: boolean
+  /** Everything strokes gained is worked out from, per round. */
+  sgData: SgRoundData[]
+  fits: ClubFit[] | null
+  ownHandicap: number | null
 }
 
-export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = false, signedIn }: Props) {
+export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = false, signedIn, sgData, fits, ownHandicap }: Props) {
+  const sg = useSgResults(sgData, fits, ownHandicap)
+  const resultById = new Map(sg.results.map((r) => [r.roundId, r]))
+  const dataById = new Map(sgData.map((d) => [d.round.id, d]))
   const [adding, setAdding] = useState(initialAdding && signedIn)
   // Signed out, "Add round" first explains that saving needs an account.
   const [guestSheet, setGuestSheet] = useState(initialAdding && !signedIn)
@@ -134,7 +144,12 @@ export function RoundsClient({ rounds, casualGirAvg, summary, initialAdding = fa
           {summary}
           <div className="space-y-2.5">
             {rounds.map((round) => (
-              <RoundCard key={round.id} round={round} casualGirAvg={casualGirAvg} />
+              <RoundCard
+                key={round.id}
+                round={round}
+                casualGirAvg={casualGirAvg}
+                sg={resultById.has(round.id) && dataById.has(round.id) ? { result: resultById.get(round.id)!, data: dataById.get(round.id)!, label: sg.label } : null}
+              />
             ))}
           </div>
         </>

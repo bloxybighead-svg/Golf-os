@@ -1,12 +1,12 @@
 // Shots recorded during a round (round_shots): where the ball was, where it
-// went, with which club. Swing shots are recorded on Play as the ball moves
-// after a club was picked; the putts come from the hole's score at save time.
-// A putt's distance is unknown except the first, which runs from where the
-// approach finished to the pin.
+// went, with which club. Recording is explicit: the golfer taps "Shot" and the
+// shot starts at the ball's position, with the club on screen. It finishes where
+// the next one starts, or at "Hole done". The ball moving (GPS or a drag) never
+// makes a shot. Putts are never tapped: they come from the hole's score at save
+// time, and only after a swing that finished on the green.
 
-import { distanceYds, type LatLng } from "@/lib/course/geo"
+import { distanceYds, fromLocal, toLocal, type LatLng } from "@/lib/course/geo"
 import type { Lie } from "@/lib/course/lies"
-import { NEW_SHOT_YDS, choiceClub, type ClubChoice } from "@/lib/planner/clubChoice"
 
 export type ShotLie = Lie | "tee" | "holed"
 
@@ -14,15 +14,24 @@ export type ShotLie = Lie | "tee" | "holed"
 export const EDITABLE_LIES: readonly Lie[] = ["fairway", "rough", "bunker", "green", "trees", "water", "oob"]
 
 export const PUTTER = "Putter"
+/** A greenside shot the golfer said happened but whose club is unknown. */
+export const CHIP = "Chip"
+/** A shot added to fill a gap: nobody knows the club yet. */
+export const UNKNOWN_CLUB = "Unknown"
 
 /** The most penalty strokes a single shot can carry (water or OB, plus an unplayable). An estimate. */
 export const MAX_PENALTY_STROKES = 2
+
+/** A shot is called too long past this share of the club's mean total. ESTIMATE: from the spec; a good strike with a tailwind is within it. */
+export const TOO_LONG_SHARE = 1.15
 
 export interface RoundShot {
   holeNumber: number
   /** 1-based within the hole, in the order played. Penalty strokes do not take a number. */
   shotNumber: number
   club: string
+  /** The golfer picked the club (true), rather than the app's suggestion standing (false). */
+  clubConfirmed: boolean
   from: LatLng | null
   fromLie: ShotLie
   to: LatLng | null
@@ -30,128 +39,183 @@ export interface RoundShot {
   penaltyStrokes: number
 }
 
-/** A swing shot as kept on the device: it also remembers the pin, to place the putts that follow. */
+/**
+ * A swing shot as kept on the device: it also remembers the pin, to place the putts that follow. `to` is null
+ * until the shot finishes; `finishLieSet` says the golfer chose the finish lie, so the ball's position does not overwrite it.
+ */
 export interface SwingShot extends RoundShot {
   from: LatLng
-  to: LatLng
   pin: LatLng
+  finishLieSet?: boolean
 }
 
-/** A move of the ball counts as a shot only with a club picked and a real walk: GPS jitter and nudges are well under NEW_SHOT_YDS. */
-function isShotMove(choice: ClubChoice, from: LatLng | null, to: LatLng): boolean {
-  return choice !== "auto" && !!from && distanceYds(from, to) >= NEW_SHOT_YDS
-}
-
-export interface BallMove {
-  holeNumber: number
-  choice: ClubChoice
-  from: LatLng | null
-  fromLie: ShotLie
-  to: LatLng
-  toLie: ShotLie
-  pin: LatLng
-  /** The move is a GPS fix while following: the golfer may still be walking to the ball. */
-  following: boolean
-}
-
-/**
- * What the ball moving does to the shots: a picked club and a real walk records
- * a shot. Otherwise, while following GPS, the last shot's finish keeps moving
- * with the golfer until they pick the next club (a fix 30 yd into the walk is
- * not where the ball ended). Any other move changes nothing.
- */
-export function trackBallMove(shots: readonly SwingShot[], m: BallMove): SwingShot[] {
-  if (m.from && isShotMove(m.choice, m.from, m.to)) return recordShot(shots, { ...m, from: m.from })
-  const last = lastShotOn(shots, m.holeNumber)
-  if (m.following && last && (m.choice === "auto" || choiceClub(m.choice) === last.club)) {
-    return shots.map((s) => (s === last ? { ...s, to: m.to, toLie: m.toLie } : s))
-  }
-  return [...shots]
-}
-
-const swingShotsOn = (shots: readonly SwingShot[], holeNumber: number) => shots.filter((s) => s.holeNumber === holeNumber)
+export const swingShotsOn = (shots: readonly SwingShot[], holeNumber: number): SwingShot[] => shots.filter((s) => s.holeNumber === holeNumber)
 
 export function lastShotOn(shots: readonly SwingShot[], holeNumber: number): SwingShot | null {
   const here = swingShotsOn(shots, holeNumber)
   return here.length > 0 ? here[here.length - 1] : null
 }
 
+/** Shots on a hole numbered 1..n in order, other holes untouched. */
+function renumber(shots: readonly SwingShot[], holeNumber: number): SwingShot[] {
+  let n = 0
+  return shots.map((s) => (s.holeNumber === holeNumber ? { ...s, shotNumber: ++n } : s))
+}
+
+/** The lie the next shot starts in: the one the golfer confirmed for the last finish, unless nobody plays from there (water, OB). */
+function playableLie(finish: ShotLie, found: ShotLie): ShotLie {
+  return finish !== "water" && finish !== "oob" ? finish : found
+}
+
+export interface ShotTap {
+  holeNumber: number
+  club: string
+  clubConfirmed: boolean
+  /** The ball's position: GPS when following, else the ball marker. */
+  at: LatLng
+  atLie: ShotLie
+  pin: LatLng
+}
+
 /**
- * Adds the shot the ball just made. It starts in the lie the golfer last
- * confirmed for the previous shot (their correction carries over), unless that
- * was water or out of bounds: nobody plays from there, so the lie the ball was
- * dropped in stands.
+ * The golfer tapped Shot: exactly one new shot, starting at the ball. The shot
+ * before it on this hole finishes here, in the lie the ball is in (or the one
+ * the golfer already set for that finish).
  */
-function recordShot(
-  shots: readonly SwingShot[],
-  move: { holeNumber: number; choice: ClubChoice; from: LatLng; fromLie: ShotLie; to: LatLng; toLie: ShotLie; pin: LatLng }
-): SwingShot[] {
-  const previous = lastShotOn(shots, move.holeNumber)
+export function recordShot(shots: readonly SwingShot[], tap: ShotTap): SwingShot[] {
+  const here = swingShotsOn(shots, tap.holeNumber)
+  const previous = here[here.length - 1]
+  const finishLie = previous?.finishLieSet || previous?.to != null ? previous.toLie : tap.atLie
+  const finished = previous && previous.to == null ? shots.map((s) => (s === previous ? { ...s, to: tap.at, toLie: finishLie } : s)) : [...shots]
+  const startLie = previous ? playableLie(finishLie, tap.atLie) : tap.atLie
   return [
-    ...shots,
+    ...finished,
     {
-      holeNumber: move.holeNumber,
-      shotNumber: (previous?.shotNumber ?? 0) + 1,
-      club: choiceClub(move.choice),
-      from: move.from,
-      fromLie: previous && previous.toLie !== "water" && previous.toLie !== "oob" ? previous.toLie : move.fromLie,
-      to: move.to,
-      toLie: move.toLie,
+      holeNumber: tap.holeNumber,
+      shotNumber: here.length + 1,
+      club: tap.club,
+      clubConfirmed: tap.clubConfirmed,
+      from: tap.at,
+      fromLie: startLie,
+      to: null,
+      toLie: tap.atLie,
       penaltyStrokes: 0,
-      pin: move.pin,
+      pin: tap.pin,
     },
   ]
 }
 
-/** Corrects the last shot on a hole: its club, where it finished, or its penalty strokes. */
-export function editLastShot(
+/** Corrects one shot: its club (which makes it the golfer's own pick), where it finished, or its penalty strokes. */
+export function editShot(
   shots: readonly SwingShot[],
   holeNumber: number,
+  shotNumber: number,
   patch: Partial<Pick<SwingShot, "club" | "toLie" | "penaltyStrokes">>
 ): SwingShot[] {
-  const last = lastShotOn(shots, holeNumber)
-  if (!last) return [...shots]
-  const penaltyStrokes = patch.penaltyStrokes == null ? last.penaltyStrokes : Math.max(0, Math.min(MAX_PENALTY_STROKES, Math.round(patch.penaltyStrokes)))
-  return shots.map((s) => (s === last ? { ...s, ...patch, penaltyStrokes } : s))
+  const here = swingShotsOn(shots, holeNumber)
+  const target = here.find((s) => s.shotNumber === shotNumber)
+  if (!target) return [...shots]
+  const penaltyStrokes = patch.penaltyStrokes == null ? target.penaltyStrokes : Math.max(0, Math.min(MAX_PENALTY_STROKES, Math.round(patch.penaltyStrokes)))
+  const next = here[here.indexOf(target) + 1]
+  return shots.map((s) => {
+    if (s === target) {
+      return { ...s, ...patch, penaltyStrokes, clubConfirmed: patch.club != null ? true : s.clubConfirmed, finishLieSet: patch.toLie != null ? true : s.finishLieSet }
+    }
+    // The golfer's correction of a finish carries over to where the next shot starts.
+    if (s === next && patch.toLie != null) return { ...s, fromLie: playableLie(patch.toLie, s.fromLie) }
+    return s
+  })
+}
+
+/** Removes one shot; the one before it now finishes where the removed one did. */
+export function deleteShot(shots: readonly SwingShot[], holeNumber: number, shotNumber: number): SwingShot[] {
+  const here = swingShotsOn(shots, holeNumber)
+  const target = here.find((s) => s.shotNumber === shotNumber)
+  if (!target) return [...shots]
+  const before = here[here.indexOf(target) - 1]
+  const kept = shots
+    .filter((s) => s !== target)
+    .map((s) => (s === before ? { ...s, to: target.to, toLie: target.toLie } : s))
+  return renumber(kept, holeNumber)
+}
+
+export const midpoint = (a: LatLng, b: LatLng): LatLng => {
+  const p = toLocal(a, b)
+  return fromLocal(a, { x: p.x / 2, y: p.y / 2 })
+}
+
+/**
+ * "Missed a shot? Add one": splits a shot in two at the middle of its line. The
+ * first now finishes at the midpoint, the new one (club unknown) runs from
+ * there to where the original finished. `ball` is where an unfinished shot is
+ * right now. The midpoint is meant to be dragged to where the ball really was.
+ */
+export function addShotAtMidpoint(
+  shots: readonly SwingShot[],
+  holeNumber: number,
+  shotNumber: number,
+  ball: LatLng,
+  lieAt: (p: LatLng) => ShotLie
+): SwingShot[] {
+  const here = swingShotsOn(shots, holeNumber)
+  const target = here.find((s) => s.shotNumber === shotNumber)
+  if (!target) return [...shots]
+  const end = target.to ?? ball
+  const mid = midpoint(target.from, end)
+  const midLie = lieAt(mid)
+  const out: SwingShot[] = []
+  for (const s of shots) {
+    if (s !== target) {
+      out.push(s)
+      continue
+    }
+    out.push({ ...target, to: mid, toLie: midLie, penaltyStrokes: 0 })
+    out.push({
+      holeNumber,
+      shotNumber: target.shotNumber + 1,
+      club: UNKNOWN_CLUB,
+      clubConfirmed: false,
+      from: mid,
+      fromLie: midLie,
+      to: target.to,
+      toLie: target.toLie,
+      penaltyStrokes: target.penaltyStrokes,
+      pin: target.pin,
+    })
+  }
+  return renumber(out, holeNumber)
+}
+
+/** Drags the split point of an added shot: the first finishes there and the next starts there. */
+export function moveSplit(shots: readonly SwingShot[], holeNumber: number, firstShotNumber: number, to: LatLng, lie: ShotLie): SwingShot[] {
+  return shots.map((s) => {
+    if (s.holeNumber !== holeNumber) return s
+    if (s.shotNumber === firstShotNumber) return { ...s, to, toLie: lie }
+    if (s.shotNumber === firstShotNumber + 1) return { ...s, from: to, fromLie: lie }
+    return s
+  })
+}
+
+/** How far a shot went: to where it finished, or to `ball` while it is still the last one. */
+const shotYards = (s: Pick<RoundShot, "from" | "to">, ball: LatLng | null): number | null => {
+  const end = s.to ?? ball
+  return s.from && end ? distanceYds(s.from, end) : null
+}
+
+/** Whether a shot went further than its club can: past TOO_LONG_SHARE of the club's mean total in the bag. Clubs the bag does not know are never too long. */
+export function isTooLong(s: Pick<RoundShot, "club" | "from" | "to">, ball: LatLng | null, totalByClub: ReadonlyMap<string, number>): boolean {
+  const total = totalByClub.get(s.club)
+  const yds = shotYards(s, ball)
+  return total != null && yds != null && yds > total * TOO_LONG_SHARE
 }
 
 /** How a lie reads on screen. */
 export const lieLabel = (lie: ShotLie): string => (lie === "oob" ? "OB" : lie)
 
-/** "7-Iron, fairway, 162 yd". */
-export function describeShot(s: RoundShot): string {
+/** A shot as the shot list reads it: "7-Iron, fairway, 162 yd". */
+export function describeShot(s: Pick<RoundShot, "club" | "from" | "to" | "toLie">): string {
   const yd = s.from && s.to ? `, ${Math.round(distanceYds(s.from, s.to))} yd` : ""
   return `${s.club}, ${lieLabel(s.toLie)}${yd}`
-}
-
-/**
- * The shots to save for a round: each hole's swing shots, then its putts. A
- * putt is a shot with no distance except the first, which runs from the last
- * swing shot's finish to the pin; the last putt ends at the pin, holed. A hole
- * with no putt count, or no swing shot to place them from, keeps only its swings.
- */
-export function shotsToSave(swings: readonly SwingShot[], puttsByHole: ReadonlyMap<number, number | null>): RoundShot[] {
-  const out: RoundShot[] = []
-  const holes = [...new Set(swings.map((s) => s.holeNumber))].sort((a, b) => a - b)
-  for (const holeNumber of holes) {
-    const here = swingShotsOn(swings, holeNumber)
-    for (const { pin: _pin, ...swing } of here) out.push(swing)
-    const last = here[here.length - 1]
-    const putts = puttsByHole.get(holeNumber) ?? 0
-    for (let i = 0; i < putts; i++) {
-      out.push({
-        holeNumber,
-        shotNumber: last.shotNumber + 1 + i,
-        club: PUTTER,
-        from: i === 0 ? last.to : null,
-        fromLie: "green",
-        to: i === putts - 1 ? last.pin : null,
-        toLie: i === putts - 1 ? "holed" : "green",
-        penaltyStrokes: 0,
-      })
-    }
-  }
-  return out
 }
 
 /** One row of round_shots. */
@@ -162,6 +226,7 @@ export function toDbRow(roundId: string, userId: string, s: RoundShot) {
     hole_number: s.holeNumber,
     shot_number: s.shotNumber,
     club: s.club,
+    club_confirmed: s.clubConfirmed,
     from_lat: s.from?.lat ?? null,
     from_lng: s.from?.lng ?? null,
     from_lie: s.fromLie,
@@ -177,6 +242,7 @@ export interface RoundShotRow {
   hole_number: number
   shot_number: number
   club: string
+  club_confirmed: boolean
   from_lat: number | null
   from_lng: number | null
   from_lie: ShotLie
@@ -186,6 +252,9 @@ export interface RoundShotRow {
   penalty_strokes: number
 }
 
+/** The columns to select to read a RoundShotRow back. */
+export const ROUND_SHOT_COLUMNS = "hole_number, shot_number, club, club_confirmed, from_lat, from_lng, from_lie, to_lat, to_lng, to_lie, penalty_strokes"
+
 const point = (lat: number | null, lng: number | null): LatLng | null => (lat != null && lng != null ? { lat, lng } : null)
 
 export function fromDbRow(r: RoundShotRow): RoundShot {
@@ -193,6 +262,7 @@ export function fromDbRow(r: RoundShotRow): RoundShot {
     holeNumber: r.hole_number,
     shotNumber: r.shot_number,
     club: r.club,
+    clubConfirmed: r.club_confirmed === true,
     from: point(r.from_lat, r.from_lng),
     fromLie: r.from_lie,
     to: point(r.to_lat, r.to_lng),

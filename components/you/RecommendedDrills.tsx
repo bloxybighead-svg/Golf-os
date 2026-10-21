@@ -3,8 +3,12 @@
 import { useState } from "react"
 import { Target, Clock, Repeat } from "lucide-react"
 import type { LibraryDrill } from "@/lib/supabase/types"
-import type { CategoryTrend, SgCategory } from "@/lib/sgBenchmarks"
-import { CATEGORY_LABEL, DRILL_CATEGORIES, MIN_ROUNDS_FOR_FOCUS } from "@/lib/drillRecommendations"
+import type { SgCategory } from "@/lib/sgBenchmarks"
+import { CATEGORY_LABEL, DRILL_CATEGORIES, MIN_ROUNDS_FOR_FOCUS, focusAreas, trendsFromLoss } from "@/lib/drillRecommendations"
+import { categoryStrokesLostPerRound } from "@/lib/rounds/roundSg"
+import { useSgResults } from "@/hooks/useSgResults"
+import type { ClubFit } from "@/lib/golfer/shotProfile"
+import type { SgRoundData } from "@/lib/supabase/loadSgData"
 import { DrillModal } from "./DrillModal"
 
 function fmtDelta(n: number) {
@@ -15,12 +19,14 @@ function fmtDelta(n: number) {
 // Drills for the focus area (two on a close call). Until there are enough
 // rounds to name one, all four categories are listed unranked.
 export function RecommendedDrills({
-  focus,
+  sgData,
+  fits,
   handicapIndex,
   drillsByCategory,
   signedIn,
 }: {
-  focus: readonly CategoryTrend[]
+  sgData: SgRoundData[]
+  fits: ClubFit[] | null
   handicapIndex: number | null
   drillsByCategory: Record<SgCategory, LibraryDrill[]>
   signedIn: boolean
@@ -28,7 +34,8 @@ export function RecommendedDrills({
   const [open, setOpen] = useState<LibraryDrill | null>(null)
   const [savedNote, setSavedNote] = useState<string | null>(null)
 
-  const vsHandicap = handicapIndex != null ? `your ${handicapIndex.toFixed(1)} HCP` : "your handicap"
+  const { label, results } = useSgResults(sgData, fits, handicapIndex)
+  const focus = focusAreas(trendsFromLoss(categoryStrokesLostPerRound(results)))
   const sections = focus.length > 0 ? focus.map((t) => t.category) : DRILL_CATEGORIES
 
   return (
@@ -54,7 +61,7 @@ export function RecommendedDrills({
             {trend ? (
               <p className="text-sm text-fg">
                 <span className="font-semibold">{label}</span>{" "}
-                <span className={trend.avgDeltaSg < 0 ? "text-danger" : "text-accent"}>{fmtDelta(trend.avgDeltaSg)}</span> vs. {vsHandicap},{" "}
+                <span className={trend.avgDeltaSg < 0 ? "text-danger" : "text-accent"}>{fmtDelta(trend.avgDeltaSg)}</span> vs. {label},{" "}
                 {trend.roundsCounted} rounds
               </p>
             ) : (

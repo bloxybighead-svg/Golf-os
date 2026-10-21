@@ -72,7 +72,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, aimLie,
-    roundSheet, setRoundSheet, holeOffer, answerHoleOffer, lastShot, editShot,
+    roundSheet, setRoundSheet, holeOffer, answerHoleOffer, trackingOn, canTapShot, tapShot, shotClub, lastShot, editLastShot, deleteLastShot, addMissedShot, totalByClub, holeBall, split, setSplit, splitPoint, moveSplitPoint,
   } = vm
 
   const isOwner = authUser?.id === MARKS_USER_ID
@@ -273,6 +273,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         holeBearingDeg={holeBearingDeg}
         wind={playsLikeOn ? wind.wind : null}
         onWindClick={() => openDetails("conditions")}
+        splitPoint={splitPoint}
+        onSplit={moveSplitPoint}
         onBall={(p) => {
           if (Date.now() < mapTapGuardUntil.current) return
           stopFollowing()
@@ -336,7 +338,17 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         </p>
       )}
       {loadState === "idle" && loadError && <p className="rounded-md bg-black/70 px-2 py-1 text-xs text-white">{loadError}</p>}
-      {lastShot && <LastShotLine shot={lastShot} clubs={bag} onEdit={editShot} />}
+      {lastShot && !split && (
+        <LastShotLine shot={lastShot} ball={ball} clubs={bag} totalByClub={totalByClub} onEdit={editLastShot} onDelete={deleteLastShot} onAdd={addMissedShot} />
+      )}
+      {split && (
+        <p className="flex w-fit max-w-full items-center rounded-md bg-black/70 pl-2 text-xs text-white">
+          <span className="min-w-0 py-1">Drag the dot to where the missed shot ended.</span>
+          <button onClick={() => setSplit(null)} className="flex h-11 shrink-0 items-center px-2 font-semibold text-white underline">
+            Done
+          </button>
+        </p>
+      )}
     </>
   )
 
@@ -402,6 +414,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     />
   )
 
+  const shotButton = { club: shotClub, onTap: tapShot, disabled: !canTapShot }
+
   const playRound = (embedded: boolean) =>
     hydrated &&
     course && (
@@ -432,6 +446,9 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         }}
         holeOffer={holeOffer}
         onHoleOffer={answerHoleOffer}
+        ball={holeBall}
+        onMissedSwing={addMissedShot}
+        shot={trackingOn ? shotButton : null}
         embedded={embedded}
       />
     )
@@ -495,6 +512,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
               chips={clubChips(true)}
               onDetails={resultCard ? () => setShotOpen(true) : null}
               onHoleDone={() => setRoundSheet({ kind: "hole", hole: holeToScore(roundHere, hole?.ref ?? null), advance: true })}
+              shot={trackingOn ? shotButton : null}
             />
           }
           round={playRound(true)}

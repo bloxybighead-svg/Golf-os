@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest"
 import { fromLocal } from "@/lib/course/geo"
 import { makeRng, randNormal } from "@/lib/golfer/rng"
-import { shotsToSave, type RoundShot, type SwingShot } from "./shots"
+import { shotsToSave } from "./holeTracking"
+import type { RoundShot, SwingShot } from "./shots"
 import { clubGroup, lateralSamples, MIN_GROUP_SHOTS, modelSpread, suggestSpread, type LateralSample } from "./spreadCalibration"
 
 const origin = { lat: 40, lng: -74 }
@@ -19,27 +20,34 @@ describe("lateralSamples", () => {
   const pin = at(0, 400)
   function hole(shots: Partial<SwingShot>[]): RoundShot[] {
     const swings: SwingShot[] = shots.map((s, i) => ({
-      holeNumber: 1, shotNumber: i + 1, club: "Driver", from: at(0, 0), fromLie: "tee", to: at(10, 250), toLie: "fairway", penaltyStrokes: 0, pin, ...s,
+      holeNumber: 1, shotNumber: i + 1, club: "Driver", clubConfirmed: true, from: at(0, 0), fromLie: "tee", to: at(10, 250), toLie: "green", penaltyStrokes: 0, pin, ...s,
     }))
-    return shotsToSave(swings, new Map([[1, 2]]))
+    return shotsToSave(swings, [{ holeNumber: 1, putts: 2 }])
   }
 
+  const complete = (shots: RoundShot[]) => ({ shots, completeHoles: new Set([1]) })
+
   it("measures how far right of the line to the pin the shot finished", () => {
-    const [s] = lateralSamples([hole([{}])])
+    const [s] = lateralSamples([complete(hole([{}]))])
     expect(s.club).toBe("Driver")
     expect(s.lateralYds).toBeCloseTo(10, 1)
     expect(s.distYds).toBeCloseTo(Math.hypot(10, 250), 1)
   })
 
   it("is negative to the left, measured from the line start-to-pin rather than north", () => {
-    const [s] = lateralSamples([hole([{ from: at(100, 0), to: at(0, 250) }])])
+    const [s] = lateralSamples([complete(hole([{ from: at(100, 0), to: at(0, 250) }]))])
     expect(s.lateralYds).toBeLessThan(0)
   })
 
   it("leaves out putts, penalised or wet shots, and holes with no pin", () => {
-    const rows = hole([{}, { penaltyStrokes: 1 }, { toLie: "water" }])
-    expect(lateralSamples([rows])).toHaveLength(1)
-    expect(lateralSamples([rows.filter((r) => r.toLie !== "holed")])).toEqual([])
+    const rows = hole([{}, { penaltyStrokes: 1 }, { toLie: "water" }, {}])
+    expect(lateralSamples([complete(rows)])).toHaveLength(2)
+    expect(lateralSamples([complete(rows.filter((r) => r.toLie !== "holed"))])).toEqual([])
+  })
+
+  it("uses only complete holes and clubs the golfer picked", () => {
+    expect(lateralSamples([{ shots: hole([{}]), completeHoles: new Set() }])).toEqual([])
+    expect(lateralSamples([complete(hole([{ clubConfirmed: false }]))])).toEqual([])
   })
 })
 

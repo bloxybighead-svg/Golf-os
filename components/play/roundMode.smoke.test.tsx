@@ -54,7 +54,7 @@ function phone() {
             />
           }
           map={<div />}
-          dock={<RoundDock plays={<div />} chips={<div />} onDetails={() => {}} onHoleDone={() => {}} />}
+          dock={<RoundDock plays={<div />} chips={<div />} onDetails={() => {}} onHoleDone={() => {}} shot={null} />}
           round={null}
         />
       )}
@@ -111,13 +111,22 @@ describe("round mode on a phone", () => {
 
 describe("round screen pieces", () => {
   it("the dock is exactly two rows", () => {
-    const html = renderToStaticMarkup(<RoundDock plays={<div />} chips={<div />} onDetails={null} onHoleDone={() => {}} />)
+    const html = renderToStaticMarkup(<RoundDock plays={<div />} chips={<div />} onDetails={null} onHoleDone={() => {}} shot={null} />)
     expect(html.match(/data-dock-row="/g)).toHaveLength(2)
     expect(html).toContain(DOCK_ROW_CLASS.plays)
     expect(html).toContain(DOCK_ROW_CLASS.chips)
     expect(html).not.toContain("Shot details") // nothing to show yet
     expect(html).toContain("Hole done") // in row 1, beside the plays
     expect(html.indexOf("Hole done")).toBeLessThan(html.indexOf('data-dock-row="chips"'))
+  })
+
+  it("tracking off renders no Shot button; tracking on puts it in the club row, still two rows", () => {
+    const off = renderToStaticMarkup(<RoundDock plays={<div />} chips={<div />} onDetails={null} onHoleDone={() => {}} shot={null} />)
+    expect(off).not.toContain("Shot")
+    const on = renderToStaticMarkup(<RoundDock plays={<div />} chips={<div />} onDetails={null} onHoleDone={() => {}} shot={{ club: "7-Iron", onTap: () => {}, disabled: false }} />)
+    expect(on.match(/data-dock-row="/g)).toHaveLength(2)
+    expect(on).toContain('aria-label="Shot with 7-Iron"')
+    expect(on.indexOf("Shot")).toBeGreaterThan(on.indexOf('data-dock-row="chips"'))
   })
 
   it("the grid rows are the header, the map's remainder and the dock's own height", () => {

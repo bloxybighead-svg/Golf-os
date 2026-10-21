@@ -11,11 +11,14 @@ export function RoundDock({
   chips,
   onDetails,
   onHoleDone,
+  shot,
 }: {
   plays: ReactNode
   chips: ReactNode
   onDetails: (() => void) | null
   onHoleDone: () => void
+  /** "Track every shot": a large Shot button at the start of the club row. Null when tracking is off. */
+  shot: { club: string | null; onTap: () => void; disabled: boolean } | null
 }) {
   return (
     <div className="border-t border-fg/[0.1] bg-surface landscape:flex landscape:flex-col landscape:justify-center landscape:border-l landscape:border-t-0">
@@ -36,6 +39,18 @@ export function RoundDock({
         )}
       </div>
       <div data-dock-row="chips" className={`${DOCK_ROW_CLASS.chips} flex shrink-0 items-center gap-2 overflow-hidden px-3`}>
+        {shot && (
+          <button
+            type="button"
+            onClick={shot.onTap}
+            disabled={shot.disabled}
+            aria-label={shot.club ? `Shot with ${shot.club}` : "Shot"}
+            className="flex h-11 min-w-[88px] shrink-0 flex-col items-center justify-center rounded-lg bg-accent px-4 leading-tight text-on-accent transition-all hover:brightness-110 disabled:opacity-50"
+          >
+            <span className="text-base font-semibold">Shot</span>
+            {shot.club && <span className="max-w-[72px] truncate text-[10px]">{shot.club}</span>}
+          </button>
+        )}
         {chips}
       </div>
     </div>

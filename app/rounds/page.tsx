@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { RoundsClient } from "@/components/rounds/RoundsClient"
 import { RoundsSummary } from "@/components/rounds/RoundsSummary"
+import { loadSgData } from "@/lib/supabase/loadSgData"
+import { loadMyProfile } from "@/lib/supabase/loadMyProfile"
+import { estimateHandicapIndex } from "@/lib/handicap"
 import type { Round } from "@/lib/supabase/types"
 
 export default async function RoundsPage(
@@ -30,6 +33,14 @@ export default async function RoundsPage(
   }
 
   const rounds = (data ?? []) as Round[]
+  const [sgData, profile, { data: tracked }] = await Promise.all([
+    loadSgData(supabase),
+    loadMyProfile(supabase),
+    supabase.from("handicap_tracking").select("handicap_index").order("calculation_date", { ascending: false }).limit(1).maybeSingle(),
+  ])
+  // The latest saved index, else the one the saved differentials give (the same order Stats uses).
+  const ownHandicap =
+    tracked?.handicap_index ?? estimateHandicapIndex(rounds.slice(0, 20).map((r) => r.differential).filter((d): d is number => d != null))
 
   // Casual (non-competitive) GIR baseline — used to flag competitive pressure-collapse rounds
   const casualGir = rounds.filter((r) => !r.is_competitive && r.gir_pct != null).map((r) => r.gir_pct as number)
@@ -42,6 +53,9 @@ export default async function RoundsPage(
       summary={<RoundsSummary rounds={rounds} />}
       initialAdding={searchParams?.new === "1"}
       signedIn={!!user}
+      sgData={sgData}
+      fits={profile?.fits ?? null}
+      ownHandicap={ownHandicap}
     />
   )
 }

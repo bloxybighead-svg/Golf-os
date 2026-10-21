@@ -26,7 +26,9 @@ export interface ActiveRound {
   startHole: number
   /** One entry per hole in play, in the order they're played. */
   holes: HoleEntry[]
-  /** Swing shots recorded as the ball moved; saved with the round. Rounds started before shots were tracked have none. */
+  /** "Track every shot" was on when the round started: the dock has a Shot button and Hole done checks the shots. Absent on older rounds. */
+  trackShots?: boolean
+  /** Swing shots the golfer tapped in; saved with the round. */
   shots?: SwingShot[]
 }
 

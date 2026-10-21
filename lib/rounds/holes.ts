@@ -3,6 +3,8 @@
 // (fairways_pct, gir_pct, miss_left_pct, ...), so Rounds, Trends, You and the
 // strokes-gained proxies read exactly what they did before.
 
+import { MAX_FIRST_PUTT_FT, type HoleTracking } from "./holeTracking"
+
 export type FairwayMiss = "left" | "right"
 export type GreenMiss = "left" | "right" | "long" | "short"
 
@@ -27,6 +29,10 @@ export interface HoleEntry {
   penalty_shot?: PenaltyShot | null
   /** The hole's stroke index from the scorecard (1 = hardest), for net double bogey. Optional. */
   stroke_index?: number | null
+  /** The golfer's own first putt, feet (Track every shot). Needs supabase/migrations/20261021000000_sg_tracking.sql. */
+  first_putt_ft?: number | null
+  /** Whether the hole's shots were tracked and add up; set on Hole done. Same migration. */
+  tracking?: HoleTracking
 }
 
 /** A hole that has a score, ready to save. */
@@ -83,7 +89,9 @@ export function cleanHoles(raw: unknown): ScoredHole[] {
 
     const penalty = h.penalty === true
     const penalty_shot = penalty && PENALTY_SHOTS.includes(h.penalty_shot) ? (h.penalty_shot as PenaltyShot) : null
-    return { hole_number, par, strokes, fairway_hit, fairway_miss_side, green_hit, green_miss_side, putts, penalty, penalty_shot, stroke_index }
+    const first_putt_ft = h.first_putt_ft == null || putts === 0 ? null : intIn(h.first_putt_ft, 1, MAX_FIRST_PUTT_FT)
+    const tracking: HoleTracking = h.tracking === "complete" || h.tracking === "partial" ? h.tracking : "none"
+    return { hole_number, par, strokes, fairway_hit, fairway_miss_side, green_hit, green_miss_side, putts, penalty, penalty_shot, stroke_index, first_putt_ft, tracking }
   })
   return out.sort((a, b) => a.hole_number - b.hole_number)
 }

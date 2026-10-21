@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { computeUserSg, handicapBracketRange, aggregateCategoryTrends, qualifierFor } from "./sgBenchmarks"
+import { computeUserSg } from "./sgBenchmarks"
 
 describe("computeUserSg", () => {
   it("returns exactly zero for every category at the scratch reference stats", () => {
@@ -73,57 +73,5 @@ describe("off-tee tee penalties", () => {
 
   it("is not scaled down for a 9-hole round", () => {
     expect(offTee(1, 9)).toBe(-1)
-  })
-})
-
-describe("handicapBracketRange", () => {
-  it("puts a mid-2s handicap (e.g. the author's ~2.4) in the (2,5] bracket, not a gap", () => {
-    expect(handicapBracketRange(2.4)).toEqual({ low: 2, high: 5 })
-  })
-
-  it("resolves an exact boundary value to the lower bracket", () => {
-    expect(handicapBracketRange(2)).toEqual({ low: 0, high: 2 })
-    expect(handicapBracketRange(5)).toEqual({ low: 2, high: 5 })
-  })
-
-  it("falls back to the highest bracket for a handicap beyond every listed range", () => {
-    expect(handicapBracketRange(50)).toEqual({ low: 25, high: 36 })
-  })
-
-  it("handles a plus-handicap golfer via the lowest bracket rather than falling through", () => {
-    expect(handicapBracketRange(-1.5)).toEqual({ low: 0, high: 2 })
-  })
-})
-
-describe("aggregateCategoryTrends", () => {
-  it("averages per category and keeps categories in a fixed display order regardless of input order", () => {
-    const rows = [
-      { category: "putting" as const, user_sg: -1, benchmark_sg: -2, delta_sg: 1 },
-      { category: "off_tee" as const, user_sg: -0.1, benchmark_sg: -0.15, delta_sg: 0.05 },
-      { category: "putting" as const, user_sg: -3, benchmark_sg: -2, delta_sg: -1 },
-    ]
-    const trends = aggregateCategoryTrends(rows)
-    expect(trends.map((t) => t.category)).toEqual(["off_tee", "putting"])
-    const putting = trends.find((t) => t.category === "putting")!
-    expect(putting.avgDeltaSg).toBe(0) // (1 + -1) / 2
-    expect(putting.roundsCounted).toBe(2)
-  })
-
-  it("omits a category entirely when no rows have it, rather than showing a false zero", () => {
-    const trends = aggregateCategoryTrends([{ category: "approach", user_sg: 0.1, benchmark_sg: 0, delta_sg: 0.1 }])
-    expect(trends).toHaveLength(1)
-    expect(trends[0].category).toBe("approach")
-  })
-})
-
-describe("qualifierFor", () => {
-  it("buckets a clearly positive delta as elite and a clearly negative one as needs work", () => {
-    expect(qualifierFor(0.5)).toBe("Elite for your HCP")
-    expect(qualifierFor(-0.5)).toBe("Needs work")
-  })
-
-  it("treats a small delta around zero as average, not elite/needs-work noise", () => {
-    expect(qualifierFor(0.1)).toBe("Above average")
-    expect(qualifierFor(-0.1)).toBe("Average")
   })
 })

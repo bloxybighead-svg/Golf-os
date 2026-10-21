@@ -12,7 +12,9 @@ import { HolePad } from "@/components/rounds/HolePad"
 import { holesToAskAboutOb } from "@/lib/rounds/obQuestions"
 import { queueJob } from "@/lib/offline/outbox"
 import { ROUND_JOB, SHOTS_JOB, shotsKey, type RoundPayload, type ShotsPayload } from "@/lib/offline/jobs"
-import { shotsToSave } from "@/lib/rounds/shots"
+import { addChips, finishHole, questionFor, shotsToSave, unaccountedOn, type BallNow } from "@/lib/rounds/holeTracking"
+import { deleteShot, swingShotsOn } from "@/lib/rounds/shots"
+import { HoleTrackingRows } from "@/components/play/HoleTrackingRows"
 import { BottomSheet } from "@/components/play/BottomSheet"
 
 /** `advance`: opened by "Hole done", so Save moves on to the next hole (fixing an earlier hole from the scorecard does not). */
@@ -63,17 +65,41 @@ export function HoleSheet({
   onRoundChange,
   onSheetChange,
   onGoToHole,
-}: SheetProps & { holeNumber: number; advance: boolean; onGoToHole: (holeNumber: number) => void }) {
+  ball,
+  onMissedSwing,
+}: SheetProps & {
+  holeNumber: number
+  advance: boolean
+  onGoToHole: (holeNumber: number) => void
+  /** Where the ball is, when this is the hole on the map; null for a hole fixed from the scorecard. */
+  ball: BallNow | null
+  /** "Missed a swing": closes the sheet and lets the golfer place the shot that was missed on the map. */
+  onMissedSwing: () => void
+}) {
   const hole = round.holes.find((h) => h.hole_number === holeNumber)
   if (!hole) return null
   const order = round.holes.map((h) => h.hole_number)
   const next = order[order.indexOf(holeNumber) + 1]
+  const tracking = round.trackShots === true
+  const shots = round.shots ?? []
+  const swings = swingShotsOn(shots, holeNumber)
+  const counts = hole.strokes != null ? { strokes: hole.strokes, putts: hole.putts, penalty: hole.penalty, penaltyShot: hole.penalty_shot ?? null } : null
+  const question = tracking && counts ? questionFor(unaccountedOn(shots, holeNumber, counts), swings.length) : ({ kind: "none" } as const)
 
   function patch(p: Partial<HoleEntry>) {
     onRoundChange({ ...round, holes: round.holes.map((h) => (h.hole_number === holeNumber ? { ...h, ...p } : h)) })
   }
 
   function save() {
+    if (tracking && counts) {
+      const firstPutt = (hole?.putts ?? 0) >= 1 ? (hole?.first_putt_ft ?? null) : null
+      const done = finishHole(shots, holeNumber, counts, firstPutt, ball)
+      onRoundChange({
+        ...round,
+        shots: done.shots,
+        holes: round.holes.map((h) => (h.hole_number === holeNumber ? { ...h, tracking: done.tracking, first_putt_ft: firstPutt } : h)),
+      })
+    }
     if (advance && next != null) onGoToHole(next)
     onSheetChange(advance && next == null ? { kind: "finish" } : null)
   }
@@ -90,6 +116,18 @@ export function HoleSheet({
       }
     >
       <HolePad hole={hole} onChange={patch} />
+      {tracking && (
+        <HoleTrackingRows
+          showFirstPutt={(hole.putts ?? 0) >= 1}
+          firstPuttFt={hole.first_putt_ft ?? null}
+          onFirstPutt={(ft) => patch({ first_putt_ft: ft })}
+          question={question.kind === "missing" && !ball ? { kind: "none" } : question}
+          swings={swings}
+          onChip={(count) => ball && onRoundChange({ ...round, shots: addChips(shots, holeNumber, count, ball) })}
+          onMissedSwing={onMissedSwing}
+          onDelete={(n) => onRoundChange({ ...round, shots: deleteShot(shots, holeNumber, n) })}
+        />
+      )}
     </BottomSheet>
   )
 }
@@ -190,7 +228,11 @@ export function FinishSheet({
         if (!queued) await createRound(input)
         // The shots follow the round into the outbox, so they are only sent once the round has been. Without
         // IndexedDB (the direct send above) they are dropped: they are an extra, the round is not.
-        const shots = shotsToSave(round.shots ?? [], new Map(scored.map((h) => [h.hole_number, h.putts ?? null])))
+        const scoredNumbers = new Set(scored.map((h) => h.hole_number))
+        const shots = shotsToSave(
+          (round.shots ?? []).filter((s) => scoredNumbers.has(s.holeNumber)),
+          scored.map((h) => ({ holeNumber: h.hole_number, putts: h.putts ?? null }))
+        )
         if (queued && shots.length > 0) {
           const shotsPayload: ShotsPayload = { userId: userId ?? "", roundId: round.id, shots }
           await queueJob({ key: shotsKey(round.id), kind: SHOTS_JOB, payload: shotsPayload })

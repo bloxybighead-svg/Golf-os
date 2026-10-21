@@ -17,11 +17,14 @@ import { type HoleCorrectionSubmission } from "@/components/simulator/EditHoleMo
 import { type RoundSheet } from "@/components/play/RoundSheets"
 import { loadActiveRound, nextUnscored, saveActiveRound, type ActiveRound } from "@/lib/rounds/activeRound"
 import { nextHoleTarget } from "@/lib/rounds/holeOffer"
-import { editLastShot, lastShotOn, trackBallMove, type BallMove } from "@/lib/rounds/shots"
+import { addShotAtMidpoint, deleteShot, editShot, lastShotOn, moveSplit, recordShot, UNKNOWN_CLUB } from "@/lib/rounds/shots"
+import type { BallNow } from "@/lib/rounds/holeTracking"
+import { buildBagNumbers } from "@/lib/you/bagNumbers"
+import { typedCarries } from "@/lib/golfer/bagShots"
 import { type Placing } from "@/components/simulator/courseColors"
 import { shortCourseName } from "@/lib/planner/labels"
 import { AUTO_AIM, aimReducer } from "@/lib/planner/aimMode"
-import { choiceAfterHolePick } from "@/lib/planner/clubChoice"
+import { choiceAfterHolePick, choiceClub } from "@/lib/planner/clubChoice"
 import { ONBOARDED_KEY, applyBaselineToDevice, type Baseline, type CourseRef } from "@/lib/golfer/baseline"
 import { isFirstVisit } from "@/lib/planner/firstRun"
 import { saveBaseline } from "@/app/welcome/actions"
@@ -102,19 +105,10 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   const [layersMenuPos, setLayersMenuPos] = useState<{ top: number; left: number } | null>(null)
   const mapWrapRef = useRef<HTMLDivElement>(null)
   const [fit, setFit] = useState<FitRequest>({ points: [], key: "none" })
-  // What a ball move needs to know to become a shot. Kept in a ref because GPS callbacks outlive the render
-  // that made them; set below, once the plan (lie map, pin, lie underfoot) is worked out.
-  const shotContext = useRef<(Pick<BallMove, "holeNumber" | "choice" | "fromLie" | "pin"> & { round: ActiveRound; lieAt: (p: LatLng) => BallMove["toLie"] }) | null>(null)
+  // The ball moving (GPS or a drag) never makes a shot: shots are tapped in (tapShot below).
   const ballState = useBallPosition({
     setFit,
     onBallMoved: () => dispatchAim({ type: "reset" }),
-    onShotMove: (from, to, following) => {
-      const c = shotContext.current
-      if (!c) return
-      const shots = c.round.shots ?? []
-      const next = trackBallMove(shots, { ...c, from, to, toLie: c.lieAt(to), following })
-      if (next.length !== shots.length || next.some((s, i) => s !== shots[i])) changeRound({ ...c.round, shots: next })
-    },
   })
   const { ball, setBall, following, gpsAccuracyYds, gpsError, gpsNote, stopFollowing, moveBallTo, toggleFollow } = ballState
 
@@ -348,16 +342,67 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, startLie,
   } = plan
 
-  // Shots are only recorded on a hole of the round in progress, from a pin the plan knows.
+  // ---------- Track every shot ----------
+  // Only on a hole of a round that started with tracking on. A shot starts at the ball (GPS when following,
+  // else the marker) with the club on screen, and finishes at the next Shot tap or at Hole done.
   const holeNumber = hole?.ref ?? null
-  const tracking = !!roundHere && holeNumber != null && roundHere.holes.some((h) => h.hole_number === holeNumber) && !!pin && !!lies
-  shotContext.current = tracking
-    ? { round: roundHere, holeNumber, choice: clubChoice, fromLie: startLie, pin, lieAt: (p) => lies.lieAt(p) }
-    : null
-  const lastShot = roundHere && holeNumber != null ? lastShotOn(roundHere.shots ?? [], holeNumber) : null
-  function editShot(patch: Parameters<typeof editLastShot>[2]) {
-    if (roundHere && holeNumber != null) changeRound({ ...roundHere, shots: editLastShot(roundHere.shots ?? [], holeNumber, patch) })
+  const trackingOn = !!roundHere?.trackShots && holeNumber != null && roundHere.holes.some((h) => h.hole_number === holeNumber)
+  const roundShots = roundHere?.shots ?? []
+  const shotClub = chosen?.club ?? (clubChoice === "auto" ? null : choiceClub(clubChoice))
+  // A shot added to fill a gap: the golfer drags its start point on the map until Done.
+  const [split, setSplit] = useState<{ holeNumber: number; firstShot: number } | null>(null)
+  const canTapShot = trackingOn && !!pin && !!lies && !!ball && !split
+
+  function tapShot() {
+    if (!canTapShot || !roundHere || holeNumber == null || !pin || !lies || !ball) return
+    const shots = recordShot(roundShots, {
+      holeNumber,
+      club: shotClub ?? UNKNOWN_CLUB,
+      clubConfirmed: clubChoice !== "auto",
+      at: ball,
+      atLie: startLie,
+      pin,
+    })
+    changeRound({ ...roundHere, shots })
   }
+
+  const lastShot = trackingOn && holeNumber != null ? lastShotOn(roundShots, holeNumber) : null
+  function editLastShot(patch: Parameters<typeof editShot>[3]) {
+    if (roundHere && holeNumber != null && lastShot) changeRound({ ...roundHere, shots: editShot(roundShots, holeNumber, lastShot.shotNumber, patch) })
+  }
+  function deleteLastShot() {
+    if (roundHere && holeNumber != null && lastShot) changeRound({ ...roundHere, shots: deleteShot(roundShots, holeNumber, lastShot.shotNumber) })
+  }
+  /** "Missed a shot? Add one": splits the last shot at its midpoint and lets the golfer drag that point. */
+  function addMissedShot() {
+    if (!roundHere || holeNumber == null || !lastShot || !ball || !lies) return
+    changeRound({ ...roundHere, shots: addShotAtMidpoint(roundShots, holeNumber, lastShot.shotNumber, ball, (p) => lies.lieAt(p)) })
+    setSplit({ holeNumber, firstShot: lastShot.shotNumber })
+  }
+  const splitPoint = split ? (roundShots.find((s) => s.holeNumber === split.holeNumber && s.shotNumber === split.firstShot)?.to ?? null) : null
+  function moveSplitPoint(p: LatLng) {
+    if (!roundHere || !split || !lies) return
+    changeRound({ ...roundHere, shots: moveSplit(roundShots, split.holeNumber, split.firstShot, p, lies.lieAt(p)) })
+  }
+
+  // Each bag club's mean total (carry plus roll), for the "longer than your 7-Iron goes" check. Only worked out while tracking.
+  const totalByClub = useMemo(
+    () =>
+      trackingOn
+        ? new Map(
+            buildBagNumbers({
+              bag,
+              fits: source === "calibrated" ? (myProfile?.fits ?? null) : null,
+              handicap,
+              accountHandicap: trackedHandicap ?? baseline?.handicapIndex ?? null,
+              typed: typedCarries(driverCarry, sevenIronCarry, extraCarries),
+            }).map((r) => [r.club, r.totalYds] as const)
+          )
+        : new Map<string, number>(),
+    [trackingOn, bag, source, myProfile, handicap, trackedHandicap, baseline, driverCarry, sevenIronCarry, extraCarries]
+  )
+  /** Where the ball is for "Hole done": the position and the lie under it. */
+  const holeBall: BallNow | null = ball && lies ? { at: ball, lie: lies.lieAt(ball) } : null
 
   // "No OB mapped on this hole": nothing beside the hole's line counts as out of bounds and the golfer hasn't said.
   const holeObTags = obTags.tagsFor(holeId)
@@ -435,7 +480,9 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     showEllipse, showTrouble, showZones, shownLies, source, startDraw, stats, stepHole,
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
-    optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped, lastShot, editShot,
+    optionsNote, strategyMode, obBands, obTags, holeObTags, noObMapped,
+    trackingOn, canTapShot, tapShot, shotClub, lastShot, editLastShot, deleteLastShot, addMissedShot, totalByClub, holeBall,
+    split, setSplit, splitPoint, moveSplitPoint,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation,
     onCourseSpread: settings.onCourseSpread,
   }
