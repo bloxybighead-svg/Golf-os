@@ -9,16 +9,21 @@ import { useSgResults } from "@/hooks/useSgResults"
 import type { ClubFit } from "@/lib/golfer/shotProfile"
 import { itemsDone, mondayOf, primaryDrillScores } from "@/lib/practice/progress"
 import { mergeRuns, type DrillRef, type FinishedRun } from "@/lib/practice/runs"
-import { weaknessScores } from "@/lib/practice/weakness"
+import { typicalScores, weaknessScores } from "@/lib/practice/weakness"
 import { toWeaknessRounds } from "@/lib/practice/weaknessInput"
 import { lastWeekSummary, planWeek, WEEK_PLAN_KEY, type LastWeekSummary, type StoredPlan, type WeekView } from "@/lib/practice/weekPlan"
 import { tiger5 } from "@/lib/rounds/tiger5"
 import type { SgRoundData } from "@/lib/supabase/loadSgData"
 
+/** Rounds needed before the week follows this golfer's own numbers. From the spec. */
+const MIN_ROUNDS = 3
+
 export interface PracticeWeek {
   view: WeekView
-  /** True when no round or run says anything yet. */
-  empty: boolean
+  /** Every finished run, saved and still in the outbox. */
+  runs: FinishedRun[]
+  /** Too few rounds: the week follows typical golfers. */
+  typical: boolean
   /** Last week's row; only on a Monday. */
   lastWeek: LastWeekSummary | null
 }
@@ -43,18 +48,20 @@ export function usePracticeWeek(args: { sgData: SgRoundData[]; fits: ClubFit[] |
   const runs = useMemo(() => mergeRuns(args.savedRuns, pending), [args.savedRuns, pending])
   const out = useMemo(() => {
     if (!ready || !browser) return null
-    const scores = weaknessScores(toWeaknessRounds(args.sgData, results), primaryDrillScores(runs, args.library))
+    const typical = args.sgData.length < MIN_ROUNDS
+    const scores = typical ? typicalScores() : weaknessScores(toWeaknessRounds(args.sgData, results), primaryDrillScores(runs, args.library))
     const view = planWeek({ stored: browser.stored, now: browser.now, scores, done: itemsDone(runs, args.library, mondayOf(browser.now)) })
     const tiger5Rounds = args.sgData.map((d) => ({ date: d.meta.date, total: tiger5({ holes: d.holes, shots: d.shots, three_putts: d.round.three_putts ?? null }).total }))
     return {
       view,
-      empty: scores.every((s) => s.priority === 0) && runs.length === 0,
+      runs,
+      typical,
       lastWeek: browser.now.getDay() === 1 && view.last ? lastWeekSummary(view.last, runs, args.library, tiger5Rounds) : null,
     }
   }, [ready, browser, args.sgData, args.library, results, runs])
 
   useEffect(() => {
-    if (!out || out.empty) return
+    if (!out || out.typical) return
     try {
       window.localStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(out.view.next))
     } catch {

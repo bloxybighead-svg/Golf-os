@@ -20,8 +20,8 @@ const round = (holes: Parameters<typeof hole>[1][], three = 0): WeaknessRound =>
 }
 const priorities = (scores: ReturnType<typeof weaknessScores>) => Object.fromEntries(scores.map((s) => [s.area, s.priority])) as Parameters<typeof rebuildWeek>[1]
 
-const lagDrill: DrillRef = { id: "lag", name: "Pelz Lag Ladder", metric: "count_of_n", lower_is_better: true, practice_category: "lag_putting", levels: [{ name: "6-ft zone", rule: "" }, { name: "3-ft zone", rule: "" }] }
-const gate: DrillRef = { id: "gate", name: "Putting Gate", metric: "count_of_n", lower_is_better: false, practice_category: "short_putting", levels: [{ name: "Wide gate", rule: "" }] }
+const lagDrill: DrillRef = { id: "lag", name: "Pelz Lag Ladder", metric: "count_of_n", lower_is_better: true, practice_category: "lag_putting", levels: [{ name: "6-ft zone", rule: "" }, { name: "3-ft zone", rule: "" }], sets: [{ label: "20 ft", setup: "", balls: 10 }] }
+const gate: DrillRef = { id: "gate", name: "Putting Gate", metric: "count_of_n", lower_is_better: false, practice_category: "short_putting", levels: [{ name: "Wide gate", rule: "" }], sets: [{ label: "Gate", setup: "", balls: 20 }] }
 const library = [lagDrill, gate]
 
 let n = 0

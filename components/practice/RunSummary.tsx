@@ -3,7 +3,7 @@
 // The end of a session: each drill's score against last time and its level, one notes field, Done.
 
 import Link from "next/link"
-import type { ActiveSession } from "@/lib/practice/activeSession"
+import { SESSION_PATH, type ActiveSession } from "@/lib/practice/activeSession"
 import { summarize } from "@/lib/practice/runner"
 import { RunnerFrame } from "./RunnerScreen"
 
@@ -13,11 +13,14 @@ const LAUNCH_PRO_LOCATIONS = ["home_net", "simulator"]
 export function RunSummary({
   session,
   compact,
+  canSave,
   onNotes,
   onDone,
 }: {
   session: ActiveSession
   compact: boolean
+  /** Signed in, or started signed in. Without it Done would have nowhere to save to. */
+  canSave: boolean
   onNotes: (notes: string) => void
   onDone: () => void
 }) {
@@ -59,9 +62,18 @@ export function RunSummary({
           />
         </label>
 
-        <button type="button" onClick={onDone} className="flex min-h-14 w-full items-center justify-center rounded-lg bg-accent text-lg font-semibold text-on-accent transition-all hover:brightness-110">
-          Done
-        </button>
+        {canSave ? (
+          <button type="button" onClick={onDone} className="flex min-h-14 w-full items-center justify-center rounded-lg bg-accent text-lg font-semibold text-on-accent transition-all hover:brightness-110">
+            Done
+          </button>
+        ) : (
+          <>
+            <Link href={`/login?redirect=${encodeURIComponent(SESSION_PATH)}`} className="flex min-h-14 w-full items-center justify-center rounded-lg bg-accent text-lg font-semibold text-on-accent transition-all hover:brightness-110">
+              Sign in to save
+            </Link>
+            <p className="text-sm text-fg-3">Your session stays on this phone until you save it.</p>
+          </>
+        )}
       </div>
     </RunnerFrame>
   )

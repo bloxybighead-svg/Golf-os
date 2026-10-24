@@ -43,7 +43,7 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
 
       <div className={[expanded ? "block" : "hidden", "md:block"].join(" ")}>
         {runs.length === 0 ? (
-          <EmptyHint action="Pick a drill" href="#recommended-drills" className="mt-3 text-sm text-fg-3">
+          <EmptyHint action="Start a session" href="#start-session" className="mt-3 text-sm text-fg-3">
             No drills yet.
           </EmptyHint>
         ) : (

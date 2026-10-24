@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useActiveSession } from "@/hooks/useActiveSession"
+import { useAuthUser } from "@/hooks/useAuthUser"
 import { useIsCompact } from "@/hooks/useIsCompact"
 import { endEarly, jumpToCloseout, recordEntry, skipSet, undoLast } from "@/lib/practice/runner"
 import { setRoundPaused } from "@/lib/rounds/roundMode"
@@ -16,6 +17,7 @@ export function SessionRunner() {
   const router = useRouter()
   const compact = useIsCompact()
   const { session, update, finish } = useActiveSession()
+  const { authUser } = useAuthUser()
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
@@ -39,9 +41,10 @@ export function SessionRunner() {
       <RunSummary
         session={session}
         compact={compact}
+        canSave={!!(session.userId || authUser)}
         onNotes={(notes) => update((s) => ({ ...s, notes }))}
         onDone={async () => {
-          if (await finish(Date.now())) {
+          if (await finish(Date.now(), authUser?.id ?? null)) {
             setRoundPaused(false)
             router.push("/you/practice")
           }

@@ -6,18 +6,22 @@ import { Flag, Map as MapIcon, User } from "lucide-react"
 import { APP_NAME } from "@/lib/brand"
 import { useIsCompact } from "@/hooks/useIsCompact"
 import { useRoundMode } from "@/hooks/useRoundMode"
+import { PracticeIcon } from "./PracticeIcon"
 
-// Three main tabs. "match" lists extra path prefixes that keep a tab lit:
-// Play is the course planner itself, You covers everything under /you (stats, practice, bag, settings, lab).
+// Four main tabs. "match" lists extra path prefixes that keep a tab lit, "except" the ones that keep it dark:
+// Play is the course planner itself, Practice lives under /you/practice, and You covers the rest of /you (stats, bag, settings).
 const NAV_ITEMS = [
-  { label: "Play", href: "/", match: [], Icon: MapIcon },
-  { label: "Rounds", href: "/rounds", match: ["/rounds"], Icon: Flag },
-  { label: "You", href: "/you", match: ["/you"], Icon: User },
+  { label: "Play", href: "/", match: [], except: [], Icon: MapIcon },
+  { label: "Practice", href: "/you/practice", match: ["/you/practice"], except: [], Icon: PracticeIcon },
+  { label: "Rounds", href: "/rounds", match: ["/rounds"], except: [], Icon: Flag },
+  { label: "You", href: "/you", match: ["/you"], except: ["/you/practice"], Icon: User },
 ] as const
 
-function isActive(pathname: string, href: string, match: readonly string[]) {
+const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(prefix + "/")
+
+function isActive(pathname: string, href: string, match: readonly string[], except: readonly string[]) {
   if (href === "/" && pathname === "/") return true
-  return match.some((m) => pathname === m || pathname.startsWith(m + "/"))
+  return match.some((m) => under(pathname, m)) && !except.some((x) => under(pathname, x))
 }
 
 export default function NavBar() {
@@ -49,9 +53,9 @@ export default function NavBar() {
         aria-label="Main"
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-fg/[0.08] bg-page/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:pointer-events-none md:bottom-auto md:top-[env(safe-area-inset-top)] md:border-0 md:bg-transparent md:pb-0 md:backdrop-blur-none"
       >
-        <ul className="grid grid-cols-3 md:mx-auto md:flex md:h-16 md:max-w-[1280px] md:items-center md:justify-end md:gap-0.5 md:px-6">
-          {NAV_ITEMS.map(({ label, href, match, Icon }) => {
-            const active = isActive(pathname, href, match)
+        <ul className="grid grid-cols-4 md:mx-auto md:flex md:h-16 md:max-w-[1280px] md:items-center md:justify-end md:gap-0.5 md:px-6">
+          {NAV_ITEMS.map(({ label, href, match, except, Icon }) => {
+            const active = isActive(pathname, href, match, except)
             return (
               <li key={href} className="md:pointer-events-auto">
                 <Link

@@ -20,7 +20,7 @@ export interface FinishedRun {
 }
 
 /** What a drill needs to be read by: its score, its direction, its area and its level names. */
-export type DrillRef = Pick<LibraryDrill, "id" | "name" | "metric" | "lower_is_better" | "practice_category" | "levels">
+export type DrillRef = Pick<LibraryDrill, "id" | "name" | "metric" | "lower_is_better" | "practice_category" | "levels" | "sets">
 
 /** A run waiting in the outbox, once it is done. A run still going is not finished. */
 export function runFromPayload(p: PracticeRunPayload): FinishedRun | null {

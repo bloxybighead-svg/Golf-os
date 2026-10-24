@@ -197,3 +197,20 @@ export function weaknessScores(rounds: readonly WeaknessRound[], drillScores: Pa
     }
   })
 }
+
+/** What typical golfers lose strokes to, as priorities: approach the largest share, then tee, short game and putting. From the spec (approach about 40%, tee about 28%, short game about 15%); the split of approach into wedges and of putting into lag and short is an estimate. */
+const TYPICAL_PRIORITY: Record<PracticeArea, number> = { approach: 0.3, wedges: 0.1, tee: 0.28, short_game: 0.15, lag_putting: 0.09, short_putting: 0.08 }
+
+/** The areas ranked by typical golfers, for a golfer with too few rounds to go on. */
+export function typicalScores(): AreaWeakness[] {
+  return PRACTICE_AREAS.map((area) => ({
+    area,
+    strokesLost: null,
+    rounds: 0,
+    pressure: 0,
+    improving: false,
+    priority: TYPICAL_PRIORITY[area],
+    r: null,
+    explanation: `${AREA_LABEL[area]}: typical for golfers who have not logged enough rounds yet.`,
+  }))
+}

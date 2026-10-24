@@ -12,7 +12,7 @@ import { toRunPayload } from "@/lib/practice/runner"
 export function useActiveSession(): {
   session: ActiveSession | null | undefined
   update: (change: (s: ActiveSession) => ActiveSession) => void
-  finish: (now: number) => Promise<boolean>
+  finish: (now: number, userId: string | null) => Promise<boolean>
 } {
   const [session, setSession] = useState<ActiveSession | null | undefined>(undefined)
   useEffect(() => {
@@ -32,14 +32,16 @@ export function useActiveSession(): {
     const next = change(current)
     if (next === current) return
     saveActiveSession(next)
-    void queueJob({ key: practiceRunKey(next.id), kind: PRACTICE_RUN_JOB, payload: toRunPayload(next, null) })
+    // A session started signed out stays on the device until it can be saved to an account.
+    if (next.userId) void queueJob({ key: practiceRunKey(next.id), kind: PRACTICE_RUN_JOB, payload: toRunPayload(next, null) })
   }, [])
 
-  /** Marks the run done and queues it with its level changes; the session leaves the device only once the outbox has it. */
-  const finish = useCallback(async (now: number) => {
+  /** Marks the run done and queues it with its level changes (to `userId` when it was started signed out); the session leaves the device only once the outbox has it. */
+  const finish = useCallback(async (now: number, userId: string | null) => {
     const current = loadActiveSession()
-    if (!current) return false
-    const queued = await queueJob({ key: practiceRunKey(current.id), kind: PRACTICE_RUN_JOB, payload: toRunPayload(current, { at: now }) })
+    const owner = current?.userId || userId
+    if (!current || !owner) return false
+    const queued = await queueJob({ key: practiceRunKey(current.id), kind: PRACTICE_RUN_JOB, payload: toRunPayload({ ...current, userId: owner }, { at: now }) })
     if (queued) clearActiveSession()
     return queued
   }, [])

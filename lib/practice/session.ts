@@ -8,7 +8,7 @@ import type { LibraryDrill } from "@/lib/supabase/types"
 import type { PracticeArea } from "./weakness"
 import type { WeekItem } from "./week"
 
-type DrillLocation = LibraryDrill["locations"][number]
+export type DrillLocation = LibraryDrill["locations"][number]
 type Category = NonNullable<LibraryDrill["practice_category"]>
 
 /** 'pain' is the injury/pain flag. */
@@ -159,6 +159,12 @@ function allocate(weights: Map<Category, number>, total: number, held: Map<Categ
   return new Map()
 }
 
+/** The most practice minutes that still leave 5 for logging before the 8:45 pm cutoff. */
+export function cutoffCapMinutes(now: Date): number {
+  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), CUTOFF_HOUR, CUTOFF_MINUTE)
+  return Math.max(0, Math.floor((cutoff.getTime() - now.getTime()) / 60_000) - LOGGING_MIN)
+}
+
 export function buildSession(args: {
   week: readonly WeekItem[]
   now: Date
@@ -181,11 +187,10 @@ export function buildSession(args: {
   }
 
   // a. Device cutoff: logging must end by 8:45 pm.
-  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), CUTOFF_HOUR, CUTOFF_MINUTE)
-  const untilCutoff = Math.floor((cutoff.getTime() - now.getTime()) / 60_000) - LOGGING_MIN
+  const untilCutoff = cutoffCapMinutes(now)
   let cap = args.minutes
   if (untilCutoff < cap) {
-    cap = Math.max(0, untilCutoff)
+    cap = untilCutoff
     notes.push(`Capped to ${cap} min so logging ends by 8:45 pm.`)
   }
 

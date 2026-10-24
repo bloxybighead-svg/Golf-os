@@ -59,7 +59,7 @@ interface RunBlock {
 }
 
 /** The drill's current level and the sessions already played at it, for the level check at the end. */
-interface DrillLevelState {
+export interface DrillLevelState {
   index: number
   names: string[]
   history: SetResult[][]

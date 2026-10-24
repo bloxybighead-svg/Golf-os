@@ -2,24 +2,20 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { estimateHandicapIndex } from "@/lib/handicap"
 import { normalizeBag } from "@/lib/golfer/bag"
-import { drillsThisWeek, practiceValue, statsValue, PRACTICE_WINDOW_DAYS } from "@/lib/you/hub"
+import { statsValue } from "@/lib/you/hub"
 import { loginHref } from "@/lib/auth/safeNext"
 import { HubRow } from "@/components/you/HubRow"
 import { BagCount, ThemeLabel } from "@/components/you/DeviceValues"
 
-const DAY_MS = 24 * 60 * 60 * 1000
-
-// A short hub: four rows, each with the one number worth seeing without opening it.
-// The detail lives on /you/stats, /you/practice, /you/bag and /you/settings.
+// A short hub: three rows, each with the one number worth seeing without opening it.
+// The detail lives on /you/stats, /you/bag and /you/settings.
 export default async function YouPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const since = new Date(Date.now() - PRACTICE_WINDOW_DAYS * DAY_MS).toISOString()
 
-  const [{ data: latest }, { data: diffRows }, { data: drillRows }, { data: profileRows }] = await Promise.all([
+  const [{ data: latest }, { data: diffRows }, { data: profileRows }] = await Promise.all([
     supabase.from("handicap_tracking").select("handicap_index").order("calculation_date", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("rounds").select("differential").order("date", { ascending: false }).order("created_at", { ascending: false }).limit(20),
-    supabase.from("user_drills").select("completed_at").gte("completed_at", since),
     supabase.from("shot_profiles").select("club"), // the golfer's own fitted clubs (RLS: own rows only)
   ])
 
@@ -45,7 +41,6 @@ export default async function YouPage() {
 
       <nav aria-label="You" className="divide-y divide-fg/[0.04] overflow-hidden rounded-xl border border-fg/[0.06] bg-surface">
         <HubRow href="/you/stats" label="Stats" value={statsValue(index)} />
-        <HubRow href="/you/practice" label="Practice" value={practiceValue(drillsThisWeek(drillRows ?? [], Date.now()))} />
         <HubRow
           href="/you/bag"
           label="My bag"

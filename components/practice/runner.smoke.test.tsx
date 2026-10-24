@@ -103,7 +103,7 @@ describe("the set screen", () => {
 })
 
 describe("the summary", () => {
-  const summary = (session: ActiveSession) => renderToStaticMarkup(<RunSummary session={session} compact onNotes={noop} onDone={noop} />)
+  const summary = (session: ActiveSession) => renderToStaticMarkup(<RunSummary session={session} compact canSave onNotes={noop} onDone={noop} />)
   const done = (blocks: SessionBlock[], location?: string) => {
     let s = make(blocks, location)
     while (s.status === "running") s = recordEntry(s, { value: 1 }, 1000)
@@ -121,6 +121,17 @@ describe("the summary", () => {
     expect(summary(done([clubWork], "simulator"))).toContain("Import Launch Pro session")
     expect(summary(done([clubWork], "range"))).not.toContain("Import Launch Pro session")
     expect(summary(done([ladder], "home_net"))).not.toContain("Import Launch Pro session")
+  })
+})
+
+describe("saving a session", () => {
+  it("asks a signed-out golfer to sign in instead of finishing", () => {
+    let s = make([ladder])
+    while (s.status === "running") s = recordEntry(s, { value: 1 }, 1000)
+    const html = renderToStaticMarkup(<RunSummary session={s} compact canSave={false} onNotes={noop} onDone={noop} />)
+    expect(html).toContain("Sign in to save")
+    expect(html).toContain("/login?redirect=%2Fyou%2Fpractice%2Frun")
+    expect(html).not.toContain(">Done</button>")
   })
 })
 

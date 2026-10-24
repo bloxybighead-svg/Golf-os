@@ -5,7 +5,8 @@ import { DrillTrends } from "@/components/you/DrillTrends"
 import { WeekCardView } from "./WeekCard"
 
 const week = (o: Partial<PracticeWeek> = {}): PracticeWeek => ({
-  empty: false,
+  typical: false,
+  runs: [],
   lastWeek: null,
   view: {
     week: {
@@ -46,8 +47,9 @@ describe("WeekCardView", () => {
     expect(html).toContain("Tiger 5: 2.1 a round, against 2.8 over your last 10")
   })
 
-  it("asks for rounds when there is nothing to go on", () => {
-    expect(renderToStaticMarkup(<WeekCardView week={week({ empty: true })} />)).toContain("Log 3 rounds to build your week")
+  it("says when the week follows typical golfers", () => {
+    expect(renderToStaticMarkup(<WeekCardView week={week({ typical: true })} />)).toContain("Based on typical golfers until you log 3 rounds")
+    expect(renderToStaticMarkup(<WeekCardView week={week()} />)).not.toContain("typical golfers")
   })
 })
 
