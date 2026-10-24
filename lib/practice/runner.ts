@@ -3,6 +3,7 @@
 
 import type { PracticeRunPayload } from "@/lib/offline/jobs"
 import { nextLevel, type SetResult } from "./levels"
+import { drillTotal } from "./scores"
 import type { ActiveSession, RunEntry, RunStep } from "./activeSession"
 
 /** The last save can be undone for this long. */
@@ -117,19 +118,17 @@ const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
 
 function resultText(steps: RunStep[], entries: RunEntry[]): string {
   const done = entries.map((e, i) => ({ e, st: steps[i] })).filter((x) => !x.e.skipped && x.e.value != null)
-  if (done.length === 0) return "skipped"
-  const values = done.map((x) => x.e.value as number)
+  const total = drillTotal(steps[0]?.metric ?? "count_of_n", done.map((x) => x.e))
+  if (total == null) return "skipped"
   switch (done[0].st.metric) {
     case "count_of_n":
-      return `${sum(values)} of ${sum(done.map((x) => x.st.balls))}`
+      return `${total} of ${sum(done.map((x) => x.st.balls))}`
     case "streak":
-      return `${Math.max(...values)} in a row`
+      return `${total} in a row`
     case "strokes":
-      return `${sum(values)} putts`
-    case "pct": {
-      const attempts = sum(done.map((x) => x.e.attempts ?? 0))
-      return `${attempts > 0 ? Math.round((100 * sum(values)) / attempts) : 0}%`
-    }
+      return `${total} putts`
+    case "pct":
+      return `${total}%`
   }
 }
 

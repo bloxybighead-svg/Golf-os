@@ -136,7 +136,7 @@ describe("weaknessScores", () => {
 
   it("explains each number in a line, and says when the split used 3-putts", () => {
     const ws = weaknessScores(rounds())
-    expect(get(ws, "lag_putting").explanation).toBe("Lag putting: 9.0 strokes/round lost vs scratch, 3-putts on 8 of your last 8 rounds.")
+    expect(get(ws, "lag_putting").explanation).toBe("Lag putting: 9.0 strokes/round lost vs scratch, 3-putts on 8 of your last 8 rounds, Tiger 5 mistakes pointing here: 1.0 per round.")
     const noDistance = weaknessScores([round("a", [{ putting: -1, putts: 3 }])])
     expect(get(noDistance, "lag_putting").explanation).toContain("cost of 3-putts")
     expect(get(weaknessScores([]), "tee").explanation).toContain("no rounds")

@@ -13,7 +13,7 @@ import { tiger5, tiger5Pressure, type PressureArea, type Tiger5Round } from "@/l
 export type PracticeArea = PressureArea
 export const PRACTICE_AREAS: readonly PracticeArea[] = ["lag_putting", "short_putting", "short_game", "wedges", "approach", "tee"]
 
-const AREA_LABEL: Record<PracticeArea, string> = {
+export const AREA_LABEL: Record<PracticeArea, string> = {
   lag_putting: "Lag putting",
   short_putting: "Short putting",
   short_game: "Short game",
@@ -41,8 +41,8 @@ export interface WeaknessRound {
   sg: RoundSgResult
   holes: readonly SgHoleRow[]
   tiger5: Tiger5Round
-  /** The round's score in the golfer's usual unit (strokes or differential). Only the correlation reads it. */
-  score: number
+  /** The round's score in the golfer's usual unit (strokes or differential), null when unknown. Only the correlation reads it. */
+  score: number | null
 }
 
 export interface DrillScores {
@@ -143,7 +143,11 @@ export function improvedThreeInARow(scores: readonly number[], lowerIsBetter: bo
 
 const oneDecimal = (n: number) => (Math.round(Math.abs(n) * 10) / 10).toFixed(1)
 
-function explain(area: PracticeArea, lost: StrokesLost, extras: { threePutts: { count: number; rounds: number } | null; threePuttSplit: boolean; improving: boolean }): string {
+function explain(
+  area: PracticeArea,
+  lost: StrokesLost,
+  extras: { threePutts: { count: number; rounds: number } | null; threePuttSplit: boolean; improving: boolean; pressure: number }
+): string {
   const label = AREA_LABEL[area]
   if (lost.strokesLost == null) return `${label}: no rounds with enough entries to measure it yet.`
   const gap =
@@ -157,6 +161,7 @@ function explain(area: PracticeArea, lost: StrokesLost, extras: { threePutts: { 
   if ((area === "lag_putting" || area === "short_putting") && extras.threePuttSplit) {
     parts.push("no first-putt distance entered on some holes, so lag putting there is the cost of 3-putts and short putting is the rest")
   }
+  if (extras.pressure >= 0.05) parts.push(`Tiger 5 mistakes pointing here: ${oneDecimal(extras.pressure)} per round`)
   if (extras.improving) parts.push("drill scores up three sessions running, so priority is cut 25%")
   return `${label}: ${parts.join(", ")}.`
 }
@@ -179,7 +184,7 @@ export function weaknessScores(rounds: readonly WeaknessRound[], drillScores: Pa
     const ds = drillScores[area]
     const improving = ds != null && improvedThreeInARow(ds.scores, ds.lowerIsBetter)
     const priority = (Math.max(0, lost[area].strokesLost ?? 0) + TIGER5_WEIGHT * pressure[area]) * (improving ? IMPROVING_KEEP : 1)
-    const pairs = forR.flatMap((x) => (x.values[area] == null ? [] : [{ lost: -(x.values[area] as number), score: x.score }]))
+    const pairs = forR.flatMap((x) => (x.values[area] == null || x.score == null ? [] : [{ lost: -(x.values[area] as number), score: x.score }]))
     return {
       area,
       strokesLost: lost[area].strokesLost,
@@ -188,7 +193,7 @@ export function weaknessScores(rounds: readonly WeaknessRound[], drillScores: Pa
       improving,
       priority,
       r: pearson(pairs.map((p) => p.lost), pairs.map((p) => p.score)),
-      explanation: explain(area, lost[area], { threePutts, threePuttSplit, improving }),
+      explanation: explain(area, lost[area], { threePutts, threePuttSplit, improving, pressure: pressure[area] }),
     }
   })
 }

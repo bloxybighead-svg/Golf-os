@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { loadSgData } from "@/lib/supabase/loadSgData"
 import { loadMyProfile } from "@/lib/supabase/loadMyProfile"
+import { loadPracticeData } from "@/lib/supabase/loadPracticeData"
+import { WeekCard } from "@/components/practice/WeekCard"
 import { RecommendedDrills } from "@/components/you/RecommendedDrills"
 import { LogPracticeSheet } from "@/components/you/LogPracticeSheet"
 import { DrillHistory } from "@/components/you/DrillHistory"
@@ -22,6 +24,7 @@ export default async function PracticePage() {
     { data: drillRunsData },
     sgData,
     profile,
+    practice,
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("handicap_tracking").select("handicap_index").order("calculation_date", { ascending: false }).limit(1).maybeSingle(),
@@ -33,6 +36,7 @@ export default async function PracticePage() {
       .limit(50),
     loadSgData(supabase, SG_WINDOW_ROUNDS),
     loadMyProfile(supabase),
+    loadPracticeData(supabase),
   ])
 
   // Drills follow the weakest category of the strokes gained on Stats (worked out in the browser, where the comparison level is).
@@ -46,6 +50,8 @@ export default async function PracticePage() {
   return (
     <div className="space-y-6 pt-4">
       <SubPageHeader title="Practice" />
+
+      <WeekCard sgData={sgData} fits={profile?.fits ?? null} handicapIndex={handicapIndex} savedRuns={practice.runs} library={practice.library} />
 
       <RecommendedDrills
         sgData={sgData}

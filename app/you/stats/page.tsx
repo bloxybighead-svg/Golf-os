@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { loadSgData } from "@/lib/supabase/loadSgData"
 import { loadMyProfile } from "@/lib/supabase/loadMyProfile"
+import { loadPracticeData } from "@/lib/supabase/loadPracticeData"
+import { drillTrends } from "@/lib/practice/progress"
+import { DrillTrends } from "@/components/you/DrillTrends"
 import { SgSection } from "@/components/you/SgSection"
 import { Tiger5Section } from "@/components/you/Tiger5Section"
 import { HandicapCard } from "@/components/home/HandicapCard"
@@ -23,6 +26,7 @@ export default async function StatsPage() {
     sgData,
     tiger5Data,
     profile,
+    practice,
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("handicap_tracking").select("*").order("calculation_date", { ascending: true }),
@@ -31,6 +35,7 @@ export default async function StatsPage() {
     loadSgData(supabase, SG_WINDOW_ROUNDS),
     loadSgData(supabase, SG_WINDOW_ROUNDS, true),
     loadMyProfile(supabase),
+    loadPracticeData(supabase),
   ])
 
   const handicapEntries = (handicapData ?? []) as HandicapEntry[] // oldest first
@@ -54,6 +59,8 @@ export default async function StatsPage() {
       </div>
 
       <Tiger5Section data={tiger5Data} />
+
+      <DrillTrends trends={drillTrends(practice.runs, practice.library, practice.levels)} />
 
       <TrendsPanel rounds={rounds} milestones={(milestonesData ?? []) as Milestone[]} />
     </div>

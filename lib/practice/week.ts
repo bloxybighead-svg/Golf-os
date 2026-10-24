@@ -47,8 +47,10 @@ export interface Week {
 
 const isPutting = (a: PracticeArea) => a === "lag_putting" || a === "short_putting"
 
+const weekBudget = (prefs: WeekPrefs) => (prefs.weekdayMinutes ?? 600) + (prefs.weekendMinutes ?? 540)
+
 export function buildWeek(priorities: Record<PracticeArea, number>, prefs: WeekPrefs = {}): Week {
-  const budget = (prefs.weekdayMinutes ?? 600) + (prefs.weekendMinutes ?? 540)
+  const budget = weekBudget(prefs)
   const ranked = [...PRACTICE_AREAS].sort((a, b) => priorities[b] - priorities[a])
   const top = ranked[0]
 
@@ -77,5 +79,31 @@ export function buildWeek(priorities: Record<PracticeArea, number>, prefs: WeekP
     minutes: total(),
     offDays: prefs.offDays ?? 1,
     dropped: [...dropped].map(([area, count]) => ({ area, count })),
+  }
+}
+
+/**
+ * The week again after a run or a round: what is already done stays done, the rest is re-ranked by the new priorities,
+ * and the total never goes over the weekly minutes (the lowest priorities lose their not-yet-done items first).
+ */
+export function rebuildWeek(done: Partial<Record<PracticeArea, number>>, priorities: Record<PracticeArea, number>, prefs: WeekPrefs = {}): Week {
+  const target = buildWeek(priorities, prefs)
+  const wanted = (a: PracticeArea) => target.items.find((i) => i.area === a)?.required ?? 0
+  const have = (a: PracticeArea) => done[a] ?? 0
+  const counts = {} as Record<PracticeArea, number>
+  for (const a of PRACTICE_AREAS) counts[a] = Math.max(have(a), wanted(a))
+
+  const total = () => PRACTICE_AREAS.reduce((n, a) => n + counts[a] * ITEM_MINUTES[a], 0)
+  const budget = weekBudget(prefs)
+  for (const a of [...PRACTICE_AREAS].sort((x, y) => priorities[x] - priorities[y])) {
+    while (total() > budget && counts[a] > have(a)) counts[a] -= 1
+  }
+
+  const ranked = [...PRACTICE_AREAS].sort((a, b) => priorities[b] - priorities[a])
+  return {
+    items: ranked.filter((a) => counts[a] > 0).map((area) => ({ area, required: counts[area], done: have(area), priority: priorities[area], minutes: ITEM_MINUTES[area] })),
+    minutes: total(),
+    offDays: prefs.offDays ?? 1,
+    dropped: ranked.flatMap((area) => (wanted(area) > counts[area] ? [{ area, count: wanted(area) - counts[area] }] : [])).reverse(),
   }
 }
