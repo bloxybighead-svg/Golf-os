@@ -22,6 +22,7 @@ export interface SgRound {
   gir_pct: number | null
   total_putts: number | null
   up_and_downs: number | null
+  three_putts?: number | null
 }
 
 /** The columns of a hole this reads (the round_holes table). */
@@ -36,6 +37,8 @@ export interface SgHoleRow {
   penalty_shot: PenaltyShot | null
   first_putt_ft?: number | null
   tracking?: HoleTracking | null
+  wedge_in_hand?: boolean | null
+  easy_updown_missed?: boolean | null
 }
 
 export interface SgContext {

@@ -253,6 +253,19 @@ export function HolePad({ hole, onChange }: { hole: HoleEntry; onChange: (patch:
           </div>
         </Row>
 
+        {hole.strokes != null && hole.strokes > hole.par && hole.tracking !== "complete" && (
+          <Row label="What went wrong">
+            <div className="grid grid-cols-2 gap-1.5">
+              <Choice selected={hole.wedge_in_hand === true} onClick={() => onChange({ wedge_in_hand: hole.wedge_in_hand !== true })}>
+                Wedge in hand
+              </Choice>
+              <Choice selected={hole.easy_updown_missed === true} onClick={() => onChange({ easy_updown_missed: hole.easy_updown_missed !== true })}>
+                Easy up-and-down missed
+              </Choice>
+            </div>
+          </Row>
+        )}
+
         <Choice selected={hole.penalty} onClick={() => onChange({ penalty: !hole.penalty, penalty_shot: null })} className="px-4">
           Penalty
         </Choice>

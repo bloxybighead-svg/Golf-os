@@ -10,6 +10,7 @@ import { formatSg, type RoundSgResult } from "@/lib/rounds/roundSg"
 import { CATEGORY_LABEL } from "@/lib/drillRecommendations"
 import { RoundDetail } from "./RoundDetail"
 import type { SgRoundData } from "@/lib/supabase/loadSgData"
+import { Tiger5Line } from "./Tiger5Line"
 
 function formatDate(dateStr: string) {
   return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", {
@@ -159,6 +160,7 @@ export function RoundCard({ round, casualGirAvg, sg }: Props) {
           </button>
         </p>
       )}
+      {sg && <Tiger5Line data={sg.data} />}
       {detail && sg && <RoundDetail round={round} data={sg.data} sg={sg.result} label={sg.label} onClose={() => setDetail(false)} />}
 
       {/* Stats row */}
