@@ -10,7 +10,7 @@
 //  - A permanent failure (rejected data, signed out) parks that job and the flush
 //    carries on with the rest. Signing in releases the parked ones.
 
-export type JobKind = "round" | "obTags" | "roundShots"
+export type JobKind = "round" | "obTags" | "roundShots" | "practiceRun"
 
 export interface OutboxJob {
   /** Identity for dedupe: the round's own id, or "obTags:<course>:<hole>". */

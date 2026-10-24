@@ -9,11 +9,11 @@
 //   worker-src   the service worker (public/sw.js) and the planner Web Worker (plan.worker.ts)
 //   style-src    'unsafe-inline' because Leaflet and React write inline style attributes
 //   script-src   the per-request nonce ('strict-dynamic' lets Next's scripts load their chunks) plus the
-//                sha256 of the inline theme and round-mode script (lib/theme/themeScript.ts). If that script changes,
+//                sha256 of the inline theme and round/session-mode script (lib/theme/themeScript.ts). If that script changes,
 //                update THEME_SCRIPT_HASH: `npm test` fails until you do.
-//                Current: sha256-JiQp0Hvjj7WxjHMj32vXOLE5zRmPm8BERZMIi9c99og=
+//                Current: sha256-ubTeeMyeA6f81QLEebrjVW2FyCrKaZL4E65faITchIE=
 
-export const THEME_SCRIPT_HASH = "sha256-JiQp0Hvjj7WxjHMj32vXOLE5zRmPm8BERZMIi9c99og="
+export const THEME_SCRIPT_HASH = "sha256-ubTeeMyeA6f81QLEebrjVW2FyCrKaZL4E65faITchIE="
 
 export function buildCsp(nonce: string, supabaseUrl: string | undefined): string {
   const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : ""

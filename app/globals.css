@@ -191,3 +191,12 @@ html { -webkit-text-size-adjust: 100%; }
   color: inherit;
   text-decoration: none;
 }
+
+/* Practice runner: a missed close-out putt shakes the count once as it resets to 0. */
+@keyframes run-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+.run-shake { animation: run-shake 0.25s ease-in-out; }
+@media (prefers-reduced-motion: reduce) { .run-shake { animation: none; } }

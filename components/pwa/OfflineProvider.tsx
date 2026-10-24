@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client"
 import { runStartupCleanup } from "@/lib/offline/cleanup"
 import { OUTBOX_EVENT, flushOutbox, releaseParked, type Sender } from "@/lib/offline/outbox"
 import type { OutboxJob } from "@/lib/offline/syncQueue"
-import { OBTAGS_JOB, ROUND_JOB, SHOTS_JOB, type ObTagsPayload, type RoundPayload, type ShotsPayload } from "@/lib/offline/jobs"
+import { OBTAGS_JOB, PRACTICE_RUN_JOB, ROUND_JOB, SHOTS_JOB, type ObTagsPayload, type PracticeRunPayload, type RoundPayload, type ShotsPayload } from "@/lib/offline/jobs"
 import { toDbRow } from "@/lib/rounds/shots"
 import { cleanTags } from "@/lib/planner/obTagStore"
 import { useServiceWorker } from "@/hooks/useServiceWorker"
@@ -62,6 +62,48 @@ export function OfflineProvider() {
         if (p.shots.length > 0) {
           const ins = await supabase.from("round_shots").insert(p.shots.map((s) => toDbRow(p.roundId, p.userId, s)))
           if (ins.error) throw new Error(ins.error.message)
+        }
+      },
+      [PRACTICE_RUN_JOB]: async (job) => {
+        const p = job.payload as PracticeRunPayload
+        if ((await currentUserId(supabase)) !== p.userId) throw new Error(WRONG_ACCOUNT)
+        const run = await supabase.from("practice_runs").upsert({
+          id: p.run.id,
+          user_id: p.userId,
+          run_date: p.run.date,
+          location: p.run.location,
+          started_at: p.run.startedAt,
+          ended_at: p.run.endedAt,
+          status: p.run.status,
+          notes: p.run.notes,
+        })
+        if (run.error) throw new Error(run.error.message)
+        const del = await supabase.from("practice_run_sets").delete().eq("run_id", p.run.id)
+        if (del.error) throw new Error(del.error.message)
+        if (p.sets.length > 0) {
+          const ins = await supabase.from("practice_run_sets").insert(
+            p.sets.map((s) => ({
+              run_id: p.run.id,
+              user_id: p.userId,
+              step_index: s.stepIndex,
+              block_index: s.blockIndex,
+              drill_id: s.drillId,
+              label: s.label,
+              club: s.club,
+              skipped: s.skipped,
+              value: s.value,
+              attempts: s.attempts,
+              spread: s.spread,
+              saved_at: s.at,
+            }))
+          )
+          if (ins.error) throw new Error(ins.error.message)
+        }
+        if (p.levelChanges.length > 0) {
+          const levels = await supabase
+            .from("drill_levels")
+            .upsert(p.levelChanges.map((c) => ({ user_id: p.userId, drill_id: c.drillId, level: c.level, updated_at: new Date().toISOString() })), { onConflict: "user_id,drill_id" })
+          if (levels.error) throw new Error(levels.error.message)
         }
       },
     }

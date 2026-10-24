@@ -9,6 +9,7 @@ import type { RoundShot } from "@/lib/rounds/shots"
 export const ROUND_JOB = "round" as const
 export const OBTAGS_JOB = "obTags" as const
 export const SHOTS_JOB = "roundShots" as const
+export const PRACTICE_RUN_JOB = "practiceRun" as const
 
 export interface RoundPayload {
   userId: string
@@ -36,3 +37,33 @@ export interface ShotsPayload {
 
 /** Queue key for a round's shots; queued after the round itself, so it is sent after it. */
 export const shotsKey = (roundId: string) => `roundShots:${roundId}`
+
+export interface PracticeRunPayload {
+  userId: string
+  /** The run as it stands; sent again, whole, after every set. */
+  run: {
+    id: string
+    date: string
+    location: string
+    startedAt: string
+    endedAt: string | null
+    status: "running" | "completed" | "ended_early"
+    notes: string | null
+  }
+  sets: {
+    stepIndex: number
+    blockIndex: number
+    drillId: string
+    label: string
+    club: string | null
+    skipped: boolean
+    value: number | null
+    attempts: number | null
+    spread: { left: number; center: number; right: number } | null
+    at: string
+  }[]
+  /** Set once the run is done: the drills whose level moved, to write to drill_levels. */
+  levelChanges: { drillId: string; level: number }[]
+}
+
+export const practiceRunKey = (runId: string) => `practiceRun:${runId}`
