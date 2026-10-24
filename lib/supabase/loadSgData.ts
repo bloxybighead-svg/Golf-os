@@ -18,22 +18,27 @@ export interface SgRoundData {
   yards: { holes: Record<number, number>; course: number | null }
 }
 
-const ROUND_COLUMNS = "id, date, course_name, holes_played, fairways_pct, gir_pct, total_putts, up_and_downs, course_id, tee_name"
+const ROUND_COLUMNS = "id, date, course_name, holes_played, fairways_pct, gir_pct, total_putts, three_putts, up_and_downs, course_id, tee_name"
 const HOLE_COLUMNS = "round_id, hole_number, par, strokes, putts, fairway_hit, green_hit, penalty, penalty_shot"
-const TRACKING_COLUMNS = `${HOLE_COLUMNS}, first_putt_ft, tracking`
+const TRACKING_COLUMNS = `${HOLE_COLUMNS}, first_putt_ft, tracking, wedge_in_hand, easy_updown_missed`
 
 type RoundRow = SgRound & { date: string; course_name: string; course_id: string | null; tee_name: string | null }
 type HoleRowWithRound = SgHoleRow & { round_id: string }
 
 /** The most recent `limit` rounds (all of them without one), newest first, with their holes, tracked shots and yardages. */
-export async function loadSgData(supabase: Supabase, limit?: number): Promise<SgRoundData[]> {
-  let query = supabase.from("rounds").select(ROUND_COLUMNS).order("date", { ascending: false }).order("created_at", { ascending: false })
+export async function loadSgData(supabase: Supabase, limit?: number, withHolesOnly = false): Promise<SgRoundData[]> {
+  // The inner join keeps only rounds entered hole by hole (Tiger 5 has nothing to say about the others).
+  let query = supabase
+    .from("rounds")
+    .select(withHolesOnly ? `${ROUND_COLUMNS}, round_holes!inner(hole_number)` : ROUND_COLUMNS)
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false })
   if (limit) query = query.limit(limit)
   const rounds = ((await query).data ?? []) as unknown as RoundRow[]
   if (rounds.length === 0) return []
   const ids = rounds.map((r) => r.id)
 
-  // The tracking columns come with supabase/migrations/20261021000000_sg_tracking.sql: without it, every hole reads as untracked.
+  // The tracking columns come with supabase/migrations/20261021000000_sg_tracking.sql and the Tiger 5 ones with 20261023000000_tiger5.sql: without them, every hole reads as untracked.
   let holeRows = (await supabase.from("round_holes").select(TRACKING_COLUMNS).in("round_id", ids)).data as unknown as HoleRowWithRound[] | null
   holeRows ??= ((await supabase.from("round_holes").select(HOLE_COLUMNS).in("round_id", ids)).data ?? []) as unknown as HoleRowWithRound[]
 
@@ -57,7 +62,7 @@ export async function loadSgData(supabase: Supabase, limit?: number): Promise<Sg
     }
     return {
       meta: { date: r.date, courseName: r.course_name },
-      round: { id: r.id, holes_played: r.holes_played, fairways_pct: r.fairways_pct, gir_pct: r.gir_pct, total_putts: r.total_putts, up_and_downs: r.up_and_downs },
+      round: { id: r.id, holes_played: r.holes_played, fairways_pct: r.fairways_pct, gir_pct: r.gir_pct, total_putts: r.total_putts, three_putts: r.three_putts, up_and_downs: r.up_and_downs },
       holes: holes.map(({ round_id: _id, ...h }) => h),
       shots: shotRows.filter((s) => s.round_id === r.id).map(fromDbRow),
       yards: { holes: yardsByHole, course: courseYardsFrom(card, r.tee_name) },

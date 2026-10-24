@@ -33,6 +33,10 @@ export interface HoleEntry {
   first_putt_ft?: number | null
   /** Whether the hole's shots were tracked and add up; set on Hole done. Same migration. */
   tracking?: HoleTracking
+  /** Tiger 5, asked after a bogey or worse on an untracked hole: a 9-iron or less was in hand. Needs supabase/migrations/20261023000000_tiger5.sql. */
+  wedge_in_hand?: boolean | null
+  /** Tiger 5, same question: an easy up-and-down was blown. Same migration. */
+  easy_updown_missed?: boolean | null
 }
 
 /** A hole that has a score, ready to save. */
@@ -91,7 +95,13 @@ export function cleanHoles(raw: unknown): ScoredHole[] {
     const penalty_shot = penalty && PENALTY_SHOTS.includes(h.penalty_shot) ? (h.penalty_shot as PenaltyShot) : null
     const first_putt_ft = h.first_putt_ft == null || putts === 0 ? null : intIn(h.first_putt_ft, 1, MAX_FIRST_PUTT_FT)
     const tracking: HoleTracking = h.tracking === "complete" || h.tracking === "partial" ? h.tracking : "none"
-    return { hole_number, par, strokes, fairway_hit, fairway_miss_side, green_hit, green_miss_side, putts, penalty, penalty_shot, stroke_index, first_putt_ft, tracking }
+    // Only a bogey or worse is asked; a better score keeps no answer.
+    const answered = (v: unknown) => (strokes > par && typeof v === "boolean" ? v : null)
+    return {
+      hole_number, par, strokes, fairway_hit, fairway_miss_side, green_hit, green_miss_side, putts, penalty, penalty_shot, stroke_index, first_putt_ft, tracking,
+      wedge_in_hand: answered(h.wedge_in_hand),
+      easy_updown_missed: answered(h.easy_updown_missed),
+    }
   })
   return out.sort((a, b) => a.hole_number - b.hole_number)
 }

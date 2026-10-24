@@ -16,6 +16,14 @@ describe("cleanHoles", () => {
     expect(a.green_miss_side).toBeNull()
     expect(b.fairway_miss_side).toBe("right")
   })
+  it("keeps the Tiger 5 answers only on a bogey or worse", () => {
+    const [par, bogey] = cleanHoles([
+      hole(1, { strokes: 4, wedge_in_hand: true, easy_updown_missed: true }),
+      hole(2, { strokes: 5, wedge_in_hand: true, easy_updown_missed: false }),
+    ])
+    expect([par.wedge_in_hand, par.easy_updown_missed]).toEqual([null, null])
+    expect([bogey.wedge_in_hand, bogey.easy_updown_missed]).toEqual([true, false])
+  })
   it("rejects a hole without a score, repeated holes and more putts than strokes", () => {
     expect(() => cleanHoles([hole(1, { strokes: null as unknown as number })])).toThrow("Hole 1 needs a score")
     expect(() => cleanHoles([hole(1), hole(1)])).toThrow()

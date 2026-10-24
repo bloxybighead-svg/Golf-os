@@ -2,13 +2,14 @@ import { createClient } from "@/lib/supabase/server"
 import { loadSgData } from "@/lib/supabase/loadSgData"
 import { loadMyProfile } from "@/lib/supabase/loadMyProfile"
 import { SgSection } from "@/components/you/SgSection"
+import { Tiger5Section } from "@/components/you/Tiger5Section"
 import { HandicapCard } from "@/components/home/HandicapCard"
 import { TrendsPanel } from "@/components/you/TrendsPanel"
 import { SubPageHeader } from "@/components/you/SubPageHeader"
 import type { HandicapEntry, Milestone, Round } from "@/lib/supabase/types"
 import { estimateHandicapIndex } from "@/lib/handicap"
 
-/** Strokes gained looks at this many most recent rounds. */
+/** Strokes gained and Tiger 5 look at this many most recent rounds. */
 const SG_WINDOW_ROUNDS = 10
 
 export default async function StatsPage() {
@@ -20,6 +21,7 @@ export default async function StatsPage() {
     { data: roundsData },
     { data: milestonesData },
     sgData,
+    tiger5Data,
     profile,
   ] = await Promise.all([
     supabase.auth.getUser(),
@@ -27,6 +29,7 @@ export default async function StatsPage() {
     supabase.from("rounds").select("*").order("date", { ascending: true }).order("created_at", { ascending: true }),
     supabase.from("milestones").select("*").order("date", { ascending: true }),
     loadSgData(supabase, SG_WINDOW_ROUNDS),
+    loadSgData(supabase, SG_WINDOW_ROUNDS, true),
     loadMyProfile(supabase),
   ])
 
@@ -49,6 +52,8 @@ export default async function StatsPage() {
         <HandicapCard latest={latestHandicap} liveEstimate={liveEstimate} signedIn={!!user} />
         <SgSection data={sgData} fits={profile?.fits ?? null} ownHandicap={latestHandicap?.handicap_index ?? liveEstimate} />
       </div>
+
+      <Tiger5Section data={tiger5Data} />
 
       <TrendsPanel rounds={rounds} milestones={(milestonesData ?? []) as Milestone[]} />
     </div>

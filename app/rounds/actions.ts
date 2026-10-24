@@ -104,11 +104,13 @@ async function saveHoles(supabase: Supabase, roundId: string, userId: string, ho
   const { error } = await supabase
     .from("round_holes")
     .upsert(
-      holes.map(({ tracking, first_putt_ft, ...h }) => ({
+      holes.map(({ tracking, first_putt_ft, wedge_in_hand, easy_updown_missed, ...h }) => ({
         ...h,
         penalty_shot: h.penalty_shot ?? null,
         // Only a tracked hole sends the tracking columns, so rounds still save before the migration is run.
         ...(tracking !== "none" || first_putt_ft != null ? { tracking, first_putt_ft: first_putt_ft ?? null } : {}),
+        // Likewise the Tiger 5 answers: only sent once one has been given (a deliberate "no" is false, not null).
+        ...(wedge_in_hand != null || easy_updown_missed != null ? { wedge_in_hand: wedge_in_hand ?? null, easy_updown_missed: easy_updown_missed ?? null } : {}),
         round_id: roundId,
         user_id: userId,
       })),
@@ -213,6 +215,9 @@ export async function getRoundHoles(roundId: string): Promise<HoleEntry[]> {
     penalty: r.penalty,
     penalty_shot: r.penalty_shot ?? null,
     stroke_index: r.stroke_index,
+    tracking: r.tracking ?? "none",
+    wedge_in_hand: r.wedge_in_hand ?? null,
+    easy_updown_missed: r.easy_updown_missed ?? null,
   }))
 }
 
