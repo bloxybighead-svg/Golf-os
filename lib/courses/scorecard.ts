@@ -2,13 +2,17 @@
 // from an OpenGolfAPI course record, and how a picked tee fills the round
 // form. Checked against a real response (Pebble Beach, 2026-10-01): each tee
 // has course_rating, slope, par, yardage and gender; holes_data has number,
-// par and handicap_index (the stroke index). Ratings are for 18 holes only.
+// par, handicap_index (the stroke index) and yardages, a map from tee color
+// ("gold", "white") to that hole's yards from that tee. Ratings are for 18 holes only.
 
 import { ratingForHoles } from "@/lib/rounds/activeRound"
 
 export interface ScorecardTee {
   /** e.g. "Gold (Male)" -- name plus gender, since each has its own rating. */
   label: string
+  /** The tee's own name ("Gold") and color ("gold"), which is how the holes' yardages are keyed. */
+  name: string
+  color: string | null
   courseRating: number
   slopeRating: number
   par: number
@@ -19,6 +23,8 @@ export interface ScorecardHole {
   number: number
   par: number
   strokeIndex: number | null
+  /** Yards from each tee, keyed by lower-case tee color. */
+  yardages: Record<string, number>
 }
 
 export interface Scorecard {
@@ -38,7 +44,8 @@ export function parseScorecard(raw: unknown): Scorecard {
     if (rating == null || slope == null || par == null || slope < 55 || slope > 155) continue
     const name = typeof t?.tee_name === "string" && t.tee_name ? t.tee_name : "Tee"
     const gender = typeof t?.gender === "string" && t.gender ? ` (${t.gender})` : ""
-    tees.push({ label: `${name}${gender}`, courseRating: rating, slopeRating: slope, par, yardage: num(t?.yardage) })
+    const color = typeof t?.tee_color === "string" && t.tee_color ? t.tee_color.toLowerCase() : null
+    tees.push({ label: `${name}${gender}`, name, color, courseRating: rating, slopeRating: slope, par, yardage: num(t?.yardage) })
   }
   const holes: ScorecardHole[] = []
   for (const h of Array.isArray(c.holes_data) ? c.holes_data : []) {
@@ -46,7 +53,12 @@ export function parseScorecard(raw: unknown): Scorecard {
     const par = num(h?.par)
     if (number == null || par == null || number < 1 || number > 18 || par < 3 || par > 6) continue
     const si = num(h?.handicap_index)
-    holes.push({ number, par, strokeIndex: si != null && si >= 1 && si <= 18 ? si : null })
+    const yardages: Record<string, number> = {}
+    for (const [tee, yds] of Object.entries((h?.yardages ?? {}) as Record<string, unknown>)) {
+      const v = num(yds)
+      if (v != null && v > 0) yardages[tee.toLowerCase()] = v
+    }
+    holes.push({ number, par, strokeIndex: si != null && si >= 1 && si <= 18 ? si : null, yardages })
   }
   holes.sort((a, b) => a.number - b.number)
   return { tees, holes }
@@ -63,4 +75,24 @@ export function teeFill(tee: ScorecardTee, holes: number): { courseRating: numbe
     slopeRating: tee.slopeRating,
     par: holes >= 18 ? tee.par : Math.round((tee.par * holes) / 18),
   }
+}
+
+/** The tee a round was played from, by the name saved on the round ("Gold"); the men's one where both are listed. */
+function teeNamed(card: Scorecard, teeName: string | null): ScorecardTee | null {
+  if (!teeName) return null
+  const named = card.tees.filter((t) => t.name.toLowerCase() === teeName.toLowerCase())
+  return named.find((t) => t.label.endsWith("(Male)")) ?? named[0] ?? null
+}
+
+/** A hole's yards from the tee played, or null when the scorecard has none. */
+export function holeYardsFrom(card: Scorecard | null, teeName: string | null, holeNumber: number): number | null {
+  const tee = card ? teeNamed(card, teeName) : null
+  const hole = card?.holes.find((h) => h.number === holeNumber)
+  if (!tee || !hole) return null
+  return hole.yardages[tee.color ?? ""] ?? hole.yardages[tee.name.toLowerCase()] ?? null
+}
+
+/** The whole course's yards from the tee played, or null when the scorecard has none. */
+export function courseYardsFrom(card: Scorecard | null, teeName: string | null): number | null {
+  return (card ? teeNamed(card, teeName)?.yardage : null) ?? null
 }

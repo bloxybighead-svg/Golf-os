@@ -5,6 +5,11 @@ import type { Round } from "@/lib/supabase/types"
 import { RoundForm } from "./RoundForm"
 import { deleteRound } from "@/app/rounds/actions"
 import { upAndDownPct } from "@/lib/rounds/holes"
+import { trackedHoleCounts } from "@/lib/rounds/holeTracking"
+import { formatSg, type RoundSgResult } from "@/lib/rounds/roundSg"
+import { CATEGORY_LABEL } from "@/lib/drillRecommendations"
+import { RoundDetail } from "./RoundDetail"
+import type { SgRoundData } from "@/lib/supabase/loadSgData"
 
 function formatDate(dateStr: string) {
   return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", {
@@ -27,10 +32,16 @@ const CAP_TITLE: Record<NonNullable<Round["score_cap"]>, string> = {
   none: "Score only: posted as entered",
 }
 
-interface Props { round: Round; casualGirAvg?: number | null }
+interface Props {
+  round: Round
+  casualGirAvg?: number | null
+  /** Strokes gained for the round and what it is measured against; null while the device's settings load. */
+  sg?: { result: RoundSgResult; data: SgRoundData; label: string } | null
+}
 
-export function RoundCard({ round, casualGirAvg }: Props) {
+export function RoundCard({ round, casualGirAvg, sg }: Props) {
   const [editing, setEditing] = useState(false)
+  const [detail, setDetail] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -54,6 +65,10 @@ export function RoundCard({ round, casualGirAvg }: Props) {
     round.gir_pct != null &&
     casualGirAvg - round.gir_pct > 20
 
+  const tracked = sg ? trackedHoleCounts(sg.data.holes) : { complete: 0, any: 0 }
+  const weakest = sg?.result.weakest
+  const weakestValue = weakest ? sg?.result.per18[weakest] : null
+
   return (
     <div className={[
       "rounded-xl border px-5 py-4 transition-colors",
@@ -62,7 +77,7 @@ export function RoundCard({ round, casualGirAvg }: Props) {
         : "border-fg/[0.06] bg-surface hover:bg-surface-2",
     ].join(" ")}>
       {/* Top row */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4" onClick={() => sg && setDetail(true)}>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-fg">{round.course_name}</p>
@@ -125,6 +140,26 @@ export function RoundCard({ round, casualGirAvg }: Props) {
       {round.score_cap === "approximate" && (
         <p className="mt-1 text-xs text-muted">Hole caps approximate: add each hole&rsquo;s HCP for exact net double bogey</p>
       )}
+
+      {/* Strokes gained: the total, the weakest part, and where it came from */}
+      {sg && (
+        <p className="mt-2 text-xs text-muted">
+          {sg.result.kind === "totals" ? (
+            weakest && weakestValue != null ? `Estimate from round totals · Weakest ${CATEGORY_LABEL[weakest].toLowerCase()} ${formatSg(weakestValue)}` : "Estimate from round totals"
+          ) : (
+            <>
+              <span className={(sg.result.total ?? 0) >= 0 ? "font-semibold text-accent" : "font-semibold text-danger"}>{formatSg(sg.result.total ?? 0)}</span> vs {sg.label}
+              {weakest && weakestValue != null && ` · Weakest ${CATEGORY_LABEL[weakest].toLowerCase()} ${formatSg(weakestValue)}`}
+            </>
+          )}
+          {tracked.any > 0 && ` · Tracked ${tracked.complete} of ${sg.data.holes.length} holes`}
+          {" · "}
+          <button onClick={() => setDetail(true)} className="inline-flex min-h-[44px] items-center font-semibold text-accent hover:underline md:min-h-0">
+            Details
+          </button>
+        </p>
+      )}
+      {detail && sg && <RoundDetail round={round} data={sg.data} sg={sg.result} label={sg.label} onClose={() => setDetail(false)} />}
 
       {/* Stats row */}
       {(round.fairways_pct != null || round.gir_pct != null || hasShortGame || hasMiss) && (

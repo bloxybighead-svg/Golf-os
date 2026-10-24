@@ -1,13 +1,15 @@
 import { createClient } from "@/lib/supabase/server"
-import { loadCategoryTrends } from "@/lib/supabase/loadCategoryTrends"
-import { loadShotSg } from "@/lib/supabase/loadShotSg"
-import { ShotSgCard } from "@/components/you/ShotSgCard"
+import { loadSgData } from "@/lib/supabase/loadSgData"
+import { loadMyProfile } from "@/lib/supabase/loadMyProfile"
+import { SgSection } from "@/components/you/SgSection"
 import { HandicapCard } from "@/components/home/HandicapCard"
-import { TrendsCard } from "@/components/home/TrendsCard"
 import { TrendsPanel } from "@/components/you/TrendsPanel"
 import { SubPageHeader } from "@/components/you/SubPageHeader"
 import type { HandicapEntry, Milestone, Round } from "@/lib/supabase/types"
 import { estimateHandicapIndex } from "@/lib/handicap"
+
+/** Strokes gained looks at this many most recent rounds. */
+const SG_WINDOW_ROUNDS = 10
 
 export default async function StatsPage() {
   const supabase = await createClient()
@@ -17,13 +19,15 @@ export default async function StatsPage() {
     { data: handicapData },
     { data: roundsData },
     { data: milestonesData },
-    categoryTrends,
+    sgData,
+    profile,
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("handicap_tracking").select("*").order("calculation_date", { ascending: true }),
     supabase.from("rounds").select("*").order("date", { ascending: true }).order("created_at", { ascending: true }),
     supabase.from("milestones").select("*").order("date", { ascending: true }),
-    loadCategoryTrends(supabase),
+    loadSgData(supabase, SG_WINDOW_ROUNDS),
+    loadMyProfile(supabase),
   ])
 
   const handicapEntries = (handicapData ?? []) as HandicapEntry[] // oldest first
@@ -36,8 +40,6 @@ export default async function StatsPage() {
     [...rounds].reverse().slice(0, 20).map((r) => r.differential).filter((d): d is number => d != null)
   )
 
-  const shotSg = await loadShotSg(supabase, latestHandicap?.handicap_index ?? liveEstimate)
-
   return (
     <div className="space-y-6 pt-4">
       <SubPageHeader title="Stats" />
@@ -45,7 +47,7 @@ export default async function StatsPage() {
       {/* Side by side on wide screens so desktop isn't a stretched phone column */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 lg:gap-4">
         <HandicapCard latest={latestHandicap} liveEstimate={liveEstimate} signedIn={!!user} />
-        {shotSg ? <ShotSgCard data={shotSg} /> : <TrendsCard trends={categoryTrends} />}
+        <SgSection data={sgData} fits={profile?.fits ?? null} ownHandicap={latestHandicap?.handicap_index ?? liveEstimate} />
       </div>
 
       <TrendsPanel rounds={rounds} milestones={(milestonesData ?? []) as Milestone[]} />

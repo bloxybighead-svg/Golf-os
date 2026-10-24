@@ -15,6 +15,8 @@ import { fetchWithSnapshot, snapshotKeys, type PrefetchReport } from "@/lib/offl
 import { SyncStatus } from "@/components/pwa/SyncStatus"
 import { Toast } from "@/components/play/Toast"
 import { BottomSheet } from "@/components/play/BottomSheet"
+import type { BallNow } from "@/lib/rounds/holeTracking"
+import { TrackShotsToggle } from "@/components/play/TrackShotsToggle"
 import { FinishSheet, HoleSheet, ScorecardSheet, type RoundSheet } from "@/components/play/RoundSheets"
 
 interface Props {
@@ -49,6 +51,12 @@ interface Props {
   /** The hole the golfer seems to be standing at, offered as a tap (never switched to by itself). */
   holeOffer: number | null
   onHoleOffer: (accepted: boolean) => void
+  /** Where the ball is on the hole the map shows (for Hole done's shot check); null without a plan. */
+  ball: BallNow | null
+  /** Hole done's "Missed a swing": place the missed shot on the map. */
+  onMissedSwing: () => void
+  /** Track every shot: the Shot button beside Hole done (the round screen has its own in the dock). Null when tracking is off. */
+  shot: { club: string | null; onTap: () => void; disabled: boolean } | null
   /** On the round screen, which has its own header and dock: only the toasts and sheets render. */
   embedded?: boolean
 }
@@ -160,6 +168,11 @@ export function PlayRound(props: Props) {
           onRoundChange={onRoundChange}
           onSheetChange={onSheetChange}
           onGoToHole={onGoToHole}
+          ball={sheet.hole === props.currentHole ? props.ball : null}
+          onMissedSwing={() => {
+            onSheetChange(null)
+            props.onMissedSwing()
+          }}
         />
       )}
       {sheet?.kind === "card" && <ScorecardSheet round={round} onSheetChange={onSheetChange} />}
@@ -188,6 +201,15 @@ export function PlayRound(props: Props) {
   return (
     <>
       <div className="flex min-w-0 items-center gap-3">
+        {props.shot && (
+          <button
+            onClick={props.shot.onTap}
+            disabled={props.shot.disabled}
+            className="h-10 shrink-0 rounded-lg border border-accent px-5 text-sm font-semibold text-accent transition-all hover:brightness-110 disabled:opacity-50"
+          >
+            Shot{props.shot.club ? ` · ${props.shot.club}` : ""}
+          </button>
+        )}
         <button
           onClick={() => onSheetChange({ kind: "hole", hole: holeToScore(round, props.currentHole), advance: true })}
           className="h-10 shrink-0 rounded-lg bg-accent px-5 text-sm font-semibold text-on-accent transition-all hover:brightness-110"
@@ -227,6 +249,7 @@ function StartRoundSheet({
   const [countChoice, setCountChoice] = useState<"18" | "9" | "other">(total >= 18 ? "18" : "9")
   const [otherCount, setOtherCount] = useState("")
   const [startHole, setStartHole] = useState(1)
+  const [trackShots, setTrackShots] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -274,6 +297,7 @@ function StartRoundSheet({
       courseRating: tee?.courseRating ?? null,
       slopeRating: tee?.slopeRating ?? null,
       startHole,
+      trackShots,
       holes: holesFor(order, parByHole).map((h) => ({ ...h, stroke_index: onCard.get(h.hole_number)?.strokeIndex ?? null })),
     })
   }
@@ -303,6 +327,8 @@ function StartRoundSheet({
         </>
       }
     >
+      <TrackShotsToggle onChange={setTrackShots} />
+
       <section className="space-y-2">
         <p className="label-xs">Tees</p>
         {tees === null && <p className="text-sm text-muted">Loading tees…</p>}

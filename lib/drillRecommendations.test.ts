@@ -1,11 +1,7 @@
 import { describe, it, expect } from "vitest"
-import { drillTrends, weakestCategory, focusAreas, recommendDrills } from "./drillRecommendations"
-import { SG_CATEGORIES, type SgSummary } from "./rounds/strokesGained"
-import type { CategoryTrend } from "./sgBenchmarks"
+import { trendsFromLoss, weakestCategory, focusAreas, recommendDrills, type CategoryTrend } from "./drillRecommendations"
 
-const trend = (category: CategoryTrend["category"], avgDeltaSg: number, roundsCounted = 10): CategoryTrend => ({
-  category, avgDeltaSg, avgUserSg: 0, avgBenchmarkSg: 0, roundsCounted,
-})
+const trend = (category: CategoryTrend["category"], avgDeltaSg: number, roundsCounted = 10): CategoryTrend => ({ category, avgDeltaSg, roundsCounted })
 
 describe("weakestCategory", () => {
   it("picks the most negative delta", () => {
@@ -51,23 +47,14 @@ describe("focusAreas", () => {
   })
 })
 
-describe("drillTrends", () => {
-  const estimate = [trend("putting", -0.5), trend("approach", 0.2)]
-  const real = (per18: Record<string, number>): SgSummary => ({
-    rounds: 5,
-    holesCounted: 80,
-    categories: SG_CATEGORIES.map((category) => ({ category, total: 0, shots: 10, per18: per18[category] ?? 0 })),
-  })
-
-  it("uses the scorecard estimate until there is shot data", () => {
-    expect(drillTrends(null, estimate)).toBe(estimate)
-  })
-
-  it("uses strokes gained from shots when there is, so the weakest area follows it", () => {
-    const trends = drillTrends(real({ off_tee: -1.4, putting: 0.3 }), estimate)
-    expect(trends).toHaveLength(4)
+describe("trendsFromLoss", () => {
+  it("turns strokes lost per round into a trend, so the weakest area follows it", () => {
+    const trends = trendsFromLoss([
+      { category: "off_tee", strokesLost: 1.4, rounds: 5 },
+      { category: "putting", strokesLost: -0.3, rounds: 5 },
+    ])
     expect(weakestCategory(trends)?.category).toBe("off_tee")
-    expect(trends.find((t) => t.category === "putting")).toMatchObject({ avgDeltaSg: 0.3, roundsCounted: 5 })
+    expect(trends[1]).toEqual({ category: "putting", avgDeltaSg: 0.3, roundsCounted: 5 })
   })
 })
 

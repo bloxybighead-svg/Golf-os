@@ -3,7 +3,7 @@ import { BAG_ORDER } from "@/lib/golfer/tables"
 import { generateCustomGolferShots } from "@/lib/golfer/build"
 import { generateMyBag } from "@/lib/golfer/shotProfile"
 import { loadMyProfile } from "@/lib/supabase/loadMyProfile"
-import { fromDbRow, type RoundShot, type RoundShotRow } from "@/lib/rounds/shots"
+import { fromDbRow, ROUND_SHOT_COLUMNS, type RoundShot, type RoundShotRow } from "@/lib/rounds/shots"
 import { lateralSamples, MIN_GROUP_SHOTS, modelSpread, suggestSpread, type SpreadSuggestion } from "@/lib/rounds/spreadCalibration"
 
 /** Rows come back at most this many at a time (the API's own cap), and at most PAGES times: the most recent shots are enough. */
@@ -25,7 +25,7 @@ export async function loadSpreadSuggestion(supabase: Supabase): Promise<SpreadSu
   for (let page = 0; page < PAGES; page++) {
     const { data } = await supabase
       .from("round_shots")
-      .select("round_id, hole_number, shot_number, club, from_lat, from_lng, from_lie, to_lat, to_lng, to_lie, penalty_strokes")
+      .select(`round_id, ${ROUND_SHOT_COLUMNS}`)
       .order("created_at", { ascending: false })
       .order("id")
       .range(page * PAGE, (page + 1) * PAGE - 1)
@@ -34,7 +34,14 @@ export async function loadSpreadSuggestion(supabase: Supabase): Promise<SpreadSu
   }
   const byRound = new Map<string, RoundShot[]>()
   for (const r of rows) byRound.set(r.round_id, [...(byRound.get(r.round_id) ?? []), fromDbRow(r)])
-  const samples = lateralSamples([...byRound.values()])
+  // Only holes whose tracking is complete say where the golfer's shots really went.
+  const { data: complete } = await supabase.from("round_holes").select("round_id, hole_number").eq("tracking", "complete").in("round_id", [...byRound.keys()])
+  const samples = lateralSamples(
+    [...byRound].map(([roundId, shots]) => ({
+      shots,
+      completeHoles: new Set((complete ?? []).filter((h) => h.round_id === roundId).map((h) => h.hole_number as number)),
+    }))
+  )
   if (samples.length < MIN_GROUP_SHOTS) return null
 
   const [{ data: tracked }, { data: baseline }, profile] = await Promise.all([

@@ -40,20 +40,27 @@ export interface LateralSample {
   lateralYds: number
 }
 
+/** One round's saved shots and the holes whose tracking is complete. */
+export interface RoundShots {
+  shots: readonly RoundShot[]
+  completeHoles: ReadonlySet<number>
+}
+
 /**
- * Full-swing shots with a tracked start and finish, one round's shots at a time (the pin is where the hole was
- * holed). A shot that took a penalty or finished in water or out of bounds is left out: its recorded finish is
- * where the ball was dropped, not where it went.
+ * Full-swing shots with a tracked start and finish, one round at a time (the pin is where the hole was holed).
+ * Only shots from complete holes count, and only those with a club the golfer picked: a suggested club may not
+ * be the one they hit. A shot that took a penalty or finished in water or out of bounds is left out: its recorded
+ * finish is where the ball was dropped, not where it went.
  */
-export function lateralSamples(rounds: readonly (readonly RoundShot[])[]): LateralSample[] {
+export function lateralSamples(rounds: readonly RoundShots[]): LateralSample[] {
   const out: LateralSample[] = []
-  for (const shots of rounds) {
-    for (const hole of new Set(shots.map((s) => s.holeNumber))) {
+  for (const { shots, completeHoles } of rounds) {
+    for (const hole of completeHoles) {
       const here = shots.filter((s) => s.holeNumber === hole)
       const pin: LatLng | null = here.find((s) => s.toLie === "holed")?.to ?? null
       if (!pin) continue
       for (const s of here) {
-        if (s.club === PUTTER || !clubGroup(s.club) || !s.from || !s.to) continue
+        if (s.club === PUTTER || !s.clubConfirmed || !clubGroup(s.club) || !s.from || !s.to) continue
         if (s.penaltyStrokes > 0 || s.toLie === "water" || s.toLie === "oob") continue
         const line = toLocal(s.from, pin)
         const end = toLocal(s.from, s.to)

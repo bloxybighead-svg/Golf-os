@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache"
 import { syncCalculatedHandicap } from "@/lib/supabase/syncHandicap"
 import { createClient } from "@/lib/supabase/server"
-import { computeUserSg, handicapBracketRange } from "@/lib/sgBenchmarks"
 import { cleanHoles, summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
 import type { Round } from "@/lib/supabase/types"
 
@@ -105,7 +104,14 @@ async function saveHoles(supabase: Supabase, roundId: string, userId: string, ho
   const { error } = await supabase
     .from("round_holes")
     .upsert(
-      holes.map((h) => ({ ...h, penalty_shot: h.penalty_shot ?? null, round_id: roundId, user_id: userId })),
+      holes.map(({ tracking, first_putt_ft, ...h }) => ({
+        ...h,
+        penalty_shot: h.penalty_shot ?? null,
+        // Only a tracked hole sends the tracking columns, so rounds still save before the migration is run.
+        ...(tracking !== "none" || first_putt_ft != null ? { tracking, first_putt_ft: first_putt_ft ?? null } : {}),
+        round_id: roundId,
+        user_id: userId,
+      })),
       { onConflict: "round_id,hole_number" }
     )
   if (error) throw new Error(error.message)
@@ -115,54 +121,6 @@ async function saveHoles(supabase: Supabase, roundId: string, userId: string, ho
     .eq("round_id", roundId)
     .not("hole_number", "in", `(${holes.map((h) => h.hole_number).join(",")})`)
   if (delError) throw new Error(delError.message)
-}
-
-// Delete-then-reinsert (never updated in place) so an edited round's SG
-// analysis is always recomputed fresh from its current stats rather than
-// reconciled field-by-field -- cheap, since it's at most 4 rows.
-async function saveRoundAnalysis(
-  supabase: Supabase,
-  roundId: string,
-  userId: string,
-  data: Pick<Round, "holes_played" | "fairways_pct" | "gir_pct" | "total_putts" | "up_and_downs">,
-  holes: ScoredHole[] | null,
-  handicapIndex: number | null
-) {
-  await supabase.from("round_analysis").delete().eq("round_id", roundId)
-  if (handicapIndex == null) return
-
-  const userSg = computeUserSg({
-    holesPlayed: data.holes_played,
-    fairwaysPct: data.fairways_pct,
-    girPct: data.gir_pct,
-    totalPutts: data.total_putts,
-    upAndDowns: data.up_and_downs,
-    teePenalties: holes?.filter((h) => h.penalty_shot === "tee").length ?? 0,
-  })
-  if (userSg.length === 0) return
-
-  const bracket = handicapBracketRange(handicapIndex)
-  const { data: benchmarks } = await supabase
-    .from("sg_benchmarks")
-    .select("category, avg_strokes_gained")
-    .eq("handicap_low", bracket.low)
-    .eq("handicap_high", bracket.high)
-  const benchmarkByCategory = new Map((benchmarks ?? []).map((b) => [b.category, b.avg_strokes_gained as number]))
-
-  const rows = userSg
-    .filter((u) => benchmarkByCategory.has(u.category))
-    .map((u) => {
-      const benchmarkSg = benchmarkByCategory.get(u.category)!
-      return {
-        round_id: roundId,
-        user_id: userId,
-        category: u.category,
-        user_sg: u.userSg,
-        benchmark_sg: benchmarkSg,
-        delta_sg: Math.round((u.userSg - benchmarkSg) * 100) / 100,
-      }
-    })
-  if (rows.length > 0) await supabase.from("round_analysis").insert(rows)
 }
 
 export async function createRound(input: RoundInput) {
@@ -206,7 +164,6 @@ export async function createRound(input: RoundInput) {
     if (!existing) await supabase.from("rounds").delete().eq("id", inserted.id)
     throw e
   }
-  await saveRoundAnalysis(supabase, inserted.id, user.id, inserted as Round, holes, handicapIndex)
   await syncCalculatedHandicap(supabase, user.id)
   revalidatePath("/rounds")
   revalidatePath("/you")
@@ -218,10 +175,7 @@ export async function updateRound(id: string, input: RoundInput) {
   if (!user) throw new Error("Sign in to edit rounds.")
   const { row, holes } = buildRound(input)
 
-  const [{ data: existing }, { count: holeCount }] = await Promise.all([
-    supabase.from("rounds").select("handicap_index").eq("id", id).maybeSingle(),
-    supabase.from("round_holes").select("id", { count: "exact", head: true }).eq("round_id", id),
-  ])
+  const { count: holeCount } = await supabase.from("round_holes").select("id", { count: "exact", head: true }).eq("round_id", id)
   const hadHoles = (holeCount ?? 0) > 0
 
   // Score only: a round that had holes loses the stats they gave; an older
@@ -233,7 +187,6 @@ export async function updateRound(id: string, input: RoundInput) {
   if (error) throw new Error(error.message)
 
   if (holes || hadHoles) await saveHoles(supabase, id, user.id, holes)
-  await saveRoundAnalysis(supabase, id, user.id, updated as Round, holes, existing?.handicap_index ?? null)
   await syncCalculatedHandicap(supabase, user.id)
   revalidatePath("/rounds")
   revalidatePath("/you")

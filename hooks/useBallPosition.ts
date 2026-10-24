@@ -14,12 +14,9 @@ const YD_PER_M = 1.09361
 export function useBallPosition({
   setFit,
   onBallMoved,
-  onShotMove,
 }: {
   setFit: (fit: FitRequest) => void
   onBallMoved: () => void
-  /** The ball moved from `from` to `to` (a tap, a location, or a GPS fix while following). */
-  onShotMove: (from: LatLng | null, to: LatLng, following: boolean) => void
 }) {
   const [ball, setBall] = useState<LatLng | null>(null)
   const ballRef = useRef<LatLng | null>(null) // read by the GPS callbacks, which outlive a render
@@ -65,8 +62,7 @@ export function useBallPosition({
 
   // A picked club holds through ball moves (GPS follow, taps): only a different
   // hole, "Back to best club" or the club leaving the bag reset it (lib/planner/clubChoice.ts).
-  function moveBallTo(p: LatLng, following = false) {
-    onShotMove(ballRef.current, p, following)
+  function moveBallTo(p: LatLng) {
     ballRef.current = p
     setBall(p)
     onBallMoved()
@@ -107,7 +103,7 @@ export function useBallPosition({
         lastFollowAt.current = now
         setGpsNote("")
         setFix(next)
-        moveBallTo({ lat: next.lat, lng: next.lng }, true)
+        moveBallTo({ lat: next.lat, lng: next.lng })
       },
       (err) => {
         setGpsError(err.code === err.PERMISSION_DENIED ? "Location permission was denied." : "Couldn't get your location.")
