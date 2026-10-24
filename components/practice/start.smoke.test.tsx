@@ -22,7 +22,7 @@ const answers = (cap: number, o: Partial<Parameters<typeof SessionAnswers>[0]> =
 describe("the answers", () => {
   it("asks three questions and keeps the next round collapsed", () => {
     const html = answers(640)
-    for (const q of ["Minutes", "Location", "How you feel"]) expect(html).toContain(q)
+    for (const q of ["Minutes", "Locations", "How you feel"]) expect(html).toContain(q)
     for (const c of ["30", "60", "90", "120", "Other", "Home net", "Short-game area", "Putting green", "Range", "Course", "Simulator", "Good", "Sore"]) expect(html).toContain(`>${c}</button>`)
     expect(html).toContain("Next round: not set")
     expect(html).toContain('aria-expanded="false"')
@@ -39,6 +39,14 @@ describe("the answers", () => {
     expect(html).toMatch(/aria-pressed="true"[^>]*>60</)
   })
 
+  it("lets more than one location be picked", () => {
+    const html = answers(640, { answers: { ...DEFAULT_ANSWERS, locations: ["putting_green", "range"] } })
+    const pressed = (label: string) => new RegExp(`aria-pressed="true"[^>]*>${label}<`).test(html)
+    expect(pressed("Putting green")).toBe(true)
+    expect(pressed("Range")).toBe(true)
+    expect(pressed("Home net")).toBe(false)
+  })
+
   it("shows a remembered next round", () => {
     expect(answers(640, { nextRound: { date: "2026-10-24", competitive: true, courseKnown: true } })).toContain("Next round: Sat, competitive, known course")
   })
@@ -49,9 +57,9 @@ describe("the session card", () => {
   const library = [{ id: "d1", equipment: "putter, balls, tees" }, { id: "d2", equipment: "putter, balls" }] as unknown as Parameters<typeof SessionCard>[0]["library"]
 
   it("shows total time, end time, blocks, what to bring and the engine's notes", () => {
-    const html = renderToStaticMarkup(<SessionCard plan={plan} location="putting_green" library={library} />)
+    const html = renderToStaticMarkup(<SessionCard plan={plan} locations={["putting_green", "range"]} library={library} />)
     expect(html).toContain("35 min · ends 8:05 PM")
-    expect(html).toContain("Putting green")
+    expect(html).toContain("Putting green, Range")
     expect(html).toContain("Pelz Lag Ladder")
     expect(html).toContain("25 min")
     expect(html).toContain("putter, balls, tees")
@@ -60,7 +68,7 @@ describe("the session card", () => {
 
   it("an off day shows only its note", () => {
     const off = { off: true, blocks: [], practiceMinutes: 0, loggingMinutes: 0, endsAt: null, notes: ["6 practice days in a row: today is an off day."] } as unknown as typeof plan
-    const html = renderToStaticMarkup(<SessionCard plan={off} location="range" library={[]} />)
+    const html = renderToStaticMarkup(<SessionCard plan={off} locations={["range"]} library={[]} />)
     expect(html).toContain("off day")
     expect(html).not.toContain("min ·")
   })

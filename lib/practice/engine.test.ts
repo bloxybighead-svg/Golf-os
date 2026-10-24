@@ -25,7 +25,7 @@ describe("engine end to end", () => {
     const week = buildWeek(Object.fromEntries(scores.map((s) => [s.area, s.priority])) as Parameters<typeof buildWeek>[0])
     expect(week.items.length).toBeGreaterThan(0)
     const drill = { id: "x", name: "Lag", category: "putting", description: null, target_area: null, difficulty: "intermediate", reps_suggested: null, time_estimate_mins: 20, instructions: null, equipment_needed: null, practice_category: "lag_putting", locations: ["putting_green"], equipment: null, structure: "blocked", pressure: 0, metric: "count_of_n", lower_is_better: true, sets: [{ label: "s", setup: "s", balls: 10 }], levels: [{ name: "n", rule: "r" }], cue: "c", routine_rule: "r", source_url: "https://x", status: "active" } as const
-    const session = buildSession({ week: week.items, now: new Date(2026, 9, 21, 10), minutes: 60, location: "putting_green", energy: "ok", nextRound: null, history: [], library: [{ ...drill, locations: ["putting_green"], sets: [...drill.sets], levels: [...drill.levels] }], levels: {} })
+    const session = buildSession({ week: week.items, now: new Date(2026, 9, 21, 10), minutes: 60, locations: ["putting_green"], energy: "ok", nextRound: null, history: [], library: [{ ...drill, locations: ["putting_green"], sets: [...drill.sets], levels: [...drill.levels] }], levels: {} })
     expect(session.blocks.length).toBeGreaterThan(0)
   })
 })

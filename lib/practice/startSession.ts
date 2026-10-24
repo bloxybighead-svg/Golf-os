@@ -16,11 +16,11 @@ export const NEXT_ROUND_KEY = "golfos.nextRound.v1"
 
 export interface Answers {
   minutes: number
-  location: DrillLocation
+  locations: DrillLocation[]
   energy: Energy
 }
 
-export const DEFAULT_ANSWERS: Answers = { minutes: 60, location: "putting_green", energy: "ok" }
+export const DEFAULT_ANSWERS: Answers = { minutes: 60, locations: ["putting_green"], energy: "ok" }
 
 export const MINUTE_CHOICES = [30, 60, 90, 120] as const
 
@@ -84,7 +84,7 @@ export function buildPlan(args: {
     week: args.week,
     now: args.now,
     minutes: args.answers.minutes,
-    location: args.answers.location,
+    locations: args.answers.locations,
     energy: args.answers.energy,
     nextRound: toNextRound(args.nextRound),
     history: historyFromRuns(args.runs),
@@ -109,7 +109,7 @@ function levelHistory(runs: readonly FinishedRun[], drill: DrillRef, since: stri
 export function startFromPlan(args: {
   plan: SessionPlan
   now: Date
-  location: DrillLocation
+  locations: readonly DrillLocation[]
   userId: string
   runs: readonly FinishedRun[]
   library: readonly DrillRef[]
@@ -129,7 +129,7 @@ export function startFromPlan(args: {
     id: newRoundId(),
     userId: args.userId,
     date: localDate(args.now),
-    location: args.location,
+    location: args.locations.join(","),
     now: args.now.getTime(),
     plan: args.plan,
     previous,

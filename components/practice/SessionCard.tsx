@@ -6,7 +6,7 @@ import type { LibraryDrill } from "@/lib/supabase/types"
 
 const clockTime = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 
-export function SessionCard({ plan, location, library }: { plan: SessionPlan; location: string; library: readonly LibraryDrill[] }) {
+export function SessionCard({ plan, locations, library }: { plan: SessionPlan; locations: readonly string[]; library: readonly LibraryDrill[] }) {
   const bring = [
     ...new Set(
       plan.blocks.flatMap((b) =>
@@ -25,7 +25,7 @@ export function SessionCard({ plan, location, library }: { plan: SessionPlan; lo
             {plan.practiceMinutes + plan.loggingMinutes} min · ends {clockTime(plan.endsAt)}
           </p>
           <p className="text-sm text-muted">
-            {LOCATION_CHOICES.find((l) => l.value === location)?.label ?? location} · {plan.loggingMinutes} min to log
+            {locations.map((x) => LOCATION_CHOICES.find((l) => l.value === x)?.label ?? x).join(", ")} · {plan.loggingMinutes} min to log
           </p>
         </div>
       )}

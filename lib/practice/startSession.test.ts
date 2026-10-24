@@ -21,18 +21,18 @@ const library: LibraryDrill[] = seed.map((d) => ({ ...d, id: d.name }))
 const active = library.filter((d) => d.status === "active")
 
 const at = (h: number, m = 0) => new Date(2026, 9, 21, h, m)
-const answers = { minutes: 60, location: "putting_green" as const, energy: "ok" as const }
+const answers = { minutes: 60, locations: ["putting_green" as const], energy: "ok" as const }
 const plan = (o: Partial<Parameters<typeof buildPlan>[0]> = {}) =>
   buildPlan({ week: [], now: at(10), answers, nextRound: null, runs: [], library: active, levels: {}, ...o })
 
 describe("buildPlan", () => {
   it("passes the answers to buildSession", () => {
     const week = planWeek({ stored: null, now: at(10), scores: typicalScores(), done: {} }).week.items
-    plan({ week, answers: { minutes: 90, location: "range", energy: "pain" }, nextRound: { date: "2026-10-23", competitive: true, courseKnown: false } })
+    plan({ week, answers: { minutes: 90, locations: ["range", "home_net"], energy: "pain" }, nextRound: { date: "2026-10-23", competitive: true, courseKnown: false } })
     expect(buildSession).toHaveBeenLastCalledWith(
       expect.objectContaining({
         minutes: 90,
-        location: "range",
+        locations: ["range", "home_net"],
         energy: "pain",
         week,
         nextRound: expect.objectContaining({ competitive: true, courseKnown: false }),
@@ -50,7 +50,7 @@ describe("buildPlan", () => {
     const view = planWeek({ stored: null, now: at(10), scores: typicalScores(), done: {} })
     expect(view.week.items.length).toBeGreaterThan(0)
     expect(view.week.items[0].area).toBe("approach")
-    const p = plan({ week: view.week.items, answers: { ...answers, location: "range" } })
+    const p = plan({ week: view.week.items, answers: { ...answers, locations: ["range"] } })
     expect(p.blocks.length).toBeGreaterThan(0)
   })
 
@@ -85,7 +85,7 @@ describe("starting", () => {
 
   const start = (): ActiveSession => {
     const p = plan({ week: planWeek({ stored: null, now: at(10), scores: typicalScores(), done: {} }).week.items })
-    return startFromPlan({ plan: p, now: at(10), location: "putting_green", userId: "u1", runs: [], library, levels: { "Pelz Lag Ladder": 1 }, levelSince: {} })
+    return startFromPlan({ plan: p, now: at(10), locations: ["putting_green"], userId: "u1", runs: [], library, levels: { "Pelz Lag Ladder": 1 }, levelSince: {} })
   }
 
   it("makes a session with a new id, today's date, and each drill's level", () => {
@@ -101,7 +101,7 @@ describe("starting", () => {
     const first: FinishedRun = { id: "a", startedAt: "2026-10-01T10:00:00.000Z", endedAt: null, sets: [{ drillId: "Pelz Lag Ladder", skipped: false, value: 9, attempts: null }] }
     const second: FinishedRun = { id: "b", startedAt: "2026-10-10T10:00:00.000Z", endedAt: null, sets: [{ drillId: "Pelz Lag Ladder", skipped: false, value: 6, attempts: null }] }
     const p = plan({ week: planWeek({ stored: null, now: at(10), scores: typicalScores(), done: {} }).week.items, runs: [first, second], nextRound: null })
-    const s = startFromPlan({ plan: p, now: at(10), location: "putting_green", userId: "u1", runs: [first, second], library, levels: {}, levelSince: { "Pelz Lag Ladder": "2026-10-05T00:00:00.000Z" } })
+    const s = startFromPlan({ plan: p, now: at(10), locations: ["putting_green"], userId: "u1", runs: [first, second], library, levels: {}, levelSince: { "Pelz Lag Ladder": "2026-10-05T00:00:00.000Z" } })
     if (s.levels["Pelz Lag Ladder"]) {
       expect(s.previous["Pelz Lag Ladder"]).toBe(6)
       expect(s.levels["Pelz Lag Ladder"].history).toHaveLength(1)

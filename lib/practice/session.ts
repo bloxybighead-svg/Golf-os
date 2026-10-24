@@ -170,7 +170,8 @@ export function buildSession(args: {
   now: Date
   /** Practice minutes the golfer wants, logging not counted. */
   minutes: number
-  location: DrillLocation
+  /** Where the golfer can practise today: a drill is used if it fits any of these. */
+  locations: readonly DrillLocation[]
   energy: Energy
   nextRound: NextRound | null
   history: readonly HistorySet[]
@@ -178,7 +179,7 @@ export function buildSession(args: {
   /** Current difficulty level per drill id (an index into the drill's levels); missing = 0. */
   levels: Readonly<Record<string, number>>
 }): SessionPlan {
-  const { now, location, energy, nextRound, history, library, levels } = args
+  const { now, locations, energy, nextRound, history, library, levels } = args
   const notes: string[] = []
   const none = (note: string): SessionPlan => ({ off: false, blocks: [], practiceMinutes: 0, loggingMinutes: 0, endsAt: null, notes: [...notes, note] })
 
@@ -216,7 +217,7 @@ export function buildSession(args: {
   const scoredAt = new Map<string, number>()
   for (const s of history) if (!s.skipped) scoredAt.set(s.drillId, Math.max(scoredAt.get(s.drillId) ?? -Infinity, s.at.getTime()))
 
-  const here = library.filter((d) => d.status === "active" && d.locations.includes(location) && d.practice_category != null && d.sets.length > 0)
+  const here = library.filter((d) => d.status === "active" && d.locations.some((l) => locations.includes(l)) && d.practice_category != null && d.sets.length > 0)
   const allowed = energy === "pain" ? here.filter((d) => PAIN_CATEGORIES.has(d.practice_category as Category)) : here
   const pool = dayBefore ? allowed.filter((d) => DAY_BEFORE_CATEGORIES.has(d.practice_category as Category) && scoredAt.has(d.id)) : allowed
 

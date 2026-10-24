@@ -25,7 +25,7 @@ export function RunSummary({
   onDone: () => void
 }) {
   const drills = summarize(session)
-  const clubWork = session.steps.some((s) => s.kind === "club_work") && LAUNCH_PRO_LOCATIONS.includes(session.location)
+  const clubWork = session.steps.some((s) => s.kind === "club_work") && session.location.split(",").some((l) => LAUNCH_PRO_LOCATIONS.includes(l))
 
   return (
     <RunnerFrame compact={compact} header={<p className="px-1 text-sm font-semibold text-fg">{session.status === "ended_early" ? "Ended early" : "Session done"}</p>}>

@@ -51,7 +51,7 @@ const week = [item("approach", 1.0), item("lag_putting", 0.8), item("short_putti
 
 const wed = (h: number, m = 0) => new Date(2026, 9, 21, h, m)
 const plan = (o: Partial<Parameters<typeof buildSession>[0]> = {}): SessionPlan =>
-  buildSession({ week, now: wed(10), minutes: 120, location: "range", energy: "ok", nextRound: null, history: [], library, levels: {}, ...o })
+  buildSession({ week, now: wed(10), minutes: 120, locations: ["range"], energy: "ok", nextRound: null, history: [], library, levels: {}, ...o })
 const names = (p: SessionPlan) => p.blocks.map((b) => b.name)
 const scoredAll: HistorySet[] = library.map((d) => ({ drillId: d.id, at: new Date(2026, 9, 1), skipped: false }))
 const round = (daysAhead: number, o: Partial<NextRound> = {}): NextRound => ({ date: new Date(2026, 9, 21 + daysAhead, 14), competitive: false, courseKnown: true, ...o })
@@ -77,7 +77,7 @@ describe("device cutoff", () => {
 
 describe("pain", () => {
   it("allows only putting and chipping, 60 minutes at most", () => {
-    const p = plan({ energy: "pain", location: "range", library: library.map((d) => ({ ...d, locations: ["range"] })) })
+    const p = plan({ energy: "pain", locations: ["range"], library: library.map((d) => ({ ...d, locations: ["range"] })) })
     expect(p.practiceMinutes).toBeLessThanOrEqual(60)
     expect(p.blocks.every((b) => ["lag_putting", "short_putting", "short_game", "warmup", "closeout"].includes(b.category))).toBe(true)
     expect(p.blocks.length).toBeGreaterThan(0)
@@ -114,7 +114,7 @@ describe("competitive round within 3 days", () => {
   })
 
   it("notes when the location cannot host it", () => {
-    const p = plan({ nextRound: round(2, { competitive: true }), library: library.map((d) => ({ ...d, locations: d.name === "Club Work" ? ["range"] : ["putting_green"] })), location: "putting_green" })
+    const p = plan({ nextRound: round(2, { competitive: true }), library: library.map((d) => ({ ...d, locations: d.name === "Club Work" ? ["range"] : ["putting_green"] })), locations: ["putting_green"] })
     expect(names(p)).not.toContain("Club Work")
     expect(p.notes.join(" ")).toContain("Club Work")
   })
@@ -213,8 +213,19 @@ describe("what the library offers", () => {
   })
 
   it("only uses drills that exist at the location", () => {
-    const p = plan({ location: "putting_green", library: library.map((d) => (d.practice_category === "lag_putting" || d.practice_category === "short_putting" ? { ...d, locations: ["putting_green" as const] } : d)) })
+    const p = plan({ locations: ["putting_green"], library: library.map((d) => (d.practice_category === "lag_putting" || d.practice_category === "short_putting" ? { ...d, locations: ["putting_green" as const] } : d)) })
     expect(p.blocks.every((b) => b.category === "lag_putting" || b.category === "short_putting")).toBe(true)
+  })
+
+  it("uses drills from any of several locations, with putting at least a quarter", () => {
+    const split = library.map((d) => ({ ...d, locations: [d.practice_category === "lag_putting" || d.practice_category === "short_putting" || d.practice_category === "warmup" || d.practice_category === "closeout" ? ("putting_green" as const) : ("range" as const)] }))
+    const p = plan({ locations: ["putting_green", "range"], library: split })
+    const cats = new Set(p.blocks.map((b) => b.category))
+    expect(cats.has("lag_putting") || cats.has("short_putting")).toBe(true)
+    expect(cats.has("approach") || cats.has("wedges") || cats.has("tee")).toBe(true)
+    const putting = p.blocks.filter((b) => ["lag_putting", "short_putting", "warmup", "closeout"].includes(b.category)).reduce((n, b) => n + b.minutes, 0)
+    expect(putting / p.practiceMinutes).toBeGreaterThanOrEqual(0.25)
+    expect(plan({ locations: ["home_net"], library: split }).blocks).toEqual([])
   })
 
   it("fills from unchecked week items first", () => {

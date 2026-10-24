@@ -76,8 +76,13 @@ export function StartSession({
     const at = new Date()
     setNow(at)
     setPlan(null)
-    const saved = read<Answers>(ANSWERS_KEY) ?? DEFAULT_ANSWERS
-    setAnswers({ ...saved, minutes: fitMinutes(saved.minutes, cutoffCapMinutes(at)) })
+    // An older save kept one location.
+    const saved = read<Partial<Answers> & { location?: Answers["locations"][number] }>(ANSWERS_KEY) ?? {}
+    setAnswers({
+      minutes: fitMinutes(saved.minutes ?? DEFAULT_ANSWERS.minutes, cutoffCapMinutes(at)),
+      locations: saved.locations?.length ? saved.locations : saved.location ? [saved.location] : DEFAULT_ANSWERS.locations,
+      energy: saved.energy ?? DEFAULT_ANSWERS.energy,
+    })
     const next = liveNextRound(read<StoredNextRound>(NEXT_ROUND_KEY), at)
     write(NEXT_ROUND_KEY, next)
     setNextRound(next)
@@ -110,7 +115,7 @@ export function StartSession({
 
   const start = () => {
     if (!plan) return
-    beginSession(startFromPlan({ plan, now: new Date(), location: answers.location, userId: userId ?? "", runs: week?.runs ?? [], library, levels, levelSince }), router)
+    beginSession(startFromPlan({ plan, now: new Date(), locations: answers.locations, userId: userId ?? "", runs: week?.runs ?? [], library, levels, levelSince }), router)
   }
 
   return (
@@ -136,14 +141,14 @@ export function StartSession({
                 </button>
               </>
             ) : (
-              <button type="button" className={BUTTON} disabled={answers.minutes < 10} onClick={build}>
+              <button type="button" className={BUTTON} disabled={answers.minutes < 10 || answers.locations.length === 0} onClick={build}>
                 Build session
               </button>
             )
           }
         >
           {plan ? (
-            <SessionCard plan={plan} location={answers.location} library={activeLibrary} />
+            <SessionCard plan={plan} locations={answers.locations} library={activeLibrary} />
           ) : (
             <SessionAnswers
               answers={answers}

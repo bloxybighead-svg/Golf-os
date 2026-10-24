@@ -90,8 +90,27 @@ export function SessionAnswers({
         )}
       </Row>
 
-      <Row title="Location">
-        <Choices value={answers.location} options={LOCATION_CHOICES.map((l) => [l.value, l.label] as const)} onPick={(location) => onAnswers({ ...answers, location })} />
+      <Row title="Locations" note="Pick every place you can practise today">
+        <div className="grid grid-cols-2 gap-2">
+          {LOCATION_CHOICES.map((l) => {
+            const picked = answers.locations.includes(l.value)
+            return (
+              <button
+                key={l.value}
+                type="button"
+                aria-pressed={picked}
+                className={`${CHOICE} ${picked ? ON : OFF}`}
+                onClick={() => {
+                  // Always at least one place.
+                  const next = picked ? answers.locations.filter((x) => x !== l.value) : [...answers.locations, l.value]
+                  if (next.length > 0) onAnswers({ ...answers, locations: next })
+                }}
+              >
+                {l.label}
+              </button>
+            )
+          })}
+        </div>
       </Row>
 
       <Row title="How you feel">
