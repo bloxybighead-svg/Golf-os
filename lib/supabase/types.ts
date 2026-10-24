@@ -44,6 +44,8 @@ export interface Round {
 export type SgCategory = 'off_tee' | 'approach' | 'short_game' | 'putting'
 
 // Curated shared catalog (drill_library).
+type PracticeCategory = 'lag_putting' | 'short_putting' | 'short_game' | 'wedges' | 'approach' | 'tee' | 'warmup' | 'closeout'
+type DrillLocation = 'home_net' | 'short_game_area' | 'range' | 'course' | 'simulator' | 'putting_green'
 export type DrillDifficulty = 'beginner' | 'intermediate' | 'advanced'
 
 export interface LibraryDrill {
@@ -57,6 +59,21 @@ export interface LibraryDrill {
   time_estimate_mins: number | null
   instructions: string | null
   equipment_needed: string | null
+  practice_category: PracticeCategory | null
+  locations: DrillLocation[]
+  equipment: string | null
+  structure: 'blocked' | 'blocked_serial_random' | 'random' | null
+  /** 0 none, 1 a score to beat, 2 a restart rule or stake. */
+  pressure: 0 | 1 | 2
+  metric: 'count_of_n' | 'streak' | 'strokes' | 'pct' | null
+  lower_is_better: boolean
+  sets: { label: string; setup: string; balls: number; club?: string }[]
+  levels: { name: string; rule: string }[]
+  /** External focus only: a target, ball flight or club. */
+  cue: string | null
+  routine_rule: string | null
+  source_url: string | null
+  status: 'active' | 'closed' | 'locked'
 }
 
 export interface UserDrillRun {

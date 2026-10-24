@@ -25,7 +25,7 @@ export default async function PracticePage() {
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("handicap_tracking").select("handicap_index").order("calculation_date", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("drill_library").select("*"),
+    supabase.from("drill_library").select("*").eq("status", "active"),
     supabase
       .from("user_drills")
       .select("id, drill_id, started_at, completed_at, reps_completed, minutes, rating, notes, drill_library(name, category)")
