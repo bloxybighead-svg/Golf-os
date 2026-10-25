@@ -1,9 +1,11 @@
 "use client"
 
-// The three questions before a session, one tap each, and the next round tucked away below them.
+// The questions before a session, one tap each, and the next round tucked away below them.
 
 import { useState, type ReactNode } from "react"
-import { LOCATION_CHOICES, MINUTE_CHOICES, localDate, nextRoundLabel, type Answers, type StoredNextRound } from "@/lib/practice/startSession"
+import { AREA_LABEL } from "@/lib/practice/weakness"
+import { FOCUS_CHOICES, LOCATION_CHOICES, MAX_FOCUS, MINUTE_CHOICES, focusPlaces, localDate, nextRoundLabel, type Answers, type StoredNextRound } from "@/lib/practice/startSession"
+import type { LibraryDrill } from "@/lib/supabase/types"
 
 const CHOICE = "flex min-h-11 items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors disabled:opacity-40"
 const ON = "border-accent bg-accent text-on-accent"
@@ -35,6 +37,7 @@ function Choices<T extends string | boolean>({ value, options, onPick }: { value
 export function SessionAnswers({
   answers,
   cap,
+  library,
   nextRound,
   today,
   onAnswers,
@@ -42,6 +45,7 @@ export function SessionAnswers({
 }: {
   answers: Answers
   cap: number
+  library: readonly LibraryDrill[]
   nextRound: StoredNextRound | null
   today: Date
   onAnswers: (a: Answers) => void
@@ -90,7 +94,7 @@ export function SessionAnswers({
         )}
       </Row>
 
-      <Row title="Locations" note="Pick every place you can practise today">
+      <Row title="Locations" note="Pick every place you can practice today">
         <div className="grid grid-cols-2 gap-2">
           {LOCATION_CHOICES.map((l) => {
             const picked = answers.locations.includes(l.value)
@@ -111,6 +115,38 @@ export function SessionAnswers({
             )
           })}
         </div>
+      </Row>
+
+      <Row title="Focus" note={`Pick up to ${MAX_FOCUS}`}>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" aria-pressed={answers.focus.length === 0} className={`${CHOICE} ${answers.focus.length === 0 ? ON : OFF}`} onClick={() => onAnswers({ ...answers, focus: [] })}>
+            Auto
+          </button>
+          {FOCUS_CHOICES.map((area) => {
+            const picked = answers.focus.includes(area)
+            return (
+              <button
+                key={area}
+                type="button"
+                aria-pressed={picked}
+                disabled={!picked && answers.focus.length >= MAX_FOCUS}
+                className={`${CHOICE} ${picked ? ON : OFF}`}
+                onClick={() => onAnswers({ ...answers, focus: picked ? answers.focus.filter((a) => a !== area) : [...answers.focus, area] })}
+              >
+                {AREA_LABEL[area]}
+              </button>
+            )
+          })}
+        </div>
+        {answers.focus.map((area) => {
+          const places = focusPlaces(area, library)
+          if (places.length === 0 || places.some((p) => answers.locations.includes(p))) return null
+          return (
+            <p key={area} className="text-xs text-warn">
+              {places.map((p) => LOCATION_CHOICES.find((l) => l.value === p)?.label ?? p).join(" or ")} needed for {AREA_LABEL[area]}
+            </p>
+          )
+        })}
       </Row>
 
       <Row title="How you feel">

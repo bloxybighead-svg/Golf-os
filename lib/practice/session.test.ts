@@ -66,7 +66,7 @@ describe("device cutoff", () => {
 
   it("leaves a session that already fits alone", () => {
     const p = plan({ now: wed(10), minutes: 60 })
-    expect(p.practiceMinutes).toBe(60)
+    expect(p.practiceMinutes + p.loggingMinutes).toBe(60)
     expect(p.notes.join(" ")).not.toContain("8:45")
   })
 

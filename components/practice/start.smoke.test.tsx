@@ -17,13 +17,13 @@ afterEach(() => {
 })
 
 const answers = (cap: number, o: Partial<Parameters<typeof SessionAnswers>[0]> = {}) =>
-  renderToStaticMarkup(<SessionAnswers answers={DEFAULT_ANSWERS} cap={cap} nextRound={null} today={new Date(2026, 9, 21, 10)} onAnswers={() => {}} onNextRound={() => {}} {...o} />)
+  renderToStaticMarkup(<SessionAnswers answers={DEFAULT_ANSWERS} cap={cap} library={[]} nextRound={null} today={new Date(2026, 9, 21, 10)} onAnswers={() => {}} onNextRound={() => {}} {...o} />)
 
 describe("the answers", () => {
-  it("asks three questions and keeps the next round collapsed", () => {
+  it("asks the questions and keeps the next round collapsed", () => {
     const html = answers(640)
-    for (const q of ["Minutes", "Locations", "How you feel"]) expect(html).toContain(q)
-    for (const c of ["30", "60", "90", "120", "Other", "Home net", "Short-game area", "Putting green", "Range", "Course", "Simulator", "Good", "Sore"]) expect(html).toContain(`>${c}</button>`)
+    for (const q of ["Minutes", "Locations", "Focus", "How you feel"]) expect(html).toContain(q)
+    for (const c of ["30", "60", "90", "120", "Other", "Home net", "Short-game area", "Putting green", "Range", "Course", "Simulator", "Auto", "Tee", "Approach", "Wedges", "Short game", "Lag putting", "Short putting", "Good", "Sore"]) expect(html).toContain(`>${c}</button>`)
     expect(html).toContain("Next round: not set")
     expect(html).toContain('aria-expanded="false"')
     expect(html).not.toContain("Next round date")
@@ -32,9 +32,9 @@ describe("the answers", () => {
 
   it("at 7:30 pm shows the cutoff cap and disables what is above it", () => {
     const cap = cutoffCapMinutes(new Date(2026, 9, 21, 19, 30))
-    expect(cap).toBe(70)
+    expect(cap).toBe(75)
     const html = answers(cap)
-    expect(html).toContain("Until 8:45 pm: 70 min max")
+    expect(html).toContain("Until 8:45 pm: 75 min max")
     expect(html.match(/disabled=""/g)).toHaveLength(2) // 90 and 120
     expect(html).toMatch(/aria-pressed="true"[^>]*>60</)
   })
@@ -45,6 +45,16 @@ describe("the answers", () => {
     expect(pressed("Putting green")).toBe(true)
     expect(pressed("Range")).toBe(true)
     expect(pressed("Home net")).toBe(false)
+  })
+
+  it("picks up to two focus areas and flags a location that cannot serve one", () => {
+    const html = answers(640, { answers: { ...DEFAULT_ANSWERS, focus: ["wedges", "approach"] } })
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Wedges</)
+    expect(html).toMatch(/aria-pressed="false"[^>]*>Auto</)
+    expect(html.match(/disabled=""/g)).toHaveLength(4) // the other four chips
+    const tee = { id: "t", status: "active", practice_category: "tee", locations: ["simulator", "range"] } as unknown as Parameters<typeof SessionAnswers>[0]["library"][number]
+    expect(answers(640, { answers: { ...DEFAULT_ANSWERS, focus: ["tee"] }, library: [tee] })).toContain("Range or Simulator needed for Tee")
+    expect(answers(640, { answers: { ...DEFAULT_ANSWERS, focus: ["tee"], locations: ["range"] }, library: [tee] })).not.toContain("needed for")
   })
 
   it("shows a remembered next round", () => {
@@ -62,7 +72,7 @@ describe("the session card", () => {
     expect(html).toContain("Putting green, Range")
     expect(html).toContain("Pelz Lag Ladder")
     expect(html).toContain("25 min")
-    expect(html).toContain("putter, balls, tees")
+    expect(html).toContain("Putter, balls, tees")
     expect(html).toContain("Capped to 30 min")
   })
 
@@ -81,6 +91,12 @@ describe("the Start session button", () => {
     const html = renderToStaticMarkup(<StartSession {...props} />)
     expect(html).toContain(">Start session<")
     expect(html).not.toContain("Resume session")
+  })
+
+  it("is never disabled, even before the week is computed", () => {
+    const html = renderToStaticMarkup(<StartSession {...props} week={null} />)
+    expect(html).toContain(">Start session<")
+    expect(html).not.toContain('disabled=""')
   })
 
   it("turns into Resume session while one is running", () => {

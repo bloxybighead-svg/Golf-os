@@ -1,6 +1,6 @@
 "use client"
 
-// "Start session": the button on Practice (or "Resume session" with one running), the three questions, and the
+// "Start session": the button on Practice (or "Resume session" with one running), the questions, and the
 // session card the answers build. Start hands the plan to the runner.
 
 import { useEffect, useMemo, useState } from "react"
@@ -19,6 +19,7 @@ import {
   buildPlan,
   fitMinutes,
   liveNextRound,
+  localDate,
   startFromPlan,
   type Answers,
   type StoredNextRound,
@@ -77,11 +78,13 @@ export function StartSession({
     setNow(at)
     setPlan(null)
     // An older save kept one location.
-    const saved = read<Partial<Answers> & { location?: Answers["locations"][number] }>(ANSWERS_KEY) ?? {}
+    const saved = read<Partial<Answers> & { savedOn?: string; location?: Answers["locations"][number] }>(ANSWERS_KEY) ?? {}
     setAnswers({
       minutes: fitMinutes(saved.minutes ?? DEFAULT_ANSWERS.minutes, cutoffCapMinutes(at)),
       locations: saved.locations?.length ? saved.locations : saved.location ? [saved.location] : DEFAULT_ANSWERS.locations,
       energy: saved.energy ?? DEFAULT_ANSWERS.energy,
+      // Focus is remembered for the day it was picked, then goes back to Auto.
+      focus: saved.savedOn === localDate(at) ? (saved.focus ?? []) : [],
     })
     const next = liveNextRound(read<StoredNextRound>(NEXT_ROUND_KEY), at)
     write(NEXT_ROUND_KEY, next)
@@ -107,8 +110,8 @@ export function StartSession({
   }
 
   const build = () => {
-    write(ANSWERS_KEY, answers)
     const at = new Date()
+    write(ANSWERS_KEY, { ...answers, savedOn: localDate(at) })
     setNow(at)
     setPlan(buildPlan({ week: week?.view.week.items ?? [], now: at, answers, nextRound, runs: week?.runs ?? [], library: activeLibrary, levels }))
   }
@@ -120,7 +123,7 @@ export function StartSession({
 
   return (
     <>
-      <button id="start-session" type="button" className={BUTTON} disabled={!week} onClick={() => setOpen(true)}>
+      <button id="start-session" type="button" className={BUTTON} onClick={() => setOpen(true)}>
         Start session
       </button>
       {open && (
@@ -153,6 +156,7 @@ export function StartSession({
             <SessionAnswers
               answers={answers}
               cap={cap}
+              library={activeLibrary}
               nextRound={nextRound}
               today={now}
               onAnswers={setAnswers}

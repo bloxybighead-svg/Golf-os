@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { LibraryDrill } from "@/lib/supabase/types"
 import { ACTIVE_SESSION_KEY, SESSION_PATH, loadActiveSession, type ActiveSession } from "./activeSession"
 import { buildSession } from "./session"
-import { beginSession, buildPlan, fitMinutes, liveNextRound, nextRoundLabel, startFromPlan } from "./startSession"
+import { beginSession, buildPlan, type Answers, fitMinutes, liveNextRound, nextRoundLabel, startFromPlan } from "./startSession"
+import { bringList } from "./bring"
 import { typicalScores } from "./weakness"
 import { planWeek } from "./weekPlan"
 import type { FinishedRun } from "./runs"
@@ -21,14 +22,14 @@ const library: LibraryDrill[] = seed.map((d) => ({ ...d, id: d.name }))
 const active = library.filter((d) => d.status === "active")
 
 const at = (h: number, m = 0) => new Date(2026, 9, 21, h, m)
-const answers = { minutes: 60, locations: ["putting_green" as const], energy: "ok" as const }
+const answers: Answers = { minutes: 60, locations: ["putting_green"], energy: "ok", focus: [] }
 const plan = (o: Partial<Parameters<typeof buildPlan>[0]> = {}) =>
   buildPlan({ week: [], now: at(10), answers, nextRound: null, runs: [], library: active, levels: {}, ...o })
 
 describe("buildPlan", () => {
   it("passes the answers to buildSession", () => {
     const week = planWeek({ stored: null, now: at(10), scores: typicalScores(), done: {} }).week.items
-    plan({ week, answers: { minutes: 90, locations: ["range", "home_net"], energy: "pain" }, nextRound: { date: "2026-10-23", competitive: true, courseKnown: false } })
+    plan({ week, answers: { minutes: 90, locations: ["range", "home_net"], energy: "pain", focus: [] }, nextRound: { date: "2026-10-23", competitive: true, courseKnown: false } })
     expect(buildSession).toHaveBeenLastCalledWith(
       expect.objectContaining({
         minutes: 90,
@@ -136,5 +137,63 @@ describe("answers", () => {
     expect(nextRoundLabel(null)).toBe("Next round: not set")
     expect(nextRoundLabel({ date: "2026-10-24", competitive: true, courseKnown: true })).toBe("Next round: Sat, competitive, known course")
     expect(nextRoundLabel({ date: "2026-10-24", competitive: false, courseKnown: false })).toBe("Next round: Sat, casual, new course")
+  })
+})
+
+describe("the time budget", () => {
+  const total = (p: ReturnType<typeof plan>) => p.practiceMinutes + p.loggingMinutes
+  const week = planWeek({ stored: null, now: at(10), scores: typicalScores(), done: {} }).week.items
+
+  it("counts logging inside the minutes picked", () => {
+    for (const minutes of [30, 60, 90, 120]) {
+      const p = plan({ week, answers: { ...answers, minutes } })
+      expect(total(p)).toBeLessThanOrEqual(minutes)
+    }
+  })
+
+  it("at 7:50 pm ends everything, logging included, by 8:45", () => {
+    const p = plan({ week, now: at(19, 50), answers: { ...answers, minutes: 120 } })
+    expect(total(p)).toBeLessThanOrEqual(55)
+    expect((p.endsAt as Date).getTime()).toBeLessThanOrEqual(at(20, 45).getTime())
+  })
+})
+
+describe("focus", () => {
+  const week = planWeek({ stored: null, now: at(10), scores: typicalScores(), done: {} }).week.items
+  const withFocus = (focus: Answers["focus"], o: Partial<Answers> = {}) => plan({ week, answers: { ...answers, locations: ["range", "putting_green"], focus, ...o } })
+  const minutesIn = (p: ReturnType<typeof plan>, cats: string[]) => p.blocks.filter((b) => cats.includes(b.category)).reduce((n, b) => n + b.minutes, 0)
+
+  it("Wedges at the range gives wedge blocks and still the putting floor", () => {
+    const p = withFocus(["wedges"])
+    expect(minutesIn(p, ["wedges"])).toBeGreaterThan(0)
+    expect(minutesIn(p, ["lag_putting", "short_putting", "warmup", "closeout"]) / p.practiceMinutes).toBeGreaterThanOrEqual(0.25)
+    expect(p.blocks.some((b) => b.category === "approach")).toBe(false)
+  })
+
+  it("Auto is the week's own plan", () => {
+    expect(withFocus([]).blocks.map((b) => b.name)).toEqual(plan({ week, answers: { ...answers, locations: ["range", "putting_green"] } }).blocks.map((b) => b.name))
+  })
+
+  it("says when soreness swaps the pick", () => {
+    const p = withFocus(["approach"], { energy: "pain" })
+    expect(p.notes.join(" ")).toContain("Sore: approach swapped for chipping.")
+    expect(p.blocks.some((b) => b.category === "approach")).toBe(false)
+  })
+
+  it("is planned from the week when no location can serve it", () => {
+    const p = plan({ week, answers: { ...answers, focus: ["tee"] } })
+    expect(p.notes.join(" ")).toContain("Nothing for your focus")
+    expect(p.blocks.length).toBeGreaterThan(0)
+  })
+})
+
+describe("what to bring", () => {
+  it("a putting session needs a putter, balls and 10 tees", () => {
+    const p = plan({ week: planWeek({ stored: null, now: at(10), scores: typicalScores(), done: {} }).week.items })
+    expect(bringList(p.blocks.map((b) => active.find((d) => d.id === b.drillId)?.equipment ?? ""))).toBe("Putter, balls, 10 tees")
+  })
+
+  it("merges by name, keeps the largest count and orders clubs, balls, tees, sticks, other", () => {
+    expect(bringList(["alignment sticks, balls, tees", "balls, driver, 2 tees", "launch monitor, 10 tees, putter"])).toBe("Driver, putter, balls, 10 tees, alignment sticks, launch monitor")
   })
 })

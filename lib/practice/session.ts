@@ -5,7 +5,7 @@
 // at least 25%, no area over 40%, no block under 10 min. Only 'active' drills are ever used.
 
 import type { LibraryDrill } from "@/lib/supabase/types"
-import type { PracticeArea } from "./weakness"
+import { AREA_LABEL, type PracticeArea } from "./weakness"
 import type { WeekItem } from "./week"
 
 export type DrillLocation = LibraryDrill["locations"][number]
@@ -80,6 +80,8 @@ const CLUB_WORK_DEFAULT_MIN = 30
 /** The pre-competition drill; the library marks it by this name. */
 const CLUB_WORK = "Club Work"
 const COMPETITIVE_WITHIN_DAYS = 3
+/** Weight of a putting area the golfer did not pick as a focus: little, so putting sits at its 25% floor. ESTIMATE. */
+const OFF_FOCUS_PUTTING_WEIGHT = 0.05
 
 const PUTTING_AREAS: readonly Category[] = ["lag_putting", "short_putting"]
 const PAIN_CATEGORIES: ReadonlySet<Category> = new Set(["lag_putting", "short_putting", "short_game", "warmup", "closeout"])
@@ -159,19 +161,21 @@ function allocate(weights: Map<Category, number>, total: number, held: Map<Categ
   return new Map()
 }
 
-/** The most practice minutes that still leave 5 for logging before the 8:45 pm cutoff. */
+/** The most minutes a session can take, logging included, and still end by the 8:45 pm cutoff. */
 export function cutoffCapMinutes(now: Date): number {
   const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), CUTOFF_HOUR, CUTOFF_MINUTE)
-  return Math.max(0, Math.floor((cutoff.getTime() - now.getTime()) / 60_000) - LOGGING_MIN)
+  return Math.max(0, Math.floor((cutoff.getTime() - now.getTime()) / 60_000))
 }
 
 export function buildSession(args: {
   week: readonly WeekItem[]
   now: Date
-  /** Practice minutes the golfer wants, logging not counted. */
+  /** The session's total minutes, logging included. */
   minutes: number
-  /** Where the golfer can practise today: a drill is used if it fits any of these. */
+  /** Where the golfer can practice today: a drill is used if it fits any of these. */
   locations: readonly DrillLocation[]
+  /** Up to two areas the golfer wants the main blocks for; empty is the week's own order. */
+  focus?: readonly PracticeArea[]
   energy: Energy
   nextRound: NextRound | null
   history: readonly HistorySet[]
@@ -180,6 +184,7 @@ export function buildSession(args: {
   levels: Readonly<Record<string, number>>
 }): SessionPlan {
   const { now, locations, energy, nextRound, history, library, levels } = args
+  const focus = args.focus ?? []
   const notes: string[] = []
   const none = (note: string): SessionPlan => ({ off: false, blocks: [], practiceMinutes: 0, loggingMinutes: 0, endsAt: null, notes: [...notes, note] })
 
@@ -211,7 +216,9 @@ export function buildSession(args: {
     notes.push("Day before a round: 60 min at most, lag speed and close-out only, nothing you have not scored before.")
   }
   // f. Playing that day: one pre-round block.
-  if (playingToday) cap = Math.min(cap, PRE_ROUND_MAX)
+  if (playingToday) cap = Math.min(cap, PRE_ROUND_MAX + LOGGING_MIN)
+  // From here on `cap` is the minutes for blocks: the total less logging.
+  cap -= LOGGING_MIN
   if (cap < MIN_BLOCK_MIN) return none("Not enough time for a block.")
 
   const scoredAt = new Map<string, number>()
@@ -273,13 +280,32 @@ export function buildSession(args: {
   const lastDone = (d: LibraryDrill) => scoredAt.get(d.id) ?? -Infinity
   const areaDrills = (area: Category) =>
     pool.filter((d) => d.practice_category === area && d !== clubWork).sort((a, b) => lastDone(a) - lastDone(b) || a.name.localeCompare(b.name))
-  const areas = (weekItems.length > 0 ? weekItems.map((w) => w.area) : (["lag_putting", "short_putting", "short_game", "wedges", "approach", "tee"] as PracticeArea[])).filter(
-    (a) => areaDrills(a).length > 0
-  )
+  // A picked focus the pain flag or the day before rules out is swapped for what is allowed, and the card says so.
+  const focusHere = new Set<PracticeArea>()
+  for (const picked of focus) {
+    let area = picked
+    if (energy === "pain" && !PAIN_CATEGORIES.has(area)) {
+      area = "short_game"
+      notes.push(`Sore: ${AREA_LABEL[picked].toLowerCase()} swapped for chipping.`)
+    }
+    if (dayBefore && !DAY_BEFORE_CATEGORIES.has(area)) {
+      notes.push(`Day before a round: ${AREA_LABEL[area].toLowerCase()} swapped for lag putting.`)
+      area = "lag_putting"
+    }
+    if (areaDrills(area).length > 0) focusHere.add(area)
+  }
+  if (focus.length > 0 && focusHere.size === 0) notes.push("Nothing for your focus at these locations: planned from the week.")
+
+  const focused = focusHere.size > 0
+  const areas = focused
+    ? [...focusHere, ...PUTTING_AREAS.filter((a) => !focusHere.has(a as PracticeArea) && areaDrills(a).length > 0)]
+    : (weekItems.length > 0 ? weekItems.map((w) => w.area) : (["lag_putting", "short_putting", "short_game", "wedges", "approach", "tee"] as PracticeArea[])).filter(
+        (a) => areaDrills(a).length > 0
+      )
   const weights = new Map<Category, number>()
   for (const a of areas) {
     const boost = nextRound && !nextRound.courseKnown && (a === "lag_putting" || a === "approach") ? UNFAMILIAR_WEIGHT : 1
-    weights.set(a, priorityOf(a) * boost)
+    weights.set(a, focused ? (focusHere.has(a as PracticeArea) ? 1 : OFF_FOCUS_PUTTING_WEIGHT) * boost : priorityOf(a as PracticeArea) * boost)
   }
   if ([...weights.values()].every((w) => w === 0)) for (const a of weights.keys()) weights.set(a, 1)
 
