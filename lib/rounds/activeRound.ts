@@ -19,6 +19,8 @@ export interface ActiveRound {
   id: string
   course: CourseRef
   date: string // local YYYY-MM-DD the round started
+  /** Epoch ms the round started. Absent on rounds started before this existed: they count from midnight on `date`. */
+  startedAt?: number
   teeName: string | null
   /** The tee's 18-hole course rating and slope, null when the course has no tee data. */
   courseRating: number | null
@@ -106,6 +108,33 @@ export function nextUnscored(round: ActiveRound): number | null {
 /** The hole "Hole done" scores: the one the map is on when it is in the round, else the next one without a score. */
 export function holeToScore(round: ActiveRound, mapHole: number | null): number {
   return mapHole != null && round.holes.some((h) => h.hole_number === mapHole) ? mapHole : (nextUnscored(round) ?? round.holes[0].hole_number)
+}
+
+/** A round with no score this long after it started was abandoned. */
+const EMPTY_ROUND_MAX_AGE_MS = 12 * 60 * 60 * 1000
+
+/** Local YYYY-MM-DD. */
+export function localDate(ms = Date.now()): string {
+  const d = new Date(ms)
+  const p = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+/** 00:00 local on a YYYY-MM-DD. */
+export function localMidnight(date: string): Date {
+  const [y, m, d] = date.split("-").map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/**
+ * Whether a round on the device still belongs to the golfer's day.
+ * "empty-stale": nothing scored and started over 12 hours ago, so it is dropped without asking.
+ * "old": started on an earlier day with scores in it, so the golfer is asked to finish or discard it.
+ */
+export function staleness(round: ActiveRound, now = Date.now()): "fresh" | "empty-stale" | "old" {
+  const scored = round.holes.some((h) => h.strokes != null)
+  if (!scored) return now - (round.startedAt ?? localMidnight(round.date).getTime()) > EMPTY_ROUND_MAX_AGE_MS ? "empty-stale" : "fresh"
+  return round.date < localDate(now) ? "old" : "fresh"
 }
 
 export function loadActiveRound(): ActiveRound | null {

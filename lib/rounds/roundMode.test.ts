@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { afterEach, describe, expect, it } from "vitest"
 import { THEME_INIT_SCRIPT } from "@/lib/theme/themeScript"
 import { ACTIVE_ROUND_KEY, holesFor, type ActiveRound } from "./activeRound"
-import { ROUND_COMPACT_QUERY, inRoundMode, isRoundPaused, setRoundPaused } from "./roundMode"
+import { ROUND_COMPACT_QUERY, claimOldRound, inRoundMode, isRoundPaused, liveRound, setRoundPaused } from "./roundMode"
 
 const round: ActiveRound = {
   id: "r1",
@@ -55,5 +55,24 @@ describe("globals.css", () => {
   it("hides the chrome under the same query the hooks use", () => {
     const css = readFileSync("app/globals.css", "utf8")
     expect(css).toContain(`@media ${ROUND_COMPACT_QUERY}`)
+  })
+})
+
+describe("liveRound", () => {
+  const now = new Date(2026, 9, 25, 9, 0).getTime()
+  const scored = (date: string, id: string): ActiveRound => ({ ...round, id, date, holes: holesFor([1, 2]).map((h) => ({ ...h, strokes: 4 })) })
+  it("keeps today's round, so Play opens in round mode", () => {
+    const today = scored("2026-10-25", "today")
+    expect(inRoundMode(liveRound(today, now), "/", false)).toBe(true)
+  })
+  it("hides an old scored round until the golfer picks it, so Play is not in round mode and the resume bar has nothing", () => {
+    const old = scored("2026-10-09", "old")
+    expect(liveRound(old, now)).toBeNull()
+    expect(inRoundMode(liveRound(old, now), "/", false)).toBe(false)
+    claimOldRound(old.id)
+    expect(liveRound(old, now)).toBe(old)
+  })
+  it("hides a long-abandoned empty round everywhere", () => {
+    expect(liveRound({ ...round, id: "empty", date: "2026-10-09" }, now)).toBeNull()
   })
 })

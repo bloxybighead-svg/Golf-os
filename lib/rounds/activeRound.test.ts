@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest"
-import { describeOrder, holeToScore, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, scoreToParLabel, type ActiveRound } from "./activeRound"
+import { afterEach, describe, it, expect, vi } from "vitest"
+import { ACTIVE_ROUND_KEY, describeOrder, holeToScore, holesFor, loadActiveRound, newRoundId, nextUnscored, playOrder, ratingForHoles, saveActiveRound, scoreToParLabel, staleness, type ActiveRound } from "./activeRound"
 
 describe("playOrder", () => {
   it("plays 18 from the first", () => {
@@ -98,5 +98,39 @@ describe("holeToScore", () => {
   it("falls back to the first hole when every hole is scored", () => {
     for (const h of round.holes) h.strokes = 4
     expect(holeToScore(round, null)).toBe(10)
+  })
+})
+
+describe("staleness", () => {
+  const now = new Date(2026, 9, 25, 9, 0).getTime() // Oct 25, 9:00 local
+  const make = (over: Partial<ActiveRound>, scores = 0): ActiveRound => {
+    const holes = holesFor(playOrder(1, 18))
+    holes.slice(0, scores).forEach((h) => (h.strokes = 4))
+    return { id: "r", course: { id: "c" } as ActiveRound["course"], date: "2026-10-25", teeName: null, courseRating: null, slopeRating: null, startHole: 1, holes, ...over }
+  }
+  it("drops a round with no scores 13 hours after it started, keeps one at 11", () => {
+    expect(staleness(make({ startedAt: now - 13 * 3600_000 }), now)).toBe("empty-stale")
+    expect(staleness(make({ startedAt: now - 11 * 3600_000 }), now)).toBe("fresh")
+  })
+  it("counts a round without startedAt from midnight on its date", () => {
+    expect(staleness(make({ date: "2026-10-24" }), now)).toBe("empty-stale")
+    expect(staleness(make({ date: "2026-10-25" }), now)).toBe("fresh")
+  })
+  it("asks about a scored round from an earlier day, never about today's", () => {
+    expect(staleness(make({ date: "2026-10-09" }, 11), now)).toBe("old")
+    expect(staleness(make({ date: "2026-10-25", startedAt: now - 20 * 3600_000 }, 11), now)).toBe("fresh")
+  })
+})
+
+describe("saveActiveRound(null)", () => {
+  afterEach(() => vi.unstubAllGlobals())
+  it("clears the stored round", () => {
+    const store = new Map<string, string>()
+    vi.stubGlobal("localStorage", { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) })
+    const r = { id: "r", course: { id: "c" }, date: "2026-10-09", holes: holesFor([1]) } as ActiveRound
+    saveActiveRound(r)
+    expect(loadActiveRound()?.id).toBe("r")
+    saveActiveRound(null)
+    expect(store.has(ACTIVE_ROUND_KEY)).toBe(false)
   })
 })

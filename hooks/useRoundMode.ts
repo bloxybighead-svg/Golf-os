@@ -10,7 +10,7 @@ import { usePathname } from "next/navigation"
 import { ACTIVE_ROUND_EVENT, loadActiveRound, type ActiveRound } from "@/lib/rounds/activeRound"
 import { ACTIVE_SESSION_EVENT, loadActiveSession, type ActiveSession } from "@/lib/practice/activeSession"
 import { inSessionMode } from "@/lib/practice/sessionMode"
-import { ROUND_ATTR, ROUND_PAUSE_EVENT, inRoundMode, isRoundPaused } from "@/lib/rounds/roundMode"
+import { ROUND_ATTR, ROUND_PAUSE_EVENT, inRoundMode, isRoundPaused, liveRound } from "@/lib/rounds/roundMode"
 
 interface Snapshot {
   round: ActiveRound | null
@@ -24,7 +24,7 @@ export function useRoundMode(): { on: boolean; round: ActiveRound | null; sessio
   // attribute the inline script set is left alone until then.
   const [snap, setSnap] = useState<Snapshot | null>(null)
   useEffect(() => {
-    const sync = () => setSnap({ round: loadActiveRound(), session: loadActiveSession(), paused: isRoundPaused() })
+    const sync = () => setSnap({ round: liveRound(loadActiveRound()), session: loadActiveSession(), paused: isRoundPaused() })
     sync()
     window.addEventListener(ACTIVE_ROUND_EVENT, sync)
     window.addEventListener(ACTIVE_SESSION_EVENT, sync)

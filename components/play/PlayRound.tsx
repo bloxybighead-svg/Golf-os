@@ -6,7 +6,7 @@ import { Check } from "lucide-react"
 import type { CourseRef } from "@/lib/golfer/baseline"
 import type { Scorecard } from "@/lib/courses/scorecard"
 import { summarizeHoles, type ScoredHole } from "@/lib/rounds/holes"
-import { describeOrder, formatToPar, holeToScore, holesFor, newRoundId, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
+import { describeOrder, formatToPar, holeToScore, holesFor, localDate, newRoundId, nextUnscored, playOrder, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
 import { recommendTee, type TeeOption } from "@/lib/tbox/estimate"
 import { driveYdsFor, teeOptionsFrom, type OpenGolfApiTee } from "@/lib/tbox/tees"
 import { loadTeeChoice, saveTeeChoice } from "@/lib/planner/storage"
@@ -59,12 +59,6 @@ interface Props {
   shot: { club: string | null; onTap: () => void; disabled: boolean } | null
   /** On the round screen, which has its own header and dock: only the toasts and sheets render. */
   embedded?: boolean
-}
-
-function localToday() {
-  const d = new Date()
-  const p = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
 /** How long the "Saved for offline" toast stays; a failure stays longer because the golfer has to act on it. */
@@ -292,7 +286,8 @@ function StartRoundSheet({
     onStart({
       id: newRoundId(), // the round's identity from now on (becomes rounds.id)
       course,
-      date: localToday(),
+      date: localDate(),
+      startedAt: Date.now(),
       teeName: tee?.name ?? null,
       courseRating: tee?.courseRating ?? null,
       slopeRating: tee?.slopeRating ?? null,

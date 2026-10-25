@@ -6,7 +6,7 @@ import { useState, useTransition } from "react"
 import Link from "next/link"
 import { calcDifferential } from "@/lib/handicap"
 import { summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
-import { formatToPar, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
+import { formatToPar, localMidnight, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
 import { createRound } from "@/app/rounds/actions"
 import { HolePad } from "@/components/rounds/HolePad"
 import { holesToAskAboutOb } from "@/lib/rounds/obQuestions"
@@ -128,6 +128,44 @@ export function HoleSheet({
           onDelete={(n) => onRoundChange({ ...round, shots: deleteShot(shots, holeNumber, n) })}
         />
       )}
+    </BottomSheet>
+  )
+}
+
+/** A round with scores from an earlier day: finish it, or discard it after one more question. Closing it asks again next time. */
+export function OldRoundSheet({ round, onFinish, onDiscard, onClose }: { round: ActiveRound; onFinish: () => void; onDiscard: () => void; onClose: () => void }) {
+  const [confirm, setConfirm] = useState(false)
+  const scored = scoredHoles(round).length
+  const day = localMidnight(round.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
+  return (
+    <BottomSheet
+      label="Finish your round"
+      title={round.course.name}
+      onClose={onClose}
+      footer={
+        confirm ? (
+          <>
+            <p className="text-sm text-fg-2">Discard {scored} scored hole{scored === 1 ? "" : "s"}?</p>
+            <button onClick={onDiscard} className="flex h-11 w-full items-center justify-center rounded-lg border border-danger text-sm font-semibold text-danger">
+              Discard
+            </button>
+            <button onClick={() => setConfirm(false)} className="min-h-[44px] w-full text-sm font-semibold text-fg-2 hover:text-fg">
+              Keep
+            </button>
+          </>
+        ) : (
+          <>
+            <button onClick={onFinish} className={PRIMARY}>
+              Finish round
+            </button>
+            <button onClick={() => setConfirm(true)} className="min-h-[44px] w-full text-sm font-semibold text-fg-2 hover:text-fg">
+              Discard
+            </button>
+          </>
+        )
+      }
+    >
+      <p className="text-lg font-semibold text-fg">Finish your round from {day}?</p>
     </BottomSheet>
   )
 }

@@ -29,6 +29,7 @@ import { dockCssVars } from "@/lib/planner/dock"
 import { EditHoleModal } from "@/components/simulator/EditHoleModal"
 import { TeeLine } from "@/components/simulator/TeeLine"
 import { PlayRound } from "@/components/play/PlayRound"
+import { OldRoundSheet } from "@/components/play/RoundSheets"
 import { LastShotLine } from "@/components/play/LastShotLine"
 import { saveZoom } from "@/lib/planner/storage"
 import { DetailsPanel, type DetailsSection } from "@/components/planner/DetailsPanel"
@@ -72,7 +73,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
     stopFollowing, submitHoleCorrection, tendency, toggleClub,
     toggleFollow, troubleCells, undoDrawPoint, useMyLocation, zones,
     pinPlaysLike, greenYards, greenLabel, coldTip, wind, playsLikeOn, setPlaysLikeOn, hasElevation, aimLie,
-    roundSheet, setRoundSheet, holeOffer, answerHoleOffer, trackingOn, canTapShot, tapShot, shotClub, lastShot, editLastShot, deleteLastShot, addMissedShot, totalByClub, holeBall, split, setSplit, splitPoint, moveSplitPoint,
+    roundSheet, setRoundSheet, oldRound, setOldRound, finishOldRound, discardOldRound, holeOffer, answerHoleOffer, trackingOn, canTapShot, tapShot, shotClub, lastShot, editLastShot, deleteLastShot, addMissedShot, totalByClub, holeBall, split, setSplit, splitPoint, moveSplitPoint,
   } = vm
 
   const isOwner = authUser?.id === MARKS_USER_ID
@@ -468,6 +469,8 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
       )}
 
       {pickerSheet}
+
+      {oldRound && <OldRoundSheet round={oldRound} onFinish={finishOldRound} onDiscard={discardOldRound} onClose={() => setOldRound(null)} />}
 
       {editingHole && hole && course?.lat != null && course.lng != null && (
         <EditHoleModal

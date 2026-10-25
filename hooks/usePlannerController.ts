@@ -15,7 +15,8 @@ import { type CourseHole } from "@/lib/course/overpass"
 import type { Club } from "@/lib/golfer/tables"
 import { type HoleCorrectionSubmission } from "@/components/simulator/EditHoleModal"
 import { type RoundSheet } from "@/components/play/RoundSheets"
-import { loadActiveRound, nextUnscored, saveActiveRound, type ActiveRound } from "@/lib/rounds/activeRound"
+import { loadActiveRound, nextUnscored, saveActiveRound, staleness, type ActiveRound } from "@/lib/rounds/activeRound"
+import { claimOldRound } from "@/lib/rounds/roundMode"
 import { nextHoleTarget } from "@/lib/rounds/holeOffer"
 import { addShotAtMidpoint, deleteShot, editShot, lastShotOn, moveSplit, recordShot, UNKNOWN_CLUB } from "@/lib/rounds/shots"
 import type { BallNow } from "@/lib/rounds/holeTracking"
@@ -70,6 +71,8 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   // A first visit opens the "Find your course" screen instead of the demo hole.
   const [firstRun, setFirstRun] = useState(false)
   const [roundSheet, setRoundSheet] = useState<RoundSheet | null>(null)
+  // A round with scores from an earlier day, waiting for "Finish round" or "Discard".
+  const [oldRound, setOldRound] = useState<ActiveRound | null>(null)
 
   // --- positions ---
   const [holeId, setHoleId] = useState<string | null>(null)
@@ -125,17 +128,13 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
       setHomeChosen(hasHomeCourse())
       // Resume where the golfer left off; a first visit opens on the default hole.
       // A round in progress wins: reopening mid-round lands back on its course.
-      const active = loadActiveRound()
-      setRound(active)
-      if (active) void kvSet(ACTIVE_ROUND_IDB_KEY, active)
+      const stored = loadActiveRound()
+      const active = stored ? restoreRound(stored) : null
       // localStorage lost it (cleared, evicted)? The IndexedDB copy brings the round back.
-      else
+      if (!stored)
         void kvGet<ActiveRound>(ACTIVE_ROUND_IDB_KEY).then((saved) => {
           const r = saved?.value
-          if (r && typeof r.id === "string" && Array.isArray(r.holes) && r.holes.length > 0 && !loadActiveRound()) {
-            setRound(r)
-            saveActiveRound(r)
-          }
+          if (r && typeof r.id === "string" && Array.isArray(r.holes) && r.holes.length > 0 && !loadActiveRound()) restoreRound(r)
         })
       const last = loadLastPosition()
       if (active && last?.course.id !== active.course.id) {
@@ -254,6 +253,35 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
     setRound(next)
     saveActiveRound(next)
     void (next ? kvSet(ACTIVE_ROUND_IDB_KEY, next) : kvDelete(ACTIVE_ROUND_IDB_KEY))
+  }
+  /** A round found on the device at load: resumed, dropped (nothing scored, long ago), or held for the finish prompt (scored on an earlier day). Returns the round resumed. */
+  function restoreRound(r: ActiveRound): ActiveRound | null {
+    const age = staleness(r)
+    if (age === "empty-stale") {
+      changeRound(null)
+      return null
+    }
+    saveActiveRound(r)
+    void kvSet(ACTIVE_ROUND_IDB_KEY, r)
+    if (age === "old") {
+      setOldRound(r)
+      return null
+    }
+    setRound(r)
+    return r
+  }
+  /** "Finish round" on the old-round prompt: it becomes the round in progress with its finish sheet open. */
+  function finishOldRound() {
+    if (!oldRound) return
+    claimOldRound(oldRound.id)
+    setRound(oldRound)
+    setRoundSheet({ kind: "finish" })
+    if (course?.id !== oldRound.course.id) void loadCourse(oldRound.course, { autoHoleRef: nextUnscored(oldRound) ?? oldRound.startHole })
+    setOldRound(null)
+  }
+  function discardOldRound() {
+    changeRound(null)
+    setOldRound(null)
   }
   /** The demo choice on the first-run screen: Pebble Beach, as a returning demo visitor would see it. */
   function startDemo() {
@@ -461,7 +489,7 @@ export function usePlannerController({ calibrated, myProfile = null, trackedHand
   return {
     mapTapGuardUntil,
     offlineReport,
-    roundSheet, setRoundSheet, holeOffer: nextHoleOffer.offer, answerHoleOffer,
+    roundSheet, setRoundSheet, oldRound, setOldRound, finishOldRound, discardOldRound, holeOffer: nextHoleOffer.offer, answerHoleOffer,
     loadNeedsSignIn, searchError,
     addDrawPoint, aim, aimAtBest, aimLie, aimState, atBestAim, authUser, avgLeft, bag,
     bagDriverCarry, ball, baselineHandicap, best, cancelDraw, changeRound, holeTitle, headerCourseName,
