@@ -1,17 +1,20 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ChevronDown, History } from "lucide-react"
-import { EmptyHint } from "@/components/EmptyHint"
-import type { SgCategory, UserDrillRun } from "@/lib/supabase/types"
+import type { LibraryDrill, SgCategory } from "@/lib/supabase/types"
 import { CATEGORY_LABEL } from "@/lib/drillRecommendations"
+import { usePendingRuns } from "@/hooks/usePendingRuns"
+import { historyRows } from "@/lib/practice/history"
+import { mergeRuns, type DrillRef, type FinishedRun } from "@/lib/practice/runs"
 
 const FILTERS: (SgCategory | "all")[] = ["all", "off_tee", "approach", "short_game", "putting"]
 const SHOW = 10
-const DAY_MS = 24 * 60 * 60 * 1000
 
-export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
+export function DrillHistory({ runs, library }: { runs: FinishedRun[]; library: (DrillRef & Pick<LibraryDrill, "category">)[] }) {
+  const pending = usePendingRuns()
+  const rows = useMemo(() => historyRows(mergeRuns(runs, pending), library), [runs, pending, library])
   const [filter, setFilter] = useState<SgCategory | "all">("all")
   const [expanded, setExpanded] = useState(false)
   // Dates are formatted in the viewer's own timezone, which the server
@@ -20,10 +23,7 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
-  const filtered = filter === "all" ? runs : runs.filter((r) => r.drill_library?.category === filter)
-  const completed30d = mounted
-    ? filtered.filter((r) => r.completed_at && Date.now() - new Date(r.completed_at).getTime() <= 30 * DAY_MS).length
-    : null
+  const filtered = filter === "all" ? rows : rows.filter((r) => r.category === filter)
 
   return (
     <div className="rounded-xl border border-fg/[0.06] bg-surface px-5 py-4">
@@ -36,16 +36,14 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
           <span className="label-xs">Drill History</span>
         </span>
         <span className="flex items-center gap-1 text-xs text-muted">
-          {runs.length === 0 ? "none yet" : `${runs.length} logged`}
+          {rows.length === 0 ? "none yet" : `${rows.length} logged`}
           <ChevronDown size={13} className={["transition-transform md:hidden", expanded ? "rotate-180" : ""].join(" ")} />
         </span>
       </button>
 
       <div className={[expanded ? "block" : "hidden", "md:block"].join(" ")}>
-        {runs.length === 0 ? (
-          <EmptyHint action="Start a session" href="#start-session" className="mt-3 text-sm text-fg-3">
-            No drills yet.
-          </EmptyHint>
+        {rows.length === 0 ? (
+          <p className="mt-3 text-sm text-fg-3">Nothing logged yet</p>
         ) : (
           <>
             <div className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0">
@@ -65,37 +63,23 @@ export function DrillHistory({ runs }: { runs: UserDrillRun[] }) {
               ))}
             </div>
 
-            <p className="mt-3 min-h-[1rem] text-xs text-muted">
-              {completed30d != null && `${completed30d} completed in the last 30 days`}
-            </p>
-
             {filtered.length === 0 ? (
               <p className="mt-2 text-sm text-muted">No drills in this category yet.</p>
             ) : (
               <ul className="mt-2 divide-y divide-fg/[0.04]">
                 {filtered.slice(0, SHOW).map((r) => (
-                  <li key={r.id} className="py-2.5">
+                  <li key={r.key} className="py-2.5">
                     <div className="flex items-baseline justify-between gap-3">
-                      <p className="min-w-0 truncate text-sm font-semibold text-fg">
-                        {r.drill_library?.name ?? "Free practice"}
-                      </p>
+                      <p className="min-w-0 truncate text-sm font-semibold text-fg">{r.name}</p>
                       <span className="shrink-0 text-xs text-muted">
-                        {mounted &&
-                          new Date(r.started_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        {mounted && new Date(r.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </span>
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs">
-                      {r.drill_library && <span className="text-muted">{CATEGORY_LABEL[r.drill_library.category]}</span>}
-                      {r.completed_at ? (
-                        <span className="text-accent">Completed</span>
-                      ) : (
-                        <span className="text-warn">Not finished</span>
-                      )}
-                      {r.minutes != null && <span className="text-fg-3">{r.minutes} min</span>}
-                      {r.rating != null && <span className="text-fg-3">{r.rating}/5</span>}
-                      {r.reps_completed != null && <span className="text-fg-3">{r.reps_completed} reps</span>}
+                      {r.category && <span className="text-muted">{CATEGORY_LABEL[r.category]}</span>}
+                      <span className="text-fg-3 tabular-nums">{r.score ?? "logged"}</span>
+                      {r.session && <span className="text-accent">Session</span>}
                     </div>
-                    {r.notes && <p className="mt-1 text-xs italic text-muted">{r.notes}</p>}
                   </li>
                 ))}
               </ul>

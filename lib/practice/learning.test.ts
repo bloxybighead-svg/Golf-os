@@ -132,7 +132,7 @@ describe("progress", () => {
   })
 
   it("reads a finished run from the outbox, and not one still going", () => {
-    const payload = { userId: "u", run: { id: "x", date: "d", location: "l", startedAt: day(0), endedAt: day(0, 11), status: "completed" as const, notes: null }, sets: [{ stepIndex: 0, blockIndex: 0, drillId: "lag", label: "", club: null, skipped: false, value: 4, attempts: null, spread: null, at: day(0) }], levelChanges: [] }
+    const payload = { userId: "u", run: { id: "x", date: "d", location: "l", startedAt: day(0), endedAt: day(0, 11), status: "completed" as const, notes: null, source: "session" as const }, sets: [{ stepIndex: 0, blockIndex: 0, drillId: "lag", label: "", club: null, skipped: false, value: 4, attempts: null, spread: null, at: day(0) }], levelChanges: [] }
     expect(runFromPayload(payload)?.sets[0].value).toBe(4)
     expect(runFromPayload({ ...payload, run: { ...payload.run, status: "running" } })).toBeNull()
     expect(mergeRuns([run(day(0), [], null)].map((r) => ({ ...r, id: "x" })), [runFromPayload(payload) as FinishedRun])).toHaveLength(1)

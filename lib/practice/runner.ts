@@ -179,6 +179,7 @@ export function toRunPayload(s: ActiveSession, done: { at: number } | null): Pra
       endedAt: done ? iso(done.at) : null,
       status: s.status,
       notes: s.notes.trim() || null,
+      source: "session",
     },
     sets: s.entries.map((e, i) => ({
       stepIndex: i,

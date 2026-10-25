@@ -49,6 +49,8 @@ export interface PracticeRunPayload {
     endedAt: string | null
     status: "running" | "completed" | "ended_early"
     notes: string | null
+    /** "logged" for a drill logged by hand, "session" for one played in the runner. */
+    source: "session" | "logged"
   }
   sets: {
     stepIndex: number

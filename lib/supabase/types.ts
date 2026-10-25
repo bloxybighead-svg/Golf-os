@@ -1,4 +1,3 @@
-export type SessionType = 'Full Swing Focus' | 'Wedge Focus' | 'Short Game Focus' | 'Putting Focus' | 'Mixed'
 
 export const BREAKDOWN_TAGS = [
   'Decision-making',
@@ -76,19 +75,6 @@ export interface LibraryDrill {
   status: 'active' | 'closed' | 'locked'
 }
 
-export interface UserDrillRun {
-  id: string
-  drill_id: string | null
-  started_at: string
-  completed_at: string | null
-  reps_completed: number | null
-  minutes: number | null
-  rating: number | null
-  notes: string | null
-  /** null for a "Free practice" entry. */
-  drill_library: { name: string; category: SgCategory } | null
-}
-
 export type HandicapSource = 'manual' | 'calculated'
 
 export interface HandicapEntry {
@@ -110,12 +96,4 @@ export interface Milestone {
   date: string
   label: string
   created_at: string
-}
-
-/** A session from the retired practice log; read-only, listed under Practice -> Older sessions. */
-export interface PracticeSession {
-  id: string
-  date: string
-  session_type: SessionType
-  duration_minutes: number | null
 }

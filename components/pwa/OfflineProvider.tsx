@@ -4,7 +4,8 @@
 // toast, and keeps the outbox moving (sends finished rounds, their shots and OB tags to Supabase
 // whenever there is signal). The rules for when and how often are lib/offline/syncQueue.ts.
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { createRound } from "@/app/rounds/actions"
 import { createClient } from "@/lib/supabase/client"
 import { runStartupCleanup } from "@/lib/offline/cleanup"
@@ -30,6 +31,9 @@ async function currentUserId(supabase: Awaited<ReturnType<typeof createClient>>)
 
 export function OfflineProvider() {
   const { updateAvailable, applyUpdate } = useServiceWorker()
+  const router = useRouter()
+  const routerRef = useRef(router)
+  routerRef.current = router
 
   useEffect(() => {
     const supabase = createClient()
@@ -76,6 +80,7 @@ export function OfflineProvider() {
           ended_at: p.run.endedAt,
           status: p.run.status,
           notes: p.run.notes,
+          source: p.run.source,
         })
         if (run.error) throw new Error(run.error.message)
         const del = await supabase.from("practice_run_sets").delete().eq("run_id", p.run.id)
@@ -107,7 +112,13 @@ export function OfflineProvider() {
         }
       },
     }
-    const run = () => void flushOutbox(senders).catch(() => {})
+    const run = () =>
+      void flushOutbox(senders)
+        .then((sent) => {
+          // Practice history is read from the database, so a run that just landed there needs a fresh read.
+          if (window.location.pathname === "/you/practice" && sent.some((k) => k.startsWith("practiceRun:"))) routerRef.current.refresh()
+        })
+        .catch(() => {})
 
     run()
     const timer = setInterval(run, FLUSH_TICK_MS)

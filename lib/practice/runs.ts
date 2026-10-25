@@ -16,6 +16,8 @@ export interface FinishedRun {
   id: string
   startedAt: string
   endedAt: string | null
+  /** "logged" for a drill logged by hand; anything else was played in the runner. */
+  source?: "session" | "logged"
   sets: RunSet[]
 }
 
@@ -29,6 +31,7 @@ export function runFromPayload(p: PracticeRunPayload): FinishedRun | null {
     id: p.run.id,
     startedAt: p.run.startedAt,
     endedAt: p.run.endedAt,
+    source: p.run.source,
     sets: p.sets.map((s) => ({ drillId: s.drillId, skipped: s.skipped, value: s.value, attempts: s.attempts })),
   }
 }

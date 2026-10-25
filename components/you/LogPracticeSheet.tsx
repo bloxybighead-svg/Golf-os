@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { BottomSheet } from "@/components/play/BottomSheet"
-import { logPractice } from "@/app/drills/library-actions"
+import { PRACTICE_RUN_JOB, practiceRunKey } from "@/lib/offline/jobs"
+import { queueJob } from "@/lib/offline/outbox"
+import { loggedRunPayload } from "@/lib/practice/logged"
+import { newRoundId } from "@/lib/rounds/activeRound"
 import type { LibraryDrill } from "@/lib/supabase/types"
 
 const FREE_PRACTICE = "Free practice"
@@ -11,18 +13,16 @@ const FIELD =
   "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
 const OPTION = "flex min-h-11 w-full items-center px-3 text-left text-sm text-fg hover:bg-fg/[0.04]"
 
-export function LogPracticeSheet({ library, signedIn }: { library: LibraryDrill[]; signedIn: boolean }) {
-  const router = useRouter()
+export function LogPracticeSheet({ library, userId }: { library: LibraryDrill[]; userId: string | null }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(FREE_PRACTICE)
   const [listOpen, setListOpen] = useState(false)
   const [typed, setTyped] = useState(false)
   const [drillId, setDrillId] = useState<string | null>(null)
   const [minutes, setMinutes] = useState("")
-  const [rating, setRating] = useState(0)
-  const [notes, setNotes] = useState("")
+  const [score, setScore] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [saving, setSaving] = useState(false)
 
   const needle = typed ? query.trim().toLowerCase() : ""
   const matches = library.filter((d) => d.name.toLowerCase().includes(needle))
@@ -35,24 +35,24 @@ export function LogPracticeSheet({ library, signedIn }: { library: LibraryDrill[
     setListOpen(false)
   }
 
-  function save() {
+  const drill = library.find((d) => d.id === drillId) ?? null
+
+  async function save() {
     const mins = Number(minutes)
-    if (!Number.isInteger(mins) || mins < 1) return setError("Enter the minutes.")
-    if (rating === 0) return setError("Rate it from 1 to 5.")
+    if (!userId) return
+    if (!Number.isInteger(mins) || mins < 1 || mins > 600) return setError("Minutes must be a whole number from 1 to 600.")
+    const points = score.trim() === "" ? null : Number(score)
+    if (points != null && !Number.isFinite(points)) return setError("Enter the score as a number.")
     setError(null)
-    startTransition(async () => {
-      try {
-        await logPractice({ drillId, minutes: mins, rating, notes: notes.trim() || null, at: new Date().toISOString() })
-        setOpen(false)
-        pick(null, FREE_PRACTICE)
-        setMinutes("")
-        setRating(0)
-        setNotes("")
-        router.refresh()
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Couldn't save.")
-      }
-    })
+    setSaving(true)
+    const payload = loggedRunPayload({ id: newRoundId(), userId, drill, minutes: mins, score: drill ? points : null, now: new Date() })
+    const queued = await queueJob({ key: practiceRunKey(payload.run.id), kind: PRACTICE_RUN_JOB, payload })
+    setSaving(false)
+    if (!queued) return setError("Couldn't save.")
+    setOpen(false)
+    pick(null, FREE_PRACTICE)
+    setMinutes("")
+    setScore("")
   }
 
   return (
@@ -71,14 +71,14 @@ export function LogPracticeSheet({ library, signedIn }: { library: LibraryDrill[
           onClose={() => setOpen(false)}
           footer={
             <>
-              {!signedIn && <p className="text-xs text-warn">Sign in to log practice.</p>}
+              {!userId && <p className="text-xs text-warn">Sign in to log practice.</p>}
               {error && <p className="text-xs text-danger">{error}</p>}
               <button
-                onClick={save}
-                disabled={!signedIn || isPending}
+                onClick={() => void save()}
+                disabled={!userId || saving}
                 className="flex h-11 w-full items-center justify-center rounded-lg bg-accent text-sm font-semibold text-on-accent transition-all hover:brightness-110 disabled:opacity-50"
               >
-                {isPending ? "Saving…" : "Save"}
+                {saving ? "Saving…" : "Save"}
               </button>
             </>
           }
@@ -128,41 +128,23 @@ export function LogPracticeSheet({ library, signedIn }: { library: LibraryDrill[
               min={1}
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
-              className={`${FIELD}`}
+              className={FIELD}
             />
           </div>
 
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted">Rating</p>
-            <div className="grid grid-cols-5 gap-2" role="radiogroup" aria-label="Rating">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  role="radio"
-                  aria-checked={rating === n}
-                  onClick={() => setRating(n)}
-                  className={[
-                    "h-11 rounded-lg border text-sm font-semibold transition-colors",
-                    rating === n ? "border-accent bg-accent text-on-accent" : "border-fg/[0.08] bg-surface text-fg hover:bg-fg/[0.04]",
-                  ].join(" ")}
-                >
-                  {n}
-                </button>
-              ))}
+          {drill && drill.metric !== "pct" && (
+            <div className="space-y-1.5">
+              <label htmlFor="practice-score" className="text-xs text-muted">Score (optional)</label>
+              <input
+                id="practice-score"
+                type="number"
+                inputMode="decimal"
+                value={score}
+                onChange={(e) => setScore(e.target.value)}
+                className={FIELD}
+              />
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="practice-notes" className="text-xs text-muted">Notes</label>
-            <textarea
-              id="practice-notes"
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full resize-none rounded-lg border border-fg/[0.08] bg-surface px-3 py-2 text-sm text-fg focus:border-accent/60 focus:outline-none"
-            />
-          </div>
+          )}
         </BottomSheet>
       )}
     </>
