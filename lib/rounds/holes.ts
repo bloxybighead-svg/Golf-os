@@ -57,6 +57,21 @@ export function blankHoles(count: number, par = 4): HoleEntry[] {
   }))
 }
 
+/** Whether the score says the green was hit in regulation: the strokes before the first putt fit within par minus two. */
+export function reachedGreenByScore(h: Pick<HoleEntry, "par" | "strokes" | "putts">): boolean {
+  return h.strokes != null && h.putts != null && h.strokes - h.putts <= h.par - 2
+}
+
+/**
+ * The hole with its green read from the score: hit when the numbers say so, otherwise not hit. A green the golfer
+ * tapped (`answered`) is never replaced; an unanswered hit that the score no longer backs is dropped.
+ */
+export function greenFromScore(h: HoleEntry, answered: boolean): HoleEntry {
+  if (answered) return h
+  if (reachedGreenByScore(h)) return { ...h, green_hit: true, green_miss_side: null }
+  return h.green_hit === true ? { ...h, green_hit: null, green_miss_side: null } : h
+}
+
 function intIn(v: unknown, lo: number, hi: number): number | null {
   const n = Number(v)
   return Number.isInteger(n) && n >= lo && n <= hi ? n : null

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { landingPoint } from "@/lib/course/geo"
 import { HoleSheet } from "@/components/play/RoundSheets"
 import type { ActiveRound } from "@/lib/rounds/activeRound"
-import type { HoleEntry } from "@/lib/rounds/holes"
+import { greenFromScore, type HoleEntry } from "@/lib/rounds/holes"
 import { recordShot } from "@/lib/rounds/shots"
 
 vi.mock("@/components/play/BottomSheet", () => ({
@@ -66,5 +66,33 @@ describe("Hole done", () => {
     const html = sheet(round({ trackShots: true, shots: swings(), holes: [hole({ strokes: 2, putts: 0 })] }))
     expect(html).not.toContain("First putt")
     expect(html).not.toContain("before putting")
+  })
+
+  it("a new hole opens with par and 2 putts picked and Save enabled", () => {
+    const html = sheet(round({ holes: [hole({ strokes: null, putts: null })] }))
+    expect(html).toMatch(/aria-pressed="true"[^>]*>4<\/button>/)
+    expect(html).toMatch(/aria-pressed="true" aria-label="2 putts"/)
+    expect(html).toContain("Par</span>")
+    expect(html).not.toMatch(/<button[^>]* disabled=/)
+  })
+
+  it("4 strokes with 2 putts on a par 4 sets the green without the compass", () => {
+    const html = sheet(round())
+    expect(html).toContain("Green: hit, from your score")
+    expect(html).not.toContain("Green missed")
+  })
+
+  it("5 strokes with 2 putts on a par 4 shows four miss buttons and no Hit", () => {
+    const html = sheet(round({ holes: [hole({ strokes: 5 })] }))
+    expect(html.match(/aria-label="Green missed (long|left|right|short)"/g)).toHaveLength(4)
+    expect(html).not.toContain("Green in regulation")
+    expect(html).not.toContain("from your score")
+  })
+
+  it("a tapped green answer survives changing the score", () => {
+    const tapped = hole({ strokes: 5, green_hit: false, green_miss_side: "left" })
+    expect(greenFromScore({ ...tapped, strokes: 4 }, true)).toMatchObject({ green_hit: false, green_miss_side: "left" })
+    expect(greenFromScore({ ...hole({ green_hit: true }), strokes: 5 }, true).green_hit).toBe(true)
+    expect(greenFromScore({ ...hole({ green_hit: true }), strokes: 5 }, false).green_hit).toBeNull()
   })
 })

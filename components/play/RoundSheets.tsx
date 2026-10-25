@@ -5,7 +5,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { calcDifferential } from "@/lib/handicap"
-import { summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
+import { greenFromScore, reachedGreenByScore, summarizeHoles, type HoleEntry, type ScoredHole } from "@/lib/rounds/holes"
 import { formatToPar, localMidnight, ratingForHoles, type ActiveRound } from "@/lib/rounds/activeRound"
 import { createRound } from "@/app/rounds/actions"
 import { HolePad } from "@/components/rounds/HolePad"
@@ -76,30 +76,38 @@ export function HoleSheet({
   /** "Missed a swing": closes the sheet and lets the golfer place the shot that was missed on the map. */
   onMissedSwing: () => void
 }) {
-  const hole = round.holes.find((h) => h.hole_number === holeNumber)
-  if (!hole) return null
+  // The hole whose green the golfer tapped (or asked to change); every other hole's green follows the score.
+  const [greenAnswered, setGreenAnswered] = useState<number | null>(null)
+  const stored = round.holes.find((h) => h.hole_number === holeNumber)
+  if (!stored) return null
+  // A hole with no score yet opens as a routine par: par strokes, two putts. Nothing is kept until a tap or Save.
+  const scored = stored.strokes == null ? { ...stored, strokes: stored.par, putts: 2 } : stored
+  const reached = reachedGreenByScore(scored)
+  const answered = greenAnswered === holeNumber
+  const hole = greenFromScore(scored, answered)
   const order = round.holes.map((h) => h.hole_number)
   const next = order[order.indexOf(holeNumber) + 1]
   const tracking = round.trackShots === true
   const shots = round.shots ?? []
   const swings = swingShotsOn(shots, holeNumber)
-  const counts = hole.strokes != null ? { strokes: hole.strokes, putts: hole.putts, penalty: hole.penalty, penaltyShot: hole.penalty_shot ?? null } : null
-  const question = tracking && counts ? questionFor(unaccountedOn(shots, holeNumber, counts), swings.length) : ({ kind: "none" } as const)
+  const counts = { strokes: hole.strokes!, putts: hole.putts, penalty: hole.penalty, penaltyShot: hole.penalty_shot ?? null }
+  const question = tracking ? questionFor(unaccountedOn(shots, holeNumber, counts), swings.length) : ({ kind: "none" } as const)
 
   function patch(p: Partial<HoleEntry>) {
-    onRoundChange({ ...round, holes: round.holes.map((h) => (h.hole_number === holeNumber ? { ...h, ...p } : h)) })
+    if ("green_hit" in p) setGreenAnswered(holeNumber)
+    onRoundChange({ ...round, holes: round.holes.map((h) => (h.hole_number === holeNumber ? { ...hole, ...p } : h)) })
   }
 
   function save() {
-    if (tracking && counts) {
-      const firstPutt = (hole?.putts ?? 0) >= 1 ? (hole?.first_putt_ft ?? null) : null
+    let entry = hole
+    let shotsNow = round.shots
+    if (tracking) {
+      const firstPutt = (hole.putts ?? 0) >= 1 ? (hole.first_putt_ft ?? null) : null
       const done = finishHole(shots, holeNumber, counts, firstPutt, ball)
-      onRoundChange({
-        ...round,
-        shots: done.shots,
-        holes: round.holes.map((h) => (h.hole_number === holeNumber ? { ...h, tracking: done.tracking, first_putt_ft: firstPutt } : h)),
-      })
+      entry = { ...hole, tracking: done.tracking, first_putt_ft: firstPutt }
+      shotsNow = done.shots
     }
+    onRoundChange({ ...round, shots: shotsNow, holes: round.holes.map((h) => (h.hole_number === holeNumber ? entry : h)) })
     if (advance && next != null) onGoToHole(next)
     onSheetChange(advance && next == null ? { kind: "finish" } : null)
   }
@@ -110,12 +118,12 @@ export function HoleSheet({
       title={round.course.name}
       onClose={() => onSheetChange(null)}
       footer={
-        <button onClick={save} disabled={hole.strokes == null} className={PRIMARY}>
+        <button onClick={save} className={PRIMARY}>
           {advance && next == null ? "Save and finish" : "Save"}
         </button>
       }
     >
-      <HolePad hole={hole} onChange={patch} />
+      <HolePad hole={hole} onChange={patch} scoreGreen={{ reached, answered }} />
       {tracking && (
         <HoleTrackingRows
           showFirstPutt={(hole.putts ?? 0) >= 1}

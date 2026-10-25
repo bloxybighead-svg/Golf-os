@@ -90,10 +90,21 @@ function TwoOrOne({ hole, onChange }: { hole: HoleEntry; onChange: (patch: Parti
  * index come from the scorecard and are read-only until "Edit hole". Tapping a
  * chosen option again clears it.
  */
-export function HolePad({ hole, onChange }: { hole: HoleEntry; onChange: (patch: Partial<HoleEntry>) => void }) {
+export function HolePad({
+  hole,
+  onChange,
+  scoreGreen,
+}: {
+  hole: HoleEntry
+  onChange: (patch: Partial<HoleEntry>) => void
+  /** Play's sheet reads the green from the score: `reached` is what the numbers say, `answered` that the golfer tapped it. */
+  scoreGreen?: { reached: boolean; answered: boolean }
+}) {
   const [editingHole, setEditingHole] = useState<number | null>(null)
   const editing = editingHole === hole.hole_number
   const big = hole.strokes != null && hole.strokes >= BIG_SCORE
+  const greenFromScore = scoreGreen?.reached === true && !scoreGreen.answered
+  const hitHidden = scoreGreen != null && !scoreGreen.reached && hole.green_hit !== true
   const green = (side: GreenMiss) => (
     <Choice
       selected={hole.green_hit === false && hole.green_miss_side === side}
@@ -161,13 +172,23 @@ export function HolePad({ hole, onChange }: { hole: HoleEntry; onChange: (patch:
       )}
 
       <Row label="Score">
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 items-start gap-1">
           <TwoOrOne hole={hole} onChange={onChange} />
-          {SCORE_BUTTONS.map((n) => (
-            <Choice key={n} selected={hole.strokes === n} onClick={() => onChange({ strokes: n })}>
-              {n}
-            </Choice>
-          ))}
+          {SCORE_BUTTONS.map((n) => {
+            const button = (
+              <Choice selected={hole.strokes === n} onClick={() => onChange({ strokes: n })} className="w-full">
+                {n}
+              </Choice>
+            )
+            return n === hole.par ? (
+              <div key={n} className="flex flex-col items-center gap-0.5">
+                {button}
+                <span className="text-[11px] text-muted">Par</span>
+              </div>
+            ) : (
+              <div key={n}>{button}</div>
+            )
+          })}
           <Choice
             selected={big}
             onClick={() => onChange({ strokes: big ? Math.min(hole.strokes! + 1, 20) : BIG_SCORE })}
@@ -227,31 +248,48 @@ export function HolePad({ hole, onChange }: { hole: HoleEntry; onChange: (patch:
           </Row>
         )}
 
-        <Row label="Green">
-          {/* Laid out like the green: long above, short below */}
-          <div className="grid grid-cols-3 gap-1.5">
-            <div />
-            {green("long")}
-            <div />
-            {green("left")}
-            <Choice
-              selected={hole.green_hit === true}
-              onClick={() =>
-                hole.green_hit === true
-                  ? onChange({ green_hit: null, green_miss_side: null })
-                  : onChange({ green_hit: true, green_miss_side: null })
-              }
-              label="Green in regulation"
-              className="w-full"
+        {greenFromScore ? (
+          <p className="flex items-center justify-between gap-3 text-sm text-fg-2">
+            Green: hit, from your score
+            <button
+              type="button"
+              onClick={() => onChange({ green_hit: null, green_miss_side: null })}
+              className="h-11 shrink-0 px-2 font-semibold text-accent hover:underline"
             >
-              Hit
-            </Choice>
-            {green("right")}
-            <div />
-            {green("short")}
-            <div />
-          </div>
-        </Row>
+              Change
+            </button>
+          </p>
+        ) : (
+          <Row label="Green">
+            {/* Laid out like the green: long above, short below */}
+            <div className="grid grid-cols-3 gap-1.5">
+              <div />
+              {green("long")}
+              <div />
+              {green("left")}
+              {hitHidden ? (
+                <div />
+              ) : (
+                <Choice
+                  selected={hole.green_hit === true}
+                  onClick={() =>
+                    hole.green_hit === true
+                      ? onChange({ green_hit: null, green_miss_side: null })
+                      : onChange({ green_hit: true, green_miss_side: null })
+                  }
+                  label="Green in regulation"
+                  className="w-full"
+                >
+                  Hit
+                </Choice>
+              )}
+              {green("right")}
+              <div />
+              {green("short")}
+              <div />
+            </div>
+          </Row>
+        )}
 
         {hole.strokes != null && hole.strokes > hole.par && hole.tracking !== "complete" && (
           <Row label="What went wrong">

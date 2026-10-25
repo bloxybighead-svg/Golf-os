@@ -14,7 +14,7 @@
 
 import type { Baseline } from "@/lib/course/baseline"
 import { PUTT_STRETCH_PER_HCP, REFERENCE_ROUND } from "@/lib/course/baseline"
-import type { PenaltyShot } from "./holes"
+import { reachedGreenByScore, type PenaltyShot } from "./holes"
 import type { SgCategory } from "@/lib/sgBenchmarks"
 
 /** A hole's yards when the scorecard has no yardage for the tee and the course total is unknown. ESTIMATE: typical par-3 / par-4 / par-5 lengths. */
@@ -114,7 +114,7 @@ export const shortGamePuttFt = (baseline: Baseline): number => SHORT_GAME_PUTT_F
 /** Whether the green was missed: said so, or, with no green entry, more strokes before putting than a regulation hole allows. */
 export function missedGreen(h: Pick<EstimateHole, "par" | "strokes" | "putts" | "greenHit">): boolean {
   if (h.greenHit != null) return !h.greenHit
-  return h.putts != null && h.strokes - h.putts > h.par - 2
+  return h.putts != null && !reachedGreenByScore(h)
 }
 
 /** One hole's strokes gained from its entries. */
