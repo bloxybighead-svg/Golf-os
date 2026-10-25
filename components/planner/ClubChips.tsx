@@ -1,8 +1,8 @@
 "use client"
 
-// The club row: the best three clubs, best first, then "All clubs" for the full table, pinned at the end.
+// The club row: the best three clubs, best first, then "All clubs" for the full table as the last chip.
 // A club picked from the table that isn't in the top three takes the third chip, so the row never grows.
-// With `all` every club is a chip and the strip scrolls sideways (the round screen's dock).
+// With `all` every club is a chip; the strip scrolls sideways (the expanded dock).
 
 import { isTie, type OptimizedClubPlan } from "@/lib/course/plan"
 
@@ -29,7 +29,7 @@ export function ClubChips({
   const shown = all ? ranking : chosen && !top.some((r) => r.club === chosen.club) ? [...top.slice(0, CHIPS_SHOWN - 1), chosen] : top
   return (
     <div className={className} role="group" aria-label="Clubs, best first">
-      <div className={`flex min-w-0 gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${all ? "flex-1" : ""}`}>
+      <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {shown.map((r) => (
         <button
           key={r.club}
@@ -44,10 +44,10 @@ export function ClubChips({
           {r !== best && isTie(r.plan, best.plan) && <span title="Ties with the best club"> ≈</span>}
         </button>
       ))}
+        <button type="button" onClick={onMore} className="shrink-0 rounded-full border border-fg/[0.12] px-3 py-1.5 text-sm text-fg-3">
+          All clubs
+        </button>
       </div>
-      <button type="button" onClick={onMore} className="shrink-0 rounded-full border border-fg/[0.12] px-3 py-1.5 text-sm text-fg-3">
-        All clubs
-      </button>
     </div>
   )
 }

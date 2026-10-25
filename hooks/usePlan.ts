@@ -408,9 +408,9 @@ export function usePlan({
 
   const labels = useMemo(() => {
     // Each label belongs on a line; the map slides it off the green and the pin (lib/planner/labelPlacement).
-    const out: { from: LatLng; to: LatLng; text: string }[] = []
+    const out: { from: LatLng; to: LatLng; text: string; flag?: boolean }[] = []
     if (ball && aim && distAim != null && distAim > 3) out.push({ from: ball, to: aim, text: `${Math.round(distAim)} yd` })
-    if (aim && pin && aimToPin != null && aimToPin >= 3) out.push({ from: aim, to: pin, text: `${Math.round(aimToPin)} to pin` })
+    if (aim && pin && aimToPin != null && aimToPin >= 3) out.push({ from: aim, to: pin, text: `${Math.round(aimToPin)} yd`, flag: true })
     return out
   }, [ball, aim, pin, distAim, aimToPin])
   const fromLabel = startLie === "tee" ? "the tee" : startLie === "oob" ? "out of bounds" : `the ${startLie}`

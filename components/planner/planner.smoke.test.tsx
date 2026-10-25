@@ -144,13 +144,11 @@ describe("planner components render (smoke)", () => {
     expect(renderToStaticMarkup(card({ atBestAim: true, chosenAtAim: 5.26 }))).toContain(">4.6<")
   })
 
-  it("ResultCard: the risk line shows the largest risk only, and not at all at 1% or less", () => {
-    const withShare = (lieShare: Partial<OptimizedClubPlan["plan"]["lieShare"]>): OptimizedClubPlan => ({ ...fourIron, plan: { ...fourIron.plan, lieShare: { ...fourIron.plan.lieShare, ...lieShare } } })
-    expect(renderToStaticMarkup(card({ chosen: withShare({ oob: 0.01 }) }))).not.toContain("OB")
-    const html = renderToStaticMarkup(card({ chosen: withShare({ oob: 0.03, water: 0.08, trees: 0.02 }) }))
-    expect(html).toContain("8% water")
-    expect(html).toContain("text-warn")
-    expect(html).not.toContain("3% OB")
+  it("ResultCard: no OB or water line: the risk lives on the strategy card only", () => {
+    const risky: OptimizedClubPlan = { ...fourIron, plan: { ...fourIron.plan, lieShare: { ...fourIron.plan.lieShare, oob: 0.03, water: 0.08 } } }
+    const html = renderToStaticMarkup(card({ chosen: risky }))
+    expect(html).not.toContain("water")
+    expect(html).not.toContain("OB")
   })
 
   it("ResultCard: plays shows only when it differs by 2 yd or more; with no green it is one inline row", () => {
@@ -199,39 +197,40 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("+0.10") // at your aim
   })
 
-  it("StrategyToggle: both plays, one line each: club and its risk", () => {
+  it("StrategyToggle (cards): both plays with their biggest risk", () => {
     const risky: OptimizedClubPlan = { ...pw, plan: { ...pw.plan, lieShare: { ...pw.plan.lieShare, oob: 0.04 } } }
-    const html = renderToStaticMarkup(<StrategyToggle options={{ safer: risky, lowest: fourIron, same: false } as never} chosen={fourIron} onPick={() => {}} compact />)
+    const html = renderToStaticMarkup(<StrategyToggle options={{ safer: risky, lowest: fourIron, same: false } as never} chosen={fourIron} onPick={() => {}} />)
     expect(html).toContain("Smart play")
     expect(html).toContain("Go for it")
     expect(html).toContain("4% OB")
     expect(html).not.toContain("strokes")
   })
 
-  it("StrategyToggle: flags the chosen play when much of it is on unmapped ground", () => {
-    const html = renderToStaticMarkup(
-      <StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true } as never} chosen={fourIron} onPick={() => {}} compact unmappedWarning={0.54} onUnmapped={() => {}} />
-    )
-    expect(html).toContain("Best play")
-    expect(html).toContain('aria-label="54% unmapped. Show why"')
-    expect(html).not.toContain(">54% unmapped<") // the words live in the icon, not on the card
-  })
-
-  it("ClubChips: with all, every club is a chip in a strip that scrolls, and All clubs sits outside it", () => {
+  it("ClubChips: with all, every club is a chip in a strip that scrolls, and All clubs is its last chip", () => {
     const ranking = [fourIron, threeWood, pw, { ...pw, club: "9-Iron" }, { ...pw, club: "SW" }]
     const html = renderToStaticMarkup(<ClubChips ranking={ranking} chosen={fourIron} onPick={() => {}} onMore={() => {}} all />)
     for (const c of ranking) expect(html).toContain(c.club)
-    expect(html.indexOf("SW")).toBeLessThan(html.indexOf("</div>")) // the last club is inside the strip
-    expect(html.indexOf("</div>")).toBeLessThan(html.indexOf("All clubs")) // the button is after the strip closes
+    expect(html.indexOf("SW")).toBeLessThan(html.indexOf("All clubs")) // the button follows the last club inside the same strip
+    expect(html.match(/<\/div>/g)).toHaveLength(2) // the strip and the group: nothing sits beside the strip
     expect(html).toContain("overflow-x-auto")
   })
 
-  it("StrategyToggle (compact): club on line one, strokes and the biggest risk on line two", () => {
-    const risky: OptimizedClubPlan = { ...pw, plan: { ...pw.plan, lieShare: { ...pw.plan.lieShare, oob: 0.04 } } }
-    const html = renderToStaticMarkup(<StrategyToggle options={{ safer: risky, lowest: fourIron, same: false } as never} chosen={fourIron} onPick={() => {}} compact />).replace(/<!-- -->/g, "")
-    expect(html).toContain('5.1</span><span class="text-fg-3"> · 4% OB')
-    expect(html).toMatch(/PW<\/span><span class="text-xs text-muted"> Smart play/)
-    expect(html.match(/class="block truncate/g)).toHaveLength(4) // two lines on each of two cards
+  it("StrategyToggle (compact): the chosen club and its risk in full, then a Smart | Go switch", () => {
+    const risky = (oob: number, water = 0): OptimizedClubPlan => ({ ...threeWood, plan: { ...threeWood.plan, lieShare: { ...threeWood.plan.lieShare, oob, water, trees: 0.4 } } })
+    const options = { safer: risky(0.07), lowest: fourIron, same: false } as never
+    const html = renderToStaticMarkup(<StrategyToggle options={options} chosen={risky(0.07)} onPick={() => {}} compact onOpen={() => {}} />).replace(/<!-- -->/g, "")
+    expect(html).toContain("3-Wood")
+    expect(html).toContain("· 7% OB") // trees are not a penalty: never in the dock
+    expect(html).not.toContain("truncate")
+    expect(html).not.toContain("Expected")
+    expect(html).not.toContain("<svg") // under 10%: no warning icon
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Smart</)
+    expect(html).toContain(">Go<")
+    expect(html).not.toContain("Smart play")
+    expect(renderToStaticMarkup(<StrategyToggle options={options} chosen={risky(0, 0.12)} onPick={() => {}} compact />)).toContain("<svg")
+    const same = renderToStaticMarkup(<StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true } as never} chosen={fourIron} onPick={() => {}} compact />)
+    expect(same).not.toContain("Smart")
+    expect(same).not.toContain(">Go<")
   })
 
   it("ClubChips: the best three, a tie marked, then All clubs", () => {
@@ -246,18 +245,14 @@ describe("planner components render (smoke)", () => {
     expect(fourth).not.toContain("3-Wood")
   })
 
-  it("phone dock: three fixed rows, cards of two truncating lines, nothing that can wrap", () => {
-    const sevenWood: OptimizedClubPlan = { ...fourIron, club: "7-Wood", plan: { ...plan("7-Wood", 4.6, 0.02, 200), unmappedShare: 0.43 } }
+  it("PlayDock: three fixed rows, nothing that can wrap", () => {
     const html = renderToStaticMarkup(
       <PlayDock
         status={<button>Start round</button>}
-        plays={<StrategyToggle options={{ safer: sevenWood, lowest: sevenWood, same: false } as never} chosen={sevenWood} onPick={() => {}} compact unmappedWarning={0.43} onUnmapped={() => {}} />}
-        chips={<ClubChips ranking={[sevenWood, pw]} chosen={sevenWood} onPick={() => {}} onMore={() => {}} className="flex min-w-0 flex-1 gap-1.5" />}
+        plays={<StrategyToggle options={{ safer: pw, lowest: fourIron, same: false } as never} chosen={fourIron} onPick={() => {}} compact />}
+        chips={<ClubChips ranking={[fourIron, pw]} chosen={fourIron} onPick={() => {}} onMore={() => {}} className="flex min-w-0 flex-1 gap-1.5" />}
       />
     )
-    for (const text of ["Smart play", "Go for it", "7-Wood", "43% unmapped"]) expect(html).toContain(text)
-
-    // Each row: its own fixed height class, clipped, never shrunk, and no wrapping below md.
     const rows = [...html.matchAll(/<div[^>]*?data-dock-row="(status|plays|chips)"[^>]*?class="([^"]*)"|<div[^>]*?class="([^"]*)"[^>]*?data-dock-row="(status|plays|chips)"/g)]
     expect(rows).toHaveLength(3)
     for (const m of rows) {
@@ -268,14 +263,6 @@ describe("planner components render (smoke)", () => {
       expect(phone).toContain("overflow-hidden")
       expect(phone).not.toContain("flex-wrap")
       expect(Number(DOCK_ROW_CLASS[row].slice(2)) * 4).toBe(DOCK_ROW_PX[row]) // class and px constant agree
-    }
-
-    // Each card is as tall as the plays row, with exactly two lines that both truncate.
-    const cards = [...html.matchAll(/<button[^>]*aria-pressed[^>]*class="([^"]*)"[^>]*>(.*?)<\/button>/g)].filter(([, , inner]) => inner.includes("Smart play") || inner.includes("Go for it"))
-    expect(cards).toHaveLength(2)
-    for (const [, cls, inner] of cards) {
-      expect(cls.split(" ")).toEqual(expect.arrayContaining(["h-full", "overflow-hidden"]))
-      expect(inner.match(/class="block truncate/g)).toHaveLength(2)
     }
   })
 })

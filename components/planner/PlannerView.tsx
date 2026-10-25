@@ -22,6 +22,7 @@ import { holeToScore, scoreToParLabel } from "@/lib/rounds/activeRound"
 import { RoundDock } from "@/components/play/RoundDock"
 import { RoundScreen } from "@/components/play/RoundScreen"
 import { ShotSheet } from "@/components/play/ShotSheet"
+import { ShotButton } from "@/components/play/ShotButton"
 import { StrategyToggle } from "@/components/planner/StrategyToggle"
 import { PlayDock } from "@/components/planner/PlayDock"
 import { dockCssVars } from "@/lib/planner/dock"
@@ -33,7 +34,6 @@ import { saveZoom } from "@/lib/planner/storage"
 import { DetailsPanel, type DetailsSection } from "@/components/planner/DetailsPanel"
 import { ClubTable } from "@/components/planner/ClubTable"
 import { ResultCard } from "@/components/planner/ResultCard"
-import { isLowConfidence } from "@/lib/course/plan"
 import { LayersMenu } from "@/components/planner/LayersMenu"
 import { HoleHeader, type HoleMenuItem } from "@/components/planner/HoleHeader"
 import { ClubSheet } from "@/components/planner/ClubSheet"
@@ -504,20 +504,21 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
             <RoundDock
               plays={
                 optionsNote && chosen ? (
-                  <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact className="landscape:grid-cols-1" unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} onUnmapped={() => openDetails("map")} />
+                  <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact onOpen={resultCard ? () => setShotOpen(true) : null} />
                 ) : (
                   placePrompt
                 )
               }
-              chips={clubChips(true)}
-              onDetails={resultCard ? () => setShotOpen(true) : null}
               onHoleDone={() => setRoundSheet({ kind: "hole", hole: holeToScore(roundHere, hole?.ref ?? null), advance: true })}
-              shot={trackingOn ? shotButton : null}
             />
           }
           round={playRound(true)}
         />
         <ShotSheet open={shotOpen} onClose={() => setShotOpen(false)}>
+          <div className="flex items-center gap-2">
+            {trackingOn && <ShotButton {...shotButton} />}
+            {clubChips(true)}
+          </div>
           {resultCard}
         </ShotSheet>
         {detailsPanel}
@@ -550,7 +551,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           }
           plays={
             optionsNote && chosen && (
-              <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact unmappedWarning={isLowConfidence(chosen.plan) ? chosen.plan.unmappedShare : null} onUnmapped={() => openDetails("map")} />
+              <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact />
             )
           }
           chips={clubChips(false)}

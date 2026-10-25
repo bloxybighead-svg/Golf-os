@@ -105,7 +105,7 @@ interface Props {
   /** Also draw where each shot first landed (hollow), not only where it stopped. */
   showCarry?: boolean
   /** Distance labels: each belongs on the line from `from` to `to`; the map slides it off the green. */
-  labels: { from: LatLng; to: LatLng; text: string }[]
+  labels: { from: LatLng; to: LatLng; text: string; flag?: boolean }[]
   /** Front/center/back of the green, drawn on it once the golfer zooms in past the hole fit. */
   greenLabel?: { at: LatLng; text: string } | null
   cells: { sw: LatLng; ne: LatLng; color: string; opacity: number }[]
@@ -151,6 +151,9 @@ type MarkerKind = "ball" | "aim" | "pin" | "split"
 // Real glyphs rather than lettered dots: a white ball with a shadow ring, a
 // crosshair for the aim, and a flag whose base sits exactly on the pin. Each
 // sits inside a larger transparent box so there's enough to grab with a finger.
+/** The pin segment's yardage pill leads with this flag instead of the words "to pin" (lucide's flag). */
+const FLAG_ICON = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Pin" style="display:inline;vertical-align:-1px;margin-right:3px"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>`
+
 const UPRIGHT = "transform:rotate(var(--unrot,0deg))" // keeps a marker upright when the map is turned
 
 function markerIcon(kind: MarkerKind): L.DivIcon {
@@ -666,7 +669,7 @@ export default function CourseMap(props: Props) {
         icon: L.divIcon({
           className: "",
           iconSize: [0, 0],
-          html: `<div style="transform:translate(-50%,-50%) rotate(var(--unrot,0deg));white-space:nowrap;padding:2px 7px;border-radius:9999px;background:${cssColor("map-scrim", 0.82)};border:1px solid ${cssColor("map-marker", 0.35)};font:600 11px system-ui;color:${cssColor("map-marker")}">${lab.text}</div>`,
+          html: `<div style="transform:translate(-50%,-50%) rotate(var(--unrot,0deg));white-space:nowrap;padding:2px 7px;border-radius:9999px;background:${cssColor("map-scrim", 0.82)};border:1px solid ${cssColor("map-marker", 0.35)};font:600 11px system-ui;color:${cssColor("map-marker")}">${lab.flag ? FLAG_ICON : ""}${lab.text}</div>`,
         }),
       }).addTo(g)
     }

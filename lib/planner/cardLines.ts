@@ -8,6 +8,9 @@ export const RISK_SHOWN_ABOVE = 0.01
 /** The risk line turns to a warning colour above this share. ESTIMATE: about one shot in twenty. */
 export const RISK_WARN_ABOVE = 0.05
 
+/** The phone dock's warning icon shows at or above this share of OB or water. ESTIMATE: one shot in ten is a penalty worth a second look. */
+export const PENALTY_ICON_FROM = 0.1
+
 /** "plays N" shows only when it differs from the raw distance by at least this, yards. */
 export const PLAYS_SHOWN_FROM_YDS = 2
 
@@ -18,12 +21,12 @@ interface Shares {
   lieShare: { oob: number; water: number; trees?: number }
 }
 
-/** The one biggest risk ("3% OB", "8% water", "12% trees"); null when it is 1% or less. OB and water are the penalty strokes, trees only cost position. */
-export function riskLine(plan: Shares): { text: string; warn: boolean } | null {
+/** The one biggest risk ("3% OB", "8% water", "12% trees"); null when it is 1% or less. OB and water are the penalty strokes, trees only cost position (`penaltiesOnly` leaves trees out). */
+export function riskLine(plan: Shares, penaltiesOnly = false): { text: string; warn: boolean } | null {
   const options = [
     { word: "OB", share: plan.lieShare.oob },
     { word: "water", share: plan.lieShare.water },
-    { word: "trees", share: plan.lieShare.trees ?? 0 },
+    ...(penaltiesOnly ? [] : [{ word: "trees", share: plan.lieShare.trees ?? 0 }]),
   ]
   const top = options.reduce((a, b) => (b.share > a.share ? b : a))
   if (top.share <= RISK_SHOWN_ABOVE) return null

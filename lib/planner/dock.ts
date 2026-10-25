@@ -3,9 +3,9 @@
 
 import type { CSSProperties } from "react"
 
-/** Row heights in px. The Tailwind class for each is in DOCK_ROW_CLASS (4 px per unit). */
-export const DOCK_ROW_PX = { status: 40, plays: 64, chips: 44 } as const
-export const DOCK_ROW_CLASS = { status: "h-10", plays: "h-16", chips: "h-11" } as const
+/** Row heights in px. The Tailwind class for each is in DOCK_ROW_CLASS (4 px per unit). `round` is the round screen's one-row dock. */
+export const DOCK_ROW_PX = { status: 40, plays: 64, chips: 44, round: 56 } as const
+export const DOCK_ROW_CLASS = { status: "h-10", plays: "h-16", chips: "h-11", round: "h-14" } as const
 
 const DOCK_BORDER_PX = 1
 export const DOCK_HEIGHT_PX = DOCK_ROW_PX.status + DOCK_ROW_PX.plays + DOCK_ROW_PX.chips + DOCK_BORDER_PX
