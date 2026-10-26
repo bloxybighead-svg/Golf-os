@@ -27,6 +27,12 @@ export const DEFAULT_ANSWERS: Answers = { minutes: 60, locations: ["putting_gree
 
 export const MAX_FOCUS = 2
 
+/** A week row tapped to start wins; otherwise the focus picked earlier today; otherwise Auto. */
+export function initialFocus(requested: PracticeArea | null, saved: { savedOn?: string; focus?: PracticeArea[] }, now: Date): PracticeArea[] {
+  if (requested) return [requested]
+  return saved.savedOn === localDate(now) ? (saved.focus ?? []) : []
+}
+
 /** The focus chips: every area the week is made of. */
 export const FOCUS_CHOICES = PRACTICE_AREAS
 

@@ -59,9 +59,9 @@ export function LogPracticeSheet({ library, userId }: { library: LibraryDrill[];
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex h-11 w-full items-center justify-center rounded-lg bg-accent text-sm font-semibold text-on-accent transition-all hover:brightness-110"
+        className="flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold text-fg hover:bg-fg/[0.04]"
       >
-        Log practice
+        Log practice you did without the app
       </button>
 
       {open && (

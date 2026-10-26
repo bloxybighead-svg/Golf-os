@@ -3,7 +3,7 @@
 // "Start session": the button on Practice (or "Resume session" with one running), the questions, and the
 // session card the answers build. Start hands the plan to the runner.
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { BottomSheet } from "@/components/play/BottomSheet"
 import { useActiveSession } from "@/hooks/useActiveSession"
@@ -18,12 +18,14 @@ import {
   beginSession,
   buildPlan,
   fitMinutes,
+  initialFocus,
   liveNextRound,
   localDate,
   startFromPlan,
   type Answers,
   type StoredNextRound,
 } from "@/lib/practice/startSession"
+import type { PracticeArea } from "@/lib/practice/weakness"
 import { setRoundPaused } from "@/lib/rounds/roundMode"
 import type { LibraryDrill } from "@/lib/supabase/types"
 import { SessionAnswers } from "./SessionAnswers"
@@ -50,6 +52,7 @@ function write(key: string, value: unknown) {
 }
 
 export function StartSession({
+  focusRequest,
   week,
   library,
   activeLibrary,
@@ -57,6 +60,7 @@ export function StartSession({
   levelSince,
   userId,
 }: {
+  focusRequest?: { area: PracticeArea } | null
   week: PracticeWeek | null
   library: DrillRef[]
   activeLibrary: LibraryDrill[]
@@ -72,6 +76,14 @@ export function StartSession({
   const [answers, setAnswers] = useState<Answers>(DEFAULT_ANSWERS)
   const [nextRound, setNextRound] = useState<StoredNextRound | null>(null)
 
+  const requested = useRef<PracticeArea | null>(null)
+
+  useEffect(() => {
+    if (!focusRequest) return
+    requested.current = focusRequest.area
+    setOpen(true)
+  }, [focusRequest])
+
   useEffect(() => {
     if (!open) return
     const at = new Date()
@@ -84,8 +96,9 @@ export function StartSession({
       locations: saved.locations?.length ? saved.locations : saved.location ? [saved.location] : DEFAULT_ANSWERS.locations,
       energy: saved.energy ?? DEFAULT_ANSWERS.energy,
       // Focus is remembered for the day it was picked, then goes back to Auto.
-      focus: saved.savedOn === localDate(at) ? (saved.focus ?? []) : [],
+      focus: initialFocus(requested.current, saved, at),
     })
+    requested.current = null
     const next = liveNextRound(read<StoredNextRound>(NEXT_ROUND_KEY), at)
     write(NEXT_ROUND_KEY, next)
     setNextRound(next)
