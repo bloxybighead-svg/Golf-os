@@ -8,9 +8,13 @@ import { SgSection } from "@/components/you/SgSection"
 import { Tiger5Section } from "@/components/you/Tiger5Section"
 import { HandicapCard } from "@/components/home/HandicapCard"
 import { TrendsPanel } from "@/components/you/TrendsPanel"
+import { StatsEmpty } from "@/components/you/StatsEmpty"
 import { SubPageHeader } from "@/components/you/SubPageHeader"
 import type { HandicapEntry, Milestone, Round } from "@/lib/supabase/types"
 import { estimateHandicapIndex } from "@/lib/handicap"
+
+/** Rounds before the handicap estimate can show. */
+const HANDICAP_MIN_ROUNDS = 3
 
 /** Strokes gained and Tiger 5 look at this many most recent rounds. */
 const SG_WINDOW_ROUNDS = 10
@@ -48,13 +52,23 @@ export default async function StatsPage() {
     [...rounds].reverse().slice(0, 20).map((r) => r.differential).filter((d): d is number => d != null)
   )
 
+  if (rounds.length === 0) {
+    return (
+      <div className="space-y-6 pt-4">
+        <SubPageHeader title="Stats" />
+        <StatsEmpty signedIn={!!user} />
+        <DrillTrends trends={drillTrends(practice.runs, practice.library, practice.levels)} />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 pt-4">
       <SubPageHeader title="Stats" />
 
       {/* Side by side on wide screens so desktop isn't a stretched phone column */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 lg:gap-4">
-        <HandicapCard latest={latestHandicap} liveEstimate={liveEstimate} signedIn={!!user} />
+        <HandicapCard latest={latestHandicap} liveEstimate={liveEstimate} roundsNeeded={Math.max(0, HANDICAP_MIN_ROUNDS - rounds.length)} signedIn={!!user} />
         <SgSection data={sgData} fits={profile?.fits ?? null} ownHandicap={latestHandicap?.handicap_index ?? liveEstimate} />
       </div>
 

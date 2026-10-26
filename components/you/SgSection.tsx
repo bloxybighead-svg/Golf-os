@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { InfoTip } from "@/components/InfoTip"
-import { EmptyHint } from "@/components/EmptyHint"
 import { CATEGORY_LABEL } from "@/lib/drillRecommendations"
 import { describeBasis, formatSg as fmtSg, summarizeRounds, type SgSummary } from "@/lib/rounds/roundSg"
 import { useSgResults } from "@/hooks/useSgResults"
@@ -52,11 +51,7 @@ export function SgView({
       </div>
 
       {ready && summary.rounds === 0 ? (
-        <div className="mt-3">
-          <EmptyHint action="Log a round" href="/rounds?new=1">
-            Needs a round with a score.
-          </EmptyHint>
-        </div>
+        <p className="mt-3 text-sm text-fg-3">Needs a round with a score.</p>
       ) : (
         <>
           {summary.totalPerRound != null && (

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { InfoTip } from "@/components/InfoTip"
-import { EmptyHint } from "@/components/EmptyHint"
 import { TIGER5_LABEL, summarizeTiger5, tiger5 } from "@/lib/rounds/tiger5"
 import type { SgRoundData } from "@/lib/supabase/loadSgData"
 
@@ -33,11 +32,7 @@ export function Tiger5Section({ data }: { data: SgRoundData[] }) {
       </p>
 
       {summary.per18 == null ? (
-        <div className="mt-3">
-          <EmptyHint action="Log a round" href="/rounds?new=1">
-            Needs a hole-by-hole round.
-          </EmptyHint>
-        </div>
+        <p className="mt-3 text-sm text-fg-3">Needs a hole-by-hole round.</p>
       ) : (
         <>
           <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="mt-2 flex min-h-[44px] w-full flex-col justify-center text-left">

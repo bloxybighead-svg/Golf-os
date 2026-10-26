@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useTransition } from "react"
-import Link from "next/link"
 import type { HandicapEntry } from "@/lib/supabase/types"
 import { saveManualHandicap } from "@/app/handicap/actions"
 import { InfoTip } from "@/components/InfoTip"
@@ -19,10 +18,12 @@ interface Props {
   latest: HandicapEntry | null
   /** WHS index computed from the loaded rounds' differentials, shown until a round save records one. */
   liveEstimate: number | null
+  /** Rated rounds still needed before an index can be worked out; 0 once there are enough. */
+  roundsNeeded: number
   signedIn: boolean
 }
 
-export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
+export function HandicapCard({ latest, liveEstimate, roundsNeeded, signedIn }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [editingManual, setEditingManual] = useState(false)
@@ -91,29 +92,18 @@ export function HandicapCard({ latest, liveEstimate, signedIn }: Props) {
             <>
               <p className="text-5xl font-semibold leading-tight tracking-tight text-muted">—</p>
               <p className="mt-1 text-sm text-fg-3">
-                Needs 54 holes of rated rounds (three 18s).{" "}
-                <Link href="/rounds?new=1" className="font-semibold text-accent hover:underline">
-                  Add round
-                </Link>
+                {roundsNeeded > 0 ? `Needs ${roundsNeeded} more round${roundsNeeded === 1 ? "" : "s"}` : "Needs rated rounds"}
               </p>
             </>
           )}
         </div>
-        {signedIn ? (
+        {signedIn && (
           <button
             onClick={() => setEditingManual((v) => !v)}
             className="min-h-[44px] shrink-0 text-xs text-muted transition-colors hover:text-fg md:min-h-0"
           >
             Enter manually
           </button>
-        ) : (
-          // Guests can't save an index; a faded-out button read as broken, so it's a sign-in link.
-          <Link
-            href="/login?redirect=%2Fyou%2Fstats"
-            className="flex min-h-[44px] shrink-0 items-center text-xs font-semibold text-accent hover:underline md:min-h-0"
-          >
-            Sign in to enter
-          </Link>
         )}
       </div>
 

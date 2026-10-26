@@ -45,7 +45,8 @@ describe("the strokes gained section on Stats", () => {
 
   it("says what to do with no rounds", () => {
     const html = renderToStaticMarkup(<SgView ready label="scratch" summary={summarizeRounds([])} meta={new Map()} />)
-    expect(html).toContain("Log a round")
+    expect(html).toContain("Needs a round with a score.")
+    expect(html).not.toContain("Log a round")
   })
 })
 
