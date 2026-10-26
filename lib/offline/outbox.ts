@@ -17,6 +17,12 @@ export async function queueJob(item: { key: string; kind: OutboxJob["kind"]; pay
   return jobs !== null
 }
 
+/** Drops a waiting job, for a run the golfer threw away. */
+export async function dropJob(key: string): Promise<void> {
+  await outboxUpdate((cur) => cur.filter((j) => j.key !== key))
+  announce()
+}
+
 export const readOutbox = outboxRead
 
 /** After signing in: parked jobs get tried again. */

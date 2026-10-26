@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { ACTIVE_SESSION_KEY, loadActiveSession, newActiveSession, saveActiveSession, type ActiveSession } from "./activeSession"
-import { blockTimer, closeoutPutt, currentStep, cutoffNotice, endEarly, jumpToCloseout, progress, recordEntry, skipSet, summarize, toRunPayload, undoLast, UNDO_MS } from "./runner"
+import { blockTimer, closeoutPutt, currentStep, cutoffNotice, endEarly, jumpToCloseout, progress, recordEntry, scoreColumns, scoredSets, skipSet, summarize, toRunPayload, undoLast, UNDO_MS } from "./runner"
 import type { SessionBlock, SessionPlan } from "./session"
 
 const block = (o: Partial<SessionBlock> & Pick<SessionBlock, "drillId" | "name" | "kind">): SessionBlock => ({
@@ -231,5 +231,21 @@ describe("summary", () => {
     expect(lag.skipped).toBe(true)
     expect(lag.result).toBe("skipped")
     expect(lag.level.moved).toBeNull()
+  })
+})
+
+describe("score buttons and scored sets", () => {
+  it("sizes the grid to the option count: one row to 7, two even rows to 14, then a stepper", () => {
+    expect(scoreColumns(6)).toBe(6)
+    expect(scoreColumns(7)).toBe(7)
+    expect(scoreColumns(11)).toBe(6)
+    expect(scoreColumns(14)).toBe(7)
+    expect(scoreColumns(15)).toBeNull()
+  })
+
+  it("counts only sets with a score; skipped sets do not count", () => {
+    const s = skipSet(recordEntry(fresh(), { value: 0 }, T0), T0 + 1)
+    expect(scoredSets(s)).toBe(1)
+    expect(scoredSets(fresh())).toBe(0)
   })
 })

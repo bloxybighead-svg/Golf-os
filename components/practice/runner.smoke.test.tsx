@@ -2,10 +2,11 @@
 // chrome that gives way to them on a phone. The hook is replaced by one reading the real pause flag, so setRoundPaused
 // is the same call the Pause button makes.
 
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
-import { newActiveSession, SESSION_PATH, type ActiveSession } from "@/lib/practice/activeSession"
-import { recordEntry } from "@/lib/practice/runner"
+import { ACTIVE_SESSION_KEY, loadActiveSession, newActiveSession, saveActiveSession, SESSION_PATH, type ActiveSession } from "@/lib/practice/activeSession"
+import { discardSession } from "@/lib/practice/discard"
+import { recordEntry, skipSet } from "@/lib/practice/runner"
 import { inSessionMode } from "@/lib/practice/sessionMode"
 import type { SessionBlock, SessionPlan } from "@/lib/practice/session"
 import { isRoundPaused, setRoundPaused } from "@/lib/rounds/roundMode"
@@ -17,9 +18,21 @@ vi.mock("@/hooks/useRoundMode", () => ({
   useRoundMode: () => ({ round: null, session: mocks.session, on: inSessionMode(mocks.session, mocks.path, isRoundPaused()) }),
 }))
 
+vi.mock("@/components/play/BottomSheet", () => ({
+  BottomSheet: ({ title, children, footer }: { title: string; children: React.ReactNode; footer?: React.ReactNode }) => (
+    <div>
+      <p>{title}</p>
+      {children}
+      {footer}
+    </div>
+  ),
+}))
+vi.mock("@/lib/offline/outbox", () => ({ dropJob: async () => {} }))
+
 import NavBar from "@/components/NavBar"
 import { ResumeBar } from "@/components/play/ResumeBar"
 import { RunSummary } from "@/components/practice/RunSummary"
+import { EndSessionSheet } from "@/components/practice/EndSessionSheet"
 import { RunnerScreen } from "@/components/practice/RunnerScreen"
 
 const block = (o: Partial<SessionBlock>): SessionBlock =>
@@ -30,6 +43,7 @@ const ladder = block({
   name: "Lag ladder",
   sets: [20, 30, 40, 50].map((ft) => ({ label: `${ft} ft`, setup: `10 putts from ${ft} ft`, balls: 10 })),
 })
+const fiveBalls = block({ drillId: "five", name: "Five ball", sets: [{ label: "Chip", setup: "5 chips", balls: 5 }] })
 const clubWork = block({
   drillId: "cw",
   name: "Club Work",
@@ -69,6 +83,11 @@ describe("the set screen", () => {
     expect(html).not.toContain(">11</button>")
   })
 
+  it("6 options render in one row of 6 columns, and a longer list in two even rows", () => {
+    expect(screen(make([fiveBalls]))).toContain("repeat(6, minmax(0, 1fr))")
+    expect(screen(make([ladder]))).toContain("repeat(6, minmax(0, 1fr))")
+  })
+
   it("a Club Work set shows the club and a left, center, right counter", () => {
     const html = screen(make([clubWork], "range"))
     expect(html).toContain("7 Iron · 3 balls")
@@ -103,7 +122,7 @@ describe("the set screen", () => {
 })
 
 describe("the summary", () => {
-  const summary = (session: ActiveSession) => renderToStaticMarkup(<RunSummary session={session} compact canSave onNotes={noop} onDone={noop} />)
+  const summary = (session: ActiveSession) => renderToStaticMarkup(<RunSummary session={session} compact canSave onNotes={noop} onDone={noop} onDiscard={noop} />)
   const done = (blocks: SessionBlock[], location?: string) => {
     let s = make(blocks, location)
     while (s.status === "running") s = recordEntry(s, { value: 1 }, 1000)
@@ -124,11 +143,63 @@ describe("the summary", () => {
   })
 })
 
+describe("ending a session", () => {
+  it("the confirm sheet says how many sets are scored and offers End and Keep going", () => {
+    const html = renderToStaticMarkup(<EndSessionSheet scored={3} total={8} onEnd={noop} onKeepGoing={noop} />)
+    expect(html).toContain("End now? 3 of 8 sets scored")
+    expect(html).toContain(">End</button>")
+    expect(html).toContain(">Keep going</button>")
+  })
+
+  it("with nothing scored the summary offers Discard first and Save anyway, not Done", () => {
+    let s = make([ladder])
+    while (s.status === "running") s = skipSet(s, 1000)
+    const html = renderToStaticMarkup(<RunSummary session={s} compact canSave onNotes={noop} onDone={noop} onDiscard={noop} />)
+    expect(html).toContain(">Discard</button>")
+    expect(html).toContain(">Save anyway</button>")
+    expect(html).not.toContain(">Done</button>")
+  })
+
+  it("a signed-out golfer with nothing scored can only discard", () => {
+    let s = make([ladder])
+    while (s.status === "running") s = skipSet(s, 1000)
+    const html = renderToStaticMarkup(<RunSummary session={s} compact canSave={false} onNotes={noop} onDone={noop} onDiscard={noop} />)
+    expect(html).toContain(">Discard</button>")
+    expect(html).not.toContain("Save anyway")
+    expect(html).not.toContain("Sign in to save")
+  })
+
+  describe("Discard", () => {
+    const store = new Map<string, string>()
+    beforeEach(() => {
+      store.clear()
+      ;(globalThis as { window?: unknown }).window = {
+        localStorage: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) },
+        dispatchEvent: () => true,
+      }
+    })
+    afterEach(() => {
+      delete (globalThis as { window?: unknown }).window
+    })
+
+    it("clears the stored session and goes back to Practice", async () => {
+      const s = skipSet(make([ladder]), 1000)
+      saveActiveSession(s)
+      expect(store.has(ACTIVE_SESSION_KEY)).toBe(true)
+      const went: string[] = []
+      await discardSession(s.id, (path) => went.push(path))
+      expect(store.has(ACTIVE_SESSION_KEY)).toBe(false)
+      expect(loadActiveSession()).toBeNull()
+      expect(went).toEqual(["/you/practice"])
+    })
+  })
+})
+
 describe("saving a session", () => {
   it("asks a signed-out golfer to sign in instead of finishing", () => {
     let s = make([ladder])
     while (s.status === "running") s = recordEntry(s, { value: 1 }, 1000)
-    const html = renderToStaticMarkup(<RunSummary session={s} compact canSave={false} onNotes={noop} onDone={noop} />)
+    const html = renderToStaticMarkup(<RunSummary session={s} compact canSave={false} onNotes={noop} onDone={noop} onDiscard={noop} />)
     expect(html).toContain("Sign in to save")
     expect(html).toContain("/login?redirect=%2Fyou%2Fpractice%2Frun")
     expect(html).not.toContain(">Done</button>")
