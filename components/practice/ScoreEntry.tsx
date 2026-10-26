@@ -1,7 +1,7 @@
 "use client"
 
 // Score entry for one set, sized to the metric:
-//   count_of_n  a row of big number buttons, 0..balls; one tap saves
+//   count_of_n  big number buttons, 0..balls, in one row (two even rows past 7, a stepper past 14); one tap saves
 //   streak      a stepper from 0 with a big +1
 //   strokes     a stepper
 //   pct         two steppers, made and attempts
@@ -10,7 +10,7 @@
 
 import { useState } from "react"
 import type { RunStep } from "@/lib/practice/activeSession"
-import { closeoutPutt } from "@/lib/practice/runner"
+import { closeoutPutt, scoreColumns } from "@/lib/practice/runner"
 
 export interface EntryInput {
   value: number
@@ -61,6 +61,8 @@ export function ScoreEntry({ step, onSave }: { step: RunStep; onSave: (input: En
   const [closeout, setCloseout] = useState({ made: 0, putts: 0 })
   const [shake, setShake] = useState(0)
 
+  const columns = scoreColumns(step.balls + 1)
+
   let body
   if (step.kind === "closeout") {
     const putt = (made: boolean) => {
@@ -108,9 +110,9 @@ export function ScoreEntry({ step, onSave }: { step: RunStep; onSave: (input: En
         </div>
       </>
     )
-  } else if (step.metric === "count_of_n") {
+  } else if (step.metric === "count_of_n" && columns != null) {
     body = (
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
         {Array.from({ length: step.balls + 1 }, (_, i) => (
           <button key={i} type="button" onClick={() => onSave({ value: i })} className={BIG}>
             {i}
@@ -131,7 +133,7 @@ export function ScoreEntry({ step, onSave }: { step: RunStep; onSave: (input: En
   } else {
     body = (
       <>
-        <Stepper label={step.metric === "streak" ? "Streak" : "Putts"} value={n} onChange={setN} />
+        <Stepper label={step.metric === "streak" ? "Streak" : step.metric === "count_of_n" ? "Made" : "Putts"} value={n} onChange={setN} />
         <button type="button" className={PRIMARY} onClick={() => onSave({ value: n })}>
           Save
         </button>

@@ -4,8 +4,10 @@
 
 import Link from "next/link"
 import { SESSION_PATH, type ActiveSession } from "@/lib/practice/activeSession"
-import { summarize } from "@/lib/practice/runner"
+import { scoredSets, summarize } from "@/lib/practice/runner"
 import { RunnerFrame } from "./RunnerScreen"
+
+const PRIMARY = "flex min-h-14 w-full items-center justify-center rounded-lg bg-accent text-lg font-semibold text-on-accent transition-all hover:brightness-110"
 
 /** Launch Pro records the Club Work session at the home net and the simulator; the range reads targets by eye. */
 const LAUNCH_PRO_LOCATIONS = ["home_net", "simulator"]
@@ -16,6 +18,7 @@ export function RunSummary({
   canSave,
   onNotes,
   onDone,
+  onDiscard,
 }: {
   session: ActiveSession
   compact: boolean
@@ -23,8 +26,11 @@ export function RunSummary({
   canSave: boolean
   onNotes: (notes: string) => void
   onDone: () => void
+  /** Throws the session away; the main button when no set was scored. */
+  onDiscard: () => void
 }) {
   const drills = summarize(session)
+  const nothingScored = scoredSets(session) === 0
   const clubWork = session.steps.some((s) => s.kind === "club_work") && session.location.split(",").some((l) => LAUNCH_PRO_LOCATIONS.includes(l))
 
   return (
@@ -62,13 +68,24 @@ export function RunSummary({
           />
         </label>
 
-        {canSave ? (
-          <button type="button" onClick={onDone} className="flex min-h-14 w-full items-center justify-center rounded-lg bg-accent text-lg font-semibold text-on-accent transition-all hover:brightness-110">
+        {nothingScored ? (
+          <>
+            <button type="button" onClick={onDiscard} className={PRIMARY}>
+              Discard
+            </button>
+            {canSave && (
+              <button type="button" onClick={onDone} className="flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold text-fg hover:bg-fg/[0.04]">
+                Save anyway
+              </button>
+            )}
+          </>
+        ) : canSave ? (
+          <button type="button" onClick={onDone} className={PRIMARY}>
             Done
           </button>
         ) : (
           <>
-            <Link href={`/login?redirect=${encodeURIComponent(SESSION_PATH)}`} className="flex min-h-14 w-full items-center justify-center rounded-lg bg-accent text-lg font-semibold text-on-accent transition-all hover:brightness-110">
+            <Link href={`/login?redirect=${encodeURIComponent(SESSION_PATH)}`} className={PRIMARY}>
               Sign in to save
             </Link>
             <p className="text-sm text-fg-3">Your session stays on this phone until you save it.</p>

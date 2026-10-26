@@ -167,3 +167,6 @@ export function clearActiveSession(): void {
   }
   window.dispatchEvent(new Event(ACTIVE_SESSION_EVENT))
 }
+
+/** The practice home, where a finished or thrown-away session lands. */
+export const PRACTICE_PATH = "/you/practice"

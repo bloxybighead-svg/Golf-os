@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation"
 import { useActiveSession } from "@/hooks/useActiveSession"
 import { useAuthUser } from "@/hooks/useAuthUser"
 import { useIsCompact } from "@/hooks/useIsCompact"
+import { PRACTICE_PATH } from "@/lib/practice/activeSession"
+import { discardSession } from "@/lib/practice/discard"
 import { endEarly, jumpToCloseout, recordEntry, skipSet, undoLast } from "@/lib/practice/runner"
 import { setRoundPaused } from "@/lib/rounds/roundMode"
 import { RunSummary } from "./RunSummary"
@@ -29,7 +31,7 @@ export function SessionRunner() {
     return (
       <div className="space-y-3 pt-6 text-sm">
         <p className="text-fg">No session running</p>
-        <Link href="/you/practice" className="inline-flex h-11 items-center font-semibold text-accent">
+        <Link href={PRACTICE_PATH} className="inline-flex h-11 items-center font-semibold text-accent">
           Practice
         </Link>
       </div>
@@ -43,10 +45,11 @@ export function SessionRunner() {
         compact={compact}
         canSave={!!(session.userId || authUser)}
         onNotes={(notes) => update((s) => ({ ...s, notes }))}
+        onDiscard={() => void discardSession(session.id, router.push)}
         onDone={async () => {
           if (await finish(Date.now(), authUser?.id ?? null)) {
             setRoundPaused(false)
-            router.push("/you/practice")
+            router.push(PRACTICE_PATH)
           }
         }}
       />
@@ -65,7 +68,7 @@ export function SessionRunner() {
       onJumpToCloseout={() => update((s) => jumpToCloseout(s, Date.now()))}
       onPause={() => {
         setRoundPaused(true)
-        router.push("/you/practice")
+        router.push(PRACTICE_PATH)
       }}
     />
   )

@@ -7,7 +7,8 @@
 import { useState, type ReactNode } from "react"
 import { MoreHorizontal } from "lucide-react"
 import type { ActiveSession } from "@/lib/practice/activeSession"
-import { UNDO_MS, blockTimer, currentStep, cutoffNotice, progress } from "@/lib/practice/runner"
+import { UNDO_MS, blockTimer, currentStep, cutoffNotice, progress, scoredSets } from "@/lib/practice/runner"
+import { EndSessionSheet } from "./EndSessionSheet"
 import { ScoreEntry, type EntryInput } from "./ScoreEntry"
 
 const MENU_ITEM = "flex min-h-11 w-full items-center px-4 text-left text-sm text-fg hover:bg-fg/[0.04]"
@@ -46,11 +47,13 @@ export function RunnerScreen({
   onJumpToCloseout: () => void
 }) {
   const [menu, setMenu] = useState(false)
+  const [confirmEnd, setConfirmEnd] = useState(false)
   const step = currentStep(session)
   if (!step) return null
   const { done, total } = progress(session)
   const timer = blockTimer(session, now)
   const notice = cutoffNotice(session, now)
+  const scored = scoredSets(session)
   const canUndo = session.lastSavedAt != null && now - session.lastSavedAt <= UNDO_MS && session.entries.length > 0
 
   const header = (
@@ -89,7 +92,8 @@ export function RunnerScreen({
               className={`${MENU_ITEM} border-t border-fg/[0.06]`}
               onClick={() => {
                 setMenu(false)
-                onEnd()
+                if (scored > 0) setConfirmEnd(true)
+                else onEnd()
               }}
             >
               End session
@@ -102,7 +106,7 @@ export function RunnerScreen({
 
   return (
     <RunnerFrame compact={compact} header={header}>
-      <div className="grid gap-5 landscape:grid-cols-2 landscape:items-start">
+      <div className="flex min-h-full flex-col gap-5 landscape:grid landscape:grid-cols-2 landscape:items-start">
         <div className="space-y-4">
           <div>
             <p className="text-sm font-semibold text-fg">
@@ -122,7 +126,7 @@ export function RunnerScreen({
           {step.routineRule && <p className="text-xs text-muted">{step.routineRule}</p>}
         </div>
 
-        <div className="space-y-3">
+        <div className="mt-auto space-y-3 landscape:mt-0">
           {notice && (
             <button type="button" onClick={onJumpToCloseout} className="flex min-h-11 w-full items-center text-left text-sm font-semibold text-warn">
               {notice.minutes} min to cutoff · jump to close-out
@@ -138,6 +142,17 @@ export function RunnerScreen({
           </div>
         </div>
       </div>
+      {confirmEnd && (
+        <EndSessionSheet
+          scored={scored}
+          total={session.steps.length}
+          onEnd={() => {
+            setConfirmEnd(false)
+            onEnd()
+          }}
+          onKeepGoing={() => setConfirmEnd(false)}
+        />
+      )}
     </RunnerFrame>
   )
 }

@@ -23,6 +23,20 @@ export function currentStep(s: ActiveSession): RunStep | null {
   return s.status === "running" ? (s.steps[s.entries.length] ?? null) : null
 }
 
+/** Sets that have a score; a skipped set has none. */
+export const scoredSets = (s: ActiveSession) => s.entries.filter((e) => !e.skipped && e.value != null).length
+
+/** Most score buttons that fit one row at 375 px (about 50 px each). */
+const ONE_ROW_MAX = 7
+/** Most score buttons laid out in two even rows; past this the entry is a stepper. */
+const TWO_ROW_MAX = 14
+
+/** Columns for a row of `options` score buttons, or null when they are too many and the entry should be a stepper. */
+export function scoreColumns(options: number): number | null {
+  if (options <= ONE_ROW_MAX) return options
+  return options <= TWO_ROW_MAX ? Math.ceil(options / 2) : null
+}
+
 /** Sets done over sets in the session. */
 export const progress = (s: ActiveSession) => ({ done: s.entries.length, total: s.steps.length })
 
