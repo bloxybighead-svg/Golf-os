@@ -5,7 +5,7 @@ import { loadPracticeData } from "@/lib/supabase/loadPracticeData"
 import { PracticePlan } from "@/components/practice/PracticePlan"
 import { LogPracticeSheet } from "@/components/you/LogPracticeSheet"
 import { DrillHistory } from "@/components/you/DrillHistory"
-import type { HandicapEntry, LibraryDrill } from "@/lib/supabase/types"
+import type { HandicapEntry } from "@/lib/supabase/types"
 
 /** The same window Stats uses. */
 const SG_WINDOW_ROUNDS = 10
@@ -16,21 +16,19 @@ export default async function PracticePage() {
   const [
     { data: { user } },
     { data: latestHandicap },
-    { data: libraryData },
     sgData,
     profile,
     practice,
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("handicap_tracking").select("handicap_index").order("calculation_date", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("drill_library").select("*").eq("status", "active"),
     loadSgData(supabase, SG_WINDOW_ROUNDS),
     loadMyProfile(supabase),
     loadPracticeData(supabase),
   ])
 
   const handicapIndex = (latestHandicap as Pick<HandicapEntry, "handicap_index"> | null)?.handicap_index ?? null
-  const library = (libraryData ?? []) as LibraryDrill[]
+  const activeLibrary = practice.library.filter((d) => d.status === "active")
 
   return (
     <div className="space-y-6 pt-4">
@@ -42,13 +40,13 @@ export default async function PracticePage() {
         handicapIndex={handicapIndex}
         savedRuns={practice.runs}
         library={practice.library}
-        activeLibrary={library}
+        activeLibrary={activeLibrary}
         levels={practice.levels}
         levelSince={practice.levelSince}
         userId={user?.id ?? null}
       />
 
-      <LogPracticeSheet library={library} userId={user?.id ?? null} />
+      <LogPracticeSheet library={activeLibrary} userId={user?.id ?? null} />
 
       <DrillHistory runs={practice.runs} library={practice.library} />
     </div>

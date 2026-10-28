@@ -19,8 +19,7 @@ export interface SgRoundData {
 }
 
 const ROUND_COLUMNS = "id, date, course_name, holes_played, fairways_pct, gir_pct, total_putts, three_putts, up_and_downs, course_id, tee_name"
-const HOLE_COLUMNS = "round_id, hole_number, par, strokes, putts, fairway_hit, green_hit, penalty, penalty_shot"
-const TRACKING_COLUMNS = `${HOLE_COLUMNS}, first_putt_ft, tracking, wedge_in_hand, easy_updown_missed`
+const HOLE_COLUMNS = "round_id, hole_number, par, strokes, putts, fairway_hit, green_hit, penalty, penalty_shot, first_putt_ft, tracking, wedge_in_hand, easy_updown_missed"
 
 type RoundRow = SgRound & { date: string; course_name: string; course_id: string | null; tee_name: string | null }
 type HoleRowWithRound = SgHoleRow & { round_id: string }
@@ -38,9 +37,7 @@ export async function loadSgData(supabase: Supabase, limit?: number, withHolesOn
   if (rounds.length === 0) return []
   const ids = rounds.map((r) => r.id)
 
-  // The tracking columns come with supabase/migrations/20261021000000_sg_tracking.sql and the Tiger 5 ones with 20261023000000_tiger5.sql: without them, every hole reads as untracked.
-  let holeRows = (await supabase.from("round_holes").select(TRACKING_COLUMNS).in("round_id", ids)).data as unknown as HoleRowWithRound[] | null
-  holeRows ??= ((await supabase.from("round_holes").select(HOLE_COLUMNS).in("round_id", ids)).data ?? []) as unknown as HoleRowWithRound[]
+  const holeRows = ((await supabase.from("round_holes").select(HOLE_COLUMNS).in("round_id", ids)).data ?? []) as unknown as HoleRowWithRound[]
 
   const completeRounds = ids.filter((id) => holeRows.some((h) => h.round_id === id && h.tracking === "complete"))
   const shotRows =

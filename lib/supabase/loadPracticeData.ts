@@ -1,5 +1,5 @@
 import type { createClient } from "@/lib/supabase/server"
-import type { DrillRef, FinishedRun } from "@/lib/practice/runs"
+import type { FinishedRun } from "@/lib/practice/runs"
 import type { LibraryDrill } from "@/lib/supabase/types"
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
@@ -22,10 +22,10 @@ interface SetRow {
 }
 
 /** The golfer's finished practice runs, their drills (every status: a closed drill still has a history) and each drill's level. */
-export async function loadPracticeData(supabase: Supabase): Promise<{ runs: FinishedRun[]; library: (DrillRef & Pick<LibraryDrill, "category">)[]; levels: Record<string, number>; levelSince: Record<string, string> }> {
+export async function loadPracticeData(supabase: Supabase): Promise<{ runs: FinishedRun[]; library: LibraryDrill[]; levels: Record<string, number>; levelSince: Record<string, string> }> {
   const [runsRes, libraryRes, levelsRes] = await Promise.all([
     supabase.from("practice_runs").select("id, started_at, ended_at, source").neq("status", "running").order("started_at", { ascending: false }).limit(RUNS_LIMIT),
-    supabase.from("drill_library").select("id, name, category, metric, lower_is_better, practice_category, levels, sets"),
+    supabase.from("drill_library").select("*"),
     supabase.from("drill_levels").select("drill_id, level, updated_at"),
   ])
   const runRows = (runsRes.data ?? []) as RunRow[]
@@ -44,7 +44,7 @@ export async function loadPracticeData(supabase: Supabase): Promise<{ runs: Fini
         sets: setRows.filter((s) => s.run_id === r.id).map((s) => ({ drillId: s.drill_id, skipped: s.skipped, value: s.value == null ? null : Number(s.value), attempts: s.attempts })),
       }))
       .reverse(),
-    library: (libraryRes.data ?? []) as (DrillRef & Pick<LibraryDrill, "category">)[],
+    library: (libraryRes.data ?? []) as LibraryDrill[],
     levels: Object.fromEntries(levelRows.map((l) => [l.drill_id, l.level])),
     /** When each drill's level last changed: only sessions after it count toward the next change. */
     levelSince: Object.fromEntries(levelRows.map((l) => [l.drill_id, l.updated_at])),
