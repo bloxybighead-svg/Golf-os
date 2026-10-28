@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import type { ActiveSession } from "@/lib/practice/activeSession"
 import { cutoffCapMinutes } from "@/lib/practice/session"
-import { DEFAULT_ANSWERS } from "@/lib/practice/startSession"
+import { DEFAULT_ANSWERS, LOCATION_CHOICES } from "@/lib/practice/startSession"
 
 const mocks = vi.hoisted(() => ({ session: null as ActiveSession | null }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }))
@@ -16,18 +16,25 @@ afterEach(() => {
   mocks.session = null
 })
 
+const stocked = LOCATION_CHOICES.map((l) => ({ id: l.value, status: "active", locations: [l.value] })) as unknown as Parameters<typeof SessionAnswers>[0]["library"]
 const answers = (cap: number, o: Partial<Parameters<typeof SessionAnswers>[0]> = {}) =>
-  renderToStaticMarkup(<SessionAnswers answers={DEFAULT_ANSWERS} cap={cap} library={[]} nextRound={null} today={new Date(2026, 9, 21, 10)} onAnswers={() => {}} onNextRound={() => {}} {...o} />)
+  renderToStaticMarkup(<SessionAnswers answers={DEFAULT_ANSWERS} cap={cap} library={stocked} nextRound={null} today={new Date(2026, 9, 21, 10)} onAnswers={() => {}} onNextRound={() => {}} {...o} />)
 
 describe("the answers", () => {
   it("asks the questions and keeps the next round collapsed", () => {
     const html = answers(640)
     for (const q of ["Minutes", "Locations", "Focus", "How you feel"]) expect(html).toContain(q)
-    for (const c of ["30", "60", "90", "120", "Other", "Home net", "Short-game area", "Putting green", "Range", "Course", "Simulator", "Auto", "Tee", "Approach", "Wedges", "Short game", "Lag putting", "Short putting", "Good", "Sore"]) expect(html).toContain(`>${c}</button>`)
+    for (const c of ["30", "60", "90", "120", "Other", "Home", "Short-game area", "Putting green", "Range", "Course", "Simulator", "Auto", "Tee", "Approach", "Wedges", "Short game", "Lag putting", "Short putting", "Good", "Sore"]) expect(html).toContain(`>${c}</button>`)
     expect(html).toContain("Next round: not set")
     expect(html).toContain('aria-expanded="false"')
     expect(html).not.toContain("Next round date")
     expect(html).not.toContain("until 8:45")
+  })
+
+  it("greys out a location with no active drill", () => {
+    const html = answers(640, { library: stocked.filter((d) => d.locations[0] !== "course") })
+    expect(html).toMatch(/disabled=""[^>]*>Course<span[^>]*>No drills here yet</)
+    expect(html.match(/No drills here yet/g)).toHaveLength(1)
   })
 
   it("at 7:30 pm shows the cutoff cap and disables what is above it", () => {
@@ -44,7 +51,7 @@ describe("the answers", () => {
     const pressed = (label: string) => new RegExp(`aria-pressed="true"[^>]*>${label}<`).test(html)
     expect(pressed("Putting green")).toBe(true)
     expect(pressed("Range")).toBe(true)
-    expect(pressed("Home net")).toBe(false)
+    expect(pressed("Home")).toBe(false)
   })
 
   it("picks up to two focus areas and flags a location that cannot serve one", () => {

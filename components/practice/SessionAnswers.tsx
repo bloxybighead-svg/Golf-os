@@ -4,10 +4,10 @@
 
 import { useState, type ReactNode } from "react"
 import { AREA_LABEL } from "@/lib/practice/weakness"
-import { FOCUS_CHOICES, LOCATION_CHOICES, MAX_FOCUS, MINUTE_CHOICES, focusPlaces, localDate, nextRoundLabel, type Answers, type StoredNextRound } from "@/lib/practice/startSession"
+import { FOCUS_CHOICES, LOCATION_CHOICES, MAX_FOCUS, MINUTE_CHOICES, focusPlaces, localDate, locationsWithDrills, nextRoundLabel, type Answers, type StoredNextRound } from "@/lib/practice/startSession"
 import type { LibraryDrill } from "@/lib/supabase/types"
 
-const CHOICE = "flex min-h-11 items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors disabled:opacity-40"
+const CHOICE = "flex min-h-11 flex-col items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors disabled:opacity-40"
 const ON = "border-accent bg-accent text-on-accent"
 const OFF = "border-fg/[0.08] bg-surface text-fg hover:bg-fg/[0.04]"
 const FIELD = "h-11 w-full rounded-lg border border-fg/[0.08] bg-surface px-3 text-sm text-fg focus:border-accent/60 focus:outline-none"
@@ -53,6 +53,7 @@ export function SessionAnswers({
 }) {
   const [other, setOther] = useState(!(MINUTE_CHOICES as readonly number[]).includes(answers.minutes))
   const [roundOpen, setRoundOpen] = useState(false)
+  const stocked = locationsWithDrills(library)
 
   return (
     <div className="space-y-5">
@@ -98,11 +99,13 @@ export function SessionAnswers({
         <div className="grid grid-cols-2 gap-2">
           {LOCATION_CHOICES.map((l) => {
             const picked = answers.locations.includes(l.value)
+            const empty = !stocked.has(l.value)
             return (
               <button
                 key={l.value}
                 type="button"
                 aria-pressed={picked}
+                disabled={empty && !picked}
                 className={`${CHOICE} ${picked ? ON : OFF}`}
                 onClick={() => {
                   // Always at least one place.
@@ -111,6 +114,7 @@ export function SessionAnswers({
                 }}
               >
                 {l.label}
+                {empty && <span className="text-xs font-normal">No drills here yet</span>}
               </button>
             )
           })}

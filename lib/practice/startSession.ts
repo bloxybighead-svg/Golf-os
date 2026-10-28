@@ -39,7 +39,7 @@ export const FOCUS_CHOICES = PRACTICE_AREAS
 export const MINUTE_CHOICES = [30, 60, 90, 120] as const
 
 export const LOCATION_CHOICES: { value: DrillLocation; label: string }[] = [
-  { value: "home_net", label: "Home net" },
+  { value: "home_net", label: "Home" },
   { value: "short_game_area", label: "Short-game area" },
   { value: "putting_green", label: "Putting green" },
   { value: "range", label: "Range" },
@@ -80,6 +80,11 @@ export function nextRoundLabel(r: StoredNextRound | null): string {
 export function focusPlaces(area: PracticeArea, library: readonly LibraryDrill[]): DrillLocation[] {
   const places = new Set(library.filter((d) => d.status === "active" && d.practice_category === area).flatMap((d) => d.locations))
   return LOCATION_CHOICES.map((l) => l.value).filter((l) => places.has(l))
+}
+
+/** The places that have at least one active drill. */
+export function locationsWithDrills(library: readonly LibraryDrill[]): Set<DrillLocation> {
+  return new Set(library.filter((d) => d.status === "active").flatMap((d) => d.locations))
 }
 
 /** The minutes choice that fits under the cap: the one remembered, or the most the cap allows. */
