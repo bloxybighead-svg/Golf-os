@@ -44,7 +44,8 @@ export interface PracticeRunPayload {
   run: {
     id: string
     date: string
-    location: string
+    /** Null when the run names no place (hand-logged free practice). */
+    location: string | null
     startedAt: string
     endedAt: string | null
     status: "running" | "completed" | "ended_early"

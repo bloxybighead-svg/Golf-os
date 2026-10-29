@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import type { ActiveSession } from "@/lib/practice/activeSession"
 import { cutoffCapMinutes } from "@/lib/practice/session"
-import { DEFAULT_ANSWERS, LOCATION_CHOICES } from "@/lib/practice/startSession"
+import { DEFAULT_ANSWERS, LOCATION_CHOICES, localDate } from "@/lib/practice/startSession"
 
 const mocks = vi.hoisted(() => ({ session: null as ActiveSession | null }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }))
@@ -107,9 +107,14 @@ describe("the Start session button", () => {
   })
 
   it("turns into Resume session while one is running", () => {
-    mocks.session = { id: "s1" } as ActiveSession
+    mocks.session = { id: "s1", status: "running", date: localDate(new Date()), entries: [] } as unknown as ActiveSession
     const html = renderToStaticMarkup(<StartSession {...props} />)
     expect(html).toContain(">Resume session<")
     expect(html).not.toContain(">Start session<")
+  })
+
+  it("says Finish last session once the session has ended unsaved", () => {
+    mocks.session = { id: "s1", status: "ended_early", date: localDate(new Date()), entries: [] } as unknown as ActiveSession
+    expect(renderToStaticMarkup(<StartSession {...props} />)).toContain(">Finish last session<")
   })
 })

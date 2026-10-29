@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation"
 import { useIsCompact } from "@/hooks/useIsCompact"
 import { useRoundMode } from "@/hooks/useRoundMode"
-import { SESSION_PATH } from "@/lib/practice/activeSession"
+import { SESSION_PATH, isUnsaved } from "@/lib/practice/activeSession"
 import { progress } from "@/lib/practice/runner"
 import { nextUnscored } from "@/lib/rounds/activeRound"
 import { setRoundPaused } from "@/lib/rounds/roundMode"
@@ -29,9 +29,9 @@ export function ResumeBar() {
       className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 flex h-11 items-center justify-between border-t border-fg/[0.08] bg-surface px-4 text-sm md:bottom-0 md:pb-[env(safe-area-inset-bottom)]"
     >
       <span className="min-w-0 truncate text-fg">
-        {round ? `Round in progress · H${nextUnscored(round) ?? round.startHole}` : `Practice in progress · Set ${Math.min(progress(session!).done + 1, progress(session!).total)} of ${progress(session!).total}`}
+        {round ? `Round in progress · H${nextUnscored(round) ?? round.startHole}` : isUnsaved(session!) ? "Unsaved practice · Save or discard" : `Practice in progress · Set ${Math.min(progress(session!).done + 1, progress(session!).total)} of ${progress(session!).total}`}
       </span>
-      <span className="shrink-0 font-semibold text-accent">Resume</span>
+      <span className="shrink-0 font-semibold text-accent">{!round && isUnsaved(session!) ? "Finish" : "Resume"}</span>
     </button>
   )
 }

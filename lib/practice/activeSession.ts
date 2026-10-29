@@ -1,6 +1,7 @@
 // A practice session in progress. It lives on the device from Start until Done (so it survives the phone
 // locking or the app being killed mid-set), and every change is also queued for the outbox.
 
+import { localDate } from "@/lib/rounds/activeRound"
 import type { SetResult } from "./levels"
 import type { SessionBlock, SessionPlan } from "./session"
 
@@ -137,14 +138,33 @@ export function newActiveSession(args: {
   }
 }
 
-/** The stored session, or null when there is none or it is not one this version understands. */
-export function loadActiveSession(): ActiveSession | null {
+/** A session with no scored set this long after it started was abandoned. */
+const EMPTY_SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000
+
+const hasScores = (s: ActiveSession) => s.entries.some((e) => !e.skipped)
+
+/** Unsaved, but over: ended early or completed and waiting for Save or Discard. */
+export const isUnsaved = (s: ActiveSession) => s.status !== "running"
+
+/** Nothing scored and started over 12 hours ago: dropped without asking. */
+const isAbandoned = (s: ActiveSession, now = Date.now()) => !hasScores(s) && now - s.startedAt > EMPTY_SESSION_MAX_AGE_MS
+
+/** Started on an earlier day with scores in it: the golfer is asked to save or discard it. */
+export const isOldSession = (s: ActiveSession, now = Date.now()) => hasScores(s) && s.date < localDate(now)
+
+/** The stored session, or null when there is none, it is not one this version understands, or it was abandoned (and is cleared). */
+export function loadActiveSession(now = Date.now()): ActiveSession | null {
   if (typeof window === "undefined") return null
   try {
     const raw = window.localStorage.getItem(ACTIVE_SESSION_KEY)
     if (!raw) return null
     const s = JSON.parse(raw) as ActiveSession
-    return typeof s?.id === "string" && Array.isArray(s.steps) && s.steps.length > 0 && Array.isArray(s.entries) ? s : null
+    if (typeof s?.id !== "string" || !Array.isArray(s.steps) || s.steps.length === 0 || !Array.isArray(s.entries)) return null
+    if (isAbandoned(s, now)) {
+      window.localStorage.removeItem(ACTIVE_SESSION_KEY)
+      return null
+    }
+    return s
   } catch {
     return null
   }

@@ -2,7 +2,8 @@
 //
 // Rules, in order: device cutoff, pain, day before a round, Club Work before a competitive round, unfamiliar
 // course, playing that day, six days in a row. Then: warm-up 5-10%, close-out and logging 5 min each, putting
-// at least 25%, no area over 40%, no block under 10 min. Only 'active' drills are ever used.
+// at least 25% (a putting warm-up and close-out count toward it), no area over 40% unless a focus is picked, a picked
+// focus at least 60% of the drill minutes, no block under 10 min. Only 'active' drills are ever used.
 
 import type { LibraryDrill } from "@/lib/supabase/types"
 import { AREA_LABEL, type PracticeArea } from "./weakness"
@@ -66,6 +67,8 @@ const MIN_WARMUP_MIN = 5
 const MAX_WARMUP_SHARE = 0.1
 const PUTTING_MIN_SHARE = 0.25
 const CATEGORY_MAX_SHARE = 0.4
+/** The share of drill minutes the picked focus areas get between them. From the spec: a majority, at least 60%. */
+const FOCUS_MIN_SHARE = 0.6
 const MIN_BLOCK_MIN = 10
 const PAIN_MAX_MIN = 60
 const DAY_BEFORE_MAX_MIN = 60
@@ -310,8 +313,13 @@ export function buildSession(args: {
   if ([...weights.values()].every((w) => w === 0)) for (const a of weights.keys()) weights.set(a, 1)
 
   const held = new Map<Category, number>(clubWork ? [["approach", clubMin]] : [])
-  const puttingNeed = Math.max(0, cap * PUTTING_MIN_SHARE - warm - close)
-  const minutesFor = free >= MIN_BLOCK_MIN && weights.size > 0 ? allocate(weights, free, held, cap * CATEGORY_MAX_SHARE, puttingNeed) : new Map<Category, number>()
+  // Putting minutes already in the warm-up and close-out count toward the floor; a putting block under the minimum is rounded up to it.
+  const puttingHeld = (warmDrill?.category === "putting" ? warm : 0) + (closeDrill?.category === "putting" ? close : 0)
+  const puttingShort = Math.max(0, cap * PUTTING_MIN_SHARE - puttingHeld)
+  const puttingFloor = puttingShort > 0 ? Math.max(MIN_BLOCK_MIN, puttingShort) : 0
+  const puttingNeed = focused ? Math.min(puttingFloor, free * (1 - FOCUS_MIN_SHARE)) : puttingFloor
+  const areaCap = focused ? cap : cap * CATEGORY_MAX_SHARE
+  const minutesFor = free >= MIN_BLOCK_MIN && weights.size > 0 ? allocate(weights, free, held, areaCap, puttingNeed) : new Map<Category, number>()
 
   // Fill each area's minutes with its drills, longest-unscored first; a leftover under 10 min joins the last block.
   const drillBlocks: { drill: LibraryDrill; kind: SessionBlock["kind"]; minutes: number }[] = clubWork && clubMin > 0 ? [{ drill: clubWork, kind: "club_work", minutes: clubMin }] : []

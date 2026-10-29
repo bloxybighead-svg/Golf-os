@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import type { LibraryDrill } from "@/lib/supabase/types"
-import { buildSession } from "./session"
+import { buildSession, type SessionBlock } from "./session"
 import { LOCATION_CHOICES, locationsWithDrills } from "./startSession"
 import { PRACTICE_AREAS } from "./weakness"
 
@@ -37,5 +37,16 @@ describe("the seeded drill library", () => {
   it("builds a session from the course alone", () => {
     const plan = buildSession({ week: [], now: new Date(2026, 9, 21, 10), minutes: 90, locations: ["course"], energy: "ok", nextRound: null, history: [], library: active, levels: {} })
     expect(plan.blocks.length).toBeGreaterThan(0)
+  })
+
+  it("gives a picked focus most of the drill minutes and counts warm-up and close-out toward the putting floor", () => {
+    const plan = buildSession({ week: [], now: new Date(2026, 9, 21, 10), minutes: 60, locations: ["range", "putting_green"], focus: ["wedges"], energy: "ok", nextRound: null, history: [], library: active, levels: {} })
+    const sum = (blocks: SessionBlock[]) => blocks.reduce((n, b) => n + b.minutes, 0)
+    const drills = plan.blocks.filter((b) => b.kind === "drill")
+    const wedges = drills.filter((b) => b.category === "wedges")
+    expect(sum(wedges) / sum(drills)).toBeGreaterThanOrEqual(0.6)
+    const putting = plan.blocks.filter((b) => active.find((d) => d.id === b.drillId)?.category === "putting")
+    expect(sum(putting) / plan.practiceMinutes).toBeGreaterThanOrEqual(0.25)
+    expect(sum(putting) / plan.practiceMinutes).toBeLessThan(0.4)
   })
 })

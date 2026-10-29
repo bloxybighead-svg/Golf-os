@@ -4,9 +4,6 @@ import type { PracticeRunPayload } from "@/lib/offline/jobs"
 import type { LibraryDrill } from "@/lib/supabase/types"
 import { localDate } from "./startSession"
 
-/** Where a run is filed when its drill names no place (free practice). */
-const OTHER_LOCATION = "other"
-
 const MINUTE_MS = 60_000
 
 /** The run for `minutes` of practice ending `now`; `drill` null is free practice (a run with no sets). */
@@ -24,7 +21,7 @@ export function loggedRunPayload(args: {
     run: {
       id: args.id,
       date: localDate(started),
-      location: args.drill?.locations[0] ?? OTHER_LOCATION,
+      location: args.drill?.locations[0] ?? null,
       startedAt: started.toISOString(),
       endedAt: args.now.toISOString(),
       status: "completed",

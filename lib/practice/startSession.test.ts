@@ -113,7 +113,7 @@ describe("starting", () => {
     const s = start()
     const router = { push: vi.fn() }
     beginSession(s, router)
-    expect(loadActiveSession()?.id).toBe(s.id)
+    expect(loadActiveSession(s.startedAt)?.id).toBe(s.id)
     expect(store.has(ACTIVE_SESSION_KEY)).toBe(true)
     expect(router.push).toHaveBeenCalledWith(SESSION_PATH)
   })

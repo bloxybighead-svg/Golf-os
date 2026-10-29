@@ -3,7 +3,7 @@
 // The end of a session: each drill's score against last time and its level, one notes field, Done.
 
 import Link from "next/link"
-import { SESSION_PATH, type ActiveSession } from "@/lib/practice/activeSession"
+import { PRACTICE_PATH, SESSION_PATH, type ActiveSession } from "@/lib/practice/activeSession"
 import { scoredSets, summarize } from "@/lib/practice/runner"
 import { RunnerFrame } from "./RunnerScreen"
 
@@ -34,7 +34,14 @@ export function RunSummary({
   const clubWork = session.steps.some((s) => s.kind === "club_work") && session.location.split(",").some((l) => LAUNCH_PRO_LOCATIONS.includes(l))
 
   return (
-    <RunnerFrame compact={compact} header={<p className="px-1 text-sm font-semibold text-fg">{session.status === "ended_early" ? "Ended early" : "Session done"}</p>}>
+    <RunnerFrame compact={compact} header={
+        <>
+          <Link href={PRACTICE_PATH} className="flex min-h-11 items-center px-1 text-sm font-semibold text-accent">
+            Practice
+          </Link>
+          <p className="px-1 text-sm font-semibold text-fg">{session.status === "ended_early" ? "Ended early" : "Session done"}</p>
+        </>
+      }>
       <div className="space-y-5">
         <ul className="divide-y divide-fg/[0.06]">
           {drills.map((d) => (

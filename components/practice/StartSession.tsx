@@ -8,7 +8,9 @@ import { useRouter } from "next/navigation"
 import { BottomSheet } from "@/components/play/BottomSheet"
 import { useActiveSession } from "@/hooks/useActiveSession"
 import type { PracticeWeek } from "@/hooks/usePracticeWeek"
-import { SESSION_PATH } from "@/lib/practice/activeSession"
+import { SESSION_PATH, isOldSession, isUnsaved } from "@/lib/practice/activeSession"
+import { discardSession } from "@/lib/practice/discard"
+import { endEarly } from "@/lib/practice/runner"
 import type { DrillRef } from "@/lib/practice/runs"
 import { cutoffCapMinutes, type SessionPlan } from "@/lib/practice/session"
 import {
@@ -69,7 +71,8 @@ export function StartSession({
   userId: string | null
 }) {
   const router = useRouter()
-  const { session } = useActiveSession()
+  const { session, update } = useActiveSession()
+  const [asked, setAsked] = useState(false)
   const [open, setOpen] = useState(false)
   const [plan, setPlan] = useState<SessionPlan | null>(null)
   const [now, setNow] = useState(() => new Date())
@@ -108,17 +111,46 @@ export function StartSession({
 
   if (session) {
     return (
-      <button
-        id="start-session"
-        type="button"
-        className={BUTTON}
-        onClick={() => {
-          setRoundPaused(false)
-          router.push(SESSION_PATH)
-        }}
-      >
-        Resume session
-      </button>
+      <>
+        <button
+          id="start-session"
+          type="button"
+          className={BUTTON}
+          onClick={() => {
+            setRoundPaused(false)
+            router.push(SESSION_PATH)
+          }}
+        >
+          {isUnsaved(session) ? "Finish last session" : "Resume session"}
+        </button>
+        {!asked && isOldSession(session) && (
+          <BottomSheet
+            label="Last session"
+            title="Last session"
+            onClose={() => setAsked(true)}
+            footer={
+              <>
+                <button
+                  type="button"
+                  className={BUTTON}
+                  onClick={() => {
+                    update(endEarly)
+                    setRoundPaused(false)
+                    router.push(SESSION_PATH)
+                  }}
+                >
+                  Save
+                </button>
+                <button type="button" className="flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold text-fg hover:bg-fg/[0.04]" onClick={() => void discardSession(session.id, router.push)}>
+                  Discard
+                </button>
+              </>
+            }
+          >
+            <p className="text-sm text-fg-2">From {session.date}, never saved.</p>
+          </BottomSheet>
+        )}
+      </>
     )
   }
 
