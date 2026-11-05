@@ -35,4 +35,4 @@ jobs:
         with:
           version: latest
       - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
-      - run: supabase db push --linked
+      - run: supabase db push --remote --yes
