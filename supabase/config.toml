@@ -1,0 +1,6 @@
+# Supabase CLI settings. The hosted project this repo deploys to has ref clgjzoedmtguchilmkdj;
+# `supabase link` and the migrate workflow take it as an argument, so no secret or ref is needed here.
+project_id = "golf-os"
+
+[db]
+major_version = 17

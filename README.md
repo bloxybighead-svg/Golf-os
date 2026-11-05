@@ -107,7 +107,7 @@ Parameters are anchored to published sources where they exist (Broadie's Golfmet
 | [`app/`](app/) | The Next.js routes. `app/api/courses/` proxies the free OpenGolfAPI for course search. |
 | [`components/`](components/) | React components, grouped by screen (`planner/`, `play/`, `rounds/`, `you/`, `bag/`, `simulator/`). |
 | [`lib/`](lib/) | Tested TypeScript logic: `golfer/` (browser port of the handicap model), `course/` (lies, strokes gained, club ranking), `dispersion/`, `rounds/` (including the World Handicap System calculation), `tbox/` (tee recommendation). |
-| [`supabase/`](supabase/) | SQL schemas, analytics views, and example queries. Run manually in the Supabase SQL editor. |
+| [`supabase/`](supabase/) | SQL schemas, analytics views, and example queries. Migrations deploy on merge ([`docs/MIGRATIONS.md`](docs/MIGRATIONS.md)). |
 | [`docs/images/`](docs/images/) | The figures shown in this README. |
 
 ### Python scripts (in `shot-pattern-simulator/`)
@@ -168,28 +168,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # server only: course cache and API rate limits
 ```
 
-Then run the SQL files in [`supabase/`](supabase/) (and `supabase/migrations/`) in the Supabase SQL editor. Personal tables are per-user with row-level security, so sign in at `/login` to log rounds and practice. The simulator pages need `simulated_shots_schema.sql`, `real_shots_schema.sql` and `simulated_shots_views.sql`. `npm run dev:clean` clears `.next` before starting.
+Then apply the schema (see [Database](#database)). Personal tables are per-user with row-level security, so sign in at `/login` to log rounds and practice. The simulator pages need `simulated_shots_schema.sql`, `real_shots_schema.sql` and `simulated_shots_views.sql`. `npm run dev:clean` clears `.next` before starting.
 
 > A one-command seed script is not included yet. The seeded tables were generated from the calibrated profile in the author's own (uncommitted) launch-monitor data.
 
 ## Database
 
-The schema lives in [`supabase/migrations/`](supabase/migrations/), applied in filename order with the [Supabase CLI](https://supabase.com/docs/guides/cli). `0001_baseline.sql` is the whole schema as of the move to tracked migrations; the loose SQL files it replaced are in [`supabase/legacy/`](supabase/legacy/) for history.
+The schema lives in [`supabase/migrations/`](supabase/migrations/). A push to `main` that passes CI applies new migrations to the hosted project through the Migrate workflow; nobody runs SQL by hand. [`docs/MIGRATIONS.md`](docs/MIGRATIONS.md) has the GitHub secrets it needs, how to add a migration, and the one-time repair of the migration history. `0001_baseline.sql` is the whole schema as of the move to tracked migrations; the loose SQL files it replaced are in [`supabase/legacy/`](supabase/legacy/) for history.
 
-```bash
-supabase login
-supabase link --project-ref <your-project-ref>
-supabase db push --include-all
-```
-
-On a new, empty project that is all you need. On the existing project, which already has the 0001 schema, mark it applied first instead of running it:
-
-```bash
-supabase migration repair --status applied 0001
-supabase db push --include-all
-```
-
-`--include-all` is needed because the older `2026...` migrations sort after `0001` to `0004`. If those two were applied by hand in the SQL editor, repair them as applied too (`supabase migration repair --status applied 20261012000000 20261012000100`). Add new changes as a new file in `supabase/migrations/` (`supabase migration new <name>`), never by editing an applied one.
+On a new, empty project, `npx supabase@latest link --project-ref <ref>` then `npx supabase@latest db push`.
 
 ## Limitations
 

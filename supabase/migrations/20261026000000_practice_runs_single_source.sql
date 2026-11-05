@@ -1,5 +1,4 @@
--- practice_runs becomes the one place practice history lives. Additive; run in the Supabase SQL editor
--- BEFORE deploying the app change (the app writes the new source column).
+-- practice_runs becomes the one place practice history lives. Additive; it has to be in the database before the app that writes the new source column is.
 -- practice_sessions and user_drills are left in place and no longer read.
 
 -- "logged" is a drill logged by hand; "session" is one played in the runner.

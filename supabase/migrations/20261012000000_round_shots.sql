@@ -3,7 +3,6 @@
 -- hole's score (the first putt runs from the approach finish to the pin, the
 -- rest have no positions). Owner-only, same pattern as round_holes.
 -- Penalty strokes are extra strokes taken by that shot (water, OB).
--- Run in the Supabase SQL editor.
 create table if not exists public.round_shots (
   id uuid primary key default gen_random_uuid(),
   round_id uuid not null references public.rounds(id) on delete cascade,
@@ -26,9 +25,13 @@ create index if not exists round_shots_user_id_idx on public.round_shots (user_i
 create index if not exists round_shots_round_id_idx on public.round_shots (round_id);
 
 alter table public.round_shots enable row level security;
+drop policy if exists "select own round_shots" on public.round_shots;
 create policy "select own round_shots" on public.round_shots for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "insert own round_shots" on public.round_shots;
 create policy "insert own round_shots" on public.round_shots for insert to authenticated with check (
   (select auth.uid()) = user_id and exists (select 1 from public.rounds r where r.id = round_id and r.user_id = (select auth.uid()))
 );
+drop policy if exists "update own round_shots" on public.round_shots;
 create policy "update own round_shots" on public.round_shots for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+drop policy if exists "delete own round_shots" on public.round_shots;
 create policy "delete own round_shots" on public.round_shots for delete to authenticated using ((select auth.uid()) = user_id);

@@ -1,6 +1,6 @@
 -- 0001_baseline: the whole schema as the loose files in supabase/legacy/ leave it, in dependency
 -- order, for a fresh database. An existing project does NOT run this: mark it applied with
--- `supabase migration repair --status applied 0001` (see README, Database).
+-- `supabase migration repair --status applied 0001` (see docs/MIGRATIONS.md).
 --
 -- Conflicts between the old files, and which one won (the later behaviour):
 --  * course_corrections: course_corrections.sql (public read, any signed-in user may update, unique on

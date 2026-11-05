@@ -4,7 +4,7 @@
 // club, aimed at its best. Cards above the result card on tablets and desktops; on phones (compact) the chosen
 // club and its OB or water risk, then a Smart | Go switch (hidden when both pick the same club).
 
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, ChevronUp } from "lucide-react"
 import { PENALTY_ICON_FROM, riskLine } from "@/lib/planner/cardLines"
 import type { Options } from "@/lib/course/strategy"
 import type { OptimizedClubPlan } from "@/lib/course/plan"
@@ -23,7 +23,7 @@ export function StrategyToggle({
   className?: string
   /** Phone dock: the chosen club and the switch, one row. */
   compact?: boolean
-  /** Phone dock: tapping the chosen club opens the expanded dock. */
+  /** Phone dock: tapping the chosen club (the chevron) opens the expanded dock. */
   onOpen?: (() => void) | null
 }) {
   const plays = [
@@ -46,6 +46,7 @@ export function StrategyToggle({
         {onOpen ? (
           <button type="button" onClick={onOpen} aria-label="Shot details" className="flex h-11 min-w-0 flex-1 items-center whitespace-nowrap text-left">
             <span>{chosenText}</span>
+            <ChevronUp size={16} className="ml-1.5 shrink-0 text-fg-3" aria-hidden />
           </button>
         ) : (
           <p className="min-w-0 flex-1 whitespace-nowrap">{chosenText}</p>

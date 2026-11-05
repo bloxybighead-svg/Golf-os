@@ -1,4 +1,4 @@
--- Practice session runner: one row per run, one per set saved. Additive; run in the Supabase SQL editor.
+-- Practice session runner: one row per run, one per set saved. Additive.
 -- The phone sends a run whole after every set (upsert on id, sets replaced), so sending it twice is still one run.
 create table if not exists public.practice_runs (
   id uuid primary key,
@@ -32,13 +32,21 @@ create table if not exists public.practice_run_sets (
 );
 
 alter table public.practice_runs enable row level security;
+drop policy if exists "select own practice_runs" on public.practice_runs;
 create policy "select own practice_runs" on public.practice_runs for select using ((select auth.uid()) = user_id);
+drop policy if exists "insert own practice_runs" on public.practice_runs;
 create policy "insert own practice_runs" on public.practice_runs for insert with check ((select auth.uid()) = user_id);
+drop policy if exists "update own practice_runs" on public.practice_runs;
 create policy "update own practice_runs" on public.practice_runs for update using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+drop policy if exists "delete own practice_runs" on public.practice_runs;
 create policy "delete own practice_runs" on public.practice_runs for delete using ((select auth.uid()) = user_id);
 
 alter table public.practice_run_sets enable row level security;
+drop policy if exists "select own practice_run_sets" on public.practice_run_sets;
 create policy "select own practice_run_sets" on public.practice_run_sets for select using ((select auth.uid()) = user_id);
+drop policy if exists "insert own practice_run_sets" on public.practice_run_sets;
 create policy "insert own practice_run_sets" on public.practice_run_sets for insert with check ((select auth.uid()) = user_id);
+drop policy if exists "update own practice_run_sets" on public.practice_run_sets;
 create policy "update own practice_run_sets" on public.practice_run_sets for update using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+drop policy if exists "delete own practice_run_sets" on public.practice_run_sets;
 create policy "delete own practice_run_sets" on public.practice_run_sets for delete using ((select auth.uid()) = user_id);

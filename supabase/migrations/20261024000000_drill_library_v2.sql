@@ -1,5 +1,4 @@
 -- Drill library v2: the practice-plan generator's fields (research spec, sections 2-5). Additive: no row or column is dropped.
--- Run in the Supabase SQL editor.
 
 alter table public.drill_library add column if not exists practice_category text
   check (practice_category in ('lag_putting', 'short_putting', 'short_game', 'wedges', 'approach', 'tee', 'warmup', 'closeout'));
@@ -79,7 +78,11 @@ create table if not exists public.drill_levels (
 );
 
 alter table public.drill_levels enable row level security;
+drop policy if exists "select own drill_levels" on public.drill_levels;
 create policy "select own drill_levels" on public.drill_levels for select using ((select auth.uid()) = user_id);
+drop policy if exists "insert own drill_levels" on public.drill_levels;
 create policy "insert own drill_levels" on public.drill_levels for insert with check ((select auth.uid()) = user_id);
+drop policy if exists "update own drill_levels" on public.drill_levels;
 create policy "update own drill_levels" on public.drill_levels for update using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+drop policy if exists "delete own drill_levels" on public.drill_levels;
 create policy "delete own drill_levels" on public.drill_levels for delete using ((select auth.uid()) = user_id);

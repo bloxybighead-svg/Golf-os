@@ -454,8 +454,18 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
       />
     )
 
-  const clubChips = (all: boolean) => (
-    <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} onMore={() => setSheetOpen(true)} all={all} className="flex min-w-0 flex-1 gap-1.5" />
+  const clubChips = (
+    <ClubChips ranking={ranking} chosen={chosen} onPick={pickClub} onMore={() => setSheetOpen(true)} all className="flex min-w-0 flex-1 gap-1.5" />
+  )
+
+  const shotSheet = (
+    <ShotSheet open={shotOpen} onClose={() => setShotOpen(false)}>
+      <div className="flex items-center gap-2">
+        {trackingOn && <ShotButton {...shotButton} />}
+        {clubChips}
+      </div>
+      {resultCard}
+    </ShotSheet>
   )
 
   const overlays = (
@@ -517,13 +527,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           }
           round={playRound(true)}
         />
-        <ShotSheet open={shotOpen} onClose={() => setShotOpen(false)}>
-          <div className="flex items-center gap-2">
-            {trackingOn && <ShotButton {...shotButton} />}
-            {clubChips(true)}
-          </div>
-          {resultCard}
-        </ShotSheet>
+        {shotSheet}
         {detailsPanel}
         {overlays}
       </>
@@ -554,10 +558,9 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
           }
           plays={
             optionsNote && chosen && (
-              <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact />
+              <StrategyToggle options={optionsNote} chosen={chosen} onPick={pickClub} compact onOpen={() => setShotOpen(true)} />
             )
           }
-          chips={clubChips(false)}
         />
       )}
 
@@ -577,6 +580,7 @@ export function PlannerView({ vm, calibrated, calibratedName, myProfile = null, 
         </div>
       </div>
 
+      {shotSheet}
       {overlays}
     </div>
   )

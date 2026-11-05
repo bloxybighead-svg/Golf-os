@@ -1,5 +1,5 @@
 -- Drill library v3: every practice area gets at least 3 active drills; adds on-course, rug-length and range warm-up drills.
--- Additive. Run in the Supabase SQL editor.
+-- Additive.
 
 insert into public.drill_library (name, category, description, target_area, difficulty, reps_suggested, time_estimate_mins, instructions, equipment_needed, practice_category, locations, equipment, structure, pressure, metric, lower_is_better, sets, levels, cue, routine_rule, source_url, status)
 select name, category, description, target_area, difficulty, reps_suggested, time_estimate_mins, instructions, equipment_needed, practice_category, locations, equipment, structure, pressure, metric, lower_is_better, sets, levels, cue, routine_rule, source_url, status

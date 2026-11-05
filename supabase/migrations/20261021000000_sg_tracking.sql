@@ -1,5 +1,5 @@
 -- Strokes gained from the scorecard, and optional shot tracking. Additive: three columns, no policy change,
--- no rows or shots deleted. Run in the Supabase SQL editor.
+-- no rows or shots deleted.
 alter table public.round_shots add column if not exists club_confirmed boolean not null default false;  -- true only when the golfer picked the club
 
 alter table public.round_holes add column if not exists tracking text not null default 'none';          -- 'complete' | 'partial' | 'none', set on Hole done

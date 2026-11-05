@@ -12,6 +12,7 @@ import { HoleHeader } from "./HoleHeader"
 import { StrategyToggle } from "./StrategyToggle"
 import { ResultCard } from "./ResultCard"
 import { ClubChips } from "./ClubChips"
+import { ShotSheet } from "@/components/play/ShotSheet"
 import { PlayDock } from "./PlayDock"
 import { DOCK_ROW_CLASS, DOCK_ROW_PX } from "@/lib/planner/dock"
 
@@ -223,11 +224,11 @@ describe("planner components render (smoke)", () => {
     expect(html).toContain("· 7% OB") // trees are not a penalty: never in the dock
     expect(html).not.toContain("truncate")
     expect(html).not.toContain("Expected")
-    expect(html).not.toContain("<svg") // under 10%: no warning icon
+    expect(html).not.toContain("High penalty risk") // under 10%: no warning icon
     expect(html).toMatch(/aria-pressed="true"[^>]*>Smart</)
     expect(html).toContain(">Go<")
     expect(html).not.toContain("Smart play")
-    expect(renderToStaticMarkup(<StrategyToggle options={options} chosen={risky(0, 0.12)} onPick={() => {}} compact />)).toContain("<svg")
+    expect(renderToStaticMarkup(<StrategyToggle options={options} chosen={risky(0, 0.12)} onPick={() => {}} compact />)).toContain("High penalty risk")
     const same = renderToStaticMarkup(<StrategyToggle options={{ safer: fourIron, lowest: fourIron, same: true } as never} chosen={fourIron} onPick={() => {}} compact />)
     expect(same).not.toContain("Smart")
     expect(same).not.toContain(">Go<")
@@ -245,16 +246,16 @@ describe("planner components render (smoke)", () => {
     expect(fourth).not.toContain("3-Wood")
   })
 
-  it("PlayDock: three fixed rows, nothing that can wrap", () => {
+  it("PlayDock: two fixed rows, nothing that can wrap, and no chip row until the dock is expanded", () => {
     const html = renderToStaticMarkup(
       <PlayDock
         status={<button>Start round</button>}
-        plays={<StrategyToggle options={{ safer: pw, lowest: fourIron, same: false } as never} chosen={fourIron} onPick={() => {}} compact />}
-        chips={<ClubChips ranking={[fourIron, pw]} chosen={fourIron} onPick={() => {}} onMore={() => {}} className="flex min-w-0 flex-1 gap-1.5" />}
+        plays={<StrategyToggle options={{ safer: pw, lowest: fourIron, same: false } as never} chosen={fourIron} onPick={() => {}} compact onOpen={() => {}} />}
       />
     )
-    const rows = [...html.matchAll(/<div[^>]*?data-dock-row="(status|plays|chips)"[^>]*?class="([^"]*)"|<div[^>]*?class="([^"]*)"[^>]*?data-dock-row="(status|plays|chips)"/g)]
-    expect(rows).toHaveLength(3)
+    const rows = [...html.matchAll(/<div[^>]*?data-dock-row="(status|plays)"[^>]*?class="([^"]*)"|<div[^>]*?class="([^"]*)"[^>]*?data-dock-row="(status|plays)"/g)]
+    expect(rows).toHaveLength(2)
+    expect(html).not.toContain('data-dock-row="chips"')
     for (const m of rows) {
       const row = (m[1] ?? m[4]) as keyof typeof DOCK_ROW_CLASS
       const phone = (m[2] ?? m[3]).split(" ").filter((c) => !c.includes(":"))
@@ -264,5 +265,9 @@ describe("planner components render (smoke)", () => {
       expect(phone).not.toContain("flex-wrap")
       expect(Number(DOCK_ROW_CLASS[row].slice(2)) * 4).toBe(DOCK_ROW_PX[row]) // class and px constant agree
     }
+    expect(html).toContain('aria-label="Shot details"') // the club opens the expanded dock
+    const chips = <ClubChips ranking={[fourIron, pw]} chosen={fourIron} onPick={() => {}} onMore={() => {}} all />
+    expect(renderToStaticMarkup(<ShotSheet open={false} onClose={() => {}}>{chips}</ShotSheet>)).toBe("")
+    expect(renderToStaticMarkup(<ShotSheet open onClose={() => {}}>{chips}</ShotSheet>)).toContain("PW")
   })
 })
