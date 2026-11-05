@@ -7,7 +7,7 @@
 import { useState, type ReactNode } from "react"
 import { MoreHorizontal } from "lucide-react"
 import type { ActiveSession } from "@/lib/practice/activeSession"
-import { UNDO_MS, blockTimer, currentStep, cutoffNotice, progress, scoredSets } from "@/lib/practice/runner"
+import { UNDO_MS, blockTimer, currentStep, progress, scoredSets } from "@/lib/practice/runner"
 import { EndSessionSheet } from "./EndSessionSheet"
 import { ScoreEntry, type EntryInput } from "./ScoreEntry"
 
@@ -34,7 +34,6 @@ export function RunnerScreen({
   onUndo,
   onEnd,
   onPause,
-  onJumpToCloseout,
 }: {
   session: ActiveSession
   now: number
@@ -44,7 +43,6 @@ export function RunnerScreen({
   onUndo: () => void
   onEnd: () => void
   onPause: () => void
-  onJumpToCloseout: () => void
 }) {
   const [menu, setMenu] = useState(false)
   const [confirmEnd, setConfirmEnd] = useState(false)
@@ -52,7 +50,6 @@ export function RunnerScreen({
   if (!step) return null
   const { done, total } = progress(session)
   const timer = blockTimer(session, now)
-  const notice = cutoffNotice(session, now)
   const scored = scoredSets(session)
   const canUndo = session.lastSavedAt != null && now - session.lastSavedAt <= UNDO_MS && session.entries.length > 0
 
@@ -127,11 +124,6 @@ export function RunnerScreen({
         </div>
 
         <div className="mt-auto space-y-3 landscape:mt-0">
-          {notice && (
-            <button type="button" onClick={onJumpToCloseout} className="flex min-h-11 w-full items-center text-left text-sm font-semibold text-warn">
-              {notice.minutes} min to cutoff · jump to close-out
-            </button>
-          )}
           <ScoreEntry key={session.entries.length} step={step} onSave={onSave} />
           <div className="min-h-6">
             {canUndo && (

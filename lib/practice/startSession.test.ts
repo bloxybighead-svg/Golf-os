@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { LibraryDrill } from "@/lib/supabase/types"
 import { ACTIVE_SESSION_KEY, SESSION_PATH, loadActiveSession, type ActiveSession } from "./activeSession"
 import { buildSession } from "./session"
-import { beginSession, buildPlan, type Answers, fitMinutes, liveNextRound, nextRoundLabel, startFromPlan } from "./startSession"
+import { beginSession, buildPlan, type Answers, liveNextRound, nextRoundLabel, startFromPlan } from "./startSession"
 import { bringList } from "./bring"
 import { typicalScores } from "./weakness"
 import { planWeek } from "./weekPlan"
@@ -39,12 +39,6 @@ describe("buildPlan", () => {
         nextRound: expect.objectContaining({ competitive: true, courseKnown: false }),
       })
     )
-  })
-
-  it("caps a 7:30 pm start at the cutoff", () => {
-    const p = plan({ now: at(19, 30), answers: { ...answers, minutes: 120 } })
-    expect(p.practiceMinutes).toBeLessThanOrEqual(70)
-    expect(p.notes.join(" ")).toContain("8:45")
   })
 
   it("gives a golfer with no rounds a week and a session", () => {
@@ -120,12 +114,6 @@ describe("starting", () => {
 })
 
 describe("answers", () => {
-  it("fits remembered minutes under the cutoff cap", () => {
-    expect(fitMinutes(120, 70)).toBe(70)
-    expect(fitMinutes(30, 70)).toBe(30)
-    expect(fitMinutes(60, 0)).toBe(0)
-  })
-
   it("forgets a next round whose date has passed", () => {
     const r = { date: "2026-10-20", competitive: true, courseKnown: true }
     expect(liveNextRound(r, at(10))).toBeNull()
@@ -149,12 +137,6 @@ describe("the time budget", () => {
       const p = plan({ week, answers: { ...answers, minutes } })
       expect(total(p)).toBeLessThanOrEqual(minutes)
     }
-  })
-
-  it("at 7:50 pm ends everything, logging included, by 8:45", () => {
-    const p = plan({ week, now: at(19, 50), answers: { ...answers, minutes: 120 } })
-    expect(total(p)).toBeLessThanOrEqual(55)
-    expect((p.endsAt as Date).getTime()).toBeLessThanOrEqual(at(20, 45).getTime())
   })
 })
 

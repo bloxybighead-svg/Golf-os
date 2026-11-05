@@ -3,7 +3,7 @@
 // "Start session": the button on Practice (or "Resume session" with one running), the questions, and the
 // session card the answers build. Start hands the plan to the runner.
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { BottomSheet } from "@/components/play/BottomSheet"
 import { useActiveSession } from "@/hooks/useActiveSession"
@@ -12,14 +12,13 @@ import { SESSION_PATH, isOldSession, isUnsaved } from "@/lib/practice/activeSess
 import { discardSession } from "@/lib/practice/discard"
 import { endEarly } from "@/lib/practice/runner"
 import type { DrillRef } from "@/lib/practice/runs"
-import { cutoffCapMinutes, type SessionPlan } from "@/lib/practice/session"
+import type { SessionPlan } from "@/lib/practice/session"
 import {
   ANSWERS_KEY,
   DEFAULT_ANSWERS,
   NEXT_ROUND_KEY,
   beginSession,
   buildPlan,
-  fitMinutes,
   initialFocus,
   liveNextRound,
   localDate,
@@ -95,7 +94,7 @@ export function StartSession({
     // An older save kept one location.
     const saved = read<Partial<Answers> & { savedOn?: string; location?: Answers["locations"][number] }>(ANSWERS_KEY) ?? {}
     setAnswers({
-      minutes: fitMinutes(saved.minutes ?? DEFAULT_ANSWERS.minutes, cutoffCapMinutes(at)),
+      minutes: saved.minutes ?? DEFAULT_ANSWERS.minutes,
       locations: saved.locations?.length ? saved.locations : saved.location ? [saved.location] : DEFAULT_ANSWERS.locations,
       energy: saved.energy ?? DEFAULT_ANSWERS.energy,
       // Focus is remembered for the day it was picked, then goes back to Auto.
@@ -106,8 +105,6 @@ export function StartSession({
     write(NEXT_ROUND_KEY, next)
     setNextRound(next)
   }, [open])
-
-  const cap = useMemo(() => cutoffCapMinutes(now), [now])
 
   if (session) {
     return (
@@ -200,7 +197,6 @@ export function StartSession({
           ) : (
             <SessionAnswers
               answers={answers}
-              cap={cap}
               library={activeLibrary}
               nextRound={nextRound}
               today={now}

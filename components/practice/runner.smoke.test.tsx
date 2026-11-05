@@ -59,7 +59,7 @@ const make = (blocks: SessionBlock[], location = "putting_green") =>
 const noop = () => {}
 const screen = (session: ActiveSession, extra: Partial<Parameters<typeof RunnerScreen>[0]> = {}) =>
   renderToStaticMarkup(
-    <RunnerScreen session={session} now={60_000} compact onSave={noop} onSkip={noop} onUndo={noop} onEnd={noop} onPause={noop} onJumpToCloseout={noop} {...extra} />
+    <RunnerScreen session={session} now={60_000} compact onSave={noop} onSkip={noop} onUndo={noop} onEnd={noop} onPause={noop} {...extra} />
   )
 
 afterEach(() => {
@@ -119,12 +119,6 @@ describe("the set screen", () => {
   it("the timer turns warn color 3+ minutes past the block's plan", () => {
     expect(screen(make([ladder]), { now: 20 * 60_000 })).toContain("text-muted")
     expect(screen(make([ladder]), { now: 23 * 60_000 })).toContain("text-warn")
-  })
-
-  it("shows the cutoff line near 8:45 pm", () => {
-    const evening = new Date(2026, 9, 21, 20, 40).getTime()
-    expect(screen(make([ladder, closeout]), { now: evening })).toContain("5 min to cutoff · jump to close-out")
-    expect(screen(make([ladder, closeout]))).not.toContain("to cutoff")
   })
 })
 

@@ -87,11 +87,6 @@ export function locationsWithDrills(library: readonly LibraryDrill[]): Set<Drill
   return new Set(library.filter((d) => d.status === "active").flatMap((d) => d.locations))
 }
 
-/** The minutes choice that fits under the cap: the one remembered, or the most the cap allows. */
-export function fitMinutes(minutes: number, cap: number): number {
-  return Math.max(0, Math.min(minutes, cap))
-}
-
 function historyFromRuns(runs: readonly FinishedRun[]): HistorySet[] {
   return runs.flatMap((r) => r.sets.map((s) => ({ drillId: s.drillId, at: new Date(r.startedAt), skipped: s.skipped })))
 }

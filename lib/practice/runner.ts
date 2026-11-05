@@ -1,5 +1,5 @@
 // The session runner's rules, with no screen in them: save a set, skip one, undo, end early, jump to the
-// close-out, the block timer, the cutoff notice, the summary, and the outbox payload.
+// close-out, the block timer, the summary, and the outbox payload.
 
 import type { PracticeRunPayload } from "@/lib/offline/jobs"
 import { nextLevel, type SetResult } from "./levels"
@@ -10,14 +10,6 @@ import type { ActiveSession, RunEntry, RunStep } from "./activeSession"
 export const UNDO_MS = 5_000
 /** A block this far past its plan turns the timer to the warning color. From the spec: 3+ min over. */
 const OVER_MIN = 3
-/** Logging must end by 8:45 pm (the device cutoff); the notice shows once the session would still be going at 8:40. */
-const CUTOFF = { hour: 20, minute: 45 }
-const NOTICE_AT = { hour: 20, minute: 40 }
-
-const at = (ms: number, t: { hour: number; minute: number }) => {
-  const d = new Date(ms)
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), t.hour, t.minute).getTime()
-}
 
 export function currentStep(s: ActiveSession): RunStep | null {
   return s.status === "running" ? (s.steps[s.entries.length] ?? null) : null
@@ -73,14 +65,6 @@ export function undoLast(s: ActiveSession, now: number): ActiveSession {
 
 export const endEarly = (s: ActiveSession): ActiveSession => (s.status === "running" ? { ...s, status: "ended_early", lastSavedAt: null } : s)
 
-/** Skips every set before the close-out (saved as skipped) and lands on its first set. */
-export function jumpToCloseout(s: ActiveSession, now: number): ActiveSession {
-  const target = s.steps.findIndex((st, i) => i >= s.entries.length && st.kind === "closeout")
-  if (!currentStep(s) || target < 0) return s
-  const skipped: RunEntry[] = s.steps.slice(s.entries.length, target).map(() => ({ skipped: true, value: null, attempts: null, spread: null, at: now }))
-  return { ...withEntries(s, [...s.entries, ...skipped], now), lastSavedAt: null }
-}
-
 interface CloseoutState {
   /** Makes in a row so far. */
   made: number
@@ -101,18 +85,6 @@ export function blockTimer(s: ActiveSession, now: number): { elapsedMs: number; 
   const block = s.blocks[step.block]
   const elapsedMs = Math.max(0, now - (block.startedAt ?? now))
   return { elapsedMs, plannedMin: block.minutes, over: elapsedMs >= (block.minutes + OVER_MIN) * 60_000 }
-}
-
-/**
- * Set when the sets still to do would run past 8:40 pm and a close-out is still ahead: the minutes left
- * to the 8:45 cutoff, for "N min to cutoff · jump to close-out".
- */
-export function cutoffNotice(s: ActiveSession, now: number): { minutes: number } | null {
-  const step = currentStep(s)
-  if (!step || step.kind === "closeout" || !s.steps.some((st, i) => i > s.entries.length && st.kind === "closeout")) return null
-  const remaining = s.steps.slice(s.entries.length).reduce((n, st) => n + st.plannedMinutes, 0)
-  if (now + remaining * 60_000 <= at(now, NOTICE_AT)) return null
-  return { minutes: Math.max(0, Math.floor((at(now, CUTOFF) - now) / 60_000)) }
 }
 
 export interface DrillSummary {

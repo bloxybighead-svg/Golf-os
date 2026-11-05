@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { ACTIVE_SESSION_KEY, loadActiveSession, newActiveSession, saveActiveSession, type ActiveSession } from "./activeSession"
-import { blockTimer, closeoutPutt, currentStep, cutoffNotice, endEarly, jumpToCloseout, progress, recordEntry, scoreColumns, scoredSets, skipSet, summarize, toRunPayload, undoLast, UNDO_MS } from "./runner"
+import { blockTimer, closeoutPutt, currentStep, endEarly, progress, recordEntry, scoreColumns, scoredSets, skipSet, summarize, toRunPayload, undoLast, UNDO_MS } from "./runner"
 import type { SessionBlock, SessionPlan } from "./session"
 
 const block = (o: Partial<SessionBlock> & Pick<SessionBlock, "drillId" | "name" | "kind">): SessionBlock => ({
@@ -169,35 +169,11 @@ describe("close-out", () => {
   })
 })
 
-describe("jump to close-out", () => {
-  it("saves the sets in between as skipped and lands on the close-out", () => {
-    const s = jumpToCloseout(recordEntry(fresh(), { value: 2 }, T0), T0 + 5000)
-    expect(s.entries.map((e) => e.skipped)).toEqual([false, true, true, true])
-    expect(currentStep(s)?.kind).toBe("closeout")
-    expect(s.blocks[1].startedAt).toBe(T0 + 5000)
-  })
-})
-
 describe("timer", () => {
   it("turns over once the block is 3 minutes past its plan", () => {
     const s = fresh()
     expect(blockTimer(s, T0 + 22 * 60_000)?.over).toBe(false)
     expect(blockTimer(s, T0 + 23 * 60_000)?.over).toBe(true)
-  })
-})
-
-describe("cutoff notice", () => {
-  const at = (h: number, m: number) => new Date(2026, 9, 21, h, m).getTime()
-  it("shows once the rest of the plan would run past 8:40 pm", () => {
-    expect(cutoffNotice(fresh(), at(20, 40))).toEqual({ minutes: 5 })
-    expect(cutoffNotice(fresh(), at(20, 20))).toEqual({ minutes: 25 })
-  })
-  it("stays away early in the evening, and on the close-out itself", () => {
-    expect(cutoffNotice(fresh(), at(18, 0))).toBeNull()
-    expect(cutoffNotice(jumpToCloseout(fresh(), at(20, 40)), at(20, 41))).toBeNull()
-  })
-  it("stays away with no close-out ahead", () => {
-    expect(cutoffNotice(fresh({ plan: plan([ladder]) }), at(20, 41))).toBeNull()
   })
 })
 

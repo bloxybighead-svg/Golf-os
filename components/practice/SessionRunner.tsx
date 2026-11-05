@@ -10,7 +10,7 @@ import { useAuthUser } from "@/hooks/useAuthUser"
 import { useIsCompact } from "@/hooks/useIsCompact"
 import { PRACTICE_PATH } from "@/lib/practice/activeSession"
 import { discardSession } from "@/lib/practice/discard"
-import { endEarly, jumpToCloseout, recordEntry, skipSet, undoLast } from "@/lib/practice/runner"
+import { endEarly, recordEntry, skipSet, undoLast } from "@/lib/practice/runner"
 import { setRoundPaused } from "@/lib/rounds/roundMode"
 import { RunSummary } from "./RunSummary"
 import { RunnerScreen } from "./RunnerScreen"
@@ -65,7 +65,6 @@ export function SessionRunner() {
       onSkip={() => update((s) => skipSet(s, Date.now()))}
       onUndo={() => update((s) => undoLast(s, Date.now()))}
       onEnd={() => update(endEarly)}
-      onJumpToCloseout={() => update((s) => jumpToCloseout(s, Date.now()))}
       onPause={() => {
         setRoundPaused(true)
         router.push(PRACTICE_PATH)

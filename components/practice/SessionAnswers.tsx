@@ -36,7 +36,6 @@ function Choices<T extends string | boolean>({ value, options, onPick }: { value
 
 export function SessionAnswers({
   answers,
-  cap,
   library,
   nextRound,
   today,
@@ -44,7 +43,6 @@ export function SessionAnswers({
   onNextRound,
 }: {
   answers: Answers
-  cap: number
   library: readonly LibraryDrill[]
   nextRound: StoredNextRound | null
   today: Date
@@ -57,7 +55,7 @@ export function SessionAnswers({
 
   return (
     <div className="space-y-5">
-      <Row title="Minutes" note={cap < Math.max(...MINUTE_CHOICES) ? `Until 8:45 pm: ${cap} min max` : undefined}>
+      <Row title="Minutes">
         <div className="grid grid-cols-5 gap-2">
           {MINUTE_CHOICES.map((m) => {
             const picked = !other && answers.minutes === m
@@ -66,7 +64,6 @@ export function SessionAnswers({
                 key={m}
                 type="button"
                 aria-pressed={picked}
-                disabled={m > cap}
                 className={`${CHOICE} ${picked ? ON : OFF}`}
                 onClick={() => {
                   setOther(false)
@@ -87,9 +84,8 @@ export function SessionAnswers({
             type="number"
             inputMode="numeric"
             min={10}
-            max={cap}
             value={answers.minutes || ""}
-            onChange={(e) => onAnswers({ ...answers, minutes: Math.min(cap, Math.max(0, Math.round(Number(e.target.value)) || 0)) })}
+            onChange={(e) => onAnswers({ ...answers, minutes: Math.max(0, Math.round(Number(e.target.value)) || 0) })}
             className={FIELD}
           />
         )}

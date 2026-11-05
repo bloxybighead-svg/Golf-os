@@ -1,6 +1,6 @@
 // One practice session from the week's checklist: hard rules first, then minutes by priority, then drills.
 //
-// Rules, in order: device cutoff, pain, day before a round, Club Work before a competitive round, unfamiliar
+// Rules, in order: pain, day before a round, Club Work before a competitive round, unfamiliar
 // course, playing that day, six days in a row. Then: warm-up 5-10%, close-out and logging 5 min each, putting
 // at least 25% (a putting warm-up and close-out count toward it), no area over 40% unless a focus is picked, a picked
 // focus at least 60% of the drill minutes, no block under 10 min. Only 'active' drills are ever used.
@@ -56,9 +56,6 @@ export interface SessionPlan {
   notes: string[]
 }
 
-/** Logging ends by this clock time. From the spec: the 8:45 pm device cutoff. */
-const CUTOFF_HOUR = 20
-const CUTOFF_MINUTE = 45
 const LOGGING_MIN = 5
 const CLOSEOUT_MIN = 5
 /** Warm-up share of the session. From the spec: 5-10%. ESTIMATE: the middle of that range. */
@@ -164,12 +161,6 @@ function allocate(weights: Map<Category, number>, total: number, held: Map<Categ
   return new Map()
 }
 
-/** The most minutes a session can take, logging included, and still end by the 8:45 pm cutoff. */
-export function cutoffCapMinutes(now: Date): number {
-  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), CUTOFF_HOUR, CUTOFF_MINUTE)
-  return Math.max(0, Math.floor((cutoff.getTime() - now.getTime()) / 60_000))
-}
-
 export function buildSession(args: {
   week: readonly WeekItem[]
   now: Date
@@ -195,13 +186,7 @@ export function buildSession(args: {
     return { off: true, blocks: [], practiceMinutes: 0, loggingMinutes: 0, endsAt: null, notes: [`${OFF_AFTER_DAYS} practice days in a row: today is an off day.`] }
   }
 
-  // a. Device cutoff: logging must end by 8:45 pm.
-  const untilCutoff = cutoffCapMinutes(now)
   let cap = args.minutes
-  if (untilCutoff < cap) {
-    cap = untilCutoff
-    notes.push(`Capped to ${cap} min so logging ends by 8:45 pm.`)
-  }
 
   const daysToRound = nextRound ? daysBetween(now, nextRound.date) : null
   const playingToday = daysToRound === 0

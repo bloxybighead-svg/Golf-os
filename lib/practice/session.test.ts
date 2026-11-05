@@ -56,22 +56,10 @@ const names = (p: SessionPlan) => p.blocks.map((b) => b.name)
 const scoredAll: HistorySet[] = library.map((d) => ({ drillId: d.id, at: new Date(2026, 9, 1), skipped: false }))
 const round = (daysAhead: number, o: Partial<NextRound> = {}): NextRound => ({ date: new Date(2026, 9, 21 + daysAhead, 14), competitive: false, courseKnown: true, ...o })
 
-describe("device cutoff", () => {
-  it("gives a 19:30 start 70 minutes and ends logging at 20:45", () => {
-    const p = plan({ now: wed(19, 30) })
-    expect(p.practiceMinutes).toBe(70)
-    expect(p.endsAt).toEqual(wed(20, 45))
-    expect(p.notes.join(" ")).toContain("8:45")
-  })
-
-  it("leaves a session that already fits alone", () => {
-    const p = plan({ now: wed(10), minutes: 60 })
+describe("time of day", () => {
+  it("plans the minutes asked for at any hour", () => {
+    const p = plan({ now: wed(21, 30), minutes: 60 })
     expect(p.practiceMinutes + p.loggingMinutes).toBe(60)
-    expect(p.notes.join(" ")).not.toContain("8:45")
-  })
-
-  it("plans nothing after the cutoff", () => {
-    expect(plan({ now: wed(20, 50) }).blocks).toEqual([])
   })
 })
 
