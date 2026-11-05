@@ -88,6 +88,13 @@ describe("the set screen", () => {
     expect(screen(make([ladder]))).toContain("repeat(6, minmax(0, 1fr))")
   })
 
+  it("a 20-point set is a stepper, not 21 buttons", () => {
+    const points = block({ drillId: "pts", name: "Spieth 10-ft Game", lowerIsBetter: false, sets: [{ label: "Station 1", setup: "10 putts, 2 points each", balls: 20 }] })
+    const html = screen(make([points]))
+    expect(html).toContain("Made plus one")
+    expect(html).not.toContain(">20</button>")
+  })
+
   it("a Club Work set shows the club and a left, center, right counter", () => {
     const html = screen(make([clubWork], "range"))
     expect(html).toContain("7 Iron · 3 balls")

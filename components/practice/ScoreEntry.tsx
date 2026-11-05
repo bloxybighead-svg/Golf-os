@@ -3,7 +3,7 @@
 // Score entry for one set, sized to the metric:
 //   count_of_n  big number buttons, 0..balls, in one row (two even rows past 7, a stepper past 14); one tap saves
 //   streak      a stepper from 0 with a big +1
-//   strokes     a stepper
+//   strokes     a stepper (putts, strokes or tries, whatever the drill counts)
 //   pct         two steppers, made and attempts
 //   Club Work   a left / center / right counter for the club
 //   close-out   Made / Missed: a miss restarts the count (the pass-to-leave rule); the putts taken are the score
@@ -43,13 +43,13 @@ function Stepper({ label, value, onChange }: { label: string; value: number; onC
 function caption(step: RunStep): string {
   const what =
     step.kind === "closeout"
-      ? "Putts to make them in a row"
+      ? "Tries to make them in a row"
       : step.metric === "count_of_n"
         ? `Out of ${step.balls}`
         : step.metric === "streak"
           ? "Best streak"
           : step.metric === "strokes"
-            ? "Total putts"
+            ? "Your total"
             : "Made of attempts"
   return [what, step.levelName, step.lowerIsBetter ? "lower is better" : "higher is better"].filter(Boolean).join(" · ")
 }
@@ -84,7 +84,7 @@ export function ScoreEntry({ step, onSave }: { step: RunStep; onSave: (input: En
             Missed
           </button>
         </div>
-        <p className="text-center text-xs text-muted">{closeout.putts} putts so far</p>
+        <p className="text-center text-xs text-muted">{closeout.putts} tries so far</p>
       </>
     )
   } else if (step.club) {
@@ -133,7 +133,11 @@ export function ScoreEntry({ step, onSave }: { step: RunStep; onSave: (input: En
   } else {
     body = (
       <>
-        <Stepper label={step.metric === "streak" ? "Streak" : step.metric === "count_of_n" ? "Made" : "Putts"} value={n} onChange={setN} />
+        <Stepper
+          label={step.metric === "streak" ? "Streak" : step.metric === "count_of_n" ? "Made" : "Total"}
+          value={n}
+          onChange={(v) => setN(step.metric === "count_of_n" ? Math.min(v, step.balls) : v)}
+        />
         <button type="button" className={PRIMARY} onClick={() => onSave({ value: n })}>
           Save
         </button>
