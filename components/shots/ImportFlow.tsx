@@ -120,7 +120,7 @@ export function ImportFlow({ busy, onSave }: { busy: boolean; onSave: (session: 
               ? "recognised the session-summary export"
               : mapped
                 ? "columns found"
-                : "I couldn't tell which columns are which. Pick them below."}
+                : "Couldn't tell which columns are which. Pick them below."}
           </p>
 
           {loaded.detected.kind === "table" && mapping && (

@@ -69,7 +69,7 @@ export function ScoringDetails({
       </p>
       <p>
         Water costs one penalty stroke plus a drop; out of bounds is stroke and distance; trees use the benchmark&rsquo;s
-        &ldquo;recovery&rdquo; column. These rules are my assumptions, since the benchmark doesn&rsquo;t cover them.
+        &ldquo;recovery&rdquo; column. These rules are assumptions, since the benchmark doesn&rsquo;t cover them.
       </p>
       <p>
         Shapes come from OpenStreetMap volunteers. Outside the mapped course boundary is out of bounds, and so are
@@ -79,7 +79,7 @@ export function ScoringDetails({
         dropped where it last crossed into it, with one penalty stroke. The ✓ / ⚠ / ✗ line shows what is
         mapped, estimated or missing for this hole; Layers → Mark an area outlines trees, water, out of bounds, or a safe
         patch the map got wrong. Your marks beat the map, and a missing fairway is estimated as a corridor down the middle
-        until you draw the real one. Slope, wind and elevation aren&rsquo;t modelled.
+        until you draw the real one. Wind, air temperature and the ground height between you and the landing spot change every shot&rsquo;s carry, and the ground slope where a driver or 3-wood lands changes its roll; each applies only when its data is loaded. The slope under the ball (uphill, downhill or sidehill lies) and green slope aren&rsquo;t modelled.
       </p>
     </div>
   )
