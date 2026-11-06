@@ -22,7 +22,7 @@ const CALIBRATED_CLUBS = [
 
 describe("bags", () => {
   it("default bags hold the clubs asked for", () => {
-    expect(DEFAULT_BAG).toEqual(["Driver", "3-Wood", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW"])
+    expect(DEFAULT_BAG).toEqual(["Driver", "3-Wood", "5-Wood", "4-Hybrid", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW"])
     expect(CALIBRATED_DEFAULT_BAG).toHaveLength(13)
     expect(CALIBRATED_DEFAULT_BAG).toEqual(expect.arrayContaining(["4-Iron", "9-Iron", "7-Wood", "3-Wood", "Driver", "PW", "GW", "SW", "LW"]))
   })

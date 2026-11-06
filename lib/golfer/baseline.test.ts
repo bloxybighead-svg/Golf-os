@@ -23,11 +23,11 @@ describe("cleanHandicap", () => {
 
 describe("bagFor", () => {
   it("is the default bag when only driver and 7-iron are given", () => {
-    expect(bagFor({ Driver: 250, "7-Iron": 150 })).toEqual(["Driver", "3-Wood", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW"])
+    expect(bagFor({ Driver: 250, "7-Iron": 150 })).toEqual(["Driver", "3-Wood", "5-Wood", "4-Hybrid", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW"])
   })
   it("adds any extra club they gave a carry for, in bag order", () => {
-    expect(bagFor({ "5-Wood": 215, "4-Iron": 190 })).toEqual([
-      "Driver", "3-Wood", "5-Wood", "4-Iron", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW",
+    expect(bagFor({ "7-Wood": 180, "4-Iron": 190 })).toEqual([
+      "Driver", "3-Wood", "5-Wood", "7-Wood", "4-Hybrid", "4-Iron", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW",
     ])
   })
 })

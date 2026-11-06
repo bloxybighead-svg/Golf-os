@@ -7,6 +7,7 @@ import fixture from "./__fixtures__/colts-neck-3-6.json"
 import zonesFile from "./__fixtures__/colts-neck-3-6-zones.json"
 import profileFile from "@/lib/golfer/__fixtures__/synthetic-fitted-profile.json"
 import { fillBag, CALIBRATED_DEFAULT_BAG, canonicalClub, DEFAULT_BAG } from "@/lib/golfer/bag"
+import type { Club } from "@/lib/golfer/tables"
 import { generateFromFittedProfile, type FittedProfile } from "@/lib/golfer/fitted"
 import { getBaseline } from "./baseline"
 import { assessHoleDataQuality, estimatedFairwayCorridor } from "./dataQuality"
@@ -91,7 +92,7 @@ export function table(rows: OptimizedClubPlan[]): string {
 // The golfer is a handicap-estimate bag, and the conditions are built by hand to match a live card: an 11 mph
 // headwind, 59 F against carries measured at 70 F, and 7 yd of climb (21 ft) from tee to green.
 
-export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number } = {}): Case & { toPin: number } {
+export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number; bag?: Club[] } = {}): Case & { toPin: number } {
   const live = opts.live ?? true
   const hole = pebbleFixture.hole as unknown as CourseHole
   const features = pebbleFixture.features as unknown as CourseFeature[]
@@ -110,7 +111,7 @@ export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number
         baselineF: 70,
       }
     : null
-  const bag = fullBagShots({ myBag: null, handicap, typed: {}, bag: DEFAULT_BAG })
+  const bag = fullBagShots({ myBag: null, handicap, typed: {}, bag: opts.bag ?? DEFAULT_BAG })
   const baseline = getBaseline(handicap)
   const toPin = distanceYds(from, pin)
   const t0 = performance.now()

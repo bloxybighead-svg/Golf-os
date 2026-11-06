@@ -5,11 +5,11 @@ describe("parseDeviceBag", () => {
   it("falls back to the default source and its default bag on a fresh device", () => {
     const h = parseDeviceBag(null, null, "handicap")
     expect(h.source).toBe("handicap")
-    expect(h.bag).toHaveLength(11)
+    expect(h.bag).toHaveLength(13)
     // The golfer's own shots: the default bag plus every club they have data for.
     const c = parseDeviceBag(null, null, "calibrated", ["4-Iron", "7-Wood", "PW"])
     expect(c.source).toBe("calibrated")
-    expect(c.bag).toHaveLength(13)
+    expect(c.bag).toHaveLength(15)
     expect(c.bag).toContain("4-Iron")
   })
 

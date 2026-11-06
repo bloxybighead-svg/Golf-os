@@ -122,8 +122,10 @@ describe("the two options", () => {
 
   it("Pebble Beach hole 1, live card (11 mph into, +7 yd uphill, 59 F): the pick at 10 and 18 handicap", () => {
     for (const [hcp, pick, tied] of [
-      [10, "9-Iron", ["8-Iron", "9-Iron"]],
-      [18, "8-Iron", ["6-Iron", "7-Iron", "8-Iron", "LW", "PW"]],
+      // With the 5-wood and 4-hybrid in the estimate bag (they were missing): at 10 the Driver is at the cap and the clear best
+      // by cost; at 18 every wood and hybrid is 10-14% OB on this hole and the 9-Iron is still the pick.
+      [10, "Driver", ["Driver"]],
+      [18, "9-Iron", ["9-Iron", "LW"]],
     ] as const) {
       const c = pebbleH1(hcp)
       const msg = `handicap ${hcp}: Smart ${c.options.safer.club}, tied ${c.options.tied.map((t) => t.club).join(",")}
@@ -131,9 +133,9 @@ ${table(c.ranking)}`
       expect(c.toPin, msg).toBeCloseTo(364, -1)
       expect(c.options.safer.club, msg).toBe(pick)
       expect(c.options.tied.map((t) => t.club).sort(), msg).toEqual([...tied])
-      // The Driver is over the cap here (it was dropped outright before); it stays in the ranking with the steeper charge.
+      // The Driver carries at least the cap's worth of OB here; the soft cap charges it more, it is not thrown out.
       const driver = c.ranking.find((r) => r.club === "Driver")!
-      expect(penaltyShare(driver.plan), msg).toBeGreaterThan(SMART_MAX_PENALTY_RATE)
+      expect(penaltyShare(driver.plan), msg).toBeGreaterThanOrEqual(SMART_MAX_PENALTY_RATE - 1e-9)
       // The tie line never suggests a wedge on a 364 yd hole, and names at most three clubs.
       const line = tieText(c.options) ?? ""
       expect(line, msg).not.toMatch(/(LW|SW|GW)/)

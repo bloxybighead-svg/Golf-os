@@ -5,8 +5,12 @@ import { BAG_ORDER, referenceCarry, type Club } from "./tables"
 
 export const CLUB_CATALOG: readonly Club[] = BAG_ORDER
 
-/** New golfers: driver, 3-wood, 5- through 9-iron and four wedges. */
-export const DEFAULT_BAG: Club[] = ["Driver", "3-Wood", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW"]
+/**
+ * New golfers: driver, 3- and 5-wood, a 4-hybrid, 5- through 9-iron and four wedges. The 5-wood and 4-hybrid fill the
+ * gap between the 3-wood and the 5-iron (at a 10 handicap about 200, 187, 174 and 164 yd), so a hole that makes the
+ * driver and 3-wood risky has a club that is not a short iron. Their carries come from the same tier tables as every other club.
+ */
+export const DEFAULT_BAG: Club[] = ["Driver", "3-Wood", "5-Wood", "4-Hybrid", "5-Iron", "6-Iron", "7-Iron", "8-Iron", "9-Iron", "PW", "GW", "SW", "LW"]
 
 /** the author's bag (the calibrated golfer): driver, 3- and 7-wood, 4- through 9-iron and four wedges. */
 export const CALIBRATED_DEFAULT_BAG: Club[] = [
