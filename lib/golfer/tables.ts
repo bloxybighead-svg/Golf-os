@@ -195,31 +195,35 @@ export function mishitRateForHandicap(handicapIndex: number): number {
 }
 
 /**
- * Rescale a tier's mean carries to fit a specific player's numbers.
- * Handicap controls dispersion SHAPE; the player's own carries control
- * SCALE. Clubs named in knownCarries get their exact value; every other
- * club's mean carry is rescaled by a ratio interpolated across the bag
- * (ordered by anchor carry), held flat past the ends.
+ * Fits a bag to the carries a golfer entered. Clubs named in knownCarries keep exactly that value; every other club is
+ * gapped from them using a FIXED reference spacing (referenceCarry), never the handicap tier's: between two entered
+ * clubs it is interpolated by where its reference carry falls between theirs, past the longest or shortest entered
+ * club it keeps the ratio of the nearest one. The handicap therefore sets dispersion only (the rest of each profile
+ * is untouched), and the carries come out strictly decreasing from Driver to LW whenever the entered ones are.
+ * With nothing entered the tier's own carries are returned as they are.
  */
 export function scaleProfilesToCarries(
   profiles: Record<Club, ClubProfile>,
   knownCarries: Partial<Record<Club, number>>
 ): Record<Club, ClubProfile> {
-  const entries = Object.entries(knownCarries) as [Club, number][]
-  const ratios = entries
-    .map(([club, carry]) => [profiles[club].mean_carry, carry / profiles[club].mean_carry] as [number, number])
-    .sort((a, b) => a[0] - b[0])
-  const xp = ratios.map((r) => r[0])
-  const fp = ratios.map((r) => r[1])
-
+  const anchors = (Object.entries(knownCarries) as [Club, number][]).map(([club, carry]) => ({ carry, ref: referenceCarry(club) }))
   const result = {} as Record<Club, ClubProfile>
   for (const club of Object.keys(profiles) as Club[]) {
     const params = profiles[club]
     if (club in knownCarries) {
       result[club] = { ...params, mean_carry: knownCarries[club]! }
-    } else if (xp.length > 0) {
-      const ratio = interp(params.mean_carry, xp, fp)
-      result[club] = { ...params, mean_carry: Math.round(params.mean_carry * ratio * 10) / 10 }
+    } else if (anchors.length > 0) {
+      const ref = referenceCarry(club)
+      const above = anchors.filter((a) => a.ref > ref).reduce<(typeof anchors)[number] | null>((m, a) => (m == null || a.ref < m.ref ? a : m), null)
+      const below = anchors.filter((a) => a.ref < ref).reduce<(typeof anchors)[number] | null>((m, a) => (m == null || a.ref > m.ref ? a : m), null)
+      const carry =
+        above && below
+          ? below.carry + ((above.carry - below.carry) * (ref - below.ref)) / (above.ref - below.ref)
+          : (() => {
+              const near = (above ?? below)!
+              return (near.carry * ref) / near.ref
+            })()
+      result[club] = { ...params, mean_carry: Math.round(carry * 10) / 10 }
     } else {
       result[club] = { ...params }
     }
