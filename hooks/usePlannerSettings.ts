@@ -10,7 +10,6 @@ import type { Tendency } from "@/lib/golfer/build"
 import type { Club } from "@/lib/golfer/tables"
 import { CALIBRATED_DEFAULT_BAG, DEFAULT_BAG, normalizeBag } from "@/lib/golfer/bag"
 import type { MyProfile, ShotSource } from "@/lib/planner/types"
-import { repairCarries } from "@/lib/golfer/carryOrder"
 import { HOME_COURSE_KEY, ONBOARDED_KEY, SETTINGS_KEY, applyBaselineToDevice, cleanCarries, type Baseline } from "@/lib/golfer/baseline"
 import { COMPARE_AGAINST_EVENT, COMPARE_AGAINST_KEY, readCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
 import { readRisk, RISK_EVENT, RISK_KEY } from "@/lib/course/riskSetting"
@@ -135,7 +134,7 @@ export function usePlannerSettings({ calibrated, myProfile, baseline, signedIn }
       if (v.sourceV === SOURCE_VERSION && (v.source === "handicap" || (v.source === "calibrated" && myProfile) || (v.source === "legacy" && calibrated))) setSource(v.source)
       if (typeof v.handicap === "number") setHandicap(Math.min(36, Math.max(0, v.handicap)))
       if (typeof v.driverCarry === "string") setDriverCarry(v.driverCarry.slice(0, 4))
-      if (v.carries && typeof v.carries === "object") setExtraCarries(repairCarries(typeof v.driverCarry === "string" ? v.driverCarry : "", typeof v.sevenIronCarry === "string" ? v.sevenIronCarry : "", cleanCarries(v.carries)).extras)
+      if (v.carries && typeof v.carries === "object") setExtraCarries(cleanCarries(v.carries))
       if (v.wedgeCarries) setWedgeCarries(cleanWedgeCarries(v.wedgeCarries))
       if (typeof v.sevenIronCarry === "string") setSevenIronCarry(v.sevenIronCarry.slice(0, 4))
       if (v.tendency && SIDES.includes(v.tendency.side) && STRENGTHS.includes(v.tendency.strength)) setTendency(v.tendency)
@@ -165,7 +164,7 @@ export function usePlannerSettings({ calibrated, myProfile, baseline, signedIn }
     if (r.handicap != null) setHandicap(r.handicap)
     if (r.driverCarry != null) setDriverCarry(r.driverCarry)
     if (r.sevenIronCarry != null) setSevenIronCarry(r.sevenIronCarry)
-    if (r.carries) setExtraCarries(repairCarries(r.driverCarry ?? driverCarry, r.sevenIronCarry ?? sevenIronCarry, r.carries).extras)
+    if (r.carries) setExtraCarries(r.carries)
     if (r.wedgeCarries) setWedgeCarries(r.wedgeCarries)
     if (r.tendency) setTendency(r.tendency)
     if (r.bags) setBags((prev) => ({ ...prev, calibrated: r.bags!.calibrated, handicap: r.bags!.handicap }))

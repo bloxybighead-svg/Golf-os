@@ -1,6 +1,7 @@
 // The shots the Play planner plays each club with, built in one place so My bag
 // can show the same numbers the planner decides from.
 
+import { repairCarries } from "./carryOrder"
 import type { ClubShots } from "@/lib/course/plan"
 import { MAX_CARRY, MIN_CARRY } from "./baseline"
 import { generateCustomGolferShots, type Tendency } from "./build"
@@ -23,11 +24,15 @@ export function validTypedCarry(club: Club, raw: unknown): number | null {
   return Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : null
 }
 
-/** Every carry the golfer typed that the planner will use: driver, 7-iron and the extra clubs. */
+/**
+ * Every carry the golfer typed that the planner will use: driver, 7-iron and the extra clubs. An extra that contradicts
+ * the order of the bag (a 3-wood past the driver) is left out of the simulation only: it stays in storage untouched,
+ * and You -> My bag lists it with a fix (carryOrder.ts).
+ */
 export function typedCarries(driverCarry: unknown, sevenIronCarry: unknown, extra: Partial<Record<Club, number>>): Partial<Record<Club, number>> {
-  const out: Partial<Record<Club, number>> = { ...extra }
   const d = validTypedCarry("Driver", driverCarry)
   const i7 = validTypedCarry("7-Iron", sevenIronCarry)
+  const out: Partial<Record<Club, number>> = { ...repairCarries(d == null ? "" : String(d), i7 == null ? "" : String(i7), extra).extras }
   if (d != null) out.Driver = d
   if (i7 != null) out["7-Iron"] = i7
   return out

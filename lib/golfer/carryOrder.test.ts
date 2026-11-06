@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest"
-import { repairCarries } from "./carryOrder"
-import { fullBagShots, meanCarry } from "./bagShots"
+import { describe, expect, it, vi } from "vitest"
+import { carryConflicts, repairCarries } from "./carryOrder"
+import { fullBagShots, meanCarry, typedCarries } from "./bagShots"
+import { SETTINGS_KEY } from "./baseline"
+import { readDeviceBag, writeClubCarry, writeWedgeCarries } from "@/lib/you/deviceBag"
 import { DEFAULT_BAG } from "./bag"
 import { BAG_ORDER, profilesForHandicap, scaleProfilesToCarries, type Club } from "./tables"
 
@@ -60,5 +62,41 @@ describe("repairCarries", () => {
     expect(repairCarries("", "", ok)).toEqual({ extras: ok, dropped: [] })
     expect(repairCarries("", "", { "5-Wood": 140, "3-Wood": 150 }).dropped).toEqual([]) // in order
     expect(repairCarries("", "", { "5-Wood": 150, "3-Wood": 140 }).dropped).toEqual(["5-Wood"]) // the 5-wood is not shorter than the 3-wood before it
+  })
+})
+
+describe("carryConflicts", () => {
+  it("words each excluded club against the club it contradicts", () => {
+    const saved = { "3-Wood": 240, "8-Iron": 155, "9-Iron": 143, "6-Iron": 178 } as Partial<Record<Club, number>>
+    const c = carryConflicts("230", "140", saved)
+    expect(c.map((x) => x.text)).toEqual(["3-Wood (240) is longer than Driver (230)", "8-Iron (155) is longer than 7-Iron (140)", "9-Iron (143) is longer than 7-Iron (140)"].map((t) => t))
+  })
+  it("a shorter-than case", () => {
+    expect(carryConflicts("", "140", { "4-Iron": 120 }).map((x) => x.text)).toEqual(["4-Iron (120) is shorter than 7-Iron (140)"])
+  })
+})
+
+describe("storage is never rewritten by the exclusion", () => {
+  it("typedCarries leaves contradicting clubs out of the simulation, and the caller's saved object is unchanged", () => {
+    const saved = { "3-Wood": 240, "8-Iron": 155, PW: 132 } as Partial<Record<Club, number>>
+    const before = JSON.stringify(saved)
+    const t = typedCarries("230", "140", saved)
+    expect(t).toEqual({ PW: 132, Driver: 230, "7-Iron": 140 })
+    expect(JSON.stringify(saved)).toBe(before)
+  })
+  it("loading a contradicting bag and saving an unrelated setting keeps every stored carry", () => {
+    const store: Record<string, string> = {}
+    vi.stubGlobal("localStorage", { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => void (store[k] = v), removeItem: (k: string) => void delete store[k] })
+    const carries = { "3-Wood": 240, "8-Iron": 155, "9-Iron": 143, PW: 132 }
+    store[SETTINGS_KEY] = JSON.stringify({ driverCarry: "230", sevenIronCarry: "140", carries, handicap: 20 })
+    const bag = readDeviceBag("handicap")
+    expect(bag.carries).toMatchObject(carries) // read back whole
+    writeWedgeCarries({}) // an unrelated setting
+    writeClubCarry("PW", 130) // another club's edit
+    expect(JSON.parse(store[SETTINGS_KEY]).carries).toEqual({ ...carries, PW: 130 })
+    writeClubCarry("8-Iron", null) // the one-tap fix clears only that club
+    expect(JSON.parse(store[SETTINGS_KEY]).carries).not.toHaveProperty("8-Iron")
+    expect(JSON.parse(store[SETTINGS_KEY]).carries["3-Wood"]).toBe(240)
+    vi.unstubAllGlobals()
   })
 })

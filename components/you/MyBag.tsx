@@ -8,6 +8,7 @@ import { Fragment, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import type { CourseRef } from "@/lib/golfer/baseline"
+import { carryConflicts } from "@/lib/golfer/carryOrder"
 import { carryRange, typedCarries, validTypedCarry } from "@/lib/golfer/bagShots"
 import { PARTIAL_CARRY_RATIO, PARTIAL_WEDGES, SWING_LENGTHS, cleanWedgeCarries, partialName, type PartialName } from "@/lib/golfer/partials"
 import { THIN_BELOW, type ClubFit } from "@/lib/golfer/shotProfile"
@@ -158,6 +159,13 @@ export function MyBag({
 
   if (!device) return <p className="py-6 text-sm text-muted">Loading…</p>
 
+  // Saved numbers that contradict the rest are left out of the planning, never deleted: fixing one is the golfer's call.
+  const conflicts = carryConflicts(
+    String(device.carries.Driver ?? ""),
+    String(device.carries["7-Iron"] ?? ""),
+    Object.fromEntries(Object.entries(device.carries).filter(([c]) => c !== "Driver" && c !== "7-Iron"))
+  )
+
   const home = serverHomeCourse ?? device.course
   const notes = gapNotes(rows)
   const save = (club: Club, carry: number | null) => {
@@ -168,6 +176,23 @@ export function MyBag({
 
   return (
     <div className="space-y-5">
+      {conflicts.length > 0 && (
+        <section className="rounded-xl border border-warn/40 bg-surface px-5 py-4">
+          <p className="label-xs">Carries to check</p>
+          <p className="mt-1 text-xs text-muted">These saved numbers can&apos;t all be true, so the planner is not using them. They are still saved.</p>
+          <ul className="mt-2 divide-y divide-fg/[0.04]">
+            {conflicts.map((c) => (
+              <li key={c.club} className="flex min-h-[48px] items-center justify-between gap-3 py-1">
+                <span className="text-sm text-warn">{c.text}</span>
+                <button type="button" onClick={() => save(c.club, null)} className="flex min-h-[44px] shrink-0 items-center text-sm font-semibold text-accent hover:underline">
+                  Use an estimate
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="rounded-xl border border-fg/[0.06] bg-surface">
         <div className="flex items-center justify-between gap-3 px-5 pt-4">
           <p className="label-xs">Clubs</p>
