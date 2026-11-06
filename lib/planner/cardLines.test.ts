@@ -33,7 +33,7 @@ describe("strategyLabel and otherOption", () => {
   type C = { club: string; strategy?: "smart" | "go" }
   const smart: C = { club: "7-Iron" }
   const go: C = { club: "6-Iron" }
-  const options = { safer: smart, lowest: go, same: false }
+  const options = { safer: smart, lowest: go, same: false, tied: [smart] }
   it("labels the chosen option only when the two differ", () => {
     expect(strategyLabel(options, smart)).toBe("Smart play")
     expect(strategyLabel(options, { ...go, strategy: "go" } as C)).toBe("Go for it")

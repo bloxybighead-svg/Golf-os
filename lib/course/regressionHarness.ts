@@ -6,18 +6,21 @@
 import fixture from "./__fixtures__/colts-neck-3-6.json"
 import zonesFile from "./__fixtures__/colts-neck-3-6-zones.json"
 import profileFile from "@/lib/golfer/__fixtures__/synthetic-fitted-profile.json"
-import { fillBag, CALIBRATED_DEFAULT_BAG, canonicalClub } from "@/lib/golfer/bag"
+import { fillBag, CALIBRATED_DEFAULT_BAG, canonicalClub, DEFAULT_BAG } from "@/lib/golfer/bag"
 import { generateFromFittedProfile, type FittedProfile } from "@/lib/golfer/fitted"
 import { getBaseline } from "./baseline"
 import { assessHoleDataQuality, estimatedFairwayCorridor } from "./dataQuality"
-import { distanceYds, type LatLng } from "./geo"
+import { bearingDeg, distanceYds, lineLengthYds, pointAlongLine, type LatLng } from "./geo"
+import { buildElevationField } from "./elevation"
+import pebbleFixture from "./__fixtures__/pebble-h1.json"
+import { fullBagShots } from "@/lib/golfer/bagShots"
 import { buildLieMap, type UserZone } from "./lies"
 import { buildLookahead, longestTotalYds } from "./lookahead"
 import { obZonesFor, type ObTag } from "./obTags"
 import type { CourseFeature, CourseHole } from "./overpass"
 import type { ClubShots, OptimizedClubPlan } from "./plan"
 import { optionsFor, rankWithSpread } from "./rankOptions"
-import { needsLookahead, ON_COURSE_SPREAD, penaltyShare, type Options } from "./strategy"
+import { needsLookahead, ON_COURSE_SPREAD, penaltyShare, smartRule, type Options } from "./strategy"
 import type { ShotConditions } from "./playsLike"
 import { holePinFor } from "@/lib/planner/geometry"
 
@@ -81,4 +84,44 @@ export function table(rows: OptimizedClubPlan[]): string {
       return `${r.club.padEnd(8)} total ${left.toFixed(0).padStart(3)}  strokes ${r.plan.expectedStrokes.toFixed(3)}  pen ${(penaltyShare(r.plan) * 100).toFixed(1).padStart(4)}% (oob ${(r.plan.lieShare.oob * 100).toFixed(1)} water ${(r.plan.lieShare.water * 100).toFixed(1)} trees ${(r.plan.lieShare.trees * 100).toFixed(1)})  aim ${r.offsetYds.toFixed(0)}`
     })
     .join("\n")
+}
+
+// ---- Pebble Beach hole 1 (the planner's demo course), live conditions ---------
+// The fixture is the cached OpenStreetMap geometry trimmed to the area around hole 1 (ODbL, see its _attribution).
+// The golfer is a handicap-estimate bag, and the conditions are built by hand to match a live card: an 11 mph
+// headwind, 59 F against carries measured at 70 F, and 7 yd of climb (21 ft) from tee to green.
+
+export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number } = {}): Case & { toPin: number } {
+  const live = opts.live ?? true
+  const hole = pebbleFixture.hole as unknown as CourseHole
+  const features = pebbleFixture.features as unknown as CourseFeature[]
+  const pin = holePinFor(hole, features)
+  const from = hole.line[0]
+  const lies = buildLieMap(pebbleFixture.course as LatLng, features, pebbleFixture.coast as LatLng[][], [], {
+    boundary: pebbleFixture.boundary as never,
+    lines: pebbleFixture.lines as never,
+  })
+  const total = lineLengthYds(hole.line)
+  const conditions: ShotConditions | null = live
+    ? {
+        wind: { speedMph: 11, fromDeg: bearingDeg(from, pin) },
+        elevation: buildElevationField(Array.from({ length: 12 }, (_, i) => ({ ...pointAlongLine(hole.line, (total * i) / 11), ft: (21 * i) / 11 }))),
+        temperatureF: 59,
+        baselineF: 70,
+      }
+    : null
+  const bag = fullBagShots({ myBag: null, handicap, typed: {}, bag: DEFAULT_BAG })
+  const baseline = getBaseline(handicap)
+  const toPin = distanceYds(from, pin)
+  const t0 = performance.now()
+  const ranking = rankWithSpread(bag, { from, aim: pin, pin, lies, startLie: "tee", baseline, conditions }, {
+    spread: ON_COURSE_SPREAD,
+    line: hole.line,
+    smart: smartRule(opts.risk),
+    lookahead: needsLookahead(toPin, longestTotalYds(bag, "tee"))
+      ? (clubs) => buildLookahead({ clubs, from, pin, line: hole.line, lies, baseline, conditions })
+      : undefined,
+  })
+  const ms = performance.now() - t0
+  return { ranking, options: optionsFor(ranking, smartRule(opts.risk)) as Options<OptimizedClubPlan>, ms, toPin }
 }

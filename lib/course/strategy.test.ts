@@ -5,8 +5,8 @@ import { buildLookahead, longestTotalYds } from "./lookahead"
 import { hasOobBesideLine, obBand, obBandsFor, obZonesFor } from "./obTags"
 import { bestAim, evaluateClub, type ClubShots, type OptimizedClubPlan } from "./plan"
 import { createRankHandler, rankKey, type LieInputs, type RankMessage } from "./rankRequest"
-import { optionsFor, rankWithSpread, tradeoffText } from "./rankOptions"
-import { sampleBag, rankColtsNeck, table, TEST_HANDICAP } from "./regressionHarness"
+import { optionsFor, rankWithSpread, tieText, tradeoffText } from "./rankOptions"
+import { pebbleH1, sampleBag, rankColtsNeck, table, TEST_HANDICAP } from "./regressionHarness"
 import { getBaseline } from "./baseline"
 import { clampSpread } from "./spreadSetting"
 import {
@@ -17,7 +17,9 @@ import {
   penaltyShare,
   RISK_STOPS,
   SMART_MAX_PENALTY_RATE,
+  SMART_OVER_CAP_MULTIPLIER,
   SMART_RISK_STROKES,
+  smartCost,
   smartRule,
   widenShots,
 } from "./strategy"
@@ -55,10 +57,80 @@ describe("the two options", () => {
     expect(r?.safer.club).toBe("3-Wood")
   })
 
-  it("the backstop is 10%: a club at 10% can be chosen, one a hair over is only chosen when nothing is under it", () => {
+  it("the penalty cap is soft: 10% is where the charge triples, not where a club is thrown out", () => {
     expect(SMART_MAX_PENALTY_RATE).toBe(0.1)
+    expect(SMART_OVER_CAP_MULTIPLIER).toBe(3)
+    // A hair over 10% no longer drops the Driver: it costs a hair more.
     expect(two([opt("Driver", 4.0, 0.1), opt("3-Wood", 4.16, 0)])?.safer.club).toBe("Driver") // 4.15 against 4.16
-    expect(two([opt("Driver", 4.0, 0.101), opt("3-Wood", 4.16, 0)])?.safer.club).toBe("3-Wood") // Driver is 4.1515 but over the backstop
+    expect(two([opt("Driver", 4.0, 0.101), opt("3-Wood", 4.16, 0)])?.safer.club).toBe("Driver") // 4.1515 + 0.0045 = 4.156 against 4.16
+    // Well over it, the steeper charge does: 16% is 0.15 + 6 x 0.045 = 0.42 strokes.
+    expect(two([opt("Driver", 4.0, 0.16), opt("3-Wood", 4.3, 0)])?.safer.club).toBe("3-Wood")
+  })
+
+  it("continuity: smartCost has no step at the cap, and the charge triples across it", () => {
+    const cost = (p: number) => smartCost(4, p, SMART_RISK_STROKES)
+    let last = cost(0.09)
+    for (let p = 0.0901; p <= 0.1101; p += 0.0001) {
+      const c = cost(p)
+      // One step of 0.0001 moves the cost by at most the steeper rate x the step.
+      expect(c - last, `at ${p.toFixed(4)}`).toBeGreaterThan(0)
+      expect(c - last, `at ${p.toFixed(4)}`).toBeLessThanOrEqual(SMART_RISK_STROKES * SMART_OVER_CAP_MULTIPLIER * 0.0001 + 1e-12)
+      last = c
+    }
+    expect(cost(0.1 + 1e-9) - cost(0.1 - 1e-9)).toBeLessThan(1e-6)
+    expect((cost(0.09) - cost(0.08)) / 0.01).toBeCloseTo(SMART_RISK_STROKES, 6)
+    expect((cost(0.12) - cost(0.11)) / 0.01).toBeCloseTo(SMART_RISK_STROKES * SMART_OVER_CAP_MULTIPLIER, 6)
+  })
+
+  it("tie band: clubs whose cost is within one standard error of the best come back together, the fewest strokes first", () => {
+    // Costs are 5.39, 5.38, 5.381 and 5.50 with 0.01 of noise each: the first three are tied, the fewest strokes is the 5-Iron.
+    const rows = [
+      { club: "5-Iron", strokes: 5.3, penalty: 0.06, se: 0.01 }, // 5.39
+      { club: "6-Iron", strokes: 5.32, penalty: 0.04, se: 0.01 }, // 5.38
+      { club: "8-Iron", strokes: 5.351, penalty: 0.02, se: 0.01 }, // 5.381
+      { club: "PW", strokes: 5.5, penalty: 0, se: 0.01 }, // 5.50: well outside the noise
+    ]
+    const r = lowestAndSafer(rows, (x) => x)!
+    expect(r.tied.map((x) => x.club).sort()).toEqual(["5-Iron", "6-Iron", "8-Iron"])
+    expect(r.safer.club).toBe("5-Iron") // fewest strokes within the band
+    // Without noise estimates there is no band: the cheapest wins, as before.
+    const exact = lowestAndSafer(rows.map(({ se: _se, ...x }) => x), (x) => x)!
+    expect(exact.tied.map((x) => x.club)).toEqual(["6-Iron"])
+    expect(exact.safer.club).toBe("6-Iron")
+    // Pairwise noise: a club 0.025 behind is tied only when the two standard errors allow it (0.0283 here, 0.0206 against C).
+    const wide = [
+      { club: "A", strokes: 5.0, penalty: 0, se: 0.02 },
+      { club: "B", strokes: 5.025, penalty: 0, se: 0.02 },
+      { club: "C", strokes: 5.025, penalty: 0, se: 0.005 },
+    ]
+    expect(lowestAndSafer(wide, (x) => x)!.tied.map((x) => x.club)).toEqual(["A", "B"])
+  })
+
+  it("tie band: the card line names the clubs, longest first, and is absent without a tie", () => {
+    const c = (club: string, meanTotalYds: number) => ({ club, plan: { meanTotalYds } }) as unknown as OptimizedClubPlan
+    const five = c("5-Iron", 170)
+    const six = c("6-Iron", 160)
+    const eight = c("8-Iron", 140)
+    expect(tieText({ lowest: five, safer: five, same: true, tied: [five] })).toBeNull()
+    expect(tieText({ lowest: five, safer: eight, same: false, tied: [eight, five] })).toBe("5-Iron and 8-Iron play about the same — hit the one you hit straightest.")
+    expect(tieText({ lowest: five, safer: eight, same: false, tied: [eight, five, six] })).toBe("5-Iron, 6-Iron and 8-Iron play about the same — hit the one you hit straightest.")
+  })
+
+  it("Pebble Beach hole 1, live card (11 mph into, +7 yd uphill, 59 F): the pick at 10 and 18 handicap", () => {
+    for (const [hcp, pick, tied] of [
+      [10, "9-Iron", ["8-Iron", "9-Iron"]],
+      [18, "8-Iron", ["6-Iron", "7-Iron", "8-Iron", "LW", "PW"]],
+    ] as const) {
+      const c = pebbleH1(hcp)
+      const msg = `handicap ${hcp}: Smart ${c.options.safer.club}, tied ${c.options.tied.map((t) => t.club).join(",")}
+${table(c.ranking)}`
+      expect(c.toPin, msg).toBeCloseTo(364, -1)
+      expect(c.options.safer.club, msg).toBe(pick)
+      expect(c.options.tied.map((t) => t.club).sort(), msg).toEqual([...tied])
+      // The Driver is over the cap here (it was dropped outright before); it stays in the ranking with the steeper charge.
+      const driver = c.ranking.find((r) => r.club === "Driver")!
+      expect(penaltyShare(driver.plan), msg).toBeGreaterThan(SMART_MAX_PENALTY_RATE)
+    }
   })
 
   it("no cliff: 3.9% against 4.1% penalty at equal strokes picks the same club", () => {

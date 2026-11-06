@@ -166,9 +166,9 @@ describe("planner components render (smoke)", () => {
     const picked = renderToStaticMarkup(card({ chosen: threeWood, clubChoice: "3-Wood", atBestAim: false }))
     expect(picked).toContain("Back to best club")
     expect(picked).toContain("Use best aim")
-    const options = { safer: fourIron, lowest: threeWood, same: false } as never
+    const options = { safer: fourIron, lowest: threeWood, same: false, tied: [fourIron] } as never
     expect(renderToStaticMarkup(card({ options }))).toContain("Smart play")
-    expect(renderToStaticMarkup(card({ options: { safer: fourIron, lowest: fourIron, same: true } as never }))).not.toContain("Smart play")
+    expect(renderToStaticMarkup(card({ options: { safer: fourIron, lowest: fourIron, same: true, tied: [fourIron] } as never }))).not.toContain("Smart play")
   })
 
   it("ResultCard: more than 25% unmapped puts one warning icon beside the club, with no text", () => {

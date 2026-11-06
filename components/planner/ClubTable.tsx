@@ -22,7 +22,7 @@ export interface ClubTableProps {
   /** The scoring baseline's label ("PGA TOUR" or "3.0 handicap"). */
   baselineLabel: string
   onPick: (r: OptimizedClubPlan) => void
-  /** Smart play is on: clubs over the penalty limit are dimmed and tagged. Go for it has no limit. */
+  /** Smart play is on: clubs over the penalty cap are dimmed and tagged. Go for it has no cap. */
   smartMode?: boolean
 }
 
@@ -61,7 +61,7 @@ export function ClubTable({ ranking, pending, rankMs, shownLies, best, chosen, e
             </button>
           )}
           {over && (
-            <span className="ml-1 text-[10px] font-normal text-danger" title={`Over the ${Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty limit Smart play allows`}>
+            <span className="ml-1 text-[10px] font-normal text-danger" title={`Over the ${Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty, where Smart play's charge triples`}>
               over {Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty
             </span>
           )}

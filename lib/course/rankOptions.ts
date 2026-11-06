@@ -36,7 +36,7 @@ const sameAim = (a: OptimizedClubPlan, b: OptimizedClubPlan) => a.club === b.clu
 
 /** The card's two options from a ranking made with the same `smart` rule. */
 export function optionsFor(ranking: OptimizedClubPlan[], rule: SmartRule = smartRule()): Options<OptimizedClubPlan> | null {
-  const view = (r: OptimizedClubPlan) => ({ strokes: r.plan.expectedStrokes, penalty: penaltyShare(r.plan) })
+  const view = (r: OptimizedClubPlan) => ({ strokes: r.plan.expectedStrokes, penalty: penaltyShare(r.plan), se: r.plan.strokesSe })
   return lowestAndSafer(goRows(ranking), view, smartRows(ranking), sameAim, rule)
 }
 
@@ -48,4 +48,16 @@ export function tradeoffText(o: Options<OptimizedClubPlan>): string | null {
   if (ps >= pg) return null
   const cost = Math.max(0, o.safer.plan.expectedStrokes - o.lowest.plan.expectedStrokes)
   return `Smart play gives up ${cost.toFixed(2)} strokes to cut ${penaltyWord(o.lowest.plan)} from ${pctText(pg)} to ${pctText(ps)}.`
+}
+
+/**
+ * "5-Iron, 6-Iron and 8-Iron play about the same — hit the one you hit straightest." Null unless Smart play has a
+ * tie. The clubs are named longest to shortest (by average finish). Every club is named, not a "A to B" range: the
+ * tied clubs need not be neighbours in the bag, and a range would claim the ones between them too.
+ */
+export function tieText(o: Options<OptimizedClubPlan>): string | null {
+  if (o.tied.length < 2) return null
+  const clubs = [...o.tied].sort((a, b) => b.plan.meanTotalYds - a.plan.meanTotalYds).map((r) => r.club)
+  const names = clubs.length === 2 ? `${clubs[0]} and ${clubs[1]}` : `${clubs.slice(0, -1).join(", ")} and ${clubs[clubs.length - 1]}`
+  return `${names} play about the same — hit the one you hit straightest.`
 }

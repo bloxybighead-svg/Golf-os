@@ -7,8 +7,10 @@
 //    costs a smooth amount, so a club never flips on a tiny change. Trees are
 //    already scored by cost.ts (the recovery column); they are shown as
 //    the card's risk line but are not in this objective. Each club is first aimed by
-//    the same objective. A club + aim above SMART_MAX_PENALTY_RATE is only
-//    chosen when nothing is under it.
+//    the same objective. SMART_MAX_PENALTY_RATE is a soft cap: above it each extra point of penalty costs
+//    SMART_OVER_CAP_MULTIPLIER times as much, so the cost is continuous (no cliff at the cap) but a club well over it
+//    has to save a lot of strokes to be chosen. Clubs whose cost is within one standard error of the best are tied,
+//    and Smart play defaults to the one with the fewest expected strokes among them.
 // The card shows both and the golfer taps the one that fits how they feel.
 // Both come from the SAME model: shots are scored with the golfer's misses
 // widened to on-course reality (ON_COURSE_SPREAD), so a club's numbers never
@@ -34,10 +36,17 @@ export const RISK_STOPS = [
 ] as const
 
 /**
- * Backstop on Smart play: a club + aim with more than this share of shots out of bounds or in water is only chosen
- * when nothing is under it. Also the line the card and table flag in red. ESTIMATE: 1 in 10.
+ * Where Smart play's penalty charge steepens: up to this share of shots out of bounds or in water each point costs
+ * SMART_RISK_STROKES, above it SMART_OVER_CAP_MULTIPLIER times that. Also the line the card and table flag in red.
+ * ESTIMATE: 1 in 10.
  */
 export const SMART_MAX_PENALTY_RATE = 0.1
+
+/** How many times SMART_RISK_STROKES a point of penalty above SMART_MAX_PENALTY_RATE costs (3 = 4.5 strokes per 100% at Normal). ESTIMATE; replaces a hard cutoff that flipped the pick at exactly the cap. */
+export const SMART_OVER_CAP_MULTIPLIER = 3
+
+/** Smart play treats clubs as tied when their costs differ by less than this many standard errors (of the difference). Same rule as the table's "~ tie". */
+export const SMART_TIE_SE = 1
 
 export interface SmartRule {
   riskStrokes: number
@@ -46,8 +55,12 @@ export interface SmartRule {
 
 export const smartRule = (riskStrokes: number = SMART_RISK_STROKES): SmartRule => ({ riskStrokes, maxPenalty: SMART_MAX_PENALTY_RATE })
 
-/** Smart play's objective (lower is better): expected strokes plus the strokes the penalty share is worth. */
-export const smartCost = (strokes: number, penalty: number, riskStrokes: number): number => strokes + riskStrokes * penalty
+/**
+ * Smart play's objective (lower is better): expected strokes plus the strokes the penalty share is worth. The charge is
+ * riskStrokes per unit of penalty up to `cap` and SMART_OVER_CAP_MULTIPLIER times that above it: continuous at the cap.
+ */
+export const smartCost = (strokes: number, penalty: number, riskStrokes: number, cap: number = SMART_MAX_PENALTY_RATE): number =>
+  strokes + riskStrokes * (Math.min(penalty, cap) + SMART_OVER_CAP_MULTIPLIER * Math.max(0, penalty - cap))
 
 /**
  * Every club's offline spread (start line + curve) is multiplied by this before scoring.
@@ -130,21 +143,23 @@ export function widenShots(club: ClubShots, spread: number): ClubShots {
 export interface Options<T> {
   /** GO FOR IT: the fewest expected strokes. */
   lowest: T
-  /** SMART PLAY (the default): the lowest smartCost, among the options within SMART_MAX_PENALTY_RATE when any are. */
+  /** SMART PLAY (the default): among the clubs tied for the lowest smartCost, the one with the fewest expected strokes. */
   safer: T
   /** Smart play and Go for it are the same play (same club, same aim), so there is only one option. */
   same: boolean
+  /** Every Smart-play row whose smartCost is within SMART_TIE_SE standard errors of the best (includes `safer`); just `safer` when nothing ties. */
+  tied: T[]
 }
 
 /**
  * The two options. `ranking` is every club at its strokes-best aim (Go for it); `smartRanking` is every club at its
  * Smart-play aim (the same clubs, aimed away from trouble) and defaults to `ranking`.
- * Go for it = fewest strokes. Smart play = lowest smartCost among those with penalty <= rule.maxPenalty, or among
- * all of them when none is.
+ * Go for it = fewest strokes. Smart play = the lowest smartCost (soft penalty cap, see smartCost); clubs within
+ * SMART_TIE_SE standard errors of it are tied and the fewest expected strokes among them is the default.
  */
 export function lowestAndSafer<T>(
   ranking: T[],
-  view: (t: T) => { strokes: number; penalty: number },
+  view: (t: T) => { strokes: number; penalty: number; se?: number },
   smartRanking: T[] = ranking,
   sameChoice: (a: T, b: T) => boolean = (a, b) => a === b,
   rule: SmartRule = smartRule()
@@ -153,11 +168,12 @@ export function lowestAndSafer<T>(
   const go = ranking.map((o) => ({ o, ...view(o) })).reduce((a, b) => (b.strokes < a.strokes ? b : a))
   const sm = smartRanking.map((o) => {
     const v = view(o)
-    return { o, ...v, cost: smartCost(v.strokes, v.penalty, rule.riskStrokes) }
+    return { o, ...v, se: v.se ?? 0, cost: smartCost(v.strokes, v.penalty, rule.riskStrokes, rule.maxPenalty) }
   })
-  const eligible = sm.filter((x) => x.penalty <= rule.maxPenalty + 1e-9)
-  const smart = (eligible.length > 0 ? eligible : sm).reduce((a, b) => (b.cost < a.cost ? b : a))
-  return { lowest: go.o, safer: smart.o, same: sameChoice(smart.o, go.o) }
+  const best = sm.reduce((a, b) => (b.cost < a.cost ? b : a))
+  const band = sm.filter((x) => x.cost - best.cost <= SMART_TIE_SE * Math.hypot(x.se, best.se) + 1e-12)
+  const smart = band.reduce((a, b) => (b.strokes < a.strokes ? b : a))
+  return { lowest: go.o, safer: smart.o, same: sameChoice(smart.o, go.o), tied: band.map((x) => x.o) }
 }
 
 /** "3%" style, whole percent; under half a percent shows "<1%" so a small risk never reads as none. */

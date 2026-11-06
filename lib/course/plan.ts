@@ -278,8 +278,8 @@ export interface AimResult {
 }
 
 /**
- * The aim Smart play uses for a club: among the aims tried, the lowest smartCost (strokes + risk x OB/water share)
- * within the penalty cap; when none is, the lowest smartCost of all. Searched on the search half and scored on the
+ * The aim Smart play uses for a club: among the aims tried, the lowest smartCost (strokes + risk x OB/water share,
+ * steeper above the penalty cap). Searched on the search half and scored on the
  * held-out half, like the strokes-best aim.
  */
 export interface SafeAim {
@@ -366,14 +366,11 @@ export function bestAimFrom(
     const d = scoreAt(a).strokes - scoreAt(b).strokes
     return d < -1e-12 || (Math.abs(d) <= 1e-12 && Math.abs(a) < Math.abs(b))
   }
-  // Smart play's order: under the penalty cap beats over it; otherwise the lower smartCost, a tie keeping the smaller offset.
+  // Smart play's order: the lower smartCost (soft penalty cap), a tie keeping the smaller offset.
   const safeBetter = (a: number, b: number) => {
     const pa = scoreAt(a)
     const pb = scoreAt(b)
-    const ea = pa.penalty <= smart!.maxPenalty
-    const eb = pb.penalty <= smart!.maxPenalty
-    if (ea !== eb) return ea
-    const d = smartCost(pa.strokes, pa.penalty, smart!.riskStrokes) - smartCost(pb.strokes, pb.penalty, smart!.riskStrokes)
+    const d = smartCost(pa.strokes, pa.penalty, smart!.riskStrokes, smart!.maxPenalty) - smartCost(pb.strokes, pb.penalty, smart!.riskStrokes, smart!.maxPenalty)
     return d < -1e-12 || (Math.abs(d) <= 1e-12 && Math.abs(a) < Math.abs(b))
   }
   const pickBest = (better: (a: number, b: number) => boolean) => {

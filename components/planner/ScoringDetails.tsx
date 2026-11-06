@@ -36,8 +36,7 @@ export function ScoringDetails({
         is the safe, set-up-for-par play: the club and aim with the lowest strokes plus a charge for every
         shot out of bounds or in the water (a penalty stroke). How big that charge is is the Risk setting on You, under
         Planner. Trees are already in the strokes, so they are shown beside the penalty but not charged twice. Each club
-        is aimed away from the trouble by the same rule. A club with more than {Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty
-        is only chosen when no other is under it. Go for it has no charge. When both are the same play there is just one
+        is aimed away from the trouble by the same rule. Past {Math.round(SMART_MAX_PENALTY_RATE * 100)}% penalty the charge triples, so a club that risky has to save a lot of strokes to be picked. Clubs whose cost is within one standard error of the best are treated as tied, and Smart play defaults to the one with the fewest expected strokes. Go for it has no charge. When both are the same play there is just one
         option. Your misses are
         widened to {onCourseSpread.toFixed(2)}x of what the range data shows, since range data is tighter than real rounds
         (change it on You, under Planner). On par 5s and par 4s over 440 yd, each tee shot is valued by the best next shot

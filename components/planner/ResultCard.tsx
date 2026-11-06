@@ -10,6 +10,7 @@ import { isLowConfidence, type OptimizedClubPlan } from "@/lib/course/plan"
 import type { Options } from "@/lib/course/strategy"
 import { aimText } from "@/lib/planner/aimText"
 import { playsShown, strategyLabel } from "@/lib/planner/cardLines"
+import { tieText } from "@/lib/course/rankOptions"
 import type { DetailsSection } from "./DetailsPanel"
 import { Stat } from "./ui"
 
@@ -53,6 +54,8 @@ export function ResultCard({
   // Follows the aim marker: at its best aim it is the ranking's number, anywhere else the same shots aimed where the marker is.
   const strokes = !atBestAim && chosenAtAim != null ? chosenAtAim : chosen.plan.expectedStrokes
   const label = strategyLabel(options, chosen)
+  // Smart play's pick has company within noise: say so, so the golfer picks the club they hit straightest.
+  const tie = options && chosen.strategy !== "go" && options.safer.club === chosen.club ? tieText(options) : null
   const center = Math.round(greenYards?.center ?? distPin ?? NaN)
   const plays = Number.isFinite(center) ? playsShown(center, pinPlaysLike?.plays) : null
   return (
@@ -89,6 +92,8 @@ export function ResultCard({
           {plays != null && <span className="text-sm text-accent"> · plays {plays}</span>}
         </p>
       )}
+
+      {tie && <p className="mt-2 text-xs text-fg-3">{tie}</p>}
 
       <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 md:min-h-9">
         {label && <p className="text-xs text-muted">{label}</p>}
