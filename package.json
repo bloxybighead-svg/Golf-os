@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "lint": "next lint"
+    "lint": "next lint",
+    "sim:fetch": "esbuild scripts/fetch-course.ts --bundle --platform=node --format=cjs --outfile=.sim/fetch.cjs --log-level=error && node .sim/fetch.cjs",
+    "sim:validate": "esbuild scripts/sim-validate.ts --bundle --platform=node --format=cjs --alias:@=. --outfile=.sim/validate.cjs --log-level=error && node .sim/validate.cjs"
   },
   "dependencies": {
     "@serwist/next": "^9.5.13",

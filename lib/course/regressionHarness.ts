@@ -92,7 +92,7 @@ export function table(rows: OptimizedClubPlan[]): string {
 // The golfer is a handicap-estimate bag, and the conditions are built by hand to match a live card: an 11 mph
 // headwind, 59 F against carries measured at 70 F, and 7 yd of climb (21 ft) from tee to green.
 
-export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number; bag?: Club[] } = {}): Case & { toPin: number } {
+export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number; bag?: Club[]; lookahead?: boolean } = {}): Case & { toPin: number } {
   const live = opts.live ?? true
   const hole = pebbleFixture.hole as unknown as CourseHole
   const features = pebbleFixture.features as unknown as CourseFeature[]
@@ -119,7 +119,7 @@ export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number
     spread: ON_COURSE_SPREAD,
     line: hole.line,
     smart: smartRule(opts.risk),
-    lookahead: needsLookahead(toPin, longestTotalYds(bag, "tee"))
+    lookahead: (opts.lookahead ?? true) && needsLookahead(toPin, longestTotalYds(bag, "tee"))
       ? (clubs) => buildLookahead({ clubs, from, pin, line: hole.line, lies, baseline, conditions })
       : undefined,
   })

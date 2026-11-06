@@ -52,3 +52,4 @@ shot-pattern-simulator/reference_data/dillon_profile.json
 
 # personal Claude Code settings
 .claude/settings.local.json
+.sim/
