@@ -106,14 +106,18 @@ describe("the two options", () => {
     expect(lowestAndSafer(wide, (x) => x)!.tied.map((x) => x.club)).toEqual(["A", "B"])
   })
 
-  it("tie band: the card line names the clubs, longest first, and is absent without a tie", () => {
-    const c = (club: string, meanTotalYds: number) => ({ club, plan: { meanTotalYds } }) as unknown as OptimizedClubPlan
-    const five = c("5-Iron", 170)
-    const six = c("6-Iron", 160)
-    const eight = c("8-Iron", 140)
-    expect(tieText({ lowest: five, safer: five, same: true, tied: [five] })).toBeNull()
-    expect(tieText({ lowest: five, safer: eight, same: false, tied: [eight, five] })).toBe("5-Iron and 8-Iron play about the same — hit the one you hit straightest.")
-    expect(tieText({ lowest: five, safer: eight, same: false, tied: [eight, five, six] })).toBe("5-Iron, 6-Iron and 8-Iron play about the same — hit the one you hit straightest.")
+  it("tie band: the card line names the pick and tied clubs within one SE of its strokes, best first, at most three", () => {
+    const c = (club: string, expectedStrokes: number, strokesSe = 0.02) => ({ club, plan: { expectedStrokes, strokesSe } }) as unknown as OptimizedClubPlan
+    const five = c("5-Iron", 5.3)
+    const six = c("6-Iron", 5.31)
+    const seven = c("7-Iron", 5.32)
+    const eight = c("8-Iron", 5.325)
+    const lw = c("LW", 5.6) // tied on cost through low penalty, but 0.3 strokes worse
+    const line = (tied: OptimizedClubPlan[], safer = five) => tieText({ lowest: safer, safer, same: true, tied })
+    expect(line([five])).toBeNull()
+    expect(line([five, lw])).toBeNull() // LW is clearly worse than the pick, so nothing is tied on the card
+    expect(line([lw, eight, five])).toBe("5-Iron and 8-Iron play about the same — hit the one you hit straightest.")
+    expect(line([eight, six, five, seven])).toBe("5-Iron, 6-Iron and 7-Iron play about the same — hit the one you hit straightest.")
   })
 
   it("Pebble Beach hole 1, live card (11 mph into, +7 yd uphill, 59 F): the pick at 10 and 18 handicap", () => {
@@ -130,6 +134,10 @@ ${table(c.ranking)}`
       // The Driver is over the cap here (it was dropped outright before); it stays in the ranking with the steeper charge.
       const driver = c.ranking.find((r) => r.club === "Driver")!
       expect(penaltyShare(driver.plan), msg).toBeGreaterThan(SMART_MAX_PENALTY_RATE)
+      // The tie line never suggests a wedge on a 364 yd hole, and names at most three clubs.
+      const line = tieText(c.options) ?? ""
+      expect(line, msg).not.toMatch(/(LW|SW|GW)/)
+      expect(line.split(/, | and /).length, msg).toBeLessThanOrEqual(3)
     }
   })
 

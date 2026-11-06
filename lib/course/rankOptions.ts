@@ -50,14 +50,23 @@ export function tradeoffText(o: Options<OptimizedClubPlan>): string | null {
   return `Smart play gives up ${cost.toFixed(2)} strokes to cut ${penaltyWord(o.lowest.plan)} from ${pctText(pg)} to ${pctText(ps)}.`
 }
 
+/** The card line names at most this many tied clubs. */
+export const TIE_LINE_MAX_CLUBS = 3
+
 /**
- * "5-Iron, 6-Iron and 8-Iron play about the same — hit the one you hit straightest." Null unless Smart play has a
- * tie. The clubs are named longest to shortest (by average finish). Every club is named, not a "A to B" range: the
- * tied clubs need not be neighbours in the bag, and a range would claim the ones between them too.
+ * "8-Iron and 7-Iron play about the same — hit the one you hit straightest." Null unless Smart play has a tie.
+ * Names the pick and the tied clubs that are also within one combined standard error of its expected strokes (a club
+ * can tie on cost by having less penalty yet still be clearly worse on strokes: not one to suggest), best first, at
+ * most TIE_LINE_MAX_CLUBS. Every club is named, not an "A to B" range: tied clubs need not be neighbours in the bag.
  */
 export function tieText(o: Options<OptimizedClubPlan>): string | null {
-  if (o.tied.length < 2) return null
-  const clubs = [...o.tied].sort((a, b) => b.plan.meanTotalYds - a.plan.meanTotalYds).map((r) => r.club)
-  const names = clubs.length === 2 ? `${clubs[0]} and ${clubs[1]}` : `${clubs.slice(0, -1).join(", ")} and ${clubs[clubs.length - 1]}`
+  const pick = o.safer.plan
+  const named = o.tied
+    .filter((r) => r === o.safer || r.plan.expectedStrokes - pick.expectedStrokes <= Math.hypot(r.plan.strokesSe, pick.strokesSe))
+    .sort((a, b) => a.plan.expectedStrokes - b.plan.expectedStrokes)
+    .slice(0, TIE_LINE_MAX_CLUBS)
+    .map((r) => r.club)
+  if (named.length < 2) return null
+  const names = named.length === 2 ? `${named[0]} and ${named[1]}` : `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`
   return `${names} play about the same — hit the one you hit straightest.`
 }
