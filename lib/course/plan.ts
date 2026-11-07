@@ -445,7 +445,7 @@ export const RANKING_SHOT_CAP = 400
  * which is 6 shots of 200 -- one ball more or less flips a club in or out of it.
  * With ~800 shots the share is good to about half a point. SPEED SETTING.
  */
-export const RANK_HOLDOUT_CAP = 600
+export const RANK_HOLDOUT_CAP = 1300
 
 /** The ranking sweeps the aim at this step first, then refines at stepYds around the best. SPEED SETTING: cuts 61 aim evaluations to about 28. */
 export const RANK_COARSE_STEP_YDS = 6

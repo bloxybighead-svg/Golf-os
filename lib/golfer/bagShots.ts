@@ -8,7 +8,7 @@ import { generateCustomGolferShots, type Tendency } from "./build"
 import type { MyBag } from "./shotProfile"
 import type { Club } from "./tables"
 
-const HANDICAP_SHOTS_PER_CLUB = 1000
+const HANDICAP_SHOTS_PER_CLUB = 1500
 
 /** Plausible carries for the two clubs the setup screen asks for; a number outside is ignored, so a half-typed one doesn't warp the bag. Other clubs use the baseline's range. */
 const TYPED_RANGE: Partial<Record<Club, readonly [number, number]>> = { Driver: [120, 380], "7-Iron": [60, 240] }
@@ -57,15 +57,26 @@ function applyTypedCarries(clubs: ClubShots[], typed: Partial<Record<Club, numbe
   })
 }
 
-function handicapShots(handicap: number, typed: Partial<Record<Club, number>>, tendency: Tendency | undefined, bag: Club[]): ClubShots[] {
-  const all = generateCustomGolferShots({ handicapIndex: handicap, knownCarries: typed, tendency }, HANDICAP_SHOTS_PER_CLUB * bag.length, 42, bag)
-  const by = new Map<string, { carryYds: number; offlineYds: number }[]>()
-  for (const s of all) {
-    const list = by.get(s.club) ?? []
-    list.push({ carryYds: s.carryYds, offlineYds: s.offlineYds })
-    by.set(s.club, list)
-  }
-  return Array.from(by, ([club, shots]) => ({ club, shots }))
+/** FNV-1a: a stable 31-bit seed from text, so the same key always gives the same shots. */
+export function stableSeed(key: string): number {
+  let h = 2166136261
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619)
+  return (h >>> 0) & 0x7fffffff
+}
+
+/**
+ * A handicap estimate's shots. Each club is generated on its own from a seed made of the stable key (course + hole +
+ * ball position, "" when not given) and the club's name, so adding, removing or reordering clubs never changes
+ * another club's shots. (They used to share one random stream sized by the bag, so every club's samples moved.)
+ */
+function handicapShots(handicap: number, typed: Partial<Record<Club, number>>, tendency: Tendency | undefined, bag: Club[], seedKey = ""): ClubShots[] {
+  return bag.map((club) => ({
+    club,
+    shots: generateCustomGolferShots({ handicapIndex: handicap, knownCarries: typed, tendency }, HANDICAP_SHOTS_PER_CLUB, stableSeed(`${seedKey}|${club}`), [club]).map((s) => ({
+      carryYds: s.carryYds,
+      offlineYds: s.offlineYds,
+    })),
+  }))
 }
 
 /**
@@ -78,8 +89,10 @@ export function fullBagShots(args: {
   typed: Partial<Record<Club, number>>
   tendency?: Tendency
   bag: Club[]
+  /** Course + hole + ball position: seeds each club's estimated shots (see handicapShots). */
+  seedKey?: string
 }): ClubShots[] {
-  if (!args.myBag) return applyTypedCarries(handicapShots(args.handicap, args.typed, args.tendency, args.bag), args.typed)
+  if (!args.myBag) return applyTypedCarries(handicapShots(args.handicap, args.typed, args.tendency, args.bag, args.seedKey), args.typed)
   // Shots the golfer hit outrank a typed number (generateMyBag already leaned thin clubs on it); only a club with no shots plays at exactly the typed carry.
   const noShots = (club: string) => args.myBag!.basis[club] === "estimated"
   return applyTypedCarries(args.myBag.clubs, Object.fromEntries(Object.entries(args.typed).filter(([c]) => noShots(c))))

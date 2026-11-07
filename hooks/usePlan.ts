@@ -133,12 +133,14 @@ export function usePlan({
     // The profile object is replaced whenever it is re-fitted.
     [source, myProfile, bag, blendHandicap, typed]
   )
+  // Each estimated club is seeded from this (course + hole + ball to ~1 m) and its own name, so another club never moves its shots.
+  const seedKey = `${course?.id ?? ""}|${holeId ?? ""}|${ball ? `${ball.lat.toFixed(5)},${ball.lng.toFixed(5)}` : "tee"}`
   const fullShots: ClubShots[] = useMemo(() => {
     if (calibratedBag) {
       return calibratedBag.map((c) => ({ club: c.club, shots: c.shots }))
     }
-    return fullBagShots({ myBag, handicap, typed, tendency, bag })
-  }, [myBag, calibratedBag, handicap, typed, tendency, bag])
+    return fullBagShots({ myBag, handicap, typed, tendency, bag, seedKey })
+  }, [myBag, calibratedBag, handicap, typed, tendency, bag, seedKey])
   // Every full wedge also plays as a 3/4 and a 1/2 swing (lib/golfer/partials.ts); the ranking drops them far from the pin.
   const clubShots: ClubShots[] = useMemo(() => withPartials(fullShots, wedgeCarries), [fullShots, wedgeCarries])
 

@@ -122,10 +122,14 @@ describe("the two options", () => {
 
   it("Pebble Beach hole 1, live card (11 mph into, +7 yd uphill, 59 F): the pick at 10 and 18 handicap", () => {
     for (const [hcp, pick, tied] of [
-      // With the 5-wood and 4-hybrid in the estimate bag (they were missing): at 10 the Driver is at the cap and the clear best
-      // by cost; at 18 every wood and hybrid is 10-14% OB on this hole and the 9-Iron is still the pick.
-      [10, "Driver", ["Driver"]],
-      [18, "9-Iron", ["9-Iron", "LW"]],
+      // Per-club seeds (fix/sim-validation): each club's estimated shots are now seeded from its own name, with 1500 shots
+      // (1300 scored) instead of 1000 (600), so the Driver's penalty rate is read to about +/-0.9 points instead of +/-1.4.
+      // On the old shared stream the Driver read 10.0% OB at 10 handicap; on its own seed it reads 12.0%, which at the
+      // soft cap's 4.5 strokes per 100% costs 0.09 strokes, so 3-Wood (7% OB) now beats it by 0.06. Nothing in the model
+      // moved: this hole at 10 handicap is a near three-way tie (3-Wood, 9-Iron, 8-Iron within 0.012 strokes) and which
+      // club is on top depends on which few shots go out of bounds. At 18 every wood is 13-17% OB and PW now edges the 9-Iron.
+      [10, "3-Wood", ["3-Wood", "8-Iron", "9-Iron"]],
+      [18, "PW", ["PW"]],
     ] as const) {
       const c = pebbleH1(hcp)
       const msg = `handicap ${hcp}: Smart ${c.options.safer.club}, tied ${c.options.tied.map((t) => t.club).join(",")}
