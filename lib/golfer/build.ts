@@ -66,7 +66,8 @@ export function generateCustomGolferShots(
   input: CustomGolferInput,
   nShots: number,
   seed: number,
-  clubs?: Club[]
+  clubs?: Club[],
+  common = false
 ): GeneratedShot[] {
-  return generateShots(buildGolferConfig(input), nShots, seed, clubs)
+  return generateShots(buildGolferConfig(input), nShots, seed, clubs, common)
 }

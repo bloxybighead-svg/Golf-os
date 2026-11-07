@@ -13,8 +13,8 @@ import type { MyProfile, ShotSource } from "@/lib/planner/types"
 import { HOME_COURSE_KEY, ONBOARDED_KEY, SETTINGS_KEY, applyBaselineToDevice, cleanCarries, type Baseline } from "@/lib/golfer/baseline"
 import { COMPARE_AGAINST_EVENT, COMPARE_AGAINST_KEY, readCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
 import { readRisk, RISK_EVENT, RISK_KEY } from "@/lib/course/riskSetting"
-import { readSpread, SPREAD_EVENT, SPREAD_KEY } from "@/lib/course/spreadSetting"
-import { ON_COURSE_SPREAD, SMART_RISK_STROKES } from "@/lib/course/strategy"
+import { effectiveSpread, readSpreadOverride, SPREAD_EVENT, SPREAD_KEY } from "@/lib/course/spreadSetting"
+import { SMART_RISK_STROKES } from "@/lib/course/strategy"
 import { RECENT_KEY, type CourseHit } from "@/lib/planner/storage"
 import { cleanWedgeCarries, type PartialName } from "@/lib/golfer/partials"
 import { BAG_SYNC_DEBOUNCE_MS, SETTINGS_STAMP_KEY, decideSync, stampMs, type SyncedSettings } from "@/lib/golfer/bagSync"
@@ -86,9 +86,10 @@ export function usePlannerSettings({ calibrated, myProfile, baseline, signedIn }
     }
   }, [])
   // How much wider Par mode makes the golfer's misses (You -> Planner), saved per device.
-  const [onCourseSpread, setOnCourseSpread] = useState(ON_COURSE_SPREAD)
+  const [spreadOverride, setSpreadOverride] = useState<number | null>(null)
+  const onCourseSpread = effectiveSpread(source, spreadOverride)
   useEffect(() => {
-    const sync = () => setOnCourseSpread(readSpread())
+    const sync = () => setSpreadOverride(readSpreadOverride())
     const onStorage = (e: StorageEvent) => {
       if (e.key === SPREAD_KEY) sync()
     }

@@ -8,216 +8,223 @@
 Used: Harbour Town Golf Links, Pebble Beach Golf Links, Whistling Straits
 
 ## base
-hcp  0 (28 holes, 42000 drives): fairway 32.8% | penalty 1.9% (OB 1.3, water 0.6) | rough 55.7 trees 0.0 bunker 9.4 green 0.1 | unmapped 55.7%
-        - Harbour Town Golf Links (9 holes): fairway 22.7%, penalty 0.7%
-        - Pebble Beach Golf Links (10 holes): fairway 37.3%, penalty 4.0%
-        - Whistling Straits (9 holes): fairway 37.9%, penalty 0.8%
-        Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp  5 (28 holes, 42000 drives): fairway 30.0% | penalty 2.1% (OB 1.3, water 0.8) | rough 60.1 trees 0.4 bunker 7.4 green 0.0 | unmapped 60.1%
-        - Harbour Town Golf Links (9 holes): fairway 26.0%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 34.9%, penalty 4.2%
-        - Whistling Straits (9 holes): fairway 28.6%, penalty 0.9%
-        Smart-play pick: Driver 92.9%, wood 3.6%, hybrid 0.0%, iron 3.6%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 10 (28 holes, 42000 drives): fairway 29.7% | penalty 2.4% (OB 1.4, water 0.9) | rough 62.9 trees 0.4 bunker 4.7 green 0.0 | unmapped 62.9%
-        - Harbour Town Golf Links (9 holes): fairway 23.8%, penalty 1.2%
-        - Pebble Beach Golf Links (10 holes): fairway 34.7%, penalty 4.6%
-        - Whistling Straits (9 holes): fairway 30.0%, penalty 1.1%
+hcp  0 (28 holes, 42000 drives): fairway 43.3% | penalty 1.1% (OB 0.6, water 0.5) | rough 46.9 trees 0.1 bunker 8.6 green 0.0 | unmapped 46.9%
+        - Harbour Town Golf Links (9 holes): fairway 32.8%, penalty 0.5%
+        - Pebble Beach Golf Links (10 holes): fairway 47.6%, penalty 1.8%
+        - Whistling Straits (9 holes): fairway 49.2%, penalty 0.9%
+        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 60.0%, wood 40.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp  5 (28 holes, 42000 drives): fairway 39.6% | penalty 1.6% (OB 1.0, water 0.7) | rough 51.9 trees 0.1 bunker 6.7 green 0.0 | unmapped 51.9%
+        - Harbour Town Golf Links (9 holes): fairway 34.8%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 46.8%, penalty 2.9%
+        - Whistling Straits (9 holes): fairway 36.3%, penalty 0.5%
+        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 70.0%, wood 30.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 10 (28 holes, 42000 drives): fairway 35.6% | penalty 1.6% (OB 0.9, water 0.7) | rough 57.8 trees 0.2 bunker 4.8 green 0.0 | unmapped 57.8%
+        - Harbour Town Golf Links (9 holes): fairway 31.7%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 42.8%, penalty 2.8%
+        - Whistling Straits (9 holes): fairway 31.4%, penalty 0.6%
         Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 15 (28 holes, 42000 drives): fairway 23.0% | penalty 2.5% (OB 1.7, water 0.8) | rough 68.9 trees 0.2 bunker 5.3 green 0.0 | unmapped 68.9%
-        - Harbour Town Golf Links (9 holes): fairway 20.1%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 30.3%, penalty 5.5%
-        - Whistling Straits (9 holes): fairway 17.9%, penalty 0.9%
-        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 20 (28 holes, 42000 drives): fairway 17.6% | penalty 3.6% (OB 2.3, water 1.3) | rough 74.2 trees 0.2 bunker 4.4 green 0.0 | unmapped 74.2%
-        - Harbour Town Golf Links (9 holes): fairway 13.9%, penalty 1.1%
-        - Pebble Beach Golf Links (10 holes): fairway 25.4%, penalty 7.4%
-        - Whistling Straits (9 holes): fairway 12.7%, penalty 1.8%
-        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 15 (28 holes, 42000 drives): fairway 29.4% | penalty 1.8% (OB 1.0, water 0.8) | rough 64.8 trees 0.2 bunker 3.8 green 0.0 | unmapped 64.8%
+        - Harbour Town Golf Links (9 holes): fairway 27.5%, penalty 1.5%
+        - Pebble Beach Golf Links (10 holes): fairway 36.8%, penalty 3.1%
+        - Whistling Straits (9 holes): fairway 22.9%, penalty 0.7%
+        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 20 (28 holes, 42000 drives): fairway 21.9% | penalty 2.5% (OB 1.4, water 1.1) | rough 71.5 trees 0.1 bunker 4.0 green 0.0 | unmapped 71.5%
+        - Harbour Town Golf Links (9 holes): fairway 19.7%, penalty 1.2%
+        - Pebble Beach Golf Links (10 holes): fairway 31.5%, penalty 4.6%
+        - Whistling Straits (9 holes): fairway 13.4%, penalty 1.5%
+        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
 
-## a: spread 1.0
-hcp  0 (28 holes, 42000 drives): fairway 42.5% | penalty 1.2% (OB 0.7, water 0.4) | rough 47.2 trees 0.0 bunker 9.1 green 0.0 | unmapped 47.2%
-        - Harbour Town Golf Links (9 holes): fairway 33.4%, penalty 0.5%
-        - Pebble Beach Golf Links (10 holes): fairway 49.9%, penalty 2.3%
-        - Whistling Straits (9 holes): fairway 43.3%, penalty 0.6%
-        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp  5 (28 holes, 42000 drives): fairway 40.2% | penalty 1.3% (OB 0.7, water 0.6) | rough 52.3 trees 0.1 bunker 6.1 green 0.0 | unmapped 52.3%
-        - Harbour Town Golf Links (9 holes): fairway 34.1%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 47.9%, penalty 2.4%
-        - Whistling Straits (9 holes): fairway 37.6%, penalty 0.5%
-        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 10 (28 holes, 42000 drives): fairway 35.9% | penalty 1.6% (OB 0.9, water 0.7) | rough 57.7 trees 0.1 bunker 4.6 green 0.0 | unmapped 57.7%
-        - Harbour Town Golf Links (9 holes): fairway 30.1%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 44.3%, penalty 2.7%
-        - Whistling Straits (9 holes): fairway 32.5%, penalty 1.0%
-        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 15 (28 holes, 42000 drives): fairway 27.7% | penalty 1.5% (OB 1.0, water 0.5) | rough 65.9 trees 0.1 bunker 4.7 green 0.0 | unmapped 65.9%
-        - Harbour Town Golf Links (9 holes): fairway 25.9%, penalty 0.7%
-        - Pebble Beach Golf Links (10 holes): fairway 33.6%, penalty 3.2%
-        - Whistling Straits (9 holes): fairway 23.0%, penalty 0.6%
-        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 20 (28 holes, 42000 drives): fairway 21.7% | penalty 2.1% (OB 1.3, water 0.8) | rough 71.8 trees 0.1 bunker 4.2 green 0.0 | unmapped 71.8%
-        - Harbour Town Golf Links (9 holes): fairway 17.5%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 30.6%, penalty 3.9%
-        - Whistling Straits (9 holes): fairway 16.1%, penalty 1.3%
-        Smart-play pick: Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+## a: spread 1.25
+hcp  0 (28 holes, 42000 drives): fairway 33.4% | penalty 2.1% (OB 1.2, water 1.0) | rough 55.5 trees 0.1 bunker 8.7 green 0.1 | unmapped 55.5%
+        - Harbour Town Golf Links (9 holes): fairway 23.9%, penalty 1.5%
+        - Pebble Beach Golf Links (10 holes): fairway 37.9%, penalty 3.5%
+        - Whistling Straits (9 holes): fairway 37.9%, penalty 1.2%
+        Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp  5 (28 holes, 42000 drives): fairway 29.9% | penalty 2.2% (OB 1.5, water 0.7) | rough 60.6 trees 0.2 bunker 7.1 green 0.0 | unmapped 60.6%
+        - Harbour Town Golf Links (9 holes): fairway 23.7%, penalty 1.1%
+        - Pebble Beach Golf Links (10 holes): fairway 36.7%, penalty 4.5%
+        - Whistling Straits (9 holes): fairway 28.5%, penalty 0.8%
+        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 10 (28 holes, 42000 drives): fairway 30.1% | penalty 2.6% (OB 1.6, water 1.0) | rough 61.8 trees 0.4 bunker 5.1 green 0.0 | unmapped 61.8%
+        - Harbour Town Golf Links (9 holes): fairway 25.5%, penalty 1.7%
+        - Pebble Beach Golf Links (10 holes): fairway 34.8%, penalty 4.9%
+        - Whistling Straits (9 holes): fairway 29.6%, penalty 0.9%
+        Smart-play pick: Driver 92.9%, wood 3.6%, hybrid 3.6%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 15 (28 holes, 42000 drives): fairway 23.3% | penalty 2.8% (OB 1.8, water 1.0) | rough 69.1 trees 0.3 bunker 4.5 green 0.0 | unmapped 69.1%
+        - Harbour Town Golf Links (9 holes): fairway 20.6%, penalty 1.6%
+        - Pebble Beach Golf Links (10 holes): fairway 30.9%, penalty 5.5%
+        - Whistling Straits (9 holes): fairway 17.5%, penalty 0.9%
+        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 20 (28 holes, 42000 drives): fairway 18.6% | penalty 3.6% (OB 2.4, water 1.2) | rough 73.3 trees 0.1 bunker 4.3 green 0.0 | unmapped 73.3%
+        - Harbour Town Golf Links (9 holes): fairway 15.8%, penalty 1.4%
+        - Pebble Beach Golf Links (10 holes): fairway 26.1%, penalty 7.3%
+        - Whistling Straits (9 holes): fairway 13.0%, penalty 1.8%
+        Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
 
 ## b1: no boundary OB
-hcp  0 (28 holes, 42000 drives): fairway 32.2% | penalty 0.7% (OB 0.0, water 0.6) | rough 58.3 trees 0.0 bunker 8.8 green 0.0 | unmapped 58.3%
-        - Harbour Town Golf Links (9 holes): fairway 22.7%, penalty 0.7%
-        - Pebble Beach Golf Links (10 holes): fairway 35.6%, penalty 0.5%
-        - Whistling Straits (9 holes): fairway 37.9%, penalty 0.8%
-        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp  5 (28 holes, 42000 drives): fairway 28.6% | penalty 0.7% (OB 0.0, water 0.7) | rough 63.4 trees 0.4 bunker 6.9 green 0.0 | unmapped 63.4%
-        - Harbour Town Golf Links (9 holes): fairway 26.0%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 30.9%, penalty 0.3%
-        - Whistling Straits (9 holes): fairway 28.6%, penalty 0.9%
+hcp  0 (28 holes, 42000 drives): fairway 41.7% | penalty 0.6% (OB 0.0, water 0.6) | rough 50.0 trees 0.1 bunker 7.7 green 0.0 | unmapped 50.0%
+        - Harbour Town Golf Links (9 holes): fairway 32.8%, penalty 0.5%
+        - Pebble Beach Golf Links (10 holes): fairway 42.9%, penalty 0.3%
+        - Whistling Straits (9 holes): fairway 49.2%, penalty 0.9%
+        Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 70.0%, wood 30.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp  5 (28 holes, 42000 drives): fairway 37.8% | penalty 0.7% (OB 0.0, water 0.7) | rough 55.3 trees 0.1 bunker 6.1 green 0.0 | unmapped 55.3%
+        - Harbour Town Golf Links (9 holes): fairway 34.8%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 41.7%, penalty 0.2%
+        - Whistling Straits (9 holes): fairway 36.3%, penalty 0.5%
+        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 10 (28 holes, 42000 drives): fairway 37.1% | penalty 0.8% (OB 0.0, water 0.7) | rough 57.1 trees 0.2 bunker 4.9 green 0.0 | unmapped 57.1%
+        - Harbour Town Golf Links (9 holes): fairway 31.7%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 47.0%, penalty 0.4%
+        - Whistling Straits (9 holes): fairway 31.4%, penalty 0.6%
         Smart-play pick: Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 10 (28 holes, 42000 drives): fairway 27.8% | penalty 1.0% (OB 0.0, water 1.0) | rough 65.9 trees 0.4 bunker 4.9 green 0.1 | unmapped 65.9%
-        - Harbour Town Golf Links (9 holes): fairway 23.8%, penalty 1.2%
-        - Pebble Beach Golf Links (10 holes): fairway 29.4%, penalty 0.7%
-        - Whistling Straits (9 holes): fairway 30.0%, penalty 1.1%
+hcp 15 (28 holes, 42000 drives): fairway 28.5% | penalty 0.9% (OB 0.0, water 0.9) | rough 66.2 trees 0.2 bunker 4.2 green 0.0 | unmapped 66.2%
+        - Harbour Town Golf Links (9 holes): fairway 27.5%, penalty 1.5%
+        - Pebble Beach Golf Links (10 holes): fairway 34.4%, penalty 0.5%
+        - Whistling Straits (9 holes): fairway 22.9%, penalty 0.7%
         Smart-play pick: Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 15 (28 holes, 42000 drives): fairway 22.2% | penalty 0.8% (OB 0.0, water 0.8) | rough 71.3 trees 0.2 bunker 5.5 green 0.0 | unmapped 71.3%
-        - Harbour Town Golf Links (9 holes): fairway 20.1%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 28.1%, penalty 0.6%
-        - Whistling Straits (9 holes): fairway 17.9%, penalty 0.9%
-        Smart-play pick: Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 20 (28 holes, 42000 drives): fairway 16.9% | penalty 1.2% (OB 0.1, water 1.2) | rough 77.1 trees 0.2 bunker 4.5 green 0.0 | unmapped 77.1%
-        - Harbour Town Golf Links (9 holes): fairway 13.9%, penalty 1.1%
-        - Pebble Beach Golf Links (10 holes): fairway 23.5%, penalty 0.8%
-        - Whistling Straits (9 holes): fairway 12.7%, penalty 1.8%
+hcp 20 (28 holes, 42000 drives): fairway 20.4% | penalty 1.1% (OB 0.0, water 1.1) | rough 74.4 trees 0.1 bunker 3.9 green 0.0 | unmapped 74.4%
+        - Harbour Town Golf Links (9 holes): fairway 19.7%, penalty 1.2%
+        - Pebble Beach Golf Links (10 holes): fairway 27.3%, penalty 0.7%
+        - Whistling Straits (9 holes): fairway 13.4%, penalty 1.5%
         Smart-play pick: Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 100.0%, wood 0.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
 
 ## b2: no building OB
-hcp  0 (28 holes, 42000 drives): fairway 32.8% | penalty 1.9% (OB 1.3, water 0.6) | rough 55.7 trees 0.0 bunker 9.4 green 0.1 | unmapped 55.7%
-        - Harbour Town Golf Links (9 holes): fairway 22.7%, penalty 0.7%
-        - Pebble Beach Golf Links (10 holes): fairway 37.3%, penalty 4.0%
-        - Whistling Straits (9 holes): fairway 37.9%, penalty 0.8%
-        Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp  5 (28 holes, 42000 drives): fairway 30.0% | penalty 2.0% (OB 1.3, water 0.8) | rough 60.1 trees 0.4 bunker 7.4 green 0.0 | unmapped 60.1%
-        - Harbour Town Golf Links (9 holes): fairway 26.0%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 34.9%, penalty 4.1%
-        - Whistling Straits (9 holes): fairway 28.6%, penalty 0.9%
-        Smart-play pick: Driver 92.9%, wood 3.6%, hybrid 0.0%, iron 3.6%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 10 (28 holes, 42000 drives): fairway 29.6% | penalty 2.3% (OB 1.4, water 0.9) | rough 63.0 trees 0.4 bunker 4.7 green 0.0 | unmapped 63.0%
-        - Harbour Town Golf Links (9 holes): fairway 23.8%, penalty 1.2%
-        - Pebble Beach Golf Links (10 holes): fairway 34.5%, penalty 4.5%
-        - Whistling Straits (9 holes): fairway 30.0%, penalty 1.1%
+hcp  0 (28 holes, 42000 drives): fairway 43.3% | penalty 1.1% (OB 0.6, water 0.5) | rough 46.9 trees 0.1 bunker 8.6 green 0.0 | unmapped 46.9%
+        - Harbour Town Golf Links (9 holes): fairway 32.8%, penalty 0.5%
+        - Pebble Beach Golf Links (10 holes): fairway 47.6%, penalty 1.8%
+        - Whistling Straits (9 holes): fairway 49.2%, penalty 0.9%
+        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 60.0%, wood 40.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp  5 (28 holes, 42000 drives): fairway 39.6% | penalty 1.6% (OB 1.0, water 0.7) | rough 52.0 trees 0.1 bunker 6.7 green 0.0 | unmapped 52.0%
+        - Harbour Town Golf Links (9 holes): fairway 34.8%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 46.8%, penalty 2.9%
+        - Whistling Straits (9 holes): fairway 36.3%, penalty 0.5%
+        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 70.0%, wood 30.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 10 (28 holes, 42000 drives): fairway 35.6% | penalty 1.6% (OB 0.9, water 0.7) | rough 57.8 trees 0.2 bunker 4.8 green 0.0 | unmapped 57.8%
+        - Harbour Town Golf Links (9 holes): fairway 31.7%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 42.8%, penalty 2.8%
+        - Whistling Straits (9 holes): fairway 31.4%, penalty 0.6%
         Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 15 (28 holes, 42000 drives): fairway 22.9% | penalty 2.4% (OB 1.6, water 0.8) | rough 69.1 trees 0.2 bunker 5.3 green 0.0 | unmapped 69.1%
-        - Harbour Town Golf Links (9 holes): fairway 20.1%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 29.9%, penalty 5.2%
-        - Whistling Straits (9 holes): fairway 17.9%, penalty 0.9%
-        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 20 (28 holes, 42000 drives): fairway 17.6% | penalty 3.5% (OB 2.2, water 1.3) | rough 74.3 trees 0.2 bunker 4.4 green 0.0 | unmapped 74.3%
-        - Harbour Town Golf Links (9 holes): fairway 13.9%, penalty 1.1%
-        - Pebble Beach Golf Links (10 holes): fairway 25.4%, penalty 7.1%
-        - Whistling Straits (9 holes): fairway 12.7%, penalty 1.8%
-        Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 15 (28 holes, 42000 drives): fairway 29.3% | penalty 1.8% (OB 1.0, water 0.8) | rough 64.8 trees 0.2 bunker 3.9 green 0.0 | unmapped 64.8%
+        - Harbour Town Golf Links (9 holes): fairway 27.5%, penalty 1.5%
+        - Pebble Beach Golf Links (10 holes): fairway 36.7%, penalty 3.2%
+        - Whistling Straits (9 holes): fairway 22.9%, penalty 0.7%
+        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 20 (28 holes, 42000 drives): fairway 21.9% | penalty 2.5% (OB 1.4, water 1.1) | rough 71.6 trees 0.1 bunker 4.0 green 0.0 | unmapped 71.6%
+        - Harbour Town Golf Links (9 holes): fairway 19.7%, penalty 1.2%
+        - Pebble Beach Golf Links (10 holes): fairway 31.5%, penalty 4.5%
+        - Whistling Straits (9 holes): fairway 13.4%, penalty 1.5%
+        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
 
 ## b3: no road OB
-hcp  0 (28 holes, 42000 drives): fairway 32.8% | penalty 1.9% (OB 1.3, water 0.6) | rough 55.7 trees 0.0 bunker 9.4 green 0.1 | unmapped 55.7%
-        - Harbour Town Golf Links (9 holes): fairway 22.7%, penalty 0.7%
-        - Pebble Beach Golf Links (10 holes): fairway 37.3%, penalty 4.0%
-        - Whistling Straits (9 holes): fairway 37.9%, penalty 0.8%
-        Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp  5 (28 holes, 42000 drives): fairway 30.0% | penalty 2.1% (OB 1.3, water 0.8) | rough 60.1 trees 0.4 bunker 7.4 green 0.0 | unmapped 60.1%
-        - Harbour Town Golf Links (9 holes): fairway 26.0%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 34.9%, penalty 4.1%
-        - Whistling Straits (9 holes): fairway 28.6%, penalty 0.9%
-        Smart-play pick: Driver 92.9%, wood 3.6%, hybrid 0.0%, iron 3.6%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 10 (28 holes, 42000 drives): fairway 29.6% | penalty 2.4% (OB 1.4, water 0.9) | rough 63.0 trees 0.4 bunker 4.7 green 0.0 | unmapped 63.0%
-        - Harbour Town Golf Links (9 holes): fairway 23.8%, penalty 1.2%
-        - Pebble Beach Golf Links (10 holes): fairway 34.6%, penalty 4.5%
-        - Whistling Straits (9 holes): fairway 30.0%, penalty 1.1%
-        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 15 (28 holes, 42000 drives): fairway 23.0% | penalty 2.5% (OB 1.7, water 0.8) | rough 68.9 trees 0.2 bunker 5.3 green 0.0 | unmapped 68.9%
-        - Harbour Town Golf Links (9 holes): fairway 20.1%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 30.3%, penalty 5.5%
-        - Whistling Straits (9 holes): fairway 17.9%, penalty 0.9%
-        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 20 (28 holes, 42000 drives): fairway 17.6% | penalty 3.6% (OB 2.3, water 1.3) | rough 74.3 trees 0.2 bunker 4.4 green 0.0 | unmapped 74.3%
-        - Harbour Town Golf Links (9 holes): fairway 13.9%, penalty 1.1%
-        - Pebble Beach Golf Links (10 holes): fairway 25.4%, penalty 7.4%
-        - Whistling Straits (9 holes): fairway 12.7%, penalty 1.7%
-        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp  0 (28 holes, 42000 drives): fairway 43.3% | penalty 1.1% (OB 0.6, water 0.5) | rough 46.9 trees 0.1 bunker 8.6 green 0.0 | unmapped 46.9%
+        - Harbour Town Golf Links (9 holes): fairway 32.8%, penalty 0.5%
+        - Pebble Beach Golf Links (10 holes): fairway 47.6%, penalty 1.8%
+        - Whistling Straits (9 holes): fairway 49.2%, penalty 0.9%
+        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 60.0%, wood 40.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp  5 (28 holes, 42000 drives): fairway 39.6% | penalty 1.6% (OB 1.0, water 0.7) | rough 51.9 trees 0.1 bunker 6.7 green 0.0 | unmapped 51.9%
+        - Harbour Town Golf Links (9 holes): fairway 34.8%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 46.8%, penalty 2.9%
+        - Whistling Straits (9 holes): fairway 36.3%, penalty 0.5%
+        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 70.0%, wood 30.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 10 (28 holes, 42000 drives): fairway 35.6% | penalty 1.6% (OB 0.9, water 0.7) | rough 57.7 trees 0.2 bunker 4.9 green 0.0 | unmapped 57.7%
+        - Harbour Town Golf Links (9 holes): fairway 31.7%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 42.9%, penalty 2.8%
+        - Whistling Straits (9 holes): fairway 31.4%, penalty 0.6%
+        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 15 (28 holes, 42000 drives): fairway 29.4% | penalty 1.8% (OB 1.0, water 0.8) | rough 64.7 trees 0.2 bunker 3.9 green 0.0 | unmapped 64.7%
+        - Harbour Town Golf Links (9 holes): fairway 27.5%, penalty 1.5%
+        - Pebble Beach Golf Links (10 holes): fairway 37.0%, penalty 3.1%
+        - Whistling Straits (9 holes): fairway 22.9%, penalty 0.7%
+        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 20 (28 holes, 42000 drives): fairway 21.8% | penalty 2.5% (OB 1.5, water 1.1) | rough 71.7 trees 0.1 bunker 3.9 green 0.0 | unmapped 71.7%
+        - Harbour Town Golf Links (9 holes): fairway 19.7%, penalty 1.2%
+        - Pebble Beach Golf Links (10 holes): fairway 31.3%, penalty 4.6%
+        - Whistling Straits (9 holes): fairway 13.1%, penalty 1.5%
+        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
 
 ## c: unmapped = fairway
-hcp  0 (28 holes, 42000 drives): fairway 85.8% | penalty 2.1% (OB 1.5, water 0.6) | rough 0.0 trees 0.2 bunker 11.8 green 0.1 | unmapped 53.5%
-        - Harbour Town Golf Links (9 holes): fairway 91.8%, penalty 0.5%
-        - Pebble Beach Golf Links (10 holes): fairway 87.0%, penalty 4.7%
-        - Whistling Straits (9 holes): fairway 78.6%, penalty 0.8%
-        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp  5 (28 holes, 42000 drives): fairway 86.9% | penalty 2.5% (OB 1.6, water 0.9) | rough 0.0 trees 0.2 bunker 10.4 green 0.1 | unmapped 58.8%
-        - Harbour Town Golf Links (9 holes): fairway 93.1%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 87.6%, penalty 5.3%
-        - Whistling Straits (9 holes): fairway 80.0%, penalty 0.9%
-        Smart-play pick: Driver 89.3%, wood 7.1%, hybrid 0.0%, iron 3.6%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 10 (28 holes, 42000 drives): fairway 89.0% | penalty 2.8% (OB 1.9, water 0.9) | rough 0.0 trees 0.4 bunker 7.8 green 0.1 | unmapped 60.8%
-        - Harbour Town Golf Links (9 holes): fairway 95.0%, penalty 0.8%
-        - Pebble Beach Golf Links (10 holes): fairway 87.6%, penalty 5.8%
-        - Whistling Straits (9 holes): fairway 84.5%, penalty 1.4%
-        Smart-play pick: Driver 85.7%, wood 10.7%, hybrid 3.6%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 15 (28 holes, 42000 drives): fairway 89.8% | penalty 3.2% (OB 1.9, water 1.3) | rough 0.0 trees 0.3 bunker 6.6 green 0.1 | unmapped 63.7%
-        - Harbour Town Golf Links (9 holes): fairway 95.5%, penalty 1.5%
-        - Pebble Beach Golf Links (10 holes): fairway 88.2%, penalty 6.0%
-        - Whistling Straits (9 holes): fairway 85.9%, penalty 1.8%
-        Smart-play pick: Driver 75.0%, wood 17.9%, hybrid 7.1%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 20 (28 holes, 42000 drives): fairway 89.3% | penalty 4.2% (OB 2.5, water 1.7) | rough 0.0 trees 0.2 bunker 6.2 green 0.1 | unmapped 69.7%
-        - Harbour Town Golf Links (9 holes): fairway 96.1%, penalty 1.6%
-        - Pebble Beach Golf Links (10 holes): fairway 86.3%, penalty 8.1%
-        - Whistling Straits (9 holes): fairway 85.9%, penalty 2.4%
-        Smart-play pick: Driver 71.4%, wood 21.4%, hybrid 3.6%, iron 0.0%, wedge 3.6%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp  0 (28 holes, 42000 drives): fairway 86.9% | penalty 1.4% (OB 0.9, water 0.5) | rough 0.0 trees 0.1 bunker 11.5 green 0.0 | unmapped 52.2%
+        - Harbour Town Golf Links (9 holes): fairway 92.5%, penalty 0.5%
+        - Pebble Beach Golf Links (10 holes): fairway 90.3%, penalty 2.8%
+        - Whistling Straits (9 holes): fairway 77.6%, penalty 0.7%
+        Smart-play pick: Driver 85.7%, wood 14.3%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 70.0%, wood 30.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp  5 (28 holes, 42000 drives): fairway 88.6% | penalty 1.8% (OB 1.0, water 0.8) | rough 0.0 trees 0.1 bunker 9.3 green 0.1 | unmapped 58.3%
+        - Harbour Town Golf Links (9 holes): fairway 93.3%, penalty 1.2%
+        - Pebble Beach Golf Links (10 holes): fairway 90.5%, penalty 3.2%
+        - Whistling Straits (9 holes): fairway 81.8%, penalty 0.7%
+        Smart-play pick: Driver 85.7%, wood 10.7%, hybrid 0.0%, iron 3.6%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 10 (28 holes, 42000 drives): fairway 90.8% | penalty 1.8% (OB 1.2, water 0.6) | rough 0.0 trees 0.2 bunker 7.1 green 0.1 | unmapped 59.6%
+        - Harbour Town Golf Links (9 holes): fairway 95.4%, penalty 0.8%
+        - Pebble Beach Golf Links (10 holes): fairway 90.3%, penalty 3.7%
+        - Whistling Straits (9 holes): fairway 86.7%, penalty 0.7%
+        Smart-play pick: Driver 89.3%, wood 7.1%, hybrid 3.6%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 15 (28 holes, 42000 drives): fairway 91.7% | penalty 2.2% (OB 1.2, water 1.0) | rough 0.0 trees 0.3 bunker 5.8 green 0.0 | unmapped 62.3%
+        - Harbour Town Golf Links (9 holes): fairway 95.6%, penalty 1.9%
+        - Pebble Beach Golf Links (10 holes): fairway 90.8%, penalty 3.5%
+        - Whistling Straits (9 holes): fairway 88.8%, penalty 0.9%
+        Smart-play pick: Driver 78.6%, wood 17.9%, hybrid 3.6%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 20 (28 holes, 42000 drives): fairway 91.2% | penalty 3.0% (OB 1.8, water 1.3) | rough 0.0 trees 0.4 bunker 5.3 green 0.0 | unmapped 66.1%
+        - Harbour Town Golf Links (9 holes): fairway 96.9%, penalty 1.5%
+        - Pebble Beach Golf Links (10 holes): fairway 89.0%, penalty 5.4%
+        - Whistling Straits (9 holes): fairway 88.1%, penalty 1.9%
+        Smart-play pick: Driver 75.0%, wood 25.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
 
 ## d: no look-ahead
-hcp  0 (28 holes, 42000 drives): fairway 36.5% | penalty 2.0% (OB 1.4, water 0.6) | rough 52.0 trees 0.1 bunker 9.5 green 0.0 | unmapped 52.0%
-        - Harbour Town Golf Links (9 holes): fairway 29.0%, penalty 0.5%
-        - Pebble Beach Golf Links (10 holes): fairway 40.1%, penalty 4.2%
-        - Whistling Straits (9 holes): fairway 39.8%, penalty 0.9%
+hcp  0 (28 holes, 42000 drives): fairway 45.2% | penalty 1.2% (OB 0.7, water 0.5) | rough 45.0 trees 0.1 bunker 8.4 green 0.0 | unmapped 45.0%
+        - Harbour Town Golf Links (9 holes): fairway 36.7%, penalty 0.4%
+        - Pebble Beach Golf Links (10 holes): fairway 48.8%, penalty 2.1%
+        - Whistling Straits (9 holes): fairway 49.7%, penalty 1.1%
         Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp  5 (28 holes, 42000 drives): fairway 33.5% | penalty 2.1% (OB 1.4, water 0.7) | rough 57.2 trees 0.2 bunker 7.0 green 0.0 | unmapped 57.2%
-        - Harbour Town Golf Links (9 holes): fairway 26.9%, penalty 0.9%
-        - Pebble Beach Golf Links (10 holes): fairway 38.9%, penalty 4.4%
-        - Whistling Straits (9 holes): fairway 34.2%, penalty 0.7%
+hcp  5 (28 holes, 42000 drives): fairway 40.6% | penalty 1.7% (OB 1.1, water 0.7) | rough 51.0 trees 0.1 bunker 6.6 green 0.0 | unmapped 51.0%
+        - Harbour Town Golf Links (9 holes): fairway 34.8%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 48.2%, penalty 3.2%
+        - Whistling Straits (9 holes): fairway 37.8%, penalty 0.5%
         Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 80.0%, wood 20.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 10 (28 holes, 42000 drives): fairway 29.4% | penalty 2.5% (OB 1.5, water 0.9) | rough 62.2 trees 0.4 bunker 5.5 green 0.0 | unmapped 62.2%
-        - Harbour Town Golf Links (9 holes): fairway 23.7%, penalty 1.2%
-        - Pebble Beach Golf Links (10 holes): fairway 39.0%, penalty 4.8%
-        - Whistling Straits (9 holes): fairway 24.5%, penalty 1.1%
-        Smart-play pick: Driver 92.9%, wood 3.6%, hybrid 3.6%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 15 (28 holes, 42000 drives): fairway 23.4% | penalty 3.0% (OB 1.7, water 1.3) | rough 68.3 trees 0.2 bunker 5.1 green 0.0 | unmapped 68.3%
-        - Harbour Town Golf Links (9 holes): fairway 16.9%, penalty 1.8%
-        - Pebble Beach Golf Links (10 holes): fairway 34.6%, penalty 5.2%
-        - Whistling Straits (9 holes): fairway 17.4%, penalty 1.7%
-        Smart-play pick: Driver 89.3%, wood 10.7%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
-hcp 20 (28 holes, 42000 drives): fairway 18.4% | penalty 3.6% (OB 2.2, water 1.3) | rough 73.3 trees 0.2 bunker 4.5 green 0.0 | unmapped 73.3%
-        - Harbour Town Golf Links (9 holes): fairway 13.3%, penalty 1.2%
-        - Pebble Beach Golf Links (10 holes): fairway 28.3%, penalty 7.2%
-        - Whistling Straits (9 holes): fairway 12.7%, penalty 1.9%
-        Smart-play pick: Driver 85.7%, wood 10.7%, hybrid 0.0%, iron 3.6%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 10 (28 holes, 42000 drives): fairway 36.9% | penalty 1.6% (OB 0.9, water 0.7) | rough 56.4 trees 0.1 bunker 4.9 green 0.0 | unmapped 56.4%
+        - Harbour Town Golf Links (9 holes): fairway 31.6%, penalty 1.3%
+        - Pebble Beach Golf Links (10 holes): fairway 46.4%, penalty 2.9%
+        - Whistling Straits (9 holes): fairway 31.7%, penalty 0.5%
+        Smart-play pick: Driver 96.4%, wood 3.6%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 15 (28 holes, 42000 drives): fairway 30.8% | penalty 1.8% (OB 1.0, water 0.8) | rough 63.3 trees 0.1 bunker 3.9 green 0.0 | unmapped 63.3%
+        - Harbour Town Golf Links (9 holes): fairway 27.7%, penalty 1.5%
+        - Pebble Beach Golf Links (10 holes): fairway 40.8%, penalty 3.2%
+        - Whistling Straits (9 holes): fairway 22.8%, penalty 0.7%
+        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
+hcp 20 (28 holes, 42000 drives): fairway 22.0% | penalty 2.4% (OB 1.4, water 1.0) | rough 71.7 trees 0.1 bunker 3.8 green 0.0 | unmapped 71.7%
+        - Harbour Town Golf Links (9 holes): fairway 16.6%, penalty 1.0%
+        - Pebble Beach Golf Links (10 holes): fairway 34.3%, penalty 4.3%
+        - Whistling Straits (9 holes): fairway 13.8%, penalty 1.6%
+        Smart-play pick: Driver 92.9%, wood 7.1%, hybrid 0.0%, iron 0.0%, wedge 0.0%   | par 4 < 440 (10 holes): Driver 90.0%, wood 10.0%, hybrid 0.0%, iron 0.0%, wedge 0.0%
 
 ## Pebble Beach hole 1, live card: Smart-play pick per variant
-base                     hcp 10: pick 3-Wood   (tied: 3-Wood) | Driver pen 11.1% strokes 5.274 | best strokes Driver 5.274
-base                     hcp 18: pick 9-Iron   (tied: 9-Iron) | Driver pen 15.3% strokes 5.869 | best strokes 9-Iron 5.848
-base                     hcp 20: pick 9-Iron   (tied: 9-Iron) | Driver pen 17.4% strokes 6.029 | best strokes 9-Iron 5.961
-a: spread 1.0            hcp 10: pick 3-Wood   (tied: 3-Wood) | Driver pen 5.6% strokes 5.073 | best strokes Driver 5.073
-a: spread 1.0            hcp 18: pick Driver   (tied: Driver) | Driver pen 8.3% strokes 5.654 | best strokes Driver 5.645
-a: spread 1.0            hcp 20: pick Driver   (tied: Driver) | Driver pen 9.2% strokes 5.786 | best strokes Driver 5.786
-b1: no boundary OB       hcp 10: pick Driver   (tied: Driver) | Driver pen 0.3% strokes 4.967 | best strokes Driver 4.967
-b1: no boundary OB       hcp 18: pick Driver   (tied: Driver) | Driver pen 0.2% strokes 5.394 | best strokes Driver 5.394
-b1: no boundary OB       hcp 20: pick Driver   (tied: Driver) | Driver pen 0.2% strokes 5.506 | best strokes Driver 5.506
-b2: no building OB       hcp 10: pick 3-Wood   (tied: 3-Wood) | Driver pen 11.0% strokes 5.273 | best strokes Driver 5.273
-b2: no building OB       hcp 18: pick 9-Iron   (tied: 9-Iron) | Driver pen 15.2% strokes 5.868 | best strokes 9-Iron 5.848
-b2: no building OB       hcp 20: pick 9-Iron   (tied: 9-Iron) | Driver pen 17.2% strokes 6.027 | best strokes 9-Iron 5.961
-b3: no road OB           hcp 10: pick 3-Wood   (tied: 3-Wood) | Driver pen 11.1% strokes 5.274 | best strokes Driver 5.274
-b3: no road OB           hcp 18: pick 9-Iron   (tied: 9-Iron) | Driver pen 15.3% strokes 5.869 | best strokes 9-Iron 5.848
-b3: no road OB           hcp 20: pick 9-Iron   (tied: 9-Iron) | Driver pen 17.4% strokes 6.029 | best strokes 9-Iron 5.961
-c: unmapped = fairway    hcp 10: pick 3-Wood   (tied: 3-Wood/5-Wood) | Driver pen 12.7% strokes 5.001 | best strokes Driver 5.001
-c: unmapped = fairway    hcp 18: pick 9-Iron   (tied: 9-Iron) | Driver pen 16.0% strokes 5.505 | best strokes Driver 5.505
-c: unmapped = fairway    hcp 20: pick 9-Iron   (tied: 9-Iron) | Driver pen 18.5% strokes 5.631 | best strokes Driver 5.631
-d: no look-ahead         hcp 10: pick 3-Wood   (tied: 3-Wood) | Driver pen 11.1% strokes 4.895 | best strokes Driver 4.895
-d: no look-ahead         hcp 18: pick 3-Wood   (tied: 3-Wood/4-Hybrid/5-Iron) | Driver pen 15.3% strokes 5.413 | best strokes Driver 5.413
-d: no look-ahead         hcp 20: pick 5-Wood   (tied: 5-Wood/5-Iron) | Driver pen 17.4% strokes 5.566 | best strokes Driver 5.566
+base                     hcp  0: pick Driver   | Driver fairway 35.8% pen 2.9% strokes 4.375 | Go for it Driver 4.375 | tie line: none | over-cap x1: Driver, x2: Driver, x3 (now): Driver
+base                     hcp 10: pick Driver   | Driver fairway 43.4% pen 5.1% strokes 4.971 | Go for it Driver 4.971 | tie line: none | over-cap x1: Driver, x2: Driver, x3 (now): Driver
+base                     hcp 18: pick Driver   | Driver fairway 37.9% pen 10.3% strokes 5.559 | Go for it Driver 5.559 | tie line: none | over-cap x1: Driver, x2: Driver, x3 (now): Driver
+base                     hcp 20: pick Driver   | Driver fairway 38.2% pen 11.7% strokes 5.718 | Go for it Driver 5.718 | tie line: none | over-cap x1: Driver, x2: Driver, x3 (now): 7-Iron
+a: spread 1.25           hcp  0: pick 3-Wood   | Driver fairway 29.0% pen 8.5% strokes 4.565 | Go for it Driver 4.573 | tie line: none
+a: spread 1.25           hcp 10: pick 3-Wood   | Driver fairway 34.5% pen 11.7% strokes 5.187 | Go for it Driver 5.187 | tie line: none
+a: spread 1.25           hcp 18: pick 7-Iron   | Driver fairway 33.5% pen 17.5% strokes 5.791 | Go for it Driver 5.791 | tie line: none
+a: spread 1.25           hcp 20: pick 5-Iron   | Driver fairway 33.2% pen 18.8% strokes 5.953 | Go for it Driver 5.964 | tie line: 5-Iron and SW play about the same — hit the one you hit straightest.
+b1: no boundary OB       hcp  0: pick Driver   | Driver fairway 27.9% pen 0.1% strokes 4.345 | Go for it Driver 4.345 | tie line: none
+b1: no boundary OB       hcp 10: pick Driver   | Driver fairway 33.5% pen 0.5% strokes 4.867 | Go for it Driver 4.867 | tie line: none
+b1: no boundary OB       hcp 18: pick Driver   | Driver fairway 33.5% pen 1.3% strokes 5.326 | Go for it Driver 5.326 | tie line: none
+b1: no boundary OB       hcp 20: pick Driver   | Driver fairway 28.8% pen 1.4% strokes 5.459 | Go for it Driver 5.459 | tie line: none
+b2: no building OB       hcp  0: pick Driver   | Driver fairway 35.8% pen 2.9% strokes 4.375 | Go for it Driver 4.375 | tie line: none
+b2: no building OB       hcp 10: pick Driver   | Driver fairway 43.4% pen 5.1% strokes 4.971 | Go for it Driver 4.971 | tie line: none
+b2: no building OB       hcp 18: pick Driver   | Driver fairway 37.9% pen 10.2% strokes 5.557 | Go for it Driver 5.557 | tie line: none
+b2: no building OB       hcp 20: pick Driver   | Driver fairway 38.2% pen 11.5% strokes 5.715 | Go for it Driver 5.715 | tie line: none
+b3: no road OB           hcp  0: pick Driver   | Driver fairway 35.8% pen 2.9% strokes 4.375 | Go for it Driver 4.375 | tie line: none
+b3: no road OB           hcp 10: pick Driver   | Driver fairway 43.4% pen 5.1% strokes 4.971 | Go for it Driver 4.971 | tie line: none
+b3: no road OB           hcp 18: pick Driver   | Driver fairway 37.9% pen 10.3% strokes 5.559 | Go for it Driver 5.559 | tie line: none
+b3: no road OB           hcp 20: pick Driver   | Driver fairway 38.2% pen 11.7% strokes 5.718 | Go for it Driver 5.718 | tie line: none
+c: unmapped = fairway    hcp  0: pick Driver   | Driver fairway 94.2% pen 4.8% strokes 4.208 | Go for it Driver 4.208 | tie line: none
+c: unmapped = fairway    hcp 10: pick Driver   | Driver fairway 91.5% pen 8.5% strokes 4.734 | Go for it Driver 4.734 | tie line: none
+c: unmapped = fairway    hcp 18: pick Driver   | Driver fairway 88.6% pen 11.4% strokes 5.199 | Go for it Driver 5.199 | tie line: none
+c: unmapped = fairway    hcp 20: pick Driver   | Driver fairway 87.6% pen 12.4% strokes 5.347 | Go for it Driver 5.347 | tie line: none
+d: no look-ahead         hcp  0: pick Driver   | Driver fairway 36.5% pen 2.8% strokes 4.221 | Go for it Driver 4.221 | tie line: none
+d: no look-ahead         hcp 10: pick Driver   | Driver fairway 43.4% pen 5.1% strokes 4.751 | Go for it Driver 4.751 | tie line: none
+d: no look-ahead         hcp 18: pick Driver   | Driver fairway 37.9% pen 10.3% strokes 5.296 | Go for it Driver 5.296 | tie line: none
+d: no look-ahead         hcp 20: pick Driver   | Driver fairway 38.2% pen 11.7% strokes 5.433 | Go for it Driver 5.433 | tie line: none
 
 ## Expected strokes to hole out from the fairway (the model's baseline)
 hcp     150   175   200   225   229   250   257   275

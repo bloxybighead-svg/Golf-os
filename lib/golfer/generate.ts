@@ -45,7 +45,15 @@ export function generateShots(
   config: GolferConfig,
   nShots: number,
   seed: number,
-  clubs?: Club[]
+  clubs?: Club[],
+  /**
+   * Common random numbers: shot i draws the same fixed set of standard-normal / uniform values whatever the club
+   * (its own rng is made from seed + i, and always draws every value, so no branch shifts the stream), and the golfer's
+   * bias and the session drifts are drawn from the seed alone. Each club then scales those values by its own SDs. Two
+   * clubs built with the same seed therefore see the same "luck", so the noise in a difference between them mostly
+   * cancels; and a club's shots never depend on which other clubs are generated.
+   */
+  common = false
 ): GeneratedShot[] {
   const rng: Rng = makeRng(seed)
   const {
@@ -69,14 +77,19 @@ export function generateShots(
   const shots: GeneratedShot[] = []
 
   for (let i = 0; i < nShots; i++) {
+    // Common random numbers: this shot's draws, fixed in number and order.
+    const shotRng: Rng = common ? makeRng(Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) + Math.imul(i + 1, 0xc2b2ae35)) : rng
+    const crn = common
+      ? { choice: shotRng(), mishit: shotRng(), zCarry: randNormal(shotRng), zLoss: randNormal(shotRng), coin: shotRng(), zStart: randNormal(shotRng), zCurve: randNormal(shotRng) }
+      : null
     if (i % sessionSize === 0) {
       sessionDirectionDrift = randNormal(rng, 0, driftDirectionSdDeg)
       sessionDistanceScale = randNormal(rng, 0, driftDistanceSdPct)
     }
 
-    const club = randChoice(rng, clubList)
+    const club = crn ? clubList[Math.floor(crn.choice * clubList.length) % clubList.length] : randChoice(rng, clubList)
     const profile = clubProfiles[club]
-    const isMishit = rng() < mishitRate
+    const isMishit = (crn ? crn.mishit : rng()) < mishitRate
     // Mishits widen DIRECTION spread (not distance -- a bad strike loses
     // carry, handled separately below, not scatter symmetrically). No
     // club_weights/improvement_per_session in this port (not exposed by
@@ -87,13 +100,13 @@ export function generateShots(
     const meanCarry = profile.mean_carry * (1 + sessionDistanceScale + mishitRate * mishitCarryLoss * HALF_NORMAL_MEAN)
     const distanceSd = profile.mean_carry * profile.distance_cv
     const a = asymmetryFor(profile.distance_cv)
-    let z = randNormal(rng)
+    let z = crn ? crn.zCarry : randNormal(rng)
     z = z < 0 ? z * (1.0 + a) : z * (1.0 - a)
     const skewOffset = SKEW_MEAN_SHIFT * a * distanceSd
     let carryYds = Math.max(0, meanCarry + z * distanceSd + skewOffset)
 
     if (isMishit) {
-      carryYds *= 1.0 - Math.abs(randNormal(rng, 0, mishitCarryLoss))
+      carryYds *= 1.0 - Math.abs(crn ? crn.zLoss * mishitCarryLoss : randNormal(rng, 0, mishitCarryLoss))
     }
 
     // --- direction: start line + curve ---
@@ -104,11 +117,11 @@ export function generateShots(
 
     let bias = golferBiasDeg
     if (twoWayMiss) {
-      bias = Math.abs(bias) * (rng() < 0.5 ? -1 : 1)
+      bias = Math.abs(bias) * ((crn ? crn.coin : rng()) < 0.5 ? -1 : 1)
     }
 
-    const startLineDeg = randNormal(rng, bias + sessionDirectionDrift, startSdDeg * spread)
-    const curveYds = randNormal(rng, 0, curveSdPct * carryYds * spread)
+    const startLineDeg = crn ? bias + sessionDirectionDrift + crn.zStart * startSdDeg * spread : randNormal(rng, bias + sessionDirectionDrift, startSdDeg * spread)
+    const curveYds = crn ? crn.zCurve * curveSdPct * carryYds * spread : randNormal(rng, 0, curveSdPct * carryYds * spread)
 
     // --- curve<->carry link (tilts the dispersion ellipse) ---
     const slope = DEFAULT_CURVE_CARRY_SLOPE

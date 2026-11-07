@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react"
 import { readCompareAgainst, saveCompareAgainst, type CompareAgainst } from "@/lib/course/baseline"
 import { readRisk, saveRisk } from "@/lib/course/riskSetting"
-import { clampSpread, readSpread, saveSpread } from "@/lib/course/spreadSetting"
+import { readDeviceBag } from "@/lib/you/deviceBag"
+import { clampSpread, defaultSpreadFor, effectiveSpread, readSpreadOverride, saveSpread } from "@/lib/course/spreadSetting"
 import type { SpreadSuggestion } from "@/lib/rounds/spreadCalibration"
-import { ON_COURSE_SPREAD, RISK_STOPS, SPREAD_MAX, SPREAD_MIN, SPREAD_STEP } from "@/lib/course/strategy"
+import { ESTIMATE_BAG_SPREAD, ON_COURSE_SPREAD, RISK_STOPS, SPREAD_MAX, SPREAD_MIN, SPREAD_STEP } from "@/lib/course/strategy"
 
 const OPTIONS: { value: CompareAgainst; label: string }[] = [
   { value: "handicap", label: "My handicap" },
@@ -17,9 +18,15 @@ export function PlannerSetting({ spreadSuggestion }: { spreadSuggestion: SpreadS
   // Saved in the browser only, so nothing is highlighted until mount (same as Appearance).
   const [choice, setChoice] = useState<CompareAgainst | null>(null)
   useEffect(() => setChoice(readCompareAgainst()), [])
+  // What the slider shows: the golfer's own setting, else what their bag's source plays with (estimates 1.0, own shots 1.25).
   const [spread, setSpread] = useState<number | null>(null)
-  useEffect(() => setSpread(readSpread()), [])
-  const shownSpread = spread ?? ON_COURSE_SPREAD
+  const [source, setSource] = useState<"calibrated" | "handicap" | "legacy">("handicap")
+  useEffect(() => {
+    const s = readDeviceBag().source
+    setSource(s)
+    setSpread(effectiveSpread(s, readSpreadOverride()))
+  }, [])
+  const shownSpread = spread ?? defaultSpreadFor(source)
   const [risk, setRisk] = useState<number | null>(null)
   useEffect(() => setRisk(readRisk()), [])
 
@@ -90,7 +97,8 @@ export function PlannerSetting({ spreadSuggestion }: { spreadSuggestion: SpreadS
           className="mt-2 w-full accent-accent"
         />
         <p className="mt-1 text-xs text-muted">
-          Range data is tighter than real rounds. Raise this if your misses on the course are wider than the app shows.
+          Range data is tighter than real rounds. Raise this if your misses on the course are wider than the app shows. Your own shots and launch-monitor data
+          start at {ON_COURSE_SPREAD.toFixed(2)}x; a handicap estimate starts at {ESTIMATE_BAG_SPREAD.toFixed(2)}x, because its spread is already measured on the course.
         </p>
         {spreadSuggestion && (
           <div className="mt-3 border-t border-fg/[0.06] pt-3">

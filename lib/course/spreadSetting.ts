@@ -2,7 +2,7 @@
 // their misses are on the course than on the range. Set on You -> Planner,
 // saved per device, read by the Play planner. Same pattern as compareAgainst.
 
-import { ON_COURSE_SPREAD, SPREAD_MAX, SPREAD_MIN, SPREAD_STEP } from "./strategy"
+import { ESTIMATE_BAG_SPREAD, ON_COURSE_SPREAD, SPREAD_MAX, SPREAD_MIN, SPREAD_STEP } from "./strategy"
 
 export const SPREAD_KEY = "golfos.onCourseSpread.v1"
 /** Fired on window when the value changes in this tab (the storage event only reaches other tabs). */
@@ -16,13 +16,24 @@ export function clampSpread(v: unknown): number {
   return Math.round(Math.min(SPREAD_MAX, Math.max(SPREAD_MIN, stepped)) * 100) / 100
 }
 
-export function readSpread(): number {
+/** The spread a source plays with unless the golfer set their own: estimates (tier tables, already on-course) 1.0, shots and launch-monitor data 1.25. */
+export function defaultSpreadFor(source: "calibrated" | "handicap" | "legacy"): number {
+  return source === "handicap" ? ESTIMATE_BAG_SPREAD : ON_COURSE_SPREAD
+}
+
+/** What the golfer saved on You -> Planner, or null when they never touched it (the source's default then applies). */
+export function readSpreadOverride(): number | null {
   try {
     const raw = localStorage.getItem(SPREAD_KEY)
-    return raw == null ? ON_COURSE_SPREAD : clampSpread(raw)
+    return raw == null ? null : clampSpread(raw)
   } catch {
-    return ON_COURSE_SPREAD
+    return null
   }
+}
+
+/** The spread the planner uses: the golfer's own setting if they made one, else the source's default. */
+export function effectiveSpread(source: "calibrated" | "handicap" | "legacy", override: number | null): number {
+  return override ?? defaultSpreadFor(source)
 }
 
 export function saveSpread(v: number): void {

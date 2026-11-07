@@ -65,14 +65,16 @@ export function stableSeed(key: string): number {
 }
 
 /**
- * A handicap estimate's shots. Each club is generated on its own from a seed made of the stable key (course + hole +
- * ball position, "" when not given) and the club's name, so adding, removing or reordering clubs never changes
- * another club's shots. (They used to share one random stream sized by the bag, so every club's samples moved.)
+ * A handicap estimate's shots, by common random numbers: every club draws the same stream of standard-normal values
+ * (seeded by the key alone: course + hole + ball position, "" when not given) and scales it by its own SDs. A club's
+ * shots therefore never depend on which other clubs are in the bag, and two clubs see the same "luck", so the noise in
+ * the difference between them is much smaller than if each had its own stream (generate.ts, `common`).
  */
-function handicapShots(handicap: number, typed: Partial<Record<Club, number>>, tendency: Tendency | undefined, bag: Club[], seedKey = ""): ClubShots[] {
+function handicapShots(handicap: number, typed: Partial<Record<Club, number>>, tendency: Tendency | undefined, bag: Club[], seedKey = "", perClub = HANDICAP_SHOTS_PER_CLUB): ClubShots[] {
+  const seed = stableSeed(seedKey)
   return bag.map((club) => ({
     club,
-    shots: generateCustomGolferShots({ handicapIndex: handicap, knownCarries: typed, tendency }, HANDICAP_SHOTS_PER_CLUB, stableSeed(`${seedKey}|${club}`), [club]).map((s) => ({
+    shots: generateCustomGolferShots({ handicapIndex: handicap, knownCarries: typed, tendency }, perClub, seed, [club], true).map((s) => ({
       carryYds: s.carryYds,
       offlineYds: s.offlineYds,
     })),

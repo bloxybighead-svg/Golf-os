@@ -120,16 +120,16 @@ describe("the two options", () => {
     expect(line([eight, six, five, seven])).toBe("5-Iron, 6-Iron and 7-Iron play about the same — hit the one you hit straightest.")
   })
 
-  it("Pebble Beach hole 1, live card (11 mph into, +7 yd uphill, 59 F): the pick at 10 and 18 handicap", () => {
+  it("Pebble Beach hole 1, live card (11 mph into, +7 yd uphill, 59 F): the pick at 0, 10, 18 and 20 handicap", () => {
     for (const [hcp, pick, tied] of [
-      // Per-club seeds (fix/sim-validation): each club's estimated shots are now seeded from its own name, with 1500 shots
-      // (1300 scored) instead of 1000 (600), so the Driver's penalty rate is read to about +/-0.9 points instead of +/-1.4.
-      // On the old shared stream the Driver read 10.0% OB at 10 handicap; on its own seed it reads 12.0%, which at the
-      // soft cap's 4.5 strokes per 100% costs 0.09 strokes, so 3-Wood (7% OB) now beats it by 0.06. Nothing in the model
-      // moved: this hole at 10 handicap is a near three-way tie (3-Wood, 9-Iron, 8-Iron within 0.012 strokes) and which
-      // club is on top depends on which few shots go out of bounds. At 18 every wood is 13-17% OB and PW now edges the 9-Iron.
-      [10, "3-Wood", ["3-Wood", "8-Iron", "9-Iron"]],
-      [18, "PW", ["PW"]],
+      // fix/sim-spread-crn: an estimate bag plays at ESTIMATE_BAG_SPREAD 1.0 (its direction SDs are already on-course) and its
+      // clubs share common random numbers. With the 1.25 widening the Driver was 11-17% OB here and the pick was 3-Wood
+      // (10 hcp), 9-Iron (18, 20); unwidened it is 5-12% and the Driver is the pick at every handicap. At 20 the 7-Iron is
+      // tied on cost but 0.2+ strokes worse, so the card names no tied club.
+      [0, "Driver", ["Driver"]],
+      [10, "Driver", ["Driver"]],
+      [18, "Driver", ["Driver"]],
+      [20, "Driver", ["7-Iron", "Driver"]],
     ] as const) {
       const c = pebbleH1(hcp)
       const msg = `handicap ${hcp}: Smart ${c.options.safer.club}, tied ${c.options.tied.map((t) => t.club).join(",")}
@@ -137,9 +137,9 @@ ${table(c.ranking)}`
       expect(c.toPin, msg).toBeCloseTo(364, -1)
       expect(c.options.safer.club, msg).toBe(pick)
       expect(c.options.tied.map((t) => t.club).sort(), msg).toEqual([...tied])
-      // The Driver carries at least the cap's worth of OB here; the soft cap charges it more, it is not thrown out.
+      // The Driver keeps real OB risk on this hole at every handicap (the soft cap charges it, it is not thrown out).
       const driver = c.ranking.find((r) => r.club === "Driver")!
-      expect(penaltyShare(driver.plan), msg).toBeGreaterThanOrEqual(SMART_MAX_PENALTY_RATE - 1e-9)
+      expect(penaltyShare(driver.plan), msg).toBeGreaterThan(0.02)
       // The tie line never suggests a wedge on a 364 yd hole, and names at most three clubs.
       const line = tieText(c.options) ?? ""
       expect(line, msg).not.toMatch(/(LW|SW|GW)/)

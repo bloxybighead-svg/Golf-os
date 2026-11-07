@@ -21,7 +21,7 @@ import { obZonesFor, type ObTag } from "./obTags"
 import type { CourseFeature, CourseHole } from "./overpass"
 import type { ClubShots, OptimizedClubPlan } from "./plan"
 import { optionsFor, rankWithSpread } from "./rankOptions"
-import { needsLookahead, ON_COURSE_SPREAD, penaltyShare, smartRule, type Options } from "./strategy"
+import { ESTIMATE_BAG_SPREAD, needsLookahead, ON_COURSE_SPREAD, penaltyShare, smartRule, type Options } from "./strategy"
 import type { ShotConditions } from "./playsLike"
 import { holePinFor } from "@/lib/planner/geometry"
 
@@ -92,7 +92,7 @@ export function table(rows: OptimizedClubPlan[]): string {
 // The golfer is a handicap-estimate bag, and the conditions are built by hand to match a live card: an 11 mph
 // headwind, 59 F against carries measured at 70 F, and 7 yd of climb (21 ft) from tee to green.
 
-export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number; bag?: Club[]; lookahead?: boolean } = {}): Case & { toPin: number } {
+export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number; bag?: Club[]; lookahead?: boolean; shots?: ClubShots[]; spread?: number } = {}): Case & { toPin: number } {
   const live = opts.live ?? true
   const hole = pebbleFixture.hole as unknown as CourseHole
   const features = pebbleFixture.features as unknown as CourseFeature[]
@@ -111,12 +111,12 @@ export function pebbleH1(handicap: number, opts: { live?: boolean; risk?: number
         baselineF: 70,
       }
     : null
-  const bag = fullBagShots({ myBag: null, handicap, typed: {}, bag: opts.bag ?? DEFAULT_BAG })
+  const bag = opts.shots ?? fullBagShots({ myBag: null, handicap, typed: {}, bag: opts.bag ?? DEFAULT_BAG })
   const baseline = getBaseline(handicap)
   const toPin = distanceYds(from, pin)
   const t0 = performance.now()
   const ranking = rankWithSpread(bag, { from, aim: pin, pin, lies, startLie: "tee", baseline, conditions }, {
-    spread: ON_COURSE_SPREAD,
+    spread: opts.spread ?? ESTIMATE_BAG_SPREAD, // a handicap estimate
     line: hole.line,
     smart: smartRule(opts.risk),
     lookahead: (opts.lookahead ?? true) && needsLookahead(toPin, longestTotalYds(bag, "tee"))

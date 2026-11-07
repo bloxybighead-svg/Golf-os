@@ -69,6 +69,14 @@ export const smartCost = (strokes: number, penalty: number, riskStrokes: number,
  * golfer can set 1.0-1.5 on You -> Planner.
  */
 export const ON_COURSE_SPREAD = 1.25
+/**
+ * The spread for a handicap-estimate bag (dispersion from the tier tables). ESTIMATE, from a cited source: those tables'
+ * direction SDs are anchored to Broadie's on-course driver direction errors (Golfmetrics), which already include
+ * wind, lies and nerves, so widening them by ON_COURSE_SPREAD counts the on-course effect twice. The 1.25 stays for a
+ * golfer's own shots and launch-monitor data, which are range numbers. Chosen from fix/sim-validation's ablations:
+ * with 1.0 the model's fairway rate moves toward Arccos's by 4 to 10 points.
+ */
+export const ESTIMATE_BAG_SPREAD = 1.0
 export const SPREAD_MIN = 1.0
 export const SPREAD_MAX = 1.5
 export const SPREAD_STEP = 0.05

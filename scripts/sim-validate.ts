@@ -19,7 +19,7 @@ import { buildLookahead, longestTotalYds } from "../lib/course/lookahead"
 import type { CourseGeometry } from "../lib/course/overpass"
 import { simulateLandings, type ClubShots } from "../lib/course/plan"
 import { optionsFor, rankWithSpread, smartRows, tieText } from "../lib/course/rankOptions"
-import { needsLookahead, ON_COURSE_SPREAD, penaltyShare, smartRule, widenShots } from "../lib/course/strategy"
+import { ESTIMATE_BAG_SPREAD, needsLookahead, ON_COURSE_SPREAD, penaltyShare, smartRule, widenShots } from "../lib/course/strategy"
 import { holePinFor } from "../lib/planner/geometry"
 
 // ---- Variants (one switch each) --------------------------------------------
@@ -33,10 +33,11 @@ interface Variant {
   unmapped: "rough" | "fairway"
   lookahead: boolean
 }
-const BASE: Variant = { name: "base", spread: ON_COURSE_SPREAD, boundary: true, buildings: true, roads: true, unmapped: "rough", lookahead: true }
+// The bags here are handicap estimates, so the base spread is the estimate-bag one (SIM_BASE_SPREAD overrides it to re-run history).
+const BASE: Variant = { name: "base", spread: Number(process.env.SIM_BASE_SPREAD ?? ESTIMATE_BAG_SPREAD), boundary: true, buildings: true, roads: true, unmapped: "rough", lookahead: true }
 const VARIANTS: Variant[] = [
   BASE,
-  { ...BASE, name: "a: spread 1.0", spread: 1.0 },
+  { ...BASE, name: "a: spread 1.25", spread: ON_COURSE_SPREAD },
   { ...BASE, name: "b1: no boundary OB", boundary: false },
   { ...BASE, name: "b2: no building OB", buildings: false },
   { ...BASE, name: "b3: no road OB", roads: false },
@@ -44,6 +45,7 @@ const VARIANTS: Variant[] = [
   { ...BASE, name: "d: no look-ahead", lookahead: false },
 ]
 const HANDICAPS = [0, 5, 10, 15, 20]
+const H1_HANDICAPS = [0, 10, 18, 20]
 const BAG: Club[] = DEFAULT_BAG
 
 // ---- Courses -----------------------------------------------------------------
@@ -248,13 +250,13 @@ function h1Case(c: CourseFile, v: Variant, hcp: number) {
   const rows = smartRows(ranking).map((r) => ({ club: r.club, st: r.plan.expectedStrokes, p: penaltyShare(r.plan) }))
   const pickAt = (m: number) => rows.reduce((a, b) => (b.st + 1.5 * (Math.min(b.p, 0.1) + m * Math.max(0, b.p - 0.1)) < a.st + 1.5 * (Math.min(a.p, 0.1) + m * Math.max(0, a.p - 0.1)) ? b : a)).club
   const mults = v.name === "base" ? ` | over-cap x1: ${pickAt(1)}, x2: ${pickAt(2)}, x3 (now): ${pickAt(3)}` : ""
-  return `pick ${o.safer.club.padEnd(8)} (tied: ${o.tied.map((t) => t.club).join("/")}) | Driver pen ${f1(100 * penaltyShare(dp))}% strokes ${dp.expectedStrokes.toFixed(3)} | best strokes ${o.lowest.club} ${o.lowest.plan.expectedStrokes.toFixed(3)}${mults}`
+  return `pick ${o.safer.club.padEnd(8)} | Driver fairway ${f1(100 * dp.lieShare.fairway)}% pen ${f1(100 * penaltyShare(dp))}% strokes ${dp.expectedStrokes.toFixed(3)} | Go for it ${o.lowest.club} ${o.lowest.plan.expectedStrokes.toFixed(3)} | tie line: ${tieText(o) ?? "none"}${mults}`
 }
 
 const pebble = courses.find((c) => c.name.startsWith("Pebble"))
 if (pebble?.geometry.holes.some((h) => h.ref === 1)) {
   console.log("\n## Pebble Beach hole 1, live card: Smart-play pick per variant")
-  for (const v of variants) for (const hcp of [10, 18, 20]) console.log(`${v.name.padEnd(24)} hcp ${String(hcp).padStart(2)}: ${h1Case(pebble, v, hcp)}`)
+  for (const v of variants) for (const hcp of H1_HANDICAPS) console.log(`${v.name.padEnd(24)} hcp ${String(hcp).padStart(2)}: ${h1Case(pebble, v, hcp)}`)
 }
 
 // ---- Strokes-to-hole curve ---------------------------------------------------
